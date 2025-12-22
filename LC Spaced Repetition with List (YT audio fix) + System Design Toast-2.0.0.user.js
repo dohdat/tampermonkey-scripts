@@ -28,7 +28,9 @@
 /* ----------------------------------------------
    Config
 ---------------------------------------------- */
-const DAILY_TIME_LIMIT_SECONDS = 30 * 60; // 40 minutes
+const DAILY_TIME_LIMIT_HOURS = 4;
+const DAILY_TIME_LIMIT_SECONDS = DAILY_TIME_LIMIT_HOURS * 60 * 60;
+
 // Turn on when practicing for real interviews
 const REQUIRE_TIME_AND_SPACE_COMPLEXITY = false;
 
@@ -652,7 +654,8 @@ Requirements:
         function detectDifficultyAndTarget() {
             // Defaults
             let difficulty = 'Medium';
-            let target = 7 * 60;
+            const uniformTargetSeconds = 6 * 60;
+            let target = uniformTargetSeconds;
             const playgroundId = getPlaygroundId(window.location.href);
 
             // --- System Design playgrounds (LeetCode or CodeSandbox): derive difficulty from your study list ---
@@ -678,10 +681,8 @@ Requirements:
                 }
             }
 
-            // Target mapping (keeps your original timings)
-            if (difficulty === 'Easy') target = 5 * 60;
-            else if (difficulty === 'Medium') target = 7 * 60;
-            else if (difficulty === 'Hard') target = 10 * 60;
+            // Uniform target regardless of difficulty
+            target = uniformTargetSeconds;
 
             // Prefer stored values for this key if present
             const key = getCurrentKey();

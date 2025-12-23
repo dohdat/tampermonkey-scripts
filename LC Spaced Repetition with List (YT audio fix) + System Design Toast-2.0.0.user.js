@@ -1409,7 +1409,9 @@ Requirements:
                 summaries.forEach(sm => {
                     sm.addEventListener('click', e => {
                         const locked = typeof isSolutionLocked === 'function' && isSolutionLocked();
-                        if (locked) {
+                        const isCheckbox = e.target && e.target.matches('input[type="checkbox"]');
+
+                        if (locked && !isCheckbox) {
                             e.preventDefault();
                             e.stopPropagation();
 
@@ -1428,8 +1430,11 @@ Requirements:
                             return;
                         }
 
+                        if (locked) {
+                            return;
+                        }
+
                         const details = sm.parentElement;
-                        const isCheckbox = e.target && e.target.matches('input[type="checkbox"]');
                         if (isCheckbox) {
                             if (details) details.open = true;
                             return; // keep checkbox behavior

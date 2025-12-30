@@ -337,11 +337,7 @@
     const saveBoardBtn = document.getElementById('tm-save-board');
 
     // Double-click header to hide
-    headerEl.addEventListener('dblclick', () => {
-      panel.style.display = 'none';
-      document.body.appendChild(showBtn);
-      dockDrawButton();
-    });
+    headerEl.addEventListener('dblclick', closePad);
 
     const canvas = new fabric.Canvas(canvasEl, { isDrawingMode: true, backgroundColor: 'white' });
 
@@ -504,8 +500,7 @@
       canvas.requestRenderAll();
     }
 
-    // Show button handler
-    showBtn.onclick = () => {
+    function openPad() {
       panel.style.display = 'flex';
       requestAnimationFrame(() => {
         updatePanelLayoutOnly();
@@ -516,15 +511,26 @@
         });
       });
       paperSelect.value = currentPaperMode;
-      showBtn.remove();
+    }
+
+    function closePad() {
+      panel.style.display = 'none';
+      dockDrawButton();
+    }
+
+    // Toggle button handler
+    showBtn.onclick = () => {
+      if (panel.style.display === 'none') {
+        openPad();
+      } else {
+        closePad();
+      }
     };
 
     // Open by default on specific playground URL
     if (window.location.href.includes('playground/3Du5jhPL')) {
       setTimeout(() => {
-        if (panel.style.display === 'none') {
-          showBtn.onclick();
-        }
+        if (panel.style.display === 'none') openPad();
       }, 0);
     }
 
@@ -745,7 +751,7 @@
       saveBoardBtn.onclick = saveCanvas;
     }
 
-    toggleBtn.onclick = () => { panel.style.display = 'none'; document.body.appendChild(showBtn); dockDrawButton(); };
+    toggleBtn.onclick = closePad;
 
     // Paste image as data URL so it persists in JSON
     window.addEventListener('paste', e => {

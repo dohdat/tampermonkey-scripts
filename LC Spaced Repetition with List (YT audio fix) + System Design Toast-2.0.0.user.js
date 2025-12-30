@@ -1759,7 +1759,7 @@ A: N/A
         relative inline-flex items-center justify-center
         text-caption px-2 py-1 gap-1 rounded-full
         bg-fill-secondary text-difficulty-medium dark:text-difficulty-medium
-        mx-auto my-1
+        mx-auto my-1 lc-difficulty-badge
     `;
             difficultyBadgeEl.style.display = 'inline-flex';
             difficultyBadgeEl.style.margin = '0 8px 0 0';
@@ -1937,30 +1937,38 @@ A: N/A
             style.id = 'lc-srs-styles';
             style.textContent = `
       #lc-srs-container.lc-centered {
-        min-width: 380px !important;
+        min-width: 420px !important;
         width: auto !important;
-        padding: 28px !important;
+        padding: 22px 24px 26px !important;
         border-radius: 14px !important;
         box-shadow: 0 12px 48px rgba(0,0,0,0.7) !important;
         background: rgba(30, 30, 30, 0.85) !important;
         max-height: none !important;
         white-space: normal !important;
         overflow: visible !important;
-        display: block !important;
-        transform: translate(-50%, -50%) scale(1.2) !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 12px !important;
+        transform: translate(-50%, -50%) scale(1.08) !important;
       }
       #lc-srs-container.lc-centered div {
-        font-size: 18px !important;
+        font-size: 15px !important;
       }
       #lc-srs-container.lc-centered button {
-        font-size: 20px !important;
-        padding: 16px 32px !important;
-        border-width: 3px !important;
-        border-radius: 10px !important;
-        min-width: 110px !important;
+        font-size: 14px !important;
+        padding: 10px 14px !important;
+        border-width: 2px !important;
+        border-radius: 8px !important;
+        min-width: 88px !important;
         font-weight: 700 !important;
-        letter-spacing: 0.6px !important;
+        letter-spacing: 0.3px !important;
+        line-height: 1.2 !important;
         transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease !important;
+      }
+      #lc-srs-container.lc-centered .lc-difficulty-badge {
+        margin: 0 auto !important;
       }
     `;
             document.head.appendChild(style);

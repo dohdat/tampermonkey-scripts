@@ -1664,12 +1664,12 @@ A: N/A
             container.style.transform = 'translateX(-50%)';
             container.style.background = 'rgba(24, 24, 24, 0.95)';
             container.style.border = '1px solid #444';
-            container.style.padding = '8px 12px';
+            container.style.padding = '8px 12px 16px';
             container.style.zIndex = 9999;
             container.style.borderRadius = '12px';
             container.style.boxShadow = '0 8px 22px rgba(0,0,0,0.45)';
             container.style.width = 'min(1400px, calc(100% - 24px))';
-            container.style.maxHeight = '45px';
+            container.style.maxHeight = '60px';
             container.style.maxWidth = 'fit-content';
             container.style.display = 'flex';
             container.style.alignItems = 'center';
@@ -1678,6 +1678,31 @@ A: N/A
             container.style.overflowX = 'auto';
             container.style.overflowY = 'hidden';
             container.style.whiteSpace = 'nowrap';
+            container.style.boxSizing = 'border-box';
+
+            // Overall progress bar pinned to the bottom of the container
+            const progressBarTrack = document.createElement('div');
+            progressBarTrack.style.position = 'absolute';
+            progressBarTrack.style.left = '12px';
+            progressBarTrack.style.right = '12px';
+            progressBarTrack.style.bottom = '6px';
+            progressBarTrack.style.height = '6px';
+            progressBarTrack.style.background = '#2a2a2a';
+            progressBarTrack.style.border = '1px solid #444';
+            progressBarTrack.style.borderRadius = '999px';
+            progressBarTrack.style.overflow = 'hidden';
+            progressBarTrack.setAttribute('role', 'progressbar');
+            progressBarTrack.setAttribute('aria-valuemin', '0');
+            progressBarTrack.setAttribute('aria-valuemax', '100');
+
+            const progressBarFill = document.createElement('div');
+            progressBarFill.style.height = '100%';
+            progressBarFill.style.width = '0%';
+            progressBarFill.style.background = 'linear-gradient(90deg, #6dd5ed, #2193b0)';
+            progressBarFill.style.transition = 'width 0.2s ease';
+
+            progressBarTrack.appendChild(progressBarFill);
+            container.appendChild(progressBarTrack);
             container.style.color = '#eee';
             container.style.fontFamily = 'system-ui, -apple-system, Segoe UI, Roboto, Arial';
             container.style.lineHeight = '1.2';
@@ -1752,16 +1777,6 @@ A: N/A
             solutionCountdownEl.style.flex = '0 0 auto';
             container.appendChild(solutionCountdownEl);
 
-            // Overall progress
-            const progressText = document.createElement('div');
-            progressText.style.margin = '0 8px 0 0';
-            progressText.style.fontWeight = 'bold';
-            progressText.style.fontSize = '14px';
-            progressText.style.color = '#eee';
-            progressText.style.textAlign = 'center';
-            progressText.style.flex = '0 0 auto';
-            container.appendChild(progressText);
-
             // Current item progress
             const individualProgressText = document.createElement('div');
             individualProgressText.style.margin = '0 8px 0 0';
@@ -1810,8 +1825,11 @@ A: N/A
                 const allKeys = srs_items.map(it => it.key);
                 const completed = allKeys.filter(key => isCompleted(key)).length;
                 const total = allKeys.length;
-                const percentOverall = Math.round((completed / total) * 100);
-                progressText.innerText = `Overall Progress: ${completed}/${total} (${percentOverall}%)`;
+                const percentOverall = total > 0 ? Math.round((completed / total) * 100) : 0;
+                const clampedPercent = Math.min(Math.max(percentOverall, 0), 100);
+                progressBarFill.style.width = `${clampedPercent}%`;
+                progressBarTrack.title = `Overall Progress: ${completed}/${total} (${clampedPercent}%)`;
+                progressBarTrack.setAttribute('aria-valuenow', clampedPercent.toString());
 
                 const currentKey = getCurrentKey();
                 if (currentKey) {

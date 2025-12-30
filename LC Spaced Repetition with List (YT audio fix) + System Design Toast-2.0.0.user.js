@@ -1659,25 +1659,37 @@ A: N/A
             const container = document.createElement('div');
             container.id = 'lc-srs-container';
             container.style.position = 'fixed';
-            container.style.bottom = '20px';
-            container.style.right = '20px';
-            container.style.background = 'rgba(30, 30, 30, 0.9)';
-            container.style.border = '1px solid #555';
-            container.style.padding = '15px';
+            container.style.top = '0px';
+            container.style.left = '50%';
+            container.style.transform = 'translateX(-50%)';
+            container.style.background = 'rgba(24, 24, 24, 0.95)';
+            container.style.border = '1px solid #444';
+            container.style.padding = '8px 12px';
             container.style.zIndex = 9999;
-            container.style.borderRadius = '8px';
-            container.style.boxShadow = '0 4px 12px rgba(0,0,0,0.5)';
-            container.style.minWidth = '220px';
+            container.style.borderRadius = '12px';
+            container.style.boxShadow = '0 8px 22px rgba(0,0,0,0.45)';
+            container.style.width = 'min(1400px, calc(100% - 24px))';
+            container.style.maxHeight = '50px';
+            container.style.maxWidth = 'fit-content';
+            container.style.display = 'flex';
+            container.style.alignItems = 'center';
+            container.style.gap = '10px';
+            container.style.flexWrap = 'nowrap';
+            container.style.overflowX = 'auto';
+            container.style.overflowY = 'hidden';
+            container.style.whiteSpace = 'nowrap';
             container.style.color = '#eee';
             container.style.fontFamily = 'system-ui, -apple-system, Segoe UI, Roboto, Arial';
+            container.style.lineHeight = '1.2';
 
             // helper: make label+input row
             function makeInputRow(labelText, placeholderText) {
                 const row = document.createElement('div');
-                row.style.display = 'grid';
-                row.style.gridTemplateColumns = '1fr';
+                row.style.display = 'flex';
+                row.style.alignItems = 'center';
                 row.style.gap = '6px';
-                row.style.margin = '8px 0';
+                row.style.margin = '0 6px';
+                row.style.flex = '0 0 auto';
 
                 const label = document.createElement('label');
                 label.textContent = labelText;
@@ -1694,6 +1706,7 @@ A: N/A
                 input.style.padding = '6px 8px';
                 input.style.fontSize = '13px';
                 input.style.cursor = 'text';
+                input.style.height = '32px';
 
                 row.appendChild(input);
                 return {
@@ -1704,11 +1717,12 @@ A: N/A
 
             // Daily timer display
             timerDisplayElement = document.createElement('div');
-            timerDisplayElement.style.marginBottom = '8px';
+            timerDisplayElement.style.margin = '0 8px 0 0';
             timerDisplayElement.style.fontWeight = 'bold';
-            timerDisplayElement.style.fontSize = '16px';
+            timerDisplayElement.style.fontSize = '14px';
             timerDisplayElement.style.color = '#aed6f1';
             timerDisplayElement.style.textAlign = 'center';
+            timerDisplayElement.style.flex = '0 0 auto';
             container.appendChild(timerDisplayElement);
 
             // Difficulty badge
@@ -1719,35 +1733,42 @@ A: N/A
         bg-fill-secondary text-difficulty-medium dark:text-difficulty-medium
         mx-auto my-1
     `;
-            difficultyBadgeEl.style.display = 'block';
-            difficultyBadgeEl.style.margin = '4px auto';
+            difficultyBadgeEl.style.display = 'inline-flex';
+            difficultyBadgeEl.style.margin = '0 8px 0 0';
             difficultyBadgeEl.style.width = 'fit-content';
+            difficultyBadgeEl.style.alignItems = 'center';
+            difficultyBadgeEl.style.padding = '6px 10px';
+            difficultyBadgeEl.style.borderRadius = '999px';
+            difficultyBadgeEl.style.fontSize = '12px';
             difficultyBadgeEl.textContent = 'Medium';
             container.appendChild(difficultyBadgeEl);
 
             // Solution countdown
             solutionCountdownEl = document.createElement('div');
-            solutionCountdownEl.style.marginBottom = '10px';
-            solutionCountdownEl.style.fontSize = '14px';
+            solutionCountdownEl.style.margin = '0 8px 0 0';
+            solutionCountdownEl.style.fontSize = '13px';
             solutionCountdownEl.style.textAlign = 'center';
             solutionCountdownEl.style.color = '#ffda79';
+            solutionCountdownEl.style.flex = '0 0 auto';
             container.appendChild(solutionCountdownEl);
 
             // Overall progress
             const progressText = document.createElement('div');
-            progressText.style.marginBottom = '8px';
+            progressText.style.margin = '0 8px 0 0';
             progressText.style.fontWeight = 'bold';
-            progressText.style.fontSize = '16px';
+            progressText.style.fontSize = '14px';
             progressText.style.color = '#eee';
             progressText.style.textAlign = 'center';
+            progressText.style.flex = '0 0 auto';
             container.appendChild(progressText);
 
             // Current item progress
             const individualProgressText = document.createElement('div');
-            individualProgressText.style.marginBottom = '15px';
-            individualProgressText.style.fontSize = '14px';
+            individualProgressText.style.margin = '0 8px 0 0';
+            individualProgressText.style.fontSize = '13px';
             individualProgressText.style.color = '#bbb';
             individualProgressText.style.textAlign = 'center';
+            individualProgressText.style.flex = '0 0 auto';
             container.appendChild(individualProgressText);
 
             const {
@@ -1769,7 +1790,10 @@ A: N/A
             // Buttons
             const buttonContainer = document.createElement('div');
             buttonContainer.style.display = 'flex';
-            buttonContainer.style.justifyContent = 'space-around';
+            buttonContainer.style.alignItems = 'center';
+            buttonContainer.style.gap = '8px';
+            buttonContainer.style.marginLeft = '8px';
+            buttonContainer.style.flex = '0 0 auto';
             container.appendChild(buttonContainer);
 
             const buttonRefs = {};
@@ -1801,16 +1825,18 @@ A: N/A
             BUTTONS.forEach(btn => {
                 const b = document.createElement('button');
                 b.innerText = btn;
-                b.style.margin = '0 7px';
+                b.style.margin = '0';
                 b.style.color = BUTTON_COLORS[btn];
                 b.style.fontWeight = 'bold';
                 b.style.background = 'transparent';
                 b.style.border = `2px solid ${BUTTON_COLORS[btn]}`;
                 b.style.borderRadius = '5px';
-                b.style.padding = '8px 15px';
+                b.style.padding = '6px 12px';
+                b.style.height = '34px';
+                b.style.lineHeight = '1.1';
                 b.style.cursor = 'pointer';
                 b.style.transition = 'all 0.2s ease';
-                b.style.fontSize = '14px';
+                b.style.fontSize = '13px';
 
                 b.onmouseover = () => {
                     if (b.disabled) return;
@@ -1885,10 +1911,15 @@ A: N/A
             style.textContent = `
       #lc-srs-container.lc-centered {
         min-width: 380px !important;
+        width: auto !important;
         padding: 28px !important;
         border-radius: 14px !important;
         box-shadow: 0 12px 48px rgba(0,0,0,0.7) !important;
         background: rgba(30, 30, 30, 0.85) !important;
+        max-height: none !important;
+        white-space: normal !important;
+        overflow: visible !important;
+        display: block !important;
         transform: translate(-50%, -50%) scale(1.2) !important;
       }
       #lc-srs-container.lc-centered div {
@@ -1915,14 +1946,16 @@ A: N/A
             if (overlayEl && overlayEl.contains(el)) {
                 document.body.appendChild(el);
             }
-            el.style.top = '';
-            el.style.left = '';
-            el.style.transform = '';
+            el.style.bottom = '';
+            el.style.right = '';
+            el.style.top = '10px';
+            el.style.left = '50%';
+            el.style.transform = 'translateX(-50%)';
             el.style.transition = 'transform 0.2s ease, top 0.2s ease, left 0.2s ease';
-            el.style.bottom = '20px';
-            el.style.right = '20px';
             el.style.position = 'fixed';
             el.style.zIndex = 9999;
+            el.style.width = 'min(1400px, calc(100% - 24px))';
+            el.style.maxHeight = '50px';
             if (overlayEl && overlayEl.parentNode) {
                 overlayEl.parentNode.removeChild(overlayEl);
             }

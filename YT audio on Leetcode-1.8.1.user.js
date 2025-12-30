@@ -175,43 +175,83 @@
                 document.body.appendChild(btnNext);
             }
 
-            let btnWhiteNoise = document.getElementById("yt-audio-white-noise");
-            if (!btnWhiteNoise) {
-                btnWhiteNoise = document.createElement("button");
-                btnWhiteNoise.id = "yt-audio-white-noise";
-                btnWhiteNoise.textContent = "White noise";
-                btnWhiteNoise.title = "Switch to white noise playlist";
-                Object.assign(btnWhiteNoise.style, {
+            // hover menu for playlist choice
+            let menu = document.getElementById("yt-audio-menu");
+            let menuPool = null;
+            let menuWhite = null;
+            if (!menu) {
+                menu = document.createElement("div");
+                menu.id = "yt-audio-menu";
+                Object.assign(menu.style, {
                     position: "fixed",
-                    bottom: "21px",
-                    right: "360px",
+                    bottom: "50px",
+                    right: "520px",
                     zIndex: "2147483647",
-                    padding: "6px 10px",
-                    fontSize: "13px",
-                    background: "#ff6600",
+                    display: "none",
+                    flexDirection: "column",
+                    gap: "4px",
+                    padding: "6px",
+                    background: "#1f2933",
                     color: "white",
-                    border: "none",
-                    borderRadius: "5px",
-                    cursor: "pointer",
+                    borderRadius: "6px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.35)",
+                    fontSize: "13px",
                     userSelect: "none",
                 });
-                document.body.appendChild(btnWhiteNoise);
+
+                const makeOpt = (id, label, key) => {
+                    const btn = document.createElement("button");
+                    btn.id = id;
+                    btn.textContent = label;
+                    Object.assign(btn.style, {
+                        background: "#ff6600",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        padding: "6px 8px",
+                        cursor: "pointer",
+                        textAlign: "left",
+                    });
+                    btn.onclick = () => {
+                        setPlaylist(key);
+                        setPlayingUI(true);
+                        nextSong();
+                        hideMenu();
+                    };
+                    return btn;
+                };
+
+                menuPool = makeOpt("yt-audio-menu-pool", "Play sofi", "pool");
+                menuWhite = makeOpt("yt-audio-menu-white", "Play white noise", "whiteNoise");
+                menu.appendChild(menuPool);
+                menu.appendChild(menuWhite);
+                document.body.appendChild(menu);
+            } else {
+                menuPool = document.getElementById("yt-audio-menu-pool");
+                menuWhite = document.getElementById("yt-audio-menu-white");
             }
 
             // ---------- state ----------
             let ytPlayer = NS.player || null;
             let isPlaying = load(LS_KEYS.playing) === "1";
+            let hideMenuTimer = null;
 
             function setPlayingUI(p) {
                 isPlaying = p;
-                btnPlay.textContent = p ? "❚❚" : "▶︎";
+                const playingIcon = activeListKey === "whiteNoise" ? "🌫️ noise" : "🎧 Lofi";
+                btnPlay.textContent = p ? playingIcon : "▶︎";
                 save(LS_KEYS.playing, p ? "1" : "0");
             }
 
             function setPlaylistUI() {
-                if (!btnWhiteNoise) return;
-                btnWhiteNoise.textContent =
-                    activeListKey === "whiteNoise" ? "White noise (on)" : "White noise";
+                const label = activeListKey === "whiteNoise" ? "white noise" : "sofi";
+                btnPlay.title = `Play/Pause (${label})`;
+                if (menuPool && menuWhite) {
+                    menuPool.style.opacity = activeListKey === "pool" ? "1" : "0.7";
+                    menuWhite.style.opacity = activeListKey === "whiteNoise" ? "1" : "0.7";
+                    menuPool.style.fontWeight = activeListKey === "pool" ? "700" : "400";
+                    menuWhite.style.fontWeight = activeListKey === "whiteNoise" ? "700" : "400";
+                }
             }
 
             function setPlaylist(key) {
@@ -219,6 +259,23 @@
                 activeListKey = key;
                 save(LS_KEYS.list, key);
                 setPlaylistUI();
+            }
+
+            function showMenu() {
+                if (!menu) return;
+                if (hideMenuTimer) clearTimeout(hideMenuTimer);
+                menu.style.display = "flex";
+            }
+
+            function hideMenu() {
+                if (!menu) return;
+                menu.style.display = "none";
+                hideMenuTimer = null;
+            }
+
+            function scheduleHideMenu() {
+                if (hideMenuTimer) clearTimeout(hideMenuTimer);
+                hideMenuTimer = setTimeout(hideMenu, 180);
             }
 
             function startSavingTime() {
@@ -283,11 +340,12 @@
             // bind (or rebind) button handlers (no duplicate listeners)
             btnPlay.onclick = toggleAudio;
             btnNext.onclick = nextSong;
-            btnWhiteNoise.onclick = () => {
-                const newKey = activeListKey === "whiteNoise" ? "pool" : "whiteNoise";
-                setPlaylist(newKey);
-                nextSong();
-            };
+            btnPlay.addEventListener("mouseenter", showMenu);
+            btnPlay.addEventListener("mouseleave", scheduleHideMenu);
+            if (menu) {
+                menu.addEventListener("mouseenter", showMenu);
+                menu.addEventListener("mouseleave", scheduleHideMenu);
+            }
             setPlaylistUI();
 
             // ---------- global listeners (hook once) ----------

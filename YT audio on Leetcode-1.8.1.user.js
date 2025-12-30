@@ -29,79 +29,79 @@
    YouTube Audio (SPA-safe resume + single API load)
    Singleton: always exactly one player instance
    ---------------------------------------------- */
-    (function () {
-        const W = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
+(function () {
+    const W = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
 
-        // ---------- singleton namespace ----------
-        const NS = (W.__YTAUDIO__ = W.__YTAUDIO__ || {
-            player: null,
-            saveTimer: null,
-            listenersHooked: false,
-            apiHooked: false,
-            firstClickAutoplayDone: false,
-        });
+    // ---------- singleton namespace ----------
+    const NS = (W.__YTAUDIO__ = W.__YTAUDIO__ || {
+        player: null,
+        saveTimer: null,
+        listenersHooked: false,
+        apiHooked: false,
+        firstClickAutoplayDone: false,
+    });
 
-        // ---------- tiny utils ----------
-        const LS_KEYS = {
-            playing: "ytAudioIsPlaying",
-            time: "ytAudioTime",
-            vid: "ytAudioVideoId",
-            list: "ytAudioList",
-        };
+    // ---------- tiny utils ----------
+    const LS_KEYS = {
+        playing: "ytAudioIsPlaying",
+        time: "ytAudioTime",
+        vid: "ytAudioVideoId",
+        list: "ytAudioList",
+    };
 
-        const save = (k, v) => {
-            try {
-                localStorage.setItem(k, String(v));
-            } catch {}
-        };
+    const save = (k, v) => {
+        try {
+            localStorage.setItem(k, String(v));
+        } catch {}
+    };
 
-        const load = (k, dflt = null) => {
-            try {
-                const v = localStorage.getItem(k);
-                return v == null ? dflt : v;
-            } catch {
-                return dflt;
-            }
-        };
-
-        function onReady(fn) {
-            if (document.readyState === "loading") {
-                document.addEventListener("DOMContentLoaded", fn, { once: true });
-            } else if (!document.body) {
-                const t = setInterval(() => {
-                    if (document.body) {
-                        clearInterval(t);
-                        fn();
-                    }
-                }, 25);
-                setTimeout(() => clearInterval(t), 5000);
-            } else {
-                fn();
-            }
+    const load = (k, dflt = null) => {
+        try {
+            const v = localStorage.getItem(k);
+            return v == null ? dflt : v;
+        } catch {
+            return dflt;
         }
+    };
 
-        onReady(() => {
-            function injectStyles() {
-                if (document.getElementById("yt-audio-styles")) return;
-                const isDark =
-                    document.documentElement.dataset.theme === "dark" ||
-                    document.body.dataset.theme === "dark";
-                const palette = {
-                    primary: "#ffa116",
-                    primaryLow: "#e68900",
-                    primaryHover: "#ffb23d",
-                    text: isDark ? "#f5f6f7" : "#111318",
-                    textMuted: isDark ? "#9ea3aa" : "#4d5561",
-                    surface: isDark ? "#1d1f23" : "#ffffff",
-                    hoverSurface: isDark ? "#272a31" : "#f5f7fa",
-                    border: isDark ? "#2e3138" : "#e5e7eb",
-                    shadow: isDark
-                        ? "0 12px 32px rgba(0,0,0,0.55)"
-                        : "0 12px 32px rgba(16,24,40,0.18)",
-                };
-                const style = document.createElement("style");
-                style.id = "yt-audio-styles";
-                style.textContent = `
+    function onReady(fn) {
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", fn, { once: true });
+        } else if (!document.body) {
+            const t = setInterval(() => {
+                if (document.body) {
+                    clearInterval(t);
+                    fn();
+                }
+            }, 25);
+            setTimeout(() => clearInterval(t), 5000);
+        } else {
+            fn();
+        }
+    }
+
+    onReady(() => {
+        function injectStyles() {
+            if (document.getElementById("yt-audio-styles")) return;
+            const isDark =
+                  document.documentElement.dataset.theme === "dark" ||
+                  document.body.dataset.theme === "dark";
+            const palette = {
+                primary: "#ffa116",
+                primaryLow: "#e68900",
+                primaryHover: "#ffb23d",
+                text: isDark ? "#f5f6f7" : "#111318",
+                textMuted: isDark ? "#9ea3aa" : "#4d5561",
+                surface: isDark ? "#1d1f23" : "#ffffff",
+                hoverSurface: isDark ? "#272a31" : "#f5f7fa",
+                border: isDark ? "#2e3138" : "#e5e7eb",
+                shadow: isDark
+                ? "0 12px 32px rgba(0,0,0,0.55)"
+                : "0 12px 32px rgba(16,24,40,0.18)",
+            };
+            const style = document.createElement("style");
+            style.id = "yt-audio-styles";
+            style.textContent = `
                 #yt-audio-wrapper {
                     position: fixed;
                     bottom: 21px;
@@ -206,7 +206,15 @@
             injectStyles();
 
             // ---------- choose (and persist) the video once ----------
-            const pool = ["28KRPhVzCus", "Na0w3Mz46GA", "Z_8f5IWuTFg", "XSXEaikz0Bc", "9kzE8isXlQY"];
+            const pool = [
+                "iK7Abq3Evw",
+                "xocnshwEbrM",
+                "NtxyP0xbDco",
+                "Vg13S-zzol0",
+                "DI0XAs_abRg",
+                "SPYBHFPvvXk"
+            ];
+
             const whiteNoise = ["iDdVKuL6SBQ", "iYDMTcqis7Q", "-FKQcej1aeQ", "c2sh1bQOeQo", "JDST0qFChPw"];
             const PLAYLISTS = { pool, whiteNoise };
             const DEFAULT_LIST_KEY = "pool";

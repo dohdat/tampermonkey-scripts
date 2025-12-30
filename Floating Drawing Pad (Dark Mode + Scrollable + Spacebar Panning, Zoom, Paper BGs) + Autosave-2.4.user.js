@@ -38,21 +38,124 @@
     if (window.__tmDrawingPadInjected) return;
     window.__tmDrawingPadInjected = true;
 
+    const isDark =
+      document.documentElement.dataset.theme === 'dark' ||
+      document.body.dataset.theme === 'dark';
+    const palette = {
+      primary: '#ffa116',
+      primaryLow: '#e68900',
+      primaryHover: '#ffb23d',
+      surface: isDark ? '#1d1f23' : '#ffffff',
+      surfaceSubtle: isDark ? '#23262d' : '#f7f8fa',
+      border: isDark ? '#2e3138' : '#e5e7eb',
+      text: isDark ? '#f5f6f7' : '#111318',
+      muted: isDark ? '#9ea3aa' : '#4d5561',
+      shadow: isDark ? '0 12px 32px rgba(0,0,0,0.55)' : '0 12px 32px rgba(16,24,40,0.18)'
+    };
+
     const style = document.createElement('style');
     style.textContent = `
-      #tm-draw-panel { position: fixed; background: rgba(255,255,255,0.95); border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,0.2); z-index: 999999999; display: flex; flex-direction: column; user-select: none; color: black; padding: 8px; resize: both; overflow: hidden; }
-      #tm-draw-header { height: 36px; display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; background: #f9f9f9; border-bottom: 1px solid #ddd; cursor: move; border-top-left-radius: 8px; border-top-right-radius: 8px; color: black; }
-      #tm-draw-tools { display: flex; align-items: center; gap: 8px; padding: 4px 0; color: black; flex-wrap: wrap; }
-      #tm-fav-colors .tm-color-btn { width: 20px; height: 20px; border-radius: 50%; padding: 0; border: 1px solid #888; cursor: pointer; }
+      #tm-draw-panel {
+        position: fixed;
+        background: ${palette.surface};
+        border: 1px solid ${palette.border};
+        border-radius: 12px;
+        box-shadow: ${palette.shadow};
+        z-index: 999999999;
+        display: flex;
+        flex-direction: column;
+        user-select: none;
+        color: ${palette.text};
+        padding: 8px;
+        resize: both;
+        overflow: hidden;
+      }
+      #tm-draw-header {
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 10px;
+        background: ${palette.surfaceSubtle};
+        border-bottom: 1px solid ${palette.border};
+        cursor: move;
+        border-top-left-radius: 10px;
+        border-top-right-radius: 10px;
+        color: ${palette.text};
+        font-weight: 700;
+        letter-spacing: 0.2px;
+      }
+      #tm-draw-tools {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 0;
+        color: ${palette.text};
+        flex-wrap: wrap;
+      }
+      #tm-fav-colors .tm-color-btn {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        padding: 0;
+        border: 1px solid ${palette.border};
+        cursor: pointer;
+      }
       .tm-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-      #tm-canvas-wrapper { flex: 1; border: 1px solid #ddd; border-radius: 4px; background: white; overflow: auto; position: relative; }
-      #tm-canvas { background: white; display: block; }
-      .tm-btn { border: 1px solid #888; background: #f5f5f5; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; color: #333; box-shadow: 1px 1px 3px rgba(0,0,0,0.2); transition: all 0.1s ease; }
-      .tm-btn:hover { background: #e0e0e0; box-shadow: 2px 2px 6px rgba(0,0,0,0.25); }
-      .tm-btn:active { transform: translateY(1px); box-shadow: 1px 1px 3px rgba(0,0,0,0.2); }
-      .tm-btn.selected { background: #d0e0ff; border-color: #4a90e2; color: #000; }
-      #tm-paper, #tm-workspace { min-width: 140px; }
-      .tm-sep { height: 20px; width: 1px; background: #d0d0d0; margin: 0 4px; }
+      #tm-canvas-wrapper {
+        flex: 1;
+        border: 1px solid ${palette.border};
+        border-radius: 8px;
+        background: ${palette.surfaceSubtle};
+        overflow: auto;
+        position: relative;
+      }
+      #tm-canvas { background: ${isDark ? '#111318' : '#ffffff'}; display: block; }
+      .tm-btn {
+        border: 1px solid ${palette.border};
+        background: ${palette.surface};
+        padding: 8px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        color: ${palette.text};
+        box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+        transition: all 0.16s ease;
+        line-height: 1.1;
+      }
+      .tm-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 20px rgba(0,0,0,0.18); background: ${palette.surfaceSubtle}; }
+      .tm-btn:active { transform: translateY(0); }
+      .tm-btn.selected {
+        background: linear-gradient(180deg, ${palette.primary} 0%, ${palette.primaryLow} 100%);
+        border-color: #d07a00;
+        color: #111318;
+      }
+      .tm-btn.tm-primary {
+        background: linear-gradient(180deg, ${palette.primary} 0%, ${palette.primaryLow} 100%);
+        border-color: #d07a00;
+        color: #111318;
+        font-weight: 700;
+      }
+      .tm-btn.tm-ghost {
+        background: ${palette.surfaceSubtle};
+        color: ${palette.text};
+      }
+      .tm-btn.tm-ghost:hover {
+        background: ${palette.surface};
+      }
+      #tm-paper, #tm-workspace { min-width: 160px; }
+      .tm-sep { height: 20px; width: 1px; background: ${palette.border}; margin: 0 6px; }
+      .tm-show-btn--floating {
+        position: fixed;
+        bottom: 20px;
+        right: 520px;
+        z-index: 999999999;
+      }
+      .tm-show-btn--docked {
+        position: static !important;
+        box-shadow: none;
+        margin-right: 8px;
+      }
     `;
     document.head.appendChild(style);
 
@@ -146,12 +249,33 @@
     // Floating "Draw" button
     const showBtn = document.createElement('button');
     showBtn.textContent = 'Draw';
-    showBtn.className = 'tm-btn';
-    showBtn.style.position = 'fixed';
-    showBtn.style.right = '305px';
-    showBtn.style.bottom = '20px';
-    showBtn.style.zIndex = 999999999;
+    showBtn.className = 'tm-btn tm-primary tm-show-btn--floating';
     document.body.appendChild(showBtn);
+
+    function dockDrawButton() {
+      const wrapper = document.getElementById('yt-audio-wrapper');
+      const playBtn = document.getElementById('yt-audio-toggle');
+      if (wrapper && playBtn) {
+        if (showBtn.parentNode !== wrapper) wrapper.insertBefore(showBtn, playBtn);
+        showBtn.classList.remove('tm-show-btn--floating');
+        showBtn.classList.add('tm-show-btn--docked', 'tm-ghost');
+        showBtn.classList.remove('tm-primary');
+        showBtn.style.right = '';
+        showBtn.style.bottom = '';
+        return true;
+      }
+      showBtn.classList.remove('tm-show-btn--docked', 'tm-ghost');
+      showBtn.classList.add('tm-primary');
+      if (showBtn.parentNode !== document.body) document.body.appendChild(showBtn);
+      showBtn.classList.add('tm-show-btn--floating');
+      showBtn.style.right = '520px';
+      showBtn.style.bottom = '20px';
+      return false;
+    }
+
+    dockDrawButton();
+    const dockObserver = new MutationObserver(dockDrawButton);
+    dockObserver.observe(document.body, { childList: true, subtree: true });
 
     function savePanelState() {
       localStorage.setItem('tmDrawPanel', JSON.stringify({
@@ -216,6 +340,7 @@
     headerEl.addEventListener('dblclick', () => {
       panel.style.display = 'none';
       document.body.appendChild(showBtn);
+      dockDrawButton();
     });
 
     const canvas = new fabric.Canvas(canvasEl, { isDrawingMode: true, backgroundColor: 'white' });
@@ -620,7 +745,7 @@
       saveBoardBtn.onclick = saveCanvas;
     }
 
-    toggleBtn.onclick = () => { panel.style.display = 'none'; document.body.appendChild(showBtn); };
+    toggleBtn.onclick = () => { panel.style.display = 'none'; document.body.appendChild(showBtn); dockDrawButton(); };
 
     // Paste image as data URL so it persists in JSON
     window.addEventListener('paste', e => {

@@ -673,9 +673,14 @@ A: N/A
         function updateEasyButtonVisibility() {
             if (!easyButton) return;
             if (!isWindowFocused || window.location.pathname.includes('/submissions/')) {
-                easyButton.style.display = 'none';
+                // Show a disabled look but keep it clickable
+                easyButton.style.opacity = '0.45';
+                easyButton.style.filter = 'grayscale(0.4)';
+                easyButton.style.cursor = 'not-allowed';
             } else {
-                // default visible
+                // easyButton.style.opacity = '';
+                // easyButton.style.filter = '';
+                // easyButton.style.cursor = 'pointer';
             }
         }
 

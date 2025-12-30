@@ -438,7 +438,7 @@ A: N/A
                 url: "https://leetcode.com/problems/word-search-ii",
                 difficulty: "Hard"
             },
-             {
+            {
                 type: "system-design",
                 title: "Implement a Paginated Table",
                 url: "https://codesandbox.io/p/sandbox/focused-bhabha-hmrgr4?",
@@ -517,7 +517,7 @@ A: N/A
                 difficulty: "Medium",
                 playground: "https://codesandbox.io/p/sandbox/funny-shannon-sklqfw?"
             },
-             {
+            {
                 type: "system-design",
                 title: "Build a Virtualized List",
                 url: "https://codesandbox.io/p/sandbox/silly-swanson-t5dg34?",
@@ -1655,6 +1655,7 @@ A: N/A
         /* ------------------------------------------
      UI: container + progress + buttons
   ------------------------------------------ */
+
         function createUI() {
             const container = document.createElement('div');
             container.id = 'lc-srs-container';
@@ -1706,6 +1707,8 @@ A: N/A
             container.style.color = '#eee';
             container.style.fontFamily = 'system-ui, -apple-system, Segoe UI, Roboto, Arial';
             container.style.lineHeight = '1.2';
+            container.style.transform = 'translateX(-50%) scale(0.92)';
+            container.style.transformOrigin = 'top center';
 
             // helper: make label+input row
             function makeInputRow(labelText, placeholderText) {

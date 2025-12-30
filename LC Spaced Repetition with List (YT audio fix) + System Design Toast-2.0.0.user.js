@@ -1707,7 +1707,7 @@ A: N/A
             container.style.color = '#eee';
             container.style.fontFamily = 'system-ui, -apple-system, Segoe UI, Roboto, Arial';
             container.style.lineHeight = '1.2';
-            container.style.transform = 'translateX(-50%) scale(0.92)';
+            container.style.transform = 'translateX(-50%) scale(0.95)';
             container.style.transformOrigin = 'top center';
 
             // helper: make label+input row
@@ -1826,12 +1826,18 @@ A: N/A
             function updateCompletion() {
                 const progress = loadProgress();
                 const allKeys = srs_items.map(it => it.key);
-                const completed = allKeys.filter(key => isCompleted(key)).length;
                 const total = allKeys.length;
-                const percentOverall = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+                // Use partial credit so the bar moves as you click Good/Easy
+                const totalPoints = allKeys.reduce((acc, key) => {
+                    const score = calculateCompletionScore(key);
+                    return acc + Math.min(score, EASY_COMPLETION);
+                }, 0);
+                const maxPoints = total * EASY_COMPLETION;
+                const percentOverall = maxPoints > 0 ? Math.round((totalPoints / maxPoints) * 100) : 0;
                 const clampedPercent = Math.min(Math.max(percentOverall, 0), 100);
                 progressBarFill.style.width = `${clampedPercent}%`;
-                progressBarTrack.title = `Overall Progress: ${completed}/${total} (${clampedPercent}%)`;
+                progressBarTrack.title = `Overall Progress: ${totalPoints.toFixed(1)}/${maxPoints} (${clampedPercent}%)`;
                 progressBarTrack.setAttribute('aria-valuenow', clampedPercent.toString());
 
                 const currentKey = getCurrentKey();

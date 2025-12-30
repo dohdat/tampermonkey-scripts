@@ -1669,7 +1669,7 @@ A: N/A
             container.style.borderRadius = '12px';
             container.style.boxShadow = '0 8px 22px rgba(0,0,0,0.45)';
             container.style.width = 'min(1400px, calc(100% - 24px))';
-            container.style.maxHeight = '50px';
+            container.style.maxHeight = '45px';
             container.style.maxWidth = 'fit-content';
             container.style.display = 'flex';
             container.style.alignItems = 'center';

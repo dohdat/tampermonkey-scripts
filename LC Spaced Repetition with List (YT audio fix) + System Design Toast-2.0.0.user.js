@@ -151,135 +151,80 @@ A: N/A
             },
             {
                 type: "system-design",
-                title: "Build a Debounced Input Component",
-                url: "https://codesandbox.io/p/sandbox/quirky-visvesvaraya-st9d52?",
+                title: "Build a Polling Component",
+                url: "https://codesandbox.io/p/sandbox/friendly-carson-zwqtd8?",
                 topic: `
-Requirements:
-- Accept an onChange callback
-- Delay callback execution by 300ms after typing stops
-- Implement correct debounce logic
-- Clean up timers on unmount
-- Ensure callback reference stability
-`,
+Q: Fetch data from an API every 5 seconds
+A: N/A
+
+Q: Update UI with the latest data
+A: N/A
+
+Q: Set up and clean up polling intervals
+A: N/A
+
+Q: Avoid stale closures
+A: N/A
+
+    `,
+                difficulty: "Medium",
+                playground: "https://codesandbox.io/p/sandbox/friendly-carson-zwqtd8?"
+            },
+            {
+                type: "system-design",
+                title: "Build Tic Tac Toe",
+                url: "https://codesandbox.io/p/sandbox/ecstatic-archimedes-rd55p2",
+                topic: `
+Q: Render a 3x3 game board
+A: N/A
+
+Q: Allow two players to take turns placing X and O
+A: N/A
+
+Q: Prevent moves on already occupied cells
+A: N/A
+
+Q: Track the current player
+A: N/A
+
+Q: Detect a winning condition
+A: N/A
+
+Q: Detect a draw when the board is full
+A: N/A
+
+Q: Display the game status (current turn, win, or draw)
+A: N/A
+
+Q: Disable the board after the game ends
+A: N/A
+
+Q: Provide a way to reset the game
+A: N/A
+    `,
                 difficulty: "Easy",
-                playground: "https://codesandbox.io/p/sandbox/quirky-visvesvaraya-st9d52?"
+                playground: "https://codesandbox.io/p/sandbox/ecstatic-archimedes-rd55p2"
             },
             {
                 type: "system-design",
                 title: "Implement a Sortable Table Column",
                 url: "https://codesandbox.io/p/sandbox/determined-williams-6g4gl4?",
                 topic: `
-            Requirements:
-            - Allow clicking a column header to sort data
-            - Toggle between ascending and descending order
-            - Use immutable state updates
-            - Ensure sorting stability
-            - Maintain clear and predictable state transitions
-            `,
+Q: Render the table with column headers
+A: N/A
+
+Q: Allow clicking a column header to sort data
+A: N/A
+
+Q: Toggle between ascending and descending order
+A: N/A
+
+Q: Render a sort indicator
+A: N/A
+
+  `,
                 difficulty: "Easy",
                 playground: "https://codesandbox.io/p/sandbox/determined-williams-6g4gl4?"
-            },
-            {
-                type: "system-design",
-                title: "Build a Controlled Form with Validation",
-                url: "https://codesandbox.io/p/sandbox/staging-river-w6yqmp?",
-                topic: `
-            Requirements:
-            - Implement a form with multiple controlled inputs
-            - Perform client-side validation
-            - Show field-level error messages
-            - Disable submit when form is invalid
-            - Maintain clean and scalable form state
-            `,
-                difficulty: "Easy",
-                playground: "https://codesandbox.io/p/sandbox/staging-river-w6yqmp?"
-            },
-            {
-                type: "system-design",
-                title: "Implement a Paginated Table",
-                url: "https://codesandbox.io/p/sandbox/focused-bhabha-hmrgr4?",
-                topic: `
-            Requirements:
-            - Render tabular data with pagination controls
-            - Fetch data page-by-page from an API
-            - Model pagination state cleanly
-            - Display loading and error states
-            - Handle page boundaries correctly
-            - Support column sorting
-            - Allow server-side pagination
-            - Prevent race conditions between requests
-            `,
-                difficulty: "Medium",
-                playground: "https://codesandbox.io/p/sandbox/focused-bhabha-hmrgr4?"
-            },
-            {
-                type: "system-design",
-                title: "Implement a Modal Using Portals",
-                url: "https://codesandbox.io/p/sandbox/adoring-forest-gcyypc?",
-                topic: `
-            Requirements:
-            - Render modal outside the main DOM hierarchy
-            - Use React portals
-            - Close modal on Escape key press
-            - Trap focus within the modal
-            - Restore focus on close
-            - Clean up listeners on unmount
-            `,
-                difficulty: "Medium",
-                playground: "https://codesandbox.io/p/sandbox/adoring-forest-gcyypc?"
-            },
-            {
-                type: "system-design",
-                title: "Build a Polling Component",
-                url: "https://codesandbox.io/p/sandbox/friendly-carson-zwqtd8?",
-                topic: `
-            Requirements:
-            - Fetch data from an API every 5 seconds
-            - Update UI with the latest data
-            - Set up and clean up polling intervals
-            - Avoid stale closures
-            - Pause polling when the tab is inactive
-            `,
-                difficulty: "Medium",
-                playground: "https://codesandbox.io/p/sandbox/friendly-carson-zwqtd8?"
-            },
-            {
-                type: "system-design",
-                title: "Implement Infinite Scroll",
-                url: "https://codesandbox.io/p/sandbox/funny-shannon-sklqfw?",
-                topic: `
-            Requirements:
-            - Load additional data when user scrolls near the bottom
-            - Use IntersectionObserver
-            - Prevent duplicate fetches
-            - Display graceful loading states
-            - Handle end-of-list conditions
-            `,
-                difficulty: "Medium",
-                playground: "https://codesandbox.io/p/sandbox/funny-shannon-sklqfw?"
-            },
-            {
-                type: "system-design",
-                title: "Build a Virtualized List",
-                url: "https://codesandbox.io/p/sandbox/silly-swanson-t5dg34?",
-                topic: `
-            Requirements:
-            - Render a list with 10,000 or more rows
-            - Avoid rendering all rows at once
-            - Use windowing based on scroll position
-            - Maintain correct scroll height
-            - Support dynamic row heights
-            - Support sticky headers
-            `,
-                difficulty: "Hard",
-                playground: "https://codesandbox.io/p/sandbox/silly-swanson-t5dg34?"
-            },
-            // Easy
-            {
-                type: "leetcode",
-                title: "Happy Number",
-                url: "https://leetcode.com/problems/happy-number",
-                difficulty: "Easy"
             },
             {
                 type: "leetcode",
@@ -350,6 +295,63 @@ Requirements:
                 difficulty: "Medium"
             },
             {
+                type: "system-design",
+                title: "React fundamentals 1",
+                url: "https://www.hellointerview.com/learn/system-design/problem-breakdowns/bitly#high-level-design",
+                topic: `
+Q: What does useEffect do?
+A: Runs side effects in function components. It is commonly used for data fetching, subscriptions, timers, and manually interacting with the DOM. It runs after render, and can be controlled with a dependency array.
+
+Q: When does useEffect run?
+A: By default, after every render. With an empty dependency array [], it runs once after the initial render. With dependencies, it runs whenever any dependency changes. It can also return a cleanup function that runs before the effect re-runs or when the component unmounts.
+
+Q: What does useState do?
+A: Adds state to a function component. It returns the current state value and a setter function that triggers a re-render when the state changes.
+
+Q: What does useMemo do?
+A: Memoizes the result of a computation. It recalculates the value only when its dependencies change. It is used to avoid expensive recalculations during re-renders.
+
+Q: When should useMemo be used?
+A: When a computation is expensive and the result is reused across renders, and when referential equality matters for performance optimizations.
+
+`,
+                difficulty: "Easy",
+                playground: "https://leetcode.com/playground/3Du5jhPL"
+            },
+            {
+                type: "system-design",
+                title: "React fundamentals 2",
+                url: "https://www.hellointerview.com/learn/system-design/problem-breakdowns/bitly#high-level-design",
+                topic: `
+Q: What does useCallback do?
+A: Memoizes a function definition. It returns the same function reference between renders unless its dependencies change. This helps prevent unnecessary re-renders of child components that rely on function props.
+
+Q: How is useCallback different from useMemo?
+A: useCallback memoizes a function, while useMemo memoizes a value. useCallback(fn, deps) is equivalent to useMemo(() => fn, deps).
+
+Q: What does useRef do?
+A: Creates a mutable object with a .current property that persists across renders. Updating .current does not trigger a re-render.
+
+Q: Common use cases for useRef?
+A: Accessing DOM elements, storing mutable values like timers or previous state, and keeping values between renders without causing re-renders.
+
+Q: What does useContext do?
+A: Allows components to read values from a React Context without prop drilling. The component re-renders when the context value changes.
+
+Q: What does useReducer do?
+A: Manages complex state logic using a reducer function. It is useful when state transitions depend on previous state or when state logic becomes hard to manage with useState.
+
+Q: What are hooks rules?
+A: Hooks must be called at the top level of a function component or custom hook, not inside loops, conditions, or nested functions. Hooks must be called in the same order on every render.
+
+Q: Why do dependency arrays matter?
+A: They control when effects and memoized values update. Incorrect dependencies can cause stale values, infinite loops, or missed updates.
+
+`,
+                difficulty: "Easy",
+                playground: "https://leetcode.com/playground/3Du5jhPL"
+            },
+            {
                 type: "leetcode",
                 title: "Step-By-Step Directions From a Binary Tree Node to Another",
                 url: "https://leetcode.com/problems/step-by-step-directions-from-a-binary-tree-node-to-another",
@@ -362,6 +364,29 @@ Requirements:
                 url: "https://leetcode.com/problems/design-underground-system",
                 difficulty: "Medium"
             }, // replaces Design Hit Counter
+            {
+                type: "system-design",
+                title: "Build a Controlled Form with Validation",
+                url: "https://codesandbox.io/p/sandbox/staging-river-w6yqmp?",
+                topic: `
+Q: Implement a form with multiple controlled inputs
+A: N/A
+
+Q: Perform client-side validation
+A: N/A
+
+Q: Show field-level error messages
+A: N/A
+
+Q: Disable submit when form is invalid
+A: N/A
+
+Q: Maintain clean and scalable form state
+A: N/A
+    `,
+                difficulty: "Easy",
+                playground: "https://codesandbox.io/p/sandbox/staging-river-w6yqmp?"
+            },
             {
                 type: "leetcode",
                 title: "Design Add and Search Words Data Structure",
@@ -382,10 +407,68 @@ Requirements:
                 difficulty: "Hard"
             },
             {
+                type: "system-design",
+                title: "Implement a Modal Using Portals",
+                url: "https://codesandbox.io/p/sandbox/adoring-forest-gcyypc?",
+                topic: `
+Q: Render modal outside the main DOM hierarchy
+A: N/A
+
+Q: Use React portals
+A: N/A
+
+Q: Close modal on Escape key press
+A: N/A
+
+Q: Trap focus within the modal
+A: N/A
+
+Q: Restore focus on close
+A: N/A
+
+Q: Clean up listeners on unmount
+A: N/A
+    `,
+                difficulty: "Medium",
+                playground: "https://codesandbox.io/p/sandbox/adoring-forest-gcyypc?"
+            },
+            {
                 type: "leetcode",
                 title: "Word Search II",
                 url: "https://leetcode.com/problems/word-search-ii",
                 difficulty: "Hard"
+            },
+             {
+                type: "system-design",
+                title: "Implement a Paginated Table",
+                url: "https://codesandbox.io/p/sandbox/focused-bhabha-hmrgr4?",
+                topic: `
+Q: Render tabular data with pagination controls
+A: N/A
+
+Q: Fetch data page-by-page from an API
+A: N/A
+
+Q: Model pagination state cleanly
+A: N/A
+
+Q: Display loading and error states
+A: N/A
+
+Q: Handle page boundaries correctly
+A: N/A
+
+Q: Support column sorting
+A: N/A
+
+Q: Allow server-side pagination
+A: N/A
+
+Q: Prevent race conditions between requests
+A: N/A
+    `,
+                difficulty: "Medium",
+                playground: "https://codesandbox.io/p/sandbox/focused-bhabha-hmrgr4?"
             },
             {
                 type: "leetcode",
@@ -411,6 +494,86 @@ Requirements:
                 url: "https://leetcode.com/problems/merge-k-sorted-lists",
                 difficulty: "Hard"
             },
+            {
+                type: "system-design",
+                title: "Implement Infinite Scroll",
+                url: "https://codesandbox.io/p/sandbox/funny-shannon-sklqfw?",
+                topic: `
+Q: Load additional data when user scrolls near the bottom
+A: N/A
+
+Q: Use IntersectionObserver
+A: N/A
+
+Q: Prevent duplicate fetches
+A: N/A
+
+Q: Display graceful loading states
+A: N/A
+
+Q: Handle end-of-list conditions
+A: N/A
+    `,
+                difficulty: "Medium",
+                playground: "https://codesandbox.io/p/sandbox/funny-shannon-sklqfw?"
+            },
+             {
+                type: "system-design",
+                title: "Build a Virtualized List",
+                url: "https://codesandbox.io/p/sandbox/silly-swanson-t5dg34?",
+                topic: `
+Q: Render a list with 10,000 or more rows
+A: N/A
+
+Q: Avoid rendering all rows at once
+A: N/A
+
+Q: Use windowing based on scroll position
+A: N/A
+
+Q: Maintain correct scroll height
+A: N/A
+
+Q: Support dynamic row heights
+A: N/A
+
+Q: Support sticky headers
+A: N/A
+    `,
+                difficulty: "Hard",
+                playground: "https://codesandbox.io/p/sandbox/silly-swanson-t5dg34?"
+            }
+            ,
+            {
+                type: "system-design",
+                title: "Implement loadUserData",
+                url: "https://codesandbox.io/p/sandbox/modest-wave-8w694k",
+                topic: `
+Q: Implement a function loadUserData that calls fetchUser and fetchAccount
+A: N/A
+
+Q: Run both API requests in parallel
+A: N/A
+
+Q: Resolve with an object containing both results in the shape { user, account }
+A: N/A
+
+Q: Reject with the original error if either API call fails
+A: N/A
+
+Q: Do not swallow or transform errors
+A: N/A
+
+Q: Do not call either API more than once
+A: N/A
+
+Q: Ensure the function returns a Promise
+A: N/A
+    `,
+                difficulty: "Medium",
+                playground: "https://codesandbox.io/p/sandbox/modest-wave-8w694k"
+            }
+
         ];
 
 
@@ -450,38 +613,38 @@ Requirements:
 
         // Build SRS queue in the exact order defined in study_items
         const srs_items = study_items
-            .map((item) => {
-                if (item.type === 'leetcode') {
-                    const slugFromUrl = (() => {
-                        try {
-                            const u = new URL(item.url, window.location.href);
-                            const parts = u.pathname.split('/').filter(Boolean);
-                            const idx = parts.indexOf('problems');
-                            if (idx !== -1 && parts[idx + 1]) return parts[idx + 1];
-                        } catch (_) {}
-                        const parts = String(item.url || '').split('/').filter(Boolean);
-                        return parts[parts.length - 1] || null;
-                    })();
-                    return {
-                        key: slugFromUrl,
-                        nav: item.url,
-                        kind: 'leetcode',
-                        title: item.title
-                    };
-                }
-                if (item.type === 'system-design' && item.playground) {
-                    const pid = getPlaygroundId(item.playground);
-                    return {
-                        key: pid ? `sd:${pid}` : `sd:${item.playground}`,
-                        nav: item.playground,
-                        kind: 'system-design',
-                        title: item.title,
-                        url: item.url // keep for toast
-                    };
-                }
-                return null;
-            })
-            .filter(Boolean);
+        .map((item) => {
+            if (item.type === 'leetcode') {
+                const slugFromUrl = (() => {
+                    try {
+                        const u = new URL(item.url, window.location.href);
+                        const parts = u.pathname.split('/').filter(Boolean);
+                        const idx = parts.indexOf('problems');
+                        if (idx !== -1 && parts[idx + 1]) return parts[idx + 1];
+                    } catch (_) {}
+                    const parts = String(item.url || '').split('/').filter(Boolean);
+                    return parts[parts.length - 1] || null;
+                })();
+                return {
+                    key: slugFromUrl,
+                    nav: item.url,
+                    kind: 'leetcode',
+                    title: item.title
+                };
+            }
+            if (item.type === 'system-design' && item.playground) {
+                const pid = getPlaygroundId(item.playground);
+                return {
+                    key: pid ? `sd:${pid}` : `sd:${item.playground}`,
+                    nav: item.playground,
+                    kind: 'system-design',
+                    title: item.title,
+                    url: item.url // keep for toast
+                };
+            }
+            return null;
+        })
+        .filter(Boolean);
 
         /* ----------------------------------------------
      Timer globals
@@ -695,9 +858,9 @@ Requirements:
                 difficultyBadgeEl.textContent = difficulty; // e.g., "Easy", "Medium", "Hard"
                 difficultyBadgeEl.className = `relative inline-flex items-center justify-center text-caption px-2 py-1 gap-1 rounded-full bg-fill-secondary ${
             difficulty === 'Easy' ? 'text-difficulty-easy' :
-            difficulty === 'Hard' ? 'text-difficulty-hard' :
-            'text-difficulty-medium'
-        }`;
+                difficulty === 'Hard' ? 'text-difficulty-hard' :
+                'text-difficulty-medium'
+            }`;
             }
         }
 
@@ -883,12 +1046,12 @@ Requirements:
                 return nav;
             }
             const nextLeetcode = leetcode_links
-                .map(link => ({
-                    slug: getLeetcodeSlugFromLink(link),
-                    nav: link
-                }))
-                .filter(item => item.slug)
-                .filter(item => !isCompleted(item.slug));
+            .map(link => ({
+                slug: getLeetcodeSlugFromLink(link),
+                nav: link
+            }))
+            .filter(item => item.slug)
+            .filter(item => !isCompleted(item.slug));
 
             if (nextLeetcode.length > 0) {
                 return nextLeetcode[0].nav;
@@ -904,9 +1067,9 @@ Requirements:
             let windowSize = BASE_WINDOW;
 
             const firstWindowKeys = srs_items
-                .slice(0, windowSize)
-                .map(it => it.key)
-                .filter(key => !isCompleted(key));
+            .slice(0, windowSize)
+            .map(it => it.key)
+            .filter(key => !isCompleted(key));
 
             const easyCount = firstWindowKeys.reduce((acc, key) => {
                 return acc + (progress[key]?.filter(s => s === 'Easy').length || 0);
@@ -967,9 +1130,9 @@ Requirements:
 
             queue = queue
                 .map(item => ({
-                    ...item,
-                    cooldown: item.cooldown - 1
-                }))
+                ...item,
+                cooldown: item.cooldown - 1
+            }))
                 .filter(item => item.cooldown > 0);
             await setQueue(queue);
 
@@ -987,12 +1150,12 @@ Requirements:
             // 5) LeetCode fallback
             if (!nextNav && isLeetcode) {
                 const nextLc = leetcode_links
-                    .map(link => ({
-                        slug: getLeetcodeSlugFromLink(link),
-                        nav: link
-                    }))
-                    .filter(item => item.slug)
-                    .find(item => !isCompleted(item.slug));
+                .map(link => ({
+                    slug: getLeetcodeSlugFromLink(link),
+                    nav: link
+                }))
+                .filter(item => item.slug)
+                .find(item => !isCompleted(item.slug));
 
                 if (nextLc) {
                     nextNav = nextLc.nav;
@@ -1099,7 +1262,7 @@ Requirements:
                 style.id = STYLE_ID;
                 style.textContent = `
       #sd-mini-toast {
-        position: fixed; top: 55px; right: 20px; z-index: 10000;
+        position: fixed; top: 300px; right: 20px; z-index: 10000;
         background: rgba(28,28,28,.96); color: #eee; border: 1px solid #3a3a3a;
         border-radius: 12px; padding: 16px 18px; max-width: 440px;
         box-shadow: 0 8px 28px rgba(0,0,0,.5);
@@ -1160,6 +1323,9 @@ Requirements:
             const box = document.createElement('div');
             box.id = 'sd-mini-toast';
             const POSITION_KEY = 'sd_mini_toast_pos';
+            const FORCE_RIGHT_POSITION = true;
+            const DEFAULT_TOAST_TOP = 350;
+            const DEFAULT_TOAST_RIGHT = 20;
 
             const isUrl = s => /^https?:\/\//i.test(String(s).trim());
             const esc = s => String(s).replace(/[&<>"']/g, c => ({
@@ -1265,11 +1431,20 @@ Requirements:
   `;
 
             const dragHandle = box.querySelector('h3') || box;
-            dragHandle.style.cursor = 'grab';
+            dragHandle.style.cursor = FORCE_RIGHT_POSITION ? 'default' : 'grab';
 
             const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
+            const applyDefaultPosition = () => {
+                box.style.top = `${DEFAULT_TOAST_TOP}px`;
+                box.style.right = `${DEFAULT_TOAST_RIGHT}px`;
+                box.style.left = 'auto';
+            };
 
             async function applyStoredPosition() {
+                if (FORCE_RIGHT_POSITION) {
+                    applyDefaultPosition();
+                    return;
+                }
                 const saved = await gmReadJSON(POSITION_KEY, null);
                 const savedTop = saved && typeof saved.top !== 'undefined' ? parseFloat(saved.top) : null;
                 const savedLeft = saved && typeof saved.left !== 'undefined' ? parseFloat(saved.left) : null;
@@ -1280,8 +1455,24 @@ Requirements:
                 }
             }
 
+            function ensureToastInViewport() {
+                if (FORCE_RIGHT_POSITION) {
+                    applyDefaultPosition();
+                    return;
+                }
+                const rect = box.getBoundingClientRect();
+                const maxLeft = Math.max(8, window.innerWidth - rect.width - 8);
+                const maxTop = Math.max(8, window.innerHeight - rect.height - 8);
+                const nextLeft = clamp(rect.left, 8, maxLeft);
+                const nextTop = clamp(rect.top, 8, maxTop);
+                box.style.left = `${nextLeft}px`;
+                box.style.top = `${nextTop}px`;
+                box.style.right = 'auto';
+            }
+
             let dragState = null;
             function onDrag(e) {
+                if (FORCE_RIGHT_POSITION) return;
                 if (!dragState) return;
                 const { offsetX, offsetY } = dragState;
                 const newLeft = clamp(e.clientX - offsetX, 8, Math.max(8, window.innerWidth - box.offsetWidth - 8));
@@ -1292,6 +1483,7 @@ Requirements:
             }
 
             function endDrag() {
+                if (FORCE_RIGHT_POSITION) return;
                 if (!dragState) return;
                 document.removeEventListener('mousemove', onDrag);
                 document.removeEventListener('mouseup', endDrag);
@@ -1309,6 +1501,7 @@ Requirements:
             }
 
             function startDrag(e) {
+                if (FORCE_RIGHT_POSITION) return;
                 if (e.button !== 0) return;
                 dragState = {
                     offsetX: e.clientX - box.getBoundingClientRect().left,
@@ -1326,12 +1519,16 @@ Requirements:
             const closeBtn = box.querySelector('.sd-x');
             closeBtn.onclick = () => {
                 endDrag();
+                window.removeEventListener('resize', ensureToastInViewport);
                 box.remove();
                 launcher.style.display = 'inline-flex';
             };
 
+            applyDefaultPosition();
             await applyStoredPosition();
             document.body.appendChild(box);
+            ensureToastInViewport();
+            window.addEventListener('resize', ensureToastInViewport);
 
             function persistChecklist(idx, val) {
                 if (!checklistKey) return;
@@ -1362,10 +1559,10 @@ Requirements:
                     const summaries = Array.from(box.querySelectorAll('.sd-collapsible > summary'));
 
                     const text = summaries
-                        .map(sm => sm.textContent.replace(/^\s*\d+\.\s*/, '').trim())
-                        .filter(Boolean)
-                        .map(q => `Q: ${q}\nA:`)
-                        .join('\n\n');
+                    .map(sm => sm.textContent.replace(/^\s*\d+\.\s*/, '').trim())
+                    .filter(Boolean)
+                    .map(q => `Q: ${q}\nA:`)
+                    .join('\n\n');
 
                     async function fallbackCopy(t) {
                         const ta = document.createElement('textarea');

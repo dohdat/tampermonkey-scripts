@@ -109,7 +109,6 @@
                     display: flex;
                     gap: 10px;
                     align-items: center;
-                    z-index: 2147483647;
                     font-family: "Helvetica Neue", Arial, sans-serif;
                 }
                 #yt-audio-wrapper.yt-audio-wrapper--docked {

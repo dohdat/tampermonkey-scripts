@@ -28,7 +28,7 @@
 /* ----------------------------------------------
    Config
 ---------------------------------------------- */
-const DAILY_TIME_LIMIT_HOURS = 4;
+const DAILY_TIME_LIMIT_HOURS = 1.5;
 const DAILY_TIME_LIMIT_SECONDS = DAILY_TIME_LIMIT_HOURS * 60 * 60;
 
 // Turn on when practicing for real interviews
@@ -678,9 +678,7 @@ A: N/A
                 easyButton.style.filter = 'grayscale(0.4)';
                 easyButton.style.cursor = 'not-allowed';
             } else {
-                // easyButton.style.opacity = '';
-                // easyButton.style.filter = '';
-                // easyButton.style.cursor = 'pointer';
+
             }
         }
 

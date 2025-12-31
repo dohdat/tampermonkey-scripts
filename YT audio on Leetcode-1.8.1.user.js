@@ -244,7 +244,8 @@
             ];
 
             const whiteNoise = ["iDdVKuL6SBQ", "iYDMTcqis7Q", "-FKQcej1aeQ", "c2sh1bQOeQo", "JDST0qFChPw"];
-            const PLAYLISTS = { pool, whiteNoise };
+            const binauralBeats = ["F5Tt3LoygCQ", "O07m48VMu-k", "tfrgynhFkc0", "UpPmnnJcy6A", "DKPZslKCeiw", "IMerWLNDYxU"];
+            const PLAYLISTS = { pool, whiteNoise, binauralBeats };
             const DEFAULT_LIST_KEY = "pool";
             let activeListKey = load(LS_KEYS.list, DEFAULT_LIST_KEY);
             if (!PLAYLISTS[activeListKey]) activeListKey = DEFAULT_LIST_KEY;
@@ -328,6 +329,7 @@
             let menu = document.getElementById("yt-audio-menu");
             let menuPool = null;
             let menuWhite = null;
+            let menuBinaural = null;
             if (!menu) {
                 menu = document.createElement("div");
                 menu.id = "yt-audio-menu";
@@ -349,12 +351,15 @@
 
                 menuPool = makeOpt("yt-audio-menu-pool", "Play Lofi", "pool");
                 menuWhite = makeOpt("yt-audio-menu-white", "Play white noise", "whiteNoise");
+                menuBinaural = makeOpt("yt-audio-menu-binaural", "Play binaural beats", "binauralBeats");
                 menu.appendChild(menuPool);
                 menu.appendChild(menuWhite);
+                menu.appendChild(menuBinaural);
                 wrapper.appendChild(menu);
             } else {
                 menuPool = document.getElementById("yt-audio-menu-pool");
                 menuWhite = document.getElementById("yt-audio-menu-white");
+                menuBinaural = document.getElementById("yt-audio-menu-binaural");
                 menu.removeAttribute("style");
                 if (menu.parentNode !== wrapper) wrapper.appendChild(menu);
             }
@@ -366,7 +371,11 @@
             const DOCK_ARIA = "Upgrade to premium to use debugger";
             const isMenuDetached = () => menu && menu.parentElement === document.body;
 
-            const listLabel = () => (activeListKey === "whiteNoise" ? "White noise" : "Lofi");
+            const listLabel = () => {
+                if (activeListKey === "whiteNoise") return "White noise";
+                if (activeListKey === "binauralBeats") return "Binaural beats";
+                return "Lofi";
+            };
 
             function renderPlayButton() {
                 const label = listLabel();
@@ -395,9 +404,10 @@
             function setPlaylistUI() {
                 const label = listLabel();
                 btnPlay.title = `Play/Pause (${label})`;
-                if (menuPool && menuWhite) {
+                if (menuPool && menuWhite && menuBinaural) {
                     menuPool.classList.toggle("active", activeListKey === "pool");
                     menuWhite.classList.toggle("active", activeListKey === "whiteNoise");
+                    menuBinaural.classList.toggle("active", activeListKey === "binauralBeats");
                 }
                 renderPlayButton();
             }

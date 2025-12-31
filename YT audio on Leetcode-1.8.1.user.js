@@ -133,6 +133,10 @@
                     transition: all 0.16s ease;
                     min-width: 96px;
                     line-height: 1.1;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
                 }
                 .yt-audio-btn:hover {
                     transform: translateY(-1px);
@@ -160,6 +164,30 @@
                 .yt-audio-btn--secondary:hover {
                     color: ${palette.text};
                     background: ${palette.hoverSurface};
+                }
+                .yt-audio-label {
+                    white-space: nowrap;
+                }
+                .yt-audio-indicator {
+                    display: inline-flex;
+                    align-items: flex-end;
+                    gap: 3px;
+                    height: 12px;
+                }
+                .yt-audio-indicator__bar {
+                    width: 3px;
+                    border-radius: 2px;
+                    background: currentColor;
+                    opacity: 0.85;
+                    animation: ytAudioPulse 1s ease-in-out infinite;
+                }
+                .yt-audio-indicator__bar:nth-child(2) { animation-delay: 0.12s; }
+                .yt-audio-indicator__bar:nth-child(3) { animation-delay: 0.24s; }
+                @keyframes ytAudioPulse {
+                    0% { height: 4px; opacity: 0.65; }
+                    35% { height: 12px; opacity: 1; }
+                    70% { height: 6px; opacity: 0.8; }
+                    100% { height: 4px; opacity: 0.65; }
                 }
                 #yt-audio-menu {
                     position: absolute;
@@ -338,20 +366,40 @@
             const DOCK_ARIA = "Upgrade to premium to use debugger";
             const isMenuDetached = () => menu && menu.parentElement === document.body;
 
+            const listLabel = () => (activeListKey === "whiteNoise" ? "White noise" : "Lofi");
+
+            function renderPlayButton() {
+                const label = listLabel();
+                if (!btnPlay) return;
+                if (isPlaying) {
+                    btnPlay.innerHTML = `
+                        <span class="yt-audio-label">${label}</span>
+                        <span class="yt-audio-indicator" aria-hidden="true">
+                            <span class="yt-audio-indicator__bar"></span>
+                            <span class="yt-audio-indicator__bar"></span>
+                            <span class="yt-audio-indicator__bar"></span>
+                        </span>
+                    `;
+                } else {
+                    btnPlay.innerHTML = `<span class="yt-audio-label">Play ${label}</span>`;
+                }
+                btnPlay.setAttribute("aria-label", isPlaying ? `${label} playing` : `Play ${label}`);
+            }
+
             function setPlayingUI(p) {
                 isPlaying = p;
-                const label = activeListKey === "whiteNoise" ? "White noise" : "Lofi";
-                btnPlay.textContent = p ? `${label} playing` : `Play ${label}`;
+                renderPlayButton();
                 save(LS_KEYS.playing, p ? "1" : "0");
             }
 
             function setPlaylistUI() {
-                const label = activeListKey === "whiteNoise" ? "White noise" : "Lofi";
+                const label = listLabel();
                 btnPlay.title = `Play/Pause (${label})`;
                 if (menuPool && menuWhite) {
                     menuPool.classList.toggle("active", activeListKey === "pool");
                     menuWhite.classList.toggle("active", activeListKey === "whiteNoise");
                 }
+                renderPlayButton();
             }
 
             function setPlaylist(key) {

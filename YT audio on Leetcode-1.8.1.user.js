@@ -29,6 +29,28 @@
    YouTube Audio (SPA-safe resume + single API load)
    Singleton: always exactly one player instance
    ---------------------------------------------- */
+
+// ---------- choose (and persist) the video once ----------
+const pool = [
+    "iK7Abq3Evw",
+    "xocnshwEbrM",
+    "NtxyP0xbDco",
+    "Vg13S-zzol0",
+    "DI0XAs_abRg",
+    "SPYBHFPvvXk"
+];
+
+const whiteNoise = ["iDdVKuL6SBQ", "iYDMTcqis7Q", "-FKQcej1aeQ", "c2sh1bQOeQo", "JDST0qFChPw"];
+const binauralBeats = ["F5Tt3LoygCQ", "O07m48VMu-k", "tfrgynhFkc0", "UpPmnnJcy6A", "DKPZslKCeiw", "IMerWLNDYxU"];
+
+// Add new playlists by declaring an array and adding it to PLAYLISTS.
+// PLAYLISTS accepts either arrays or { label, videos/items } objects.
+const PLAYLISTS = {
+    pool: { label: "Lofi", videos: pool },
+    whiteNoise: { label: "White noise", videos: whiteNoise },
+    binauralBeats: { label: "Binaural beats", videos: binauralBeats },
+};
+
 (function () {
     const W = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
 
@@ -228,159 +250,182 @@
                     background: ${palette.hoverSurface};
                 }
                 `;
-                document.head.appendChild(style);
-            }
-            injectStyles();
+            document.head.appendChild(style);
+        }
+        injectStyles();
 
-            // ---------- choose (and persist) the video once ----------
-            const pool = [
-                "iK7Abq3Evw",
-                "xocnshwEbrM",
-                "NtxyP0xbDco",
-                "Vg13S-zzol0",
-                "DI0XAs_abRg",
-                "SPYBHFPvvXk"
-            ];
 
-            const whiteNoise = ["iDdVKuL6SBQ", "iYDMTcqis7Q", "-FKQcej1aeQ", "c2sh1bQOeQo", "JDST0qFChPw"];
-            const binauralBeats = ["F5Tt3LoygCQ", "O07m48VMu-k", "tfrgynhFkc0", "UpPmnnJcy6A", "DKPZslKCeiw", "IMerWLNDYxU"];
-            const PLAYLISTS = { pool, whiteNoise, binauralBeats };
-            const DEFAULT_LIST_KEY = "pool";
-            let activeListKey = load(LS_KEYS.list, DEFAULT_LIST_KEY);
-            if (!PLAYLISTS[activeListKey]) activeListKey = DEFAULT_LIST_KEY;
+        const DEFAULT_LIST_KEY = PLAYLISTS.pool ? "pool" : Object.keys(PLAYLISTS)[0];
+        let activeListKey = load(LS_KEYS.list, DEFAULT_LIST_KEY);
+        if (!PLAYLISTS[activeListKey]) activeListKey = DEFAULT_LIST_KEY;
+        save(LS_KEYS.list, activeListKey);
+        let videoId = load(LS_KEYS.vid, null);
+
+        const prettyLabel = (key) =>
+        key
+        .replace(/([a-z])([A-Z])/g, "$1 $2")
+        .replace(/[_-]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+
+        const getPlaylistData = (key) => {
+            const raw = PLAYLISTS[key];
+            if (!raw) return null;
+            const tracks = Array.isArray(raw)
+            ? raw
+            : Array.isArray(raw.videos)
+            ? raw.videos
+            : Array.isArray(raw.items)
+            ? raw.items
+            : Array.isArray(raw.tracks)
+            ? raw.tracks
+            : [];
+            if (!tracks.length) return null;
+            const label = Array.isArray(raw)
+            ? prettyLabel(key)
+            : raw.label || prettyLabel(key);
+            return { label, tracks };
+        };
+
+        if (!getPlaylistData(activeListKey)) {
+            activeListKey = DEFAULT_LIST_KEY;
             save(LS_KEYS.list, activeListKey);
-            let videoId = load(LS_KEYS.vid, null);
+        }
 
-            const currentList = () => PLAYLISTS[activeListKey] || pool;
-            const pickRandom = (list, avoidId = null) => {
-                if (!list?.length) return avoidId;
-                if (list.length === 1) return list[0];
-                let choice;
-                do {
-                    choice = list[Math.floor(Math.random() * list.length)];
-                } while (choice === avoidId);
-                return choice;
+        const currentList = () => {
+            const data = getPlaylistData(activeListKey) || getPlaylistData(DEFAULT_LIST_KEY);
+            return data?.tracks || [];
+        };
+        const pickRandom = (list, avoidId = null) => {
+            if (!list?.length) return avoidId;
+            if (list.length === 1) return list[0];
+            let choice;
+            do {
+                choice = list[Math.floor(Math.random() * list.length)];
+            } while (choice === avoidId);
+            return choice;
+        };
+
+        if (!videoId || !currentList().includes(videoId)) {
+            videoId = pickRandom(currentList());
+            save(LS_KEYS.vid, videoId);
+        }
+
+        // ---------- hidden container (single) ----------
+        let host = document.getElementById("yt-audio");
+        if (!host) {
+            host = document.createElement("div");
+            host.id = "yt-audio";
+            host.style.cssText =
+                "position:fixed;width:0;height:0;overflow:hidden;opacity:0;";
+            document.body.appendChild(host);
+        } else {
+            // ensure it’s empty (prevents stray iframes if something went wrong earlier)
+            host.textContent = "";
+        }
+
+        // ---------- load the YouTube IFrame API once ----------
+        if (!document.getElementById("tm-yt-api")) {
+            const s = document.createElement("script");
+            s.id = "tm-yt-api";
+            s.src = "https://www.youtube.com/iframe_api";
+            document.head.appendChild(s);
+        }
+
+        // ---------- UI (single) ----------
+        let wrapper = document.getElementById("yt-audio-wrapper");
+        if (!wrapper) {
+            wrapper = document.createElement("div");
+            wrapper.id = "yt-audio-wrapper";
+            document.body.appendChild(wrapper);
+        }
+
+        let btnPlay = document.getElementById("yt-audio-toggle");
+        if (!btnPlay) {
+            btnPlay = document.createElement("button");
+            btnPlay.id = "yt-audio-toggle";
+            btnPlay.textContent = "Play audio";
+            btnPlay.title = "Press Space to toggle";
+            btnPlay.className = "yt-audio-btn yt-audio-btn--primary";
+            wrapper.appendChild(btnPlay);
+        } else {
+            btnPlay.removeAttribute("style");
+            btnPlay.classList.add("yt-audio-btn", "yt-audio-btn--primary");
+            if (btnPlay.parentNode !== wrapper) wrapper.appendChild(btnPlay);
+        }
+
+        let btnNext = document.getElementById("yt-audio-next");
+        if (!btnNext) {
+            btnNext = document.createElement("button");
+            btnNext.id = "yt-audio-next";
+            btnNext.textContent = "Next track";
+            btnNext.title = "Next song";
+            btnNext.className = "yt-audio-btn yt-audio-btn--secondary";
+            wrapper.appendChild(btnNext);
+        } else {
+            btnNext.removeAttribute("style");
+            btnNext.classList.add("yt-audio-btn", "yt-audio-btn--secondary");
+            if (btnNext.parentNode !== wrapper) wrapper.appendChild(btnNext);
+        }
+
+        // hover menu for playlist choice
+        let menu = document.getElementById("yt-audio-menu");
+        const menuButtons = {};
+        if (!menu) {
+            menu = document.createElement("div");
+            menu.id = "yt-audio-menu";
+            menu.setAttribute("role", "menu");
+            wrapper.appendChild(menu);
+        } else {
+            menu.removeAttribute("style");
+            if (menu.parentNode !== wrapper) wrapper.appendChild(menu);
+        }
+
+        const createMenuButton = (id, label, key) => {
+            const btn = document.createElement("button");
+            btn.id = id;
+            btn.textContent = label;
+            btn.className = "yt-audio-menu__item";
+            btn.onclick = () => {
+                setPlaylist(key);
+                setPlayingUI(true);
+                nextSong();
+                hideMenu();
             };
+            return btn;
+        };
 
-            if (!videoId || !currentList().includes(videoId)) {
-                videoId = pickRandom(currentList());
-                save(LS_KEYS.vid, videoId);
-            }
+        function rebuildMenu() {
+            if (!menu) return;
+            Object.keys(menuButtons).forEach((k) => delete menuButtons[k]);
+            menu.textContent = "";
+            Object.keys(PLAYLISTS).forEach((key) => {
+                const data = getPlaylistData(key);
+                if (!data) return;
+                const btn = createMenuButton(`yt-audio-menu-${key}`, `Play ${data.label}`, key);
+                menu.appendChild(btn);
+                menuButtons[key] = btn;
+            });
+        }
 
-            // ---------- hidden container (single) ----------
-            let host = document.getElementById("yt-audio");
-            if (!host) {
-                host = document.createElement("div");
-                host.id = "yt-audio";
-                host.style.cssText =
-                    "position:fixed;width:0;height:0;overflow:hidden;opacity:0;";
-                document.body.appendChild(host);
-            } else {
-                // ensure it’s empty (prevents stray iframes if something went wrong earlier)
-                host.textContent = "";
-            }
+        // ---------- state ----------
+        let ytPlayer = NS.player || null;
+        let isPlaying = load(LS_KEYS.playing) === "1";
+        let hideMenuTimer = null;
+        const DOCK_ARIA = "Upgrade to premium to use debugger";
+        const isMenuDetached = () => menu && menu.parentElement === document.body;
 
-            // ---------- load the YouTube IFrame API once ----------
-            if (!document.getElementById("tm-yt-api")) {
-                const s = document.createElement("script");
-                s.id = "tm-yt-api";
-                s.src = "https://www.youtube.com/iframe_api";
-                document.head.appendChild(s);
-            }
+        const listLabel = () => {
+            const data = getPlaylistData(activeListKey) || getPlaylistData(DEFAULT_LIST_KEY);
+            return data?.label || "Playlist";
+        };
 
-            // ---------- UI (single) ----------
-            let wrapper = document.getElementById("yt-audio-wrapper");
-            if (!wrapper) {
-                wrapper = document.createElement("div");
-                wrapper.id = "yt-audio-wrapper";
-                document.body.appendChild(wrapper);
-            }
-
-            let btnPlay = document.getElementById("yt-audio-toggle");
-            if (!btnPlay) {
-                btnPlay = document.createElement("button");
-                btnPlay.id = "yt-audio-toggle";
-                btnPlay.textContent = "Play audio";
-                btnPlay.title = "Press Space to toggle";
-                btnPlay.className = "yt-audio-btn yt-audio-btn--primary";
-                wrapper.appendChild(btnPlay);
-            } else {
-                btnPlay.removeAttribute("style");
-                btnPlay.classList.add("yt-audio-btn", "yt-audio-btn--primary");
-                if (btnPlay.parentNode !== wrapper) wrapper.appendChild(btnPlay);
-            }
-
-            let btnNext = document.getElementById("yt-audio-next");
-            if (!btnNext) {
-                btnNext = document.createElement("button");
-                btnNext.id = "yt-audio-next";
-                btnNext.textContent = "Next track";
-                btnNext.title = "Next song";
-                btnNext.className = "yt-audio-btn yt-audio-btn--secondary";
-                wrapper.appendChild(btnNext);
-            } else {
-                btnNext.removeAttribute("style");
-                btnNext.classList.add("yt-audio-btn", "yt-audio-btn--secondary");
-                if (btnNext.parentNode !== wrapper) wrapper.appendChild(btnNext);
-            }
-
-            // hover menu for playlist choice
-            let menu = document.getElementById("yt-audio-menu");
-            let menuPool = null;
-            let menuWhite = null;
-            let menuBinaural = null;
-            if (!menu) {
-                menu = document.createElement("div");
-                menu.id = "yt-audio-menu";
-                menu.setAttribute("role", "menu");
-
-                const makeOpt = (id, label, key) => {
-                    const btn = document.createElement("button");
-                    btn.id = id;
-                    btn.textContent = label;
-                    btn.className = "yt-audio-menu__item";
-                    btn.onclick = () => {
-                        setPlaylist(key);
-                        setPlayingUI(true);
-                        nextSong();
-                        hideMenu();
-                    };
-                    return btn;
-                };
-
-                menuPool = makeOpt("yt-audio-menu-pool", "Play Lofi", "pool");
-                menuWhite = makeOpt("yt-audio-menu-white", "Play white noise", "whiteNoise");
-                menuBinaural = makeOpt("yt-audio-menu-binaural", "Play binaural beats", "binauralBeats");
-                menu.appendChild(menuPool);
-                menu.appendChild(menuWhite);
-                menu.appendChild(menuBinaural);
-                wrapper.appendChild(menu);
-            } else {
-                menuPool = document.getElementById("yt-audio-menu-pool");
-                menuWhite = document.getElementById("yt-audio-menu-white");
-                menuBinaural = document.getElementById("yt-audio-menu-binaural");
-                menu.removeAttribute("style");
-                if (menu.parentNode !== wrapper) wrapper.appendChild(menu);
-            }
-
-            // ---------- state ----------
-            let ytPlayer = NS.player || null;
-            let isPlaying = load(LS_KEYS.playing) === "1";
-            let hideMenuTimer = null;
-            const DOCK_ARIA = "Upgrade to premium to use debugger";
-            const isMenuDetached = () => menu && menu.parentElement === document.body;
-
-            const listLabel = () => {
-                if (activeListKey === "whiteNoise") return "White noise";
-                if (activeListKey === "binauralBeats") return "Binaural beats";
-                return "Lofi";
-            };
-
-            function renderPlayButton() {
-                const label = listLabel();
-                if (!btnPlay) return;
-                if (isPlaying) {
-                    btnPlay.innerHTML = `
+        function renderPlayButton() {
+            const label = listLabel();
+            if (!btnPlay) return;
+            if (isPlaying) {
+                btnPlay.innerHTML = `
                         <span class="yt-audio-label">${label}</span>
                         <span class="yt-audio-indicator" aria-hidden="true">
                             <span class="yt-audio-indicator__bar"></span>
@@ -394,277 +439,276 @@
                 btnPlay.setAttribute("aria-label", isPlaying ? `${label} playing` : `Play ${label}`);
             }
 
-            function setPlayingUI(p) {
-                isPlaying = p;
-                renderPlayButton();
-                save(LS_KEYS.playing, p ? "1" : "0");
-            }
+        function setPlayingUI(p) {
+            isPlaying = p;
+            renderPlayButton();
+            save(LS_KEYS.playing, p ? "1" : "0");
+        }
 
-            function setPlaylistUI() {
-                const label = listLabel();
-                btnPlay.title = `Play/Pause (${label})`;
-                if (menuPool && menuWhite && menuBinaural) {
-                    menuPool.classList.toggle("active", activeListKey === "pool");
-                    menuWhite.classList.toggle("active", activeListKey === "whiteNoise");
-                    menuBinaural.classList.toggle("active", activeListKey === "binauralBeats");
-                }
-                renderPlayButton();
-            }
+        function setPlaylistUI() {
+            const label = listLabel();
+            btnPlay.title = `Play/Pause (${label})`;
+            Object.entries(menuButtons).forEach(([key, btn]) => {
+                btn.classList.toggle("active", key === activeListKey);
+            });
+            renderPlayButton();
+        }
 
-            function setPlaylist(key) {
-                if (!PLAYLISTS[key]) return;
-                activeListKey = key;
-                save(LS_KEYS.list, key);
-                setPlaylistUI();
-            }
+        function setPlaylist(key) {
+            if (!getPlaylistData(key)) return;
+            activeListKey = key;
+            save(LS_KEYS.list, key);
+            setPlaylistUI();
+        }
 
-            function tryDockToDebugger() {
-                const target = document.querySelector(`button[aria-label*="${DOCK_ARIA}"]`);
-                if (!target || !target.parentElement) {
-                    if (wrapper.classList.contains("yt-audio-wrapper--docked")) {
-                        wrapper.classList.remove("yt-audio-wrapper--docked");
-                        if (document.body && wrapper.parentNode !== document.body) {
-                            document.body.appendChild(wrapper);
-                        }
-                        if (menu && menu.parentNode !== wrapper) {
-                            wrapper.appendChild(menu);
-                        }
+        function tryDockToDebugger() {
+            const target = document.querySelector(`button[aria-label*="${DOCK_ARIA}"]`);
+            if (!target || !target.parentElement) {
+                if (wrapper.classList.contains("yt-audio-wrapper--docked")) {
+                    wrapper.classList.remove("yt-audio-wrapper--docked");
+                    if (document.body && wrapper.parentNode !== document.body) {
+                        document.body.appendChild(wrapper);
                     }
-                    return false;
-                }
-                const parent = target.parentElement;
-                if (wrapper.parentNode !== parent) {
-                    parent.insertBefore(wrapper, target);
-                }
-                wrapper.classList.add("yt-audio-wrapper--docked");
-                if (menu && menu.parentNode !== document.body) {
-                    document.body.appendChild(menu);
-                }
-                return true;
-            }
-
-            function showMenu() {
-                if (!menu) return;
-                if (hideMenuTimer) clearTimeout(hideMenuTimer);
-                if (isMenuDetached()) {
-                    const rect = btnPlay.getBoundingClientRect();
-                    menu.style.position = "fixed";
-                    menu.style.left = `${rect.left}px`;
-                    menu.style.top = `${rect.bottom + 6}px`;
-                    menu.style.right = "auto";
-                    menu.style.bottom = "auto";
-                } else {
-                    menu.style.position = "";
-                    menu.style.left = "";
-                    menu.style.top = "";
-                    menu.style.right = "";
-                    menu.style.bottom = "";
-                }
-                menu.style.display = "flex";
-            }
-
-            function hideMenu() {
-                if (!menu) return;
-                menu.style.display = "none";
-                hideMenuTimer = null;
-            }
-
-            function scheduleHideMenu() {
-                if (hideMenuTimer) clearTimeout(hideMenuTimer);
-                hideMenuTimer = setTimeout(hideMenu, 180);
-            }
-
-            function startSavingTime() {
-                stopSavingTime();
-                NS.saveTimer = setInterval(() => {
-                    if (ytPlayer && typeof ytPlayer.getCurrentTime === "function") {
-                        const t = ytPlayer.getCurrentTime();
-                        if (!isNaN(t)) save(LS_KEYS.time, Math.floor(t));
+                    if (menu && menu.parentNode !== wrapper) {
+                        wrapper.appendChild(menu);
                     }
-                }, 1000);
-            }
-
-            function stopSavingTime() {
-                if (NS.saveTimer) {
-                    clearInterval(NS.saveTimer);
-                    NS.saveTimer = null;
                 }
+                return false;
             }
+            const parent = target.parentElement;
+            if (wrapper.parentNode !== parent) {
+                parent.insertBefore(wrapper, target);
+            }
+            wrapper.classList.add("yt-audio-wrapper--docked");
+            if (menu && menu.parentNode !== document.body) {
+                document.body.appendChild(menu);
+            }
+            return true;
+        }
 
-            function persistNow() {
+        function showMenu() {
+            if (!menu) return;
+            if (hideMenuTimer) clearTimeout(hideMenuTimer);
+            if (isMenuDetached()) {
+                const rect = btnPlay.getBoundingClientRect();
+                menu.style.position = "fixed";
+                menu.style.left = `${rect.left}px`;
+                menu.style.top = `${rect.bottom + 6}px`;
+                menu.style.right = "auto";
+                menu.style.bottom = "auto";
+            } else {
+                menu.style.position = "";
+                menu.style.left = "";
+                menu.style.top = "";
+                menu.style.right = "";
+                menu.style.bottom = "";
+            }
+            menu.style.display = "flex";
+        }
+
+        function hideMenu() {
+            if (!menu) return;
+            menu.style.display = "none";
+            hideMenuTimer = null;
+        }
+
+        function scheduleHideMenu() {
+            if (hideMenuTimer) clearTimeout(hideMenuTimer);
+            hideMenuTimer = setTimeout(hideMenu, 180);
+        }
+
+        function startSavingTime() {
+            stopSavingTime();
+            NS.saveTimer = setInterval(() => {
                 if (ytPlayer && typeof ytPlayer.getCurrentTime === "function") {
                     const t = ytPlayer.getCurrentTime();
                     if (!isNaN(t)) save(LS_KEYS.time, Math.floor(t));
                 }
-                save(LS_KEYS.playing, isPlaying ? "1" : "0");
+            }, 1000);
+        }
+
+        function stopSavingTime() {
+            if (NS.saveTimer) {
+                clearInterval(NS.saveTimer);
+                NS.saveTimer = null;
+            }
+        }
+
+        function persistNow() {
+            if (ytPlayer && typeof ytPlayer.getCurrentTime === "function") {
+                const t = ytPlayer.getCurrentTime();
+                if (!isNaN(t)) save(LS_KEYS.time, Math.floor(t));
+            }
+            save(LS_KEYS.playing, isPlaying ? "1" : "0");
+        }
+
+        function toggleAudio() {
+            if (!ytPlayer || typeof ytPlayer.getPlayerState !== "function") return;
+            const state = ytPlayer.getPlayerState();
+            if (state === 1) {
+                ytPlayer.pauseVideo();
+                setPlayingUI(false);
+            } else {
+                ytPlayer.playVideo();
+                setPlayingUI(true);
+            }
+        }
+
+        function nextSong() {
+            const list = currentList();
+            if (!list?.length) return;
+            // Pick a new random video (not the same)
+            const newVid = pickRandom(list, videoId);
+
+            videoId = newVid;
+            save(LS_KEYS.vid, videoId);
+            save(LS_KEYS.list, activeListKey);
+            save(LS_KEYS.time, 0);
+
+            if (ytPlayer && typeof ytPlayer.loadVideoById === "function") {
+                ytPlayer.loadVideoById(videoId);
+            } else {
+                initPlayer(); // will assign NS.player and local ytPlayer
             }
 
-            function toggleAudio() {
-                if (!ytPlayer || typeof ytPlayer.getPlayerState !== "function") return;
-                const state = ytPlayer.getPlayerState();
-                if (state === 1) {
-                    ytPlayer.pauseVideo();
-                    setPlayingUI(false);
-                } else {
-                    ytPlayer.playVideo();
-                    setPlayingUI(true);
-                }
+            if (isPlaying && ytPlayer && ytPlayer.playVideo) {
+                ytPlayer.playVideo();
             }
+        }
 
-            function nextSong() {
-                const list = currentList();
-                if (!list?.length) return;
-                // Pick a new random video (not the same)
-                const newVid = pickRandom(list, videoId);
+        // bind (or rebind) button handlers (no duplicate listeners)
+        btnPlay.onclick = toggleAudio;
+        btnNext.onclick = nextSong;
+        btnPlay.addEventListener("mouseenter", showMenu);
+        btnPlay.addEventListener("mouseleave", scheduleHideMenu);
+        if (menu) {
+            menu.addEventListener("mouseenter", showMenu);
+            menu.addEventListener("mouseleave", scheduleHideMenu);
+        }
+        rebuildMenu();
+        setPlaylistUI();
+        setPlayingUI(isPlaying);
+        tryDockToDebugger();
 
-                videoId = newVid;
-                save(LS_KEYS.vid, videoId);
-                save(LS_KEYS.list, activeListKey);
-                save(LS_KEYS.time, 0);
+        // ---------- global listeners (hook once) ----------
+        if (!NS.listenersHooked) {
+            NS.listenersHooked = true;
 
-                if (ytPlayer && typeof ytPlayer.loadVideoById === "function") {
-                    ytPlayer.loadVideoById(videoId);
-                } else {
-                    initPlayer(); // will assign NS.player and local ytPlayer
-                }
-
-                if (isPlaying && ytPlayer && ytPlayer.playVideo) {
-                    ytPlayer.playVideo();
-                }
-            }
-
-            // bind (or rebind) button handlers (no duplicate listeners)
-            btnPlay.onclick = toggleAudio;
-            btnNext.onclick = nextSong;
-            btnPlay.addEventListener("mouseenter", showMenu);
-            btnPlay.addEventListener("mouseleave", scheduleHideMenu);
-            if (menu) {
-                menu.addEventListener("mouseenter", showMenu);
-                menu.addEventListener("mouseleave", scheduleHideMenu);
-            }
-            setPlaylistUI();
-            setPlayingUI(isPlaying);
-            tryDockToDebugger();
-
-            // ---------- global listeners (hook once) ----------
-            if (!NS.listenersHooked) {
-                NS.listenersHooked = true;
-
-                document.addEventListener("keydown", (e) => {
-                    const tag = e.target.tagName?.toLowerCase();
-                    if (
-                        tag === "input" ||
-                        tag === "textarea" ||
-                        e.target.isContentEditable
-                    )
-                        return;
-
-                    // Uncomment if you want space to toggle
-                    // if (e.code === 'Space') {
-                    //   e.preventDefault();
-                    //   toggleAudio();
-                    // }
-                });
-
-                document.addEventListener("visibilitychange", persistNow);
-                window.addEventListener("pagehide", persistNow);
-                window.addEventListener("beforeunload", persistNow);
-                const observer = new MutationObserver(() => {
-                    tryDockToDebugger();
-                });
-                observer.observe(document.body, { childList: true, subtree: true });
-
-                document.addEventListener(
-                    "click",
-                    () => {
-                        if (NS.firstClickAutoplayDone || !NS.player) return;
-                        NS.firstClickAutoplayDone = true;
-                        if (load(LS_KEYS.playing) === "1") NS.player.playVideo();
-                    },
-                    { once: true },
-                );
-            }
-
-            // ---------- YT API / Player (single instance) ----------
-            function initPlayer() {
-                // Reuse existing player if present
-                if (NS.player && typeof NS.player.getPlayerState === "function") {
-                    ytPlayer = NS.player;
-                    setPlayingUI(isPlaying);
-
-                    // seek to saved time on reuse
-                    const resumeAt = parseInt(load(LS_KEYS.time, "0"), 10) || 0;
-                    if (resumeAt > 0) ytPlayer.seekTo(resumeAt, true);
-                    if (isPlaying) ytPlayer.playVideo();
+            document.addEventListener("keydown", (e) => {
+                const tag = e.target.tagName?.toLowerCase();
+                if (
+                    tag === "input" ||
+                    tag === "textarea" ||
+                    e.target.isContentEditable
+                )
                     return;
-                }
 
-                // Ensure host is empty before creating a fresh player
-                host.textContent = "";
+                // Uncomment if you want space to toggle
+                // if (e.code === 'Space') {
+                //   e.preventDefault();
+                //   toggleAudio();
+                // }
+            });
 
-                ytPlayer = new W.YT.Player("yt-audio", {
-                    height: "0",
-                    width: "0",
-                    videoId,
-                    playerVars: {
-                        autoplay: 0,
-                        controls: 0,
-                        loop: 1,
-                        playlist: videoId,
-                        playsinline: 1,
-                        iv_load_policy: 3,
-                        modestbranding: 1,
+            document.addEventListener("visibilitychange", persistNow);
+            window.addEventListener("pagehide", persistNow);
+            window.addEventListener("beforeunload", persistNow);
+            const observer = new MutationObserver(() => {
+                tryDockToDebugger();
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+
+            document.addEventListener(
+                "click",
+                () => {
+                    if (NS.firstClickAutoplayDone || !NS.player) return;
+                    NS.firstClickAutoplayDone = true;
+                    if (load(LS_KEYS.playing) === "1") NS.player.playVideo();
+                },
+                { once: true },
+            );
+        }
+
+        // ---------- YT API / Player (single instance) ----------
+        function initPlayer() {
+            // Reuse existing player if present
+            if (NS.player && typeof NS.player.getPlayerState === "function") {
+                ytPlayer = NS.player;
+                setPlayingUI(isPlaying);
+
+                // seek to saved time on reuse
+                const resumeAt = parseInt(load(LS_KEYS.time, "0"), 10) || 0;
+                if (resumeAt > 0) ytPlayer.seekTo(resumeAt, true);
+                if (isPlaying) ytPlayer.playVideo();
+                return;
+            }
+
+            // Ensure host is empty before creating a fresh player
+            host.textContent = "";
+
+            ytPlayer = new W.YT.Player("yt-audio", {
+                height: "0",
+                width: "0",
+                videoId,
+                playerVars: {
+                    autoplay: 0,
+                    controls: 0,
+                    loop: 1,
+                    playlist: videoId,
+                    playsinline: 1,
+                    iv_load_policy: 3,
+                    modestbranding: 1,
+                },
+                events: {
+                    onReady: () => {
+                        const resumeAt = parseInt(load(LS_KEYS.time, '0'), 10) || 0;
+                        if (resumeAt > 0) ytPlayer.seekTo(resumeAt, true);
+                        if (isPlaying) ytPlayer.playVideo();
+                        setPlayingUI(isPlaying);
                     },
-                    events: {
-                        onReady: () => {
-                            const resumeAt = parseInt(load(LS_KEYS.time, '0'), 10) || 0;
-                            if (resumeAt > 0) ytPlayer.seekTo(resumeAt, true);
-                            if (isPlaying) ytPlayer.playVideo();
-                            setPlayingUI(isPlaying);
-                        },
-                        onStateChange: (e) => {
-                            if (!W.YT || !W.YT.PlayerState) return;
-                            const PS = W.YT.PlayerState;
+                    onStateChange: (e) => {
+                        if (!W.YT || !W.YT.PlayerState) return;
+                        const PS = W.YT.PlayerState;
 
-                            switch (e.data) {
-                                case PS.PLAYING:
-                                    setPlayingUI(true);     // ← keep the button in sync when autoplay/loop starts
-                                    startSavingTime();
-                                    break;
+                        switch (e.data) {
+                            case PS.PLAYING:
+                                setPlayingUI(true);     // ← keep the button in sync when autoplay/loop starts
+                                startSavingTime();
+                                break;
 
-                                case PS.PAUSED:
-                                case PS.ENDED:
-                                    setPlayingUI(false);    // ← reflect pauses/ends that weren’t triggered by your button
-                                    stopSavingTime();
-                                    persistNow();
-                                    break;
-                                default:
-                                    break;
-                            }
+                            case PS.PAUSED:
+                            case PS.ENDED:
+                                setPlayingUI(false);    // ← reflect pauses/ends that weren’t triggered by your button
+                                stopSavingTime();
+                                persistNow();
+                                break;
+                            default:
+                                break;
                         }
-                    },
-                });
-                // Save singleton
-                NS.player = ytPlayer;
-            }
-
-            // Hook API ready exactly once
-            if (!NS.apiHooked) {
-                NS.apiHooked = true;
-                const prev = W.onYouTubeIframeAPIReady;
-                W.onYouTubeIframeAPIReady = function () {
-                    if (typeof prev === "function") {
-                        try {
-                            prev();
-                        } catch {}
                     }
-                    initPlayer();
-                };
-            }
+                },
+            });
+            // Save singleton
+            NS.player = ytPlayer;
+        }
 
-            // If API already available, init now
-            if (W.YT && W.YT.Player) {
+        // Hook API ready exactly once
+        if (!NS.apiHooked) {
+            NS.apiHooked = true;
+            const prev = W.onYouTubeIframeAPIReady;
+            W.onYouTubeIframeAPIReady = function () {
+                if (typeof prev === "function") {
+                    try {
+                        prev();
+                    } catch {}
+                }
                 initPlayer();
-            }
-        });
-    })();
+            };
+        }
+
+        // If API already available, init now
+        if (W.YT && W.YT.Player) {
+            initPlayer();
+        }
+    });
+})();

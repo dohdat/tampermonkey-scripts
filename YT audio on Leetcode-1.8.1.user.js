@@ -60,7 +60,7 @@ const PLAYLISTS = {
         saveTimer: null,
         listenersHooked: false,
         apiHooked: false,
-        firstClickAutoplayDone: false,
+        tabId: null,
     });
 
     // ---------- tiny utils ----------
@@ -69,6 +69,7 @@ const PLAYLISTS = {
         time: "ytAudioTime",
         vid: "ytAudioVideoId",
         list: "ytAudioList",
+        owner: "ytAudioOwner",
     };
 
     const save = (k, v) => {
@@ -388,9 +389,9 @@ const PLAYLISTS = {
             btn.textContent = label;
             btn.className = "yt-audio-menu__item";
             btn.onclick = () => {
+                const wasPlaying = isPlaying;
                 setPlaylist(key);
-                setPlayingUI(true);
-                nextSong();
+                nextSong(wasPlaying);
                 hideMenu();
             };
             return btn;
@@ -410,11 +411,21 @@ const PLAYLISTS = {
         }
 
         // ---------- state ----------
+        const TAB_ID = NS.tabId || (NS.tabId = `${Date.now()}-${Math.random().toString(16).slice(2)}`);
         let ytPlayer = NS.player || null;
-        let isPlaying = load(LS_KEYS.playing) === "1";
+        let isPlaying = false;
         let hideMenuTimer = null;
+        let pendingPlay = false;
         const DOCK_ARIA = "Upgrade to premium to use debugger";
         const isMenuDetached = () => menu && menu.parentElement === document.body;
+        const getOwner = () => load(LS_KEYS.owner, "");
+        const claimOwnership = () => save(LS_KEYS.owner, TAB_ID);
+        const releaseOwnership = () => {
+            if (getOwner() === TAB_ID) save(LS_KEYS.owner, "");
+        };
+        if (ytPlayer && W.YT?.PlayerState && typeof ytPlayer.getPlayerState === "function") {
+            isPlaying = ytPlayer.getPlayerState() === W.YT.PlayerState.PLAYING;
+        }
 
         const listLabel = () => {
             const data = getPlaylistData(activeListKey) || getPlaylistData(DEFAULT_LIST_KEY);
@@ -540,21 +551,30 @@ const PLAYLISTS = {
                 if (!isNaN(t)) save(LS_KEYS.time, Math.floor(t));
             }
             save(LS_KEYS.playing, isPlaying ? "1" : "0");
+            if (!isPlaying) releaseOwnership();
         }
 
         function toggleAudio() {
-            if (!ytPlayer || typeof ytPlayer.getPlayerState !== "function") return;
+            if (!ytPlayer || typeof ytPlayer.getPlayerState !== "function") {
+                pendingPlay = true;
+                initPlayer();
+                return;
+            }
             const state = ytPlayer.getPlayerState();
             if (state === 1) {
+                releaseOwnership();
+                pendingPlay = false;
                 ytPlayer.pauseVideo();
                 setPlayingUI(false);
             } else {
+                pendingPlay = false;
+                claimOwnership();
                 ytPlayer.playVideo();
                 setPlayingUI(true);
             }
         }
 
-        function nextSong() {
+        function nextSong(shouldAutoplay = isPlaying) {
             const list = currentList();
             if (!list?.length) return;
             // Pick a new random video (not the same)
@@ -565,14 +585,20 @@ const PLAYLISTS = {
             save(LS_KEYS.list, activeListKey);
             save(LS_KEYS.time, 0);
 
+            const willPlay = Boolean(shouldAutoplay);
+            setPlayingUI(willPlay);
+
             if (ytPlayer && typeof ytPlayer.loadVideoById === "function") {
                 ytPlayer.loadVideoById(videoId);
+                if (willPlay && ytPlayer.playVideo) {
+                    claimOwnership();
+                    ytPlayer.playVideo();
+                } else if (!willPlay && ytPlayer.pauseVideo) {
+                    ytPlayer.pauseVideo();
+                }
             } else {
+                pendingPlay = willPlay;
                 initPlayer(); // will assign NS.player and local ytPlayer
-            }
-
-            if (isPlaying && ytPlayer && ytPlayer.playVideo) {
-                ytPlayer.playVideo();
             }
         }
 
@@ -611,35 +637,48 @@ const PLAYLISTS = {
             });
 
             document.addEventListener("visibilitychange", persistNow);
-            window.addEventListener("pagehide", persistNow);
-            window.addEventListener("beforeunload", persistNow);
+            window.addEventListener("pagehide", () => {
+                persistNow();
+                releaseOwnership();
+            });
+            window.addEventListener("beforeunload", () => {
+                persistNow();
+                releaseOwnership();
+            });
             const observer = new MutationObserver(() => {
                 tryDockToDebugger();
             });
             observer.observe(document.body, { childList: true, subtree: true });
-
-            document.addEventListener(
-                "click",
-                () => {
-                    if (NS.firstClickAutoplayDone || !NS.player) return;
-                    NS.firstClickAutoplayDone = true;
-                    if (load(LS_KEYS.playing) === "1") NS.player.playVideo();
-                },
-                { once: true },
-            );
+            window.addEventListener("storage", (e) => {
+                if (e.key !== LS_KEYS.owner) return;
+                if (e.newValue && e.newValue !== TAB_ID) {
+                    pendingPlay = false;
+                    if (ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
+                    setPlayingUI(false);
+                    stopSavingTime();
+                }
+            });
         }
 
         // ---------- YT API / Player (single instance) ----------
         function initPlayer() {
+            if (!W.YT || !W.YT.Player) return;
+
             // Reuse existing player if present
             if (NS.player && typeof NS.player.getPlayerState === "function") {
                 ytPlayer = NS.player;
-                setPlayingUI(isPlaying);
+                const existingState =
+                    typeof ytPlayer.getPlayerState === "function"
+                        ? ytPlayer.getPlayerState()
+                        : -1;
+                const PS = W.YT?.PlayerState;
+                const currentlyPlaying = PS && existingState === PS.PLAYING;
+                setPlayingUI(currentlyPlaying);
 
                 // seek to saved time on reuse
                 const resumeAt = parseInt(load(LS_KEYS.time, "0"), 10) || 0;
                 if (resumeAt > 0) ytPlayer.seekTo(resumeAt, true);
-                if (isPlaying) ytPlayer.playVideo();
+                if (currentlyPlaying) claimOwnership();
                 return;
             }
 
@@ -661,10 +700,16 @@ const PLAYLISTS = {
                 },
                 events: {
                     onReady: () => {
-                        const resumeAt = parseInt(load(LS_KEYS.time, '0'), 10) || 0;
+                        const resumeAt = parseInt(load(LS_KEYS.time, "0"), 10) || 0;
                         if (resumeAt > 0) ytPlayer.seekTo(resumeAt, true);
-                        if (isPlaying) ytPlayer.playVideo();
-                        setPlayingUI(isPlaying);
+                        if (pendingPlay) {
+                            pendingPlay = false;
+                            claimOwnership();
+                            ytPlayer.playVideo();
+                            setPlayingUI(true);
+                        } else {
+                            setPlayingUI(false);
+                        }
                     },
                     onStateChange: (e) => {
                         if (!W.YT || !W.YT.PlayerState) return;
@@ -672,20 +717,23 @@ const PLAYLISTS = {
 
                         switch (e.data) {
                             case PS.PLAYING:
-                                setPlayingUI(true);     // ← keep the button in sync when autoplay/loop starts
+                                setPlayingUI(true);
+                                pendingPlay = false;
+                                claimOwnership();
                                 startSavingTime();
                                 break;
 
                             case PS.PAUSED:
                             case PS.ENDED:
-                                setPlayingUI(false);    // ← reflect pauses/ends that weren’t triggered by your button
+                                setPlayingUI(false);
+                                releaseOwnership();
                                 stopSavingTime();
                                 persistNow();
                                 break;
                             default:
                                 break;
                         }
-                    }
+                    },
                 },
             });
             // Save singleton

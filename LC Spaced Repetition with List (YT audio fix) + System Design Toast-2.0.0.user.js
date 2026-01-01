@@ -272,12 +272,6 @@ A: N/A
             },
             {
                 type: "leetcode",
-                title: "Implement Trie (Prefix Tree)",
-                url: "https://leetcode.com/problems/implement-trie-prefix-tree",
-                difficulty: "Medium"
-            },
-            {
-                type: "leetcode",
                 title: "Path With Minimum Effort",
                 url: "https://leetcode.com/problems/path-with-minimum-effort",
                 difficulty: "Medium"
@@ -407,32 +401,6 @@ A: N/A
                 difficulty: "Hard"
             },
             {
-                type: "system-design",
-                title: "Implement a Modal Using Portals",
-                url: "https://codesandbox.io/p/sandbox/adoring-forest-gcyypc?",
-                topic: `
-Q: Render modal outside the main DOM hierarchy
-A: N/A
-
-Q: Use React portals
-A: N/A
-
-Q: Close modal on Escape key press
-A: N/A
-
-Q: Trap focus within the modal
-A: N/A
-
-Q: Restore focus on close
-A: N/A
-
-Q: Clean up listeners on unmount
-A: N/A
-    `,
-                difficulty: "Medium",
-                playground: "https://codesandbox.io/p/sandbox/adoring-forest-gcyypc?"
-            },
-            {
                 type: "leetcode",
                 title: "Word Search II",
                 url: "https://leetcode.com/problems/word-search-ii",
@@ -486,12 +454,6 @@ A: N/A
                 type: "leetcode",
                 title: "Trapping Rain Water",
                 url: "https://leetcode.com/problems/trapping-rain-water",
-                difficulty: "Hard"
-            },
-            {
-                type: "leetcode",
-                title: "Merge k Sorted Lists",
-                url: "https://leetcode.com/problems/merge-k-sorted-lists",
                 difficulty: "Hard"
             },
             {
@@ -767,10 +729,10 @@ A: N/A
             if (solutionCountdownEl) {
                 const remaining = Math.max(perQuestionTargetSeconds - perQuestionSpentSeconds, 0);
                 if (remaining > 0) {
-                    solutionCountdownEl.innerText = `Solution unlock in: ${formatMinSec(remaining)}`;
+                    solutionCountdownEl.innerText = `Unlock in: ${formatMinSec(remaining)}`;
                     solutionCountdownEl.style.color = '#ffda79';
                 } else {
-                    solutionCountdownEl.innerText = `You can check the solution now 🎉`;
+                    solutionCountdownEl.innerText = `Unlocked 🎉`;
                     solutionCountdownEl.style.color = '#8aff8a';
                 }
                 _setTabDisabled(remaining > 0);
@@ -1847,7 +1809,7 @@ A: N/A
                 if (currentKey) {
                     const currentScore = calculateCompletionScore(currentKey);
                     const percentCurrent = Math.round((currentScore / 3) * 100);
-                    individualProgressText.innerText = `Current Item: ${currentScore.toFixed(1)}/3 (${percentCurrent}%)`;
+                    individualProgressText.innerText = `Current: ${currentScore.toFixed(1)}/3 (${percentCurrent}%)`;
                     individualProgressText.style.color = currentScore >= 3 ? '#8aff8a' : '#bbb';
                 }
             }

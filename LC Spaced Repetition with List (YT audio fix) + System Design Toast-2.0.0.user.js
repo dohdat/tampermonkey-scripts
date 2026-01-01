@@ -30,9 +30,31 @@
 ---------------------------------------------- */
 const DAILY_TIME_LIMIT_HOURS = 1.5;
 const DAILY_TIME_LIMIT_SECONDS = DAILY_TIME_LIMIT_HOURS * 60 * 60;
+const LEETCODE_DOMAIN = 'leetcode.com';
+const CODESANDBOX_DOMAIN = 'codesandbox.io';
+const DISTRACTION_DOMAINS = ['facebook.com', 'youtube.com', 'linkedin.com'];
+const STORAGE_KEYS = {
+    perQuestionTimers: 'lc_perQuestionTimers',
+    leetcodeSR: 'leetcodeSR',
+    leetcodeQueue: 'leetcodeQueue',
+    leetcodeCurrent: 'leetcodeCurrent',
+    dailyLastDate: 'leetcodeTimer_lastDate',
+    dailyRemainingTime: 'leetcodeTimer_remainingTime'
+};
+const SRS_DOM_IDS = {
+    styles: 'lc-srs-styles',
+    container: 'lc-srs-container',
+    overlay: 'lc-srs-overlay'
+};
 
 // Turn on when practicing for real interviews
 const REQUIRE_TIME_AND_SPACE_COMPLEXITY = false;
+const COPY_UNLOCK_SECONDS = 6 * 60;
+const COPY_MODE_SWITCH_SECONDS = 9 * 60;
+const COPY_PROMPT_PREFIX = {
+    code: 'Here is the question, give me code to solve, full code Javascript or React',
+    pseudocode: 'Here is the question, Give me a very short interviewer-style hint. Mention the algorithm or data structure, but no code or full solution?'
+};
 
 /* ----------------------------------------------
    Storage helpers (Tampermonkey)
@@ -65,10 +87,10 @@ async function gmWriteJSON(key, value) {
 }
 
 const storageReady = (async () => {
-    storageCache.perQuestionTimers = await gmReadJSON('lc_perQuestionTimers', {});
-    storageCache.leetcodeSR = await gmReadJSON('leetcodeSR', {});
-    storageCache.leetcodeQueue = await gmReadJSON('leetcodeQueue', []);
-    storageCache.leetcodeCurrent = await GM.getValue('leetcodeCurrent', null);
+    storageCache.perQuestionTimers = await gmReadJSON(STORAGE_KEYS.perQuestionTimers, {});
+    storageCache.leetcodeSR = await gmReadJSON(STORAGE_KEYS.leetcodeSR, {});
+    storageCache.leetcodeQueue = await gmReadJSON(STORAGE_KEYS.leetcodeQueue, []);
+    storageCache.leetcodeCurrent = await GM.getValue(STORAGE_KEYS.leetcodeCurrent, null);
 })();
 
 /* ----------------------------------------------
@@ -78,9 +100,8 @@ const storageReady = (async () => {
     await storageReady;
 
     const hostname = window.location.hostname;
-    const isLeetcode = hostname.includes('leetcode.com');
-    const isCodesandbox = hostname.includes('codesandbox.io');
-    const codeSandboxUrl = "https://codesandbox.io/p/sandbox/fervent-browser-mhcykc?file=%2Fsrc%2FApp.js%3A7%2C50";
+    const isLeetcode = hostname.includes(LEETCODE_DOMAIN);
+    const isCodesandbox = hostname.includes(CODESANDBOX_DOMAIN);
 
     if (isLeetcode || isCodesandbox) {
         /* ----------------------------------------------
@@ -629,8 +650,6 @@ A: N/A
         let difficultyBadgeEl = null;
         let currentKeyCached = null;
         let sdToastLastItem = null;
-        const COPY_UNLOCK_SECONDS = 6 * 60;
-        const COPY_MODE_SWITCH_SECONDS = 9 * 60;
 
         /* ----------------------------------------------
      Utility / Timer functions
@@ -696,8 +715,8 @@ A: N/A
 
         function buildCopyPromptPayload(mode) {
             const prefix = mode === 'code'
-                ? 'Here is the question, give me code to solve, full code Javascript or React'
-                : 'Here is the question, Give me a very short interviewer-style hint. Mention the algorithm or data structure, but no code or full solution?';
+                ? COPY_PROMPT_PREFIX.code
+                : COPY_PROMPT_PREFIX.pseudocode;
             const title = getProblemTitleText();
             const desc = getProblemDescriptionText();
             return [prefix, title, desc].filter(Boolean).join('\n\n');
@@ -761,7 +780,7 @@ A: N/A
 
         async function pq_saveMap(map) {
             storageCache.perQuestionTimers = map;
-            await gmWriteJSON('lc_perQuestionTimers', map);
+            await gmWriteJSON(STORAGE_KEYS.perQuestionTimers, map);
         }
 
         function pq_load(key) {
@@ -787,13 +806,13 @@ A: N/A
         // ---------- Daily timer (GM.* cross-domain) ----------
         async function loadAndResetDailyTimer() {
             const today = getDateString();
-            const lastDate = await GM.getValue('leetcodeTimer_lastDate', null);
-            let savedRemainingTime = parseInt(await GM.getValue('leetcodeTimer_remainingTime', '0'), 10);
+            const lastDate = await GM.getValue(STORAGE_KEYS.dailyLastDate, null);
+            let savedRemainingTime = parseInt(await GM.getValue(STORAGE_KEYS.dailyRemainingTime, '0'), 10);
 
             if (lastDate !== today) {
                 remainingTimeToday = DAILY_TIME_LIMIT_SECONDS;
-                await GM.setValue('leetcodeTimer_lastDate', today);
-                await GM.setValue('leetcodeTimer_remainingTime', remainingTimeToday.toString());
+                await GM.setValue(STORAGE_KEYS.dailyLastDate, today);
+                await GM.setValue(STORAGE_KEYS.dailyRemainingTime, remainingTimeToday.toString());
             } else {
                 remainingTimeToday = Math.min(isNaN(savedRemainingTime) ? 0 : savedRemainingTime, DAILY_TIME_LIMIT_SECONDS);
                 if (remainingTimeToday < 0) remainingTimeToday = 0;
@@ -801,7 +820,7 @@ A: N/A
         }
 
         async function saveTimerProgress() {
-            await GM.setValue('leetcodeTimer_remainingTime', remainingTimeToday.toString());
+            await GM.setValue(STORAGE_KEYS.dailyRemainingTime, remainingTimeToday.toString());
         }
 
         function updateTimerDisplay() {
@@ -1035,7 +1054,7 @@ A: N/A
 
             if (mutated) {
                 storageCache.leetcodeSR = progress;
-                void gmWriteJSON('leetcodeSR', progress);
+                void gmWriteJSON(STORAGE_KEYS.leetcodeSR, progress);
             }
 
             return progress;
@@ -1047,7 +1066,7 @@ A: N/A
             normalized.push(status);
             progress[key] = normalized;
             storageCache.leetcodeSR = progress;
-            await gmWriteJSON('leetcodeSR', progress);
+            await gmWriteJSON(STORAGE_KEYS.leetcodeSR, progress);
         }
 
         function calculateCompletionScore(key) {
@@ -1090,7 +1109,7 @@ A: N/A
             }
             const filtered = (Array.isArray(arr) ? arr : []).filter(item => item && item.key && !isCompleted(item.key));
             storageCache.leetcodeQueue = filtered;
-            await gmWriteJSON('leetcodeQueue', filtered);
+            await gmWriteJSON(STORAGE_KEYS.leetcodeQueue, filtered);
         }
 
         function getCurrentLink() {
@@ -1099,7 +1118,7 @@ A: N/A
 
         async function setCurrentLink(url) {
             storageCache.leetcodeCurrent = url;
-            await GM.setValue('leetcodeCurrent', url);
+            await GM.setValue(STORAGE_KEYS.leetcodeCurrent, url);
         }
 
         function findNavByKey(key) {
@@ -1733,7 +1752,7 @@ A: N/A
 
         function createUI() {
             const container = document.createElement('div');
-            container.id = 'lc-srs-container';
+            container.id = SRS_DOM_IDS.container;
             container.style.position = 'fixed';
             container.style.top = '0px';
             container.style.left = '50%';
@@ -2039,11 +2058,12 @@ A: N/A
         let overlayEl = null;
 
         function ensureSrsStyles() {
-            if (document.getElementById('lc-srs-styles')) return;
+            if (document.getElementById(SRS_DOM_IDS.styles)) return;
             const style = document.createElement('style');
-            style.id = 'lc-srs-styles';
+            style.id = SRS_DOM_IDS.styles;
+            const containerSelector = `#${SRS_DOM_IDS.container}`;
             style.textContent = `
-      #lc-srs-container.lc-centered {
+      ${containerSelector}.lc-centered {
         min-width: 420px !important;
         width: auto !important;
         padding: 22px 24px 26px !important;
@@ -2060,10 +2080,10 @@ A: N/A
         gap: 12px !important;
         transform: translate(-50%, -50%) scale(1.08) !important;
       }
-      #lc-srs-container.lc-centered div {
+      ${containerSelector}.lc-centered div {
         font-size: 15px !important;
       }
-      #lc-srs-container.lc-centered button {
+      ${containerSelector}.lc-centered button {
         font-size: 14px !important;
         padding: 10px 14px !important;
         border-width: 2px !important;
@@ -2074,7 +2094,7 @@ A: N/A
         line-height: 1.2 !important;
         transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease !important;
       }
-      #lc-srs-container.lc-centered .lc-difficulty-badge {
+      ${containerSelector}.lc-centered .lc-difficulty-badge {
         margin: 0 auto !important;
       }
     `;
@@ -2082,7 +2102,7 @@ A: N/A
         }
 
         function restoreContainerToCorner() {
-            const el = document.getElementById('lc-srs-container');
+            const el = document.getElementById(SRS_DOM_IDS.container);
             if (!el) return;
             el.classList.remove('lc-centered');
             if (overlayEl && overlayEl.contains(el)) {
@@ -2107,11 +2127,11 @@ A: N/A
 
         function centerContainerOnSuccess() {
             ensureSrsStyles();
-            const el = document.getElementById('lc-srs-container');
+            const el = document.getElementById(SRS_DOM_IDS.container);
             if (!el) return;
             if (!overlayEl) {
                 overlayEl = document.createElement('div');
-                overlayEl.id = 'lc-srs-overlay';
+                overlayEl.id = SRS_DOM_IDS.overlay;
                 overlayEl.style.position = 'fixed';
                 overlayEl.style.inset = '0';
                 overlayEl.style.zIndex = 9998;
@@ -2351,8 +2371,7 @@ A: N/A
   ---------------------------------------------- */
         (async function handleDistractionRedirect() {
             if (window.top !== window.self) return;
-            const distractions = ['facebook.com', 'youtube.com', 'linkedin.com'];
-            const onDistractionSite = distractions.some(domain => window.location.hostname.includes(domain));
+            const onDistractionSite = DISTRACTION_DOMAINS.some(domain => window.location.hostname.includes(domain));
             if (onDistractionSite) {
                 // Ensure the daily timer is reset when a new day starts (cross-domain)
                 const today = (() => {
@@ -2360,18 +2379,17 @@ A: N/A
                     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
                 })();
 
-                const lastDate = await GM.getValue('leetcodeTimer_lastDate', null);
+                const lastDate = await GM.getValue(STORAGE_KEYS.dailyLastDate, null);
                 if (lastDate !== today) {
-                    await GM.setValue('leetcodeTimer_lastDate', today);
-                    await GM.setValue('leetcodeTimer_remainingTime', String(DAILY_TIME_LIMIT_SECONDS));
+                    await GM.setValue(STORAGE_KEYS.dailyLastDate, today);
+                    await GM.setValue(STORAGE_KEYS.dailyRemainingTime, String(DAILY_TIME_LIMIT_SECONDS));
                 }
 
                 // Using GM storage so state is shared across domains
-                const remainingTime = parseInt(await GM.getValue('leetcodeTimer_remainingTime', '0'), 10);
-                const leetcodeDomain = 'leetcode.com';
+                const remainingTime = parseInt(await GM.getValue(STORAGE_KEYS.dailyRemainingTime, '0'), 10);
 
                 // If user still has LeetCode time left, redirect back
-                if (remainingTime > 0 && (!window.location.hostname.includes(leetcodeDomain))) {
+                if (remainingTime > 0 && (!window.location.hostname.includes(LEETCODE_DOMAIN))) {
                     const message = document.createElement('div');
                     message.textContent = "⏰ Redirecting you to LeetCode...";
                     Object.assign(message.style, {
@@ -2396,7 +2414,7 @@ A: N/A
                     });
 
                     setTimeout(() => {
-                        window.location.href = 'https://leetcode.com';
+                        window.location.href = `https://${LEETCODE_DOMAIN}`;
                     }, 500);
                 }
             }

@@ -741,8 +741,9 @@ A: N/A
 
             const mode = currentCopyMode();
             if (mode === 'pseudocode') {
+                const untilCode = Math.max(COPY_MODE_SWITCH_SECONDS - elapsed, 0);
                 return {
-                    text: 'Copy: pseudo (code soon)',
+                    text: `Copy: code in ${formatMinSec(untilCode)}`,
                     color: '#aed6f1'
                 };
             }

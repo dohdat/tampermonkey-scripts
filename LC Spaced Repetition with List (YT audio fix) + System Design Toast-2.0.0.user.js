@@ -1827,23 +1827,7 @@ A: N/A
             timerDisplayElement.style.flex = '0 0 auto';
             container.appendChild(timerDisplayElement);
 
-            // Difficulty badge
-            const difficultyBadgeEl = document.createElement('div');
-            difficultyBadgeEl.className = `
-        relative inline-flex items-center justify-center
-        text-caption px-2 py-1 gap-1 rounded-full
-        bg-fill-secondary text-difficulty-medium dark:text-difficulty-medium
-        mx-auto my-1 lc-difficulty-badge
-    `;
-            difficultyBadgeEl.style.display = 'inline-flex';
-            difficultyBadgeEl.style.margin = '0 8px 0 0';
-            difficultyBadgeEl.style.width = 'fit-content';
-            difficultyBadgeEl.style.alignItems = 'center';
-            difficultyBadgeEl.style.padding = '6px 10px';
-            difficultyBadgeEl.style.borderRadius = '999px';
-            difficultyBadgeEl.style.fontSize = '12px';
-            difficultyBadgeEl.textContent = 'Medium';
-            container.appendChild(difficultyBadgeEl);
+            difficultyBadgeEl = null;
 
             // Solution countdown
             solutionCountdownEl = document.createElement('div');
@@ -1918,7 +1902,7 @@ A: N/A
                 if (currentKey) {
                     const currentScore = calculateCompletionScore(currentKey);
                     const percentCurrent = Math.round((currentScore / 3) * 100);
-                    individualProgressText.innerText = `Current: ${currentScore.toFixed(1)}/3 (${percentCurrent}%)`;
+                    individualProgressText.innerText = `${currentScore.toFixed(1)}/3 (${percentCurrent}%)`;
                     individualProgressText.style.color = currentScore >= 3 ? '#8aff8a' : '#bbb';
                 }
             }

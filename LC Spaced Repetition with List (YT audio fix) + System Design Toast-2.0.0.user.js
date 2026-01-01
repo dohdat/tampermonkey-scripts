@@ -696,8 +696,8 @@ A: N/A
 
         function buildCopyPromptPayload(mode) {
             const prefix = mode === 'code'
-                ? 'Here is the question, give me code to solve, full code Javascript'
-                : 'Here is the question, I am stuck on the approach. Can you give me a high-level hint without code or solution?';
+                ? 'Here is the question, give me code to solve, full code Javascript or React'
+                : 'Here is the question, Give me a very short interviewer-style hint. Mention the algorithm or data structure, but no code or full solution?';
             const title = getProblemTitleText();
             const desc = getProblemDescriptionText();
             return [prefix, title, desc].filter(Boolean).join('\n\n');
@@ -846,7 +846,7 @@ A: N/A
                 copyPromptButton.title = 'Copies the question with \"Here is the question, give me code to solve Javascript, full code\"';
             } else {
                 copyPromptButton.textContent = 'Pseudocode prompt';
-                copyPromptButton.title = 'Copies the question with \"Here is the question, I am stuck on the approach. Can you give me a high-level hint without code or solution?\"';
+                copyPromptButton.title = 'Copies the question with \"Give me a very short interviewer-style hint. Mention the algorithm or data structure, but no code or full solution.\"';
             }
         }
 

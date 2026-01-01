@@ -620,6 +620,7 @@ A: N/A
         // For Easy button visibility logic
         let mainDetailsElement = null;
         let easyButton = null;
+        let copyPromptButton = null;
 
         // Per-item timing and UI refs (PERSISTED)
         let perQuestionSpentSeconds = 0; // internal only; no UI
@@ -628,6 +629,8 @@ A: N/A
         let difficultyBadgeEl = null;
         let currentKeyCached = null;
         let sdToastLastItem = null;
+        const COPY_UNLOCK_SECONDS = 6 * 60;
+        const COPY_MODE_SWITCH_SECONDS = 9 * 60;
 
         /* ----------------------------------------------
      Utility / Timer functions
@@ -662,6 +665,92 @@ A: N/A
             const minutes = Math.floor(totalSeconds / 60);
             const seconds = totalSeconds % 60;
             return [minutes, seconds].map(v => v.toString().padStart(2, '0')).join(':');
+        }
+
+        function getProblemTitleText() {
+            const titleCandidates = [
+                '[data-cy=\"question-title\"]',
+                'h1'
+            ];
+            for (const sel of titleCandidates) {
+                const el = document.querySelector(sel);
+                const txt = (el?.textContent || '').trim();
+                if (txt) return txt;
+            }
+            return (document.title || '').replace('| LeetCode', '').trim();
+        }
+
+        function getProblemDescriptionText() {
+            const selectors = [
+                '[data-track-load=\"description_content\"]',
+                '.question-content__JfgR',
+                '.content__u3I1'
+            ];
+            for (const sel of selectors) {
+                const el = document.querySelector(sel);
+                const txt = (el?.innerText || '').trim();
+                if (txt) return txt;
+            }
+            return '';
+        }
+
+        function buildCopyPromptPayload(mode) {
+            const prefix = mode === 'code'
+                ? 'Here is the question, give me code to solve, full code Javascript'
+                : 'Here is the question, I am stuck on the approach. Can you give me a high-level hint without code or solution?';
+            const title = getProblemTitleText();
+            const desc = getProblemDescriptionText();
+            return [prefix, title, desc].filter(Boolean).join('\n\n');
+        }
+
+        async function copyTextToClipboard(text) {
+            async function fallbackCopy(t) {
+                const ta = document.createElement('textarea');
+                ta.value = t;
+                ta.setAttribute('readonly', '');
+                ta.style.position = 'absolute';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                } finally {
+                    document.body.removeChild(ta);
+                }
+            }
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(text);
+            } else {
+                await fallbackCopy(text);
+            }
+        }
+
+        function currentCopyMode() {
+            return perQuestionSpentSeconds >= COPY_MODE_SWITCH_SECONDS ? 'code' : 'pseudocode';
+        }
+
+        function getCopyPromptStatusText() {
+            const elapsed = perQuestionSpentSeconds;
+            if (elapsed < COPY_UNLOCK_SECONDS) {
+                return {
+                    text: 'Copy locked',
+                    color: '#ffda79'
+                };
+            }
+
+            const mode = currentCopyMode();
+            if (mode === 'pseudocode') {
+                return {
+                    text: 'Copy: pseudo (code soon)',
+                    color: '#aed6f1'
+                };
+            }
+
+            return {
+                text: 'Copy: code ready',
+                color: '#8aff8a'
+            };
         }
 
         // ---------- Per-item persistence (Tampermonkey storage) ----------
@@ -726,18 +815,38 @@ A: N/A
         }
 
         function updatePerQuestionDisplays() {
+            const copyStatus = getCopyPromptStatusText();
             if (solutionCountdownEl) {
                 const remaining = Math.max(perQuestionTargetSeconds - perQuestionSpentSeconds, 0);
                 if (remaining > 0) {
-                    solutionCountdownEl.innerText = `Unlock in: ${formatMinSec(remaining)}`;
+                    solutionCountdownEl.innerText = `${formatMinSec(remaining)} | ${copyStatus.text}`;
                     solutionCountdownEl.style.color = '#ffda79';
                 } else {
-                    solutionCountdownEl.innerText = `Unlocked 🎉`;
-                    solutionCountdownEl.style.color = '#8aff8a';
+                    solutionCountdownEl.innerText = `Ready | ${copyStatus.text}`;
+                    solutionCountdownEl.style.color = copyStatus.color || '#8aff8a';
                 }
                 _setTabDisabled(remaining > 0);
             }
             updateSystemDesignToastLockUI();
+            updateCopyPromptButtonState();
+        }
+
+        function updateCopyPromptButtonState() {
+            if (!copyPromptButton) return;
+            const elapsed = perQuestionSpentSeconds;
+            if (elapsed < COPY_UNLOCK_SECONDS) {
+                copyPromptButton.style.display = 'none';
+                return;
+            }
+            copyPromptButton.style.display = 'inline-flex';
+            const mode = currentCopyMode();
+            if (mode === 'code') {
+                copyPromptButton.textContent = 'Full code prompt';
+                copyPromptButton.title = 'Copies the question with \"Here is the question, give me code to solve Javascript, full code\"';
+            } else {
+                copyPromptButton.textContent = 'Pseudocode prompt';
+                copyPromptButton.title = 'Copies the question with \"Here is the question, I am stuck on the approach. Can you give me a high-level hint without code or solution?\"';
+            }
         }
 
         function getCurrentKey() {
@@ -1852,6 +1961,54 @@ A: N/A
                 buttonContainer.appendChild(b);
                 buttonRefs[btn] = b;
             });
+
+            copyPromptButton = document.createElement('button');
+            copyPromptButton.innerText = 'Copy Q -> pseudocode prompt';
+            copyPromptButton.style.margin = '0';
+            copyPromptButton.style.color = '#55acee';
+            copyPromptButton.style.fontWeight = 'bold';
+            copyPromptButton.style.background = 'transparent';
+            copyPromptButton.style.border = '2px solid #55acee';
+            copyPromptButton.style.borderRadius = '5px';
+            copyPromptButton.style.padding = '6px 12px';
+            copyPromptButton.style.height = '34px';
+            copyPromptButton.style.lineHeight = '1.1';
+            copyPromptButton.style.cursor = 'pointer';
+            copyPromptButton.style.transition = 'all 0.2s ease';
+            copyPromptButton.style.fontSize = '13px';
+            copyPromptButton.style.display = 'none';
+
+            copyPromptButton.onmouseover = () => {
+                if (copyPromptButton.disabled) return;
+                copyPromptButton.style.background = '#55acee';
+                copyPromptButton.style.color = 'white';
+            };
+            copyPromptButton.onmouseout = () => {
+                copyPromptButton.style.background = 'transparent';
+                copyPromptButton.style.color = '#55acee';
+            };
+
+            copyPromptButton.onclick = async () => {
+                const mode = currentCopyMode();
+                const payload = buildCopyPromptPayload(mode);
+                const original = copyPromptButton.textContent;
+                try {
+                    await copyTextToClipboard(payload);
+                    copyPromptButton.textContent = 'Copied!';
+                } catch (_) {
+                    copyPromptButton.textContent = 'Copy failed';
+                }
+                setTimeout(() => {
+                    copyPromptButton.textContent = original;
+                    updateCopyPromptButtonState();
+                }, 1400);
+            };
+
+            if (buttonRefs['Easy'] && buttonRefs['Easy'].parentElement) {
+                buttonRefs['Easy'].insertAdjacentElement('afterend', copyPromptButton);
+            } else {
+                buttonContainer.appendChild(copyPromptButton);
+            }
 
             document.body.appendChild(container);
 

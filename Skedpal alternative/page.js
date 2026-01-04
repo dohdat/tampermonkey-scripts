@@ -189,6 +189,7 @@ function renderTasks(tasks, timeMaps) {
 
 async function loadTasks() {
   const [tasks, timeMaps] = await Promise.all([getAllTasks(), getAllTimeMaps()]);
+  tasksTimeMapsCache = timeMaps;
   renderTasks(tasks, timeMaps);
 }
 

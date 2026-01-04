@@ -4,8 +4,11 @@
   "description": "Manual SkedPal-style scheduler that places tasks into Google Calendar when you click Reschedule.",
   "version": "0.1.0",
   "action": {
-    "default_title": "SkedPal-Style Scheduler",
-    "default_popup": "popup.html"
+    "default_title": "SkedPal-Style Scheduler"
+  },
+  "options_ui": {
+    "page": "index.html",
+    "open_in_tab": true
   },
   "background": {
     "service_worker": "background.js",

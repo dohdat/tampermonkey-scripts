@@ -24,6 +24,8 @@ const navButtons = [...document.querySelectorAll(".nav-btn")];
 const taskList = document.getElementById("task-list");
 const timeMapList = document.getElementById("timemap-list");
 const timeMapDayRows = document.getElementById("timemap-day-rows");
+const timeMapFormWrap = document.getElementById("timemap-form-wrap");
+const timeMapToggle = document.getElementById("timemap-toggle");
 const taskTimeMapOptions = document.getElementById("task-timemap-options");
 const timeMapColorInput = document.getElementById("timemap-color");
 const scheduleStatus = document.getElementById("schedule-status");
@@ -59,9 +61,52 @@ function switchView(target) {
 
 function renderDayRows(container, rules = []) {
   container.innerHTML = "";
-  const rulesMap = new Map(rules.map((r) => [Number(r.day), r]));
+  const rulesMap = new Map();
+  rules.forEach((r) => {
+    const day = Number(r.day);
+    if (!rulesMap.has(day)) rulesMap.set(day, []);
+    rulesMap.get(day).push({ ...r, day });
+  });
+
+  const createBlock = (day, block = { startTime: "09:00", endTime: "12:00" }) => {
+    const wrapper = document.createElement("div");
+    wrapper.className =
+      "flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-xs text-slate-200";
+    wrapper.dataset.block = day;
+
+    const start = document.createElement("input");
+    start.type = "time";
+    start.value = block.startTime || "09:00";
+    start.className =
+      "w-24 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100 focus:border-lime-400 focus:outline-none";
+    start.dataset.startFor = day;
+
+    const end = document.createElement("input");
+    end.type = "time";
+    end.value = block.endTime || "12:00";
+    end.className =
+      "w-24 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100 focus:border-lime-400 focus:outline-none";
+    end.dataset.endFor = day;
+
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.textContent = "×";
+    removeBtn.title = "Remove block";
+    removeBtn.className =
+      "h-6 w-6 rounded-full border border-slate-700 text-xs font-semibold text-slate-200 hover:border-orange-400 hover:text-orange-300";
+    removeBtn.addEventListener("click", () => {
+      wrapper.remove();
+    });
+
+    wrapper.appendChild(start);
+    wrapper.appendChild(document.createTextNode("–"));
+    wrapper.appendChild(end);
+    wrapper.appendChild(removeBtn);
+    return wrapper;
+  };
+
   dayOptions.forEach((day) => {
-    const rule = rulesMap.get(day.value);
+    const dayBlocks = rulesMap.get(day.value) || [];
     const row = document.createElement("div");
     row.dataset.dayRow = String(day.value);
     row.className =
@@ -69,36 +114,60 @@ function renderDayRows(container, rules = []) {
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.value = day.value;
-    checkbox.checked = !!rule;
+    checkbox.checked = dayBlocks.length > 0;
     checkbox.className = "h-4 w-4 rounded border-slate-600 bg-slate-900 text-lime-400";
     checkbox.dataset.day = day.value;
     const label = document.createElement("span");
     label.textContent = day.label;
     label.className = "w-8";
-    const start = document.createElement("input");
-    start.type = "time";
-    start.value = rule?.startTime || "09:00";
-    start.className =
-      "w-28 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100 focus:border-lime-400 focus:outline-none";
-    start.dataset.startFor = day.value;
-    start.disabled = !checkbox.checked;
-    const end = document.createElement("input");
-    end.type = "time";
-    end.value = rule?.endTime || "12:00";
-    end.className =
-      "w-28 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100 focus:border-lime-400 focus:outline-none";
-    end.dataset.endFor = day.value;
-    end.disabled = !checkbox.checked;
-    checkbox.addEventListener("change", () => {
-      const enabled = checkbox.checked;
-      start.disabled = !enabled;
-      end.disabled = !enabled;
+    const blocksContainer = document.createElement("div");
+    blocksContainer.className = "flex flex-col gap-2 flex-1";
+    blocksContainer.dataset.blocksFor = day.value;
+
+    const addBlockBtn = document.createElement("button");
+    addBlockBtn.type = "button";
+    addBlockBtn.textContent = "Add block";
+    addBlockBtn.className =
+      "h-8 rounded-lg border border-slate-700 px-3 text-xs font-semibold text-slate-200 hover:border-lime-400";
+    addBlockBtn.addEventListener("click", () => {
+      blocksContainer.appendChild(createBlock(day.value));
+      checkbox.checked = true;
     });
+
+    if (dayBlocks.length > 0) {
+      dayBlocks.forEach((block) => blocksContainer.appendChild(createBlock(day.value, block)));
+    }
+
+    const controls = document.createElement("div");
+    controls.className = "flex items-center gap-2";
+    controls.appendChild(addBlockBtn);
+
+    const toggleBlocks = (enabled) => {
+      blocksContainer.querySelectorAll("input").forEach((input) => {
+        input.disabled = !enabled;
+      });
+      addBlockBtn.disabled = !enabled;
+      addBlockBtn.classList.toggle("opacity-60", !enabled);
+      addBlockBtn.classList.toggle("cursor-not-allowed", !enabled);
+    };
+
+    checkbox.addEventListener("change", () => {
+      if (!checkbox.checked) {
+        blocksContainer.innerHTML = "";
+      } else if (blocksContainer.children.length === 0) {
+        blocksContainer.appendChild(createBlock(day.value));
+      }
+      toggleBlocks(checkbox.checked);
+    });
+
+    if (!checkbox.checked) {
+      toggleBlocks(false);
+    }
+
     row.appendChild(checkbox);
     row.appendChild(label);
-    row.appendChild(start);
-    row.appendChild(document.createTextNode("–"));
-    row.appendChild(end);
+    row.appendChild(blocksContainer);
+    row.appendChild(controls);
     container.appendChild(row);
   });
 }
@@ -262,13 +331,15 @@ function collectTimeMapRules(container) {
     const day = Number(row.dataset.dayRow);
     const checkbox = row.querySelector("input[type='checkbox']");
     if (!checkbox?.checked) return;
-    const start = row.querySelector("input[data-start-for]");
-    const end = row.querySelector("input[data-end-for]");
-    const startTime = start?.value || "09:00";
-    const endTime = end?.value || "12:00";
-    if (startTime && endTime && startTime < endTime) {
-      rules.push({ day, startTime, endTime });
-    }
+    row.querySelectorAll("[data-block]").forEach((blockRow) => {
+      const start = blockRow.querySelector("input[data-start-for]");
+      const end = blockRow.querySelector("input[data-end-for]");
+      const startTime = start?.value || "09:00";
+      const endTime = end?.value || "12:00";
+      if (startTime && endTime && startTime < endTime) {
+        rules.push({ day, startTime, endTime });
+      }
+    });
   });
   return rules.sort((a, b) => a.day - b.day);
 }
@@ -289,6 +360,7 @@ async function handleTimeMapSubmit(event) {
   }
   await saveTimeMap({ id, name, rules, color });
   resetTimeMapForm();
+  closeTimeMapForm();
   await loadTimeMaps();
 }
 
@@ -379,6 +451,7 @@ function handleTimeMapListClick(event, timeMaps) {
       document.getElementById("timemap-name").value = tm.name;
       timeMapColorInput.value = tm.color || "#22c55e";
       renderDayRows(timeMapDayRows, tm.rules);
+      openTimeMapForm();
       switchView("timemaps");
     }
   } else if (deleteId) {
@@ -470,6 +543,24 @@ rescheduleButtons.forEach((btn) => btn.addEventListener("click", handleReschedul
 
 navButtons.forEach((btn) => {
   btn.addEventListener("click", () => switchView(btn.dataset.view));
+});
+
+function openTimeMapForm() {
+  timeMapFormWrap.classList.remove("hidden");
+  timeMapToggle.textContent = "Hide TimeMap form";
+}
+
+function closeTimeMapForm() {
+  timeMapFormWrap.classList.add("hidden");
+  timeMapToggle.textContent = "Show TimeMap form";
+}
+
+timeMapToggle.addEventListener("click", () => {
+  if (timeMapFormWrap.classList.contains("hidden")) {
+    openTimeMapForm();
+  } else {
+    closeTimeMapForm();
+  }
 });
 
 timeMapList.addEventListener("click", async (event) => {

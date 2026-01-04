@@ -120,49 +120,61 @@
         </section>
 
         <section id="timemaps" class="view hidden space-y-3">
-          <form
-            id="timemap-form"
-            class="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg"
-          >
-            <input type="hidden" id="timemap-id" />
-            <label class="grid gap-2 text-sm text-slate-300">
-              Name
-              <input
-                id="timemap-name"
-                required
-                placeholder="Deep Work"
-                class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none"
-              />
-            </label>
-            <label class="grid gap-2 text-sm text-slate-300">
-              Color (hex)
-              <input
-                id="timemap-color"
-                type="color"
-                value="#22c55e"
-                class="h-11 w-24 rounded-xl border border-slate-800 bg-slate-900 px-2 py-1 text-slate-100"
-              />
-            </label>
-            <label class="grid gap-2 text-sm text-slate-300">
-              Per-day availability (each day can differ)
-              <div id="timemap-day-rows" class="grid gap-2"></div>
-            </label>
-            <div class="flex justify-end gap-2">
-              <button
-                class="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
-                type="button"
-                id="timemap-reset"
-              >
-                Reset
-              </button>
-              <button
-                class="rounded-xl bg-lime-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow hover:bg-lime-300"
-                type="submit"
-              >
-                Save TimeMap
-              </button>
-            </div>
-          </form>
+          <div class="flex items-center justify-between gap-2">
+            <div class="text-sm text-slate-300">Define availability maps; expand to add or edit.</div>
+            <button
+              id="timemap-toggle"
+              class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
+              type="button"
+            >
+              Show TimeMap form
+            </button>
+          </div>
+          <div id="timemap-form-wrap" class="hidden">
+            <form
+              id="timemap-form"
+              class="mt-2 grid gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg"
+            >
+              <input type="hidden" id="timemap-id" />
+              <label class="grid gap-2 text-sm text-slate-300">
+                Name
+                <input
+                  id="timemap-name"
+                  required
+                  placeholder="Deep Work"
+                  class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none"
+                />
+              </label>
+              <label class="grid gap-2 text-sm text-slate-300">
+                Color (hex)
+                <input
+                  id="timemap-color"
+                  type="color"
+                  value="#22c55e"
+                  class="h-11 w-24 rounded-xl border border-slate-800 bg-slate-900 px-2 py-1 text-slate-100"
+                />
+              </label>
+              <label class="grid gap-2 text-sm text-slate-300">
+                Per-day availability (each day can differ; add multiple blocks per day)
+                <div id="timemap-day-rows" class="grid gap-2"></div>
+              </label>
+              <div class="flex justify-end gap-2">
+                <button
+                  class="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
+                  type="button"
+                  id="timemap-reset"
+                >
+                  Reset
+                </button>
+                <button
+                  class="rounded-xl bg-lime-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow hover:bg-lime-300"
+                  type="submit"
+                >
+                  Save TimeMap
+                </button>
+              </div>
+            </form>
+          </div>
           <div id="timemap-list" class="grid gap-3"></div>
         </section>
 

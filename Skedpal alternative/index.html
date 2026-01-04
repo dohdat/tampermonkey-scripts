@@ -7,6 +7,15 @@
     <link rel="stylesheet" href="tailwind.css" />
   </head>
   <body class="min-h-screen bg-slate-950 text-slate-100 font-body">
+    <div class="fixed top-4 right-4 z-20">
+      <button
+        data-reschedule-btn
+        class="rounded-xl bg-lime-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg shadow-lime-400/30 hover:bg-lime-300"
+        type="button"
+      >
+        Reschedule
+      </button>
+    </div>
     <div
       class="min-h-screen bg-[radial-gradient(circle_at_10%_10%,rgba(34,197,94,0.08),transparent_32%),radial-gradient(circle_at_80%_0%,rgba(59,130,246,0.08),transparent_35%)] pb-10"
     >
@@ -159,9 +168,9 @@
                 </p>
               </div>
               <button
+                data-reschedule-btn
                 class="rounded-xl bg-lime-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow hover:bg-lime-300"
                 type="button"
-                id="reschedule-btn"
               >
                 Reschedule Now
               </button>

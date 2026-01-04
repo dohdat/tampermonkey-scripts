@@ -26,7 +26,7 @@ const timeMapList = document.getElementById("timemap-list");
 const timeMapDayRows = document.getElementById("timemap-day-rows");
 const taskTimeMapOptions = document.getElementById("task-timemap-options");
 const scheduleStatus = document.getElementById("schedule-status");
-const rescheduleBtn = document.getElementById("reschedule-btn");
+const rescheduleButtons = [...document.querySelectorAll("[data-reschedule-btn]")];
 const scheduleSummary = document.getElementById("scheduled-summary");
 const horizonInput = document.getElementById("horizon");
 
@@ -388,7 +388,10 @@ async function updateScheduleSummary() {
 }
 
 async function handleReschedule() {
-  rescheduleBtn.disabled = true;
+  rescheduleButtons.forEach((btn) => {
+    btn.disabled = true;
+    btn.classList.add("opacity-60", "cursor-not-allowed");
+  });
   scheduleStatus.textContent = "Scheduling...";
   try {
     const response = await new Promise((resolve, reject) => {
@@ -407,7 +410,10 @@ async function handleReschedule() {
   } catch (error) {
     scheduleStatus.textContent = `Error: ${error.message}`;
   } finally {
-    rescheduleBtn.disabled = false;
+    rescheduleButtons.forEach((btn) => {
+      btn.disabled = false;
+      btn.classList.remove("opacity-60", "cursor-not-allowed");
+    });
     await Promise.all([loadTasks(), updateScheduleSummary()]);
   }
 }
@@ -439,7 +445,7 @@ document.getElementById("timemap-form").addEventListener("submit", handleTimeMap
 document.getElementById("task-form").addEventListener("submit", handleTaskSubmit);
 document.getElementById("task-reset").addEventListener("click", resetTaskForm);
 document.getElementById("timemap-reset").addEventListener("click", resetTimeMapForm);
-rescheduleBtn.addEventListener("click", handleReschedule);
+rescheduleButtons.forEach((btn) => btn.addEventListener("click", handleReschedule));
 
 navButtons.forEach((btn) => {
   btn.addEventListener("click", () => switchView(btn.dataset.view));

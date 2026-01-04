@@ -4,7 +4,7 @@ Manual, deterministic task scheduler that mirrors SkedPal rules and writes to Go
 
 ### Features
 - Tasks stay flexible until scheduled; carry duration (15m increments), deadline, priority, allowed TimeMaps.
-- TimeMaps define availability blocks (days + start/end times); scheduler only places tasks within these blocks.
+- TimeMaps define per-day availability blocks (each day can have its own start/end); scheduler only places tasks within these blocks.
 - Scheduler horizon defaults to 14 days; tasks beyond the horizon are ignored.
 - Runs on demand: deletes previously scheduled task events, pulls FreeBusy, and fills the earliest valid free blocks (deadline asc, priority desc).
 - IndexedDB persistence (tasks, timemaps, settings); dark-mode UI with Tasks, TimeMaps, Schedule pages.

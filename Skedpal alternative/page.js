@@ -23,7 +23,7 @@ const views = [...document.querySelectorAll(".view")];
 const navButtons = [...document.querySelectorAll(".nav-btn")];
 const taskList = document.getElementById("task-list");
 const timeMapList = document.getElementById("timemap-list");
-const timeMapDays = document.getElementById("timemap-days");
+const timeMapDayRows = document.getElementById("timemap-day-rows");
 const taskTimeMapOptions = document.getElementById("task-timemap-options");
 const scheduleStatus = document.getElementById("schedule-status");
 const rescheduleBtn = document.getElementById("reschedule-btn");
@@ -56,33 +56,63 @@ function switchView(target) {
   });
 }
 
-function renderDayChips(container, selectedValues = []) {
+function renderDayRows(container, rules = []) {
   container.innerHTML = "";
+  const rulesMap = new Map(rules.map((r) => [Number(r.day), r]));
   dayOptions.forEach((day) => {
-    const id = `${container.id}-${day.label}`;
-    const wrapper = document.createElement("label");
-    wrapper.htmlFor = id;
-    wrapper.className =
-      "flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-100";
-    const input = document.createElement("input");
-    input.type = "checkbox";
-    input.value = day.value;
-    input.id = id;
-    input.checked = selectedValues.includes(day.value);
-    input.className = "h-4 w-4 rounded border-slate-600 bg-slate-900 text-lime-400";
-    const text = document.createElement("span");
-    text.textContent = day.label;
-    wrapper.appendChild(input);
-    wrapper.appendChild(text);
-    container.appendChild(wrapper);
+    const rule = rulesMap.get(day.value);
+    const row = document.createElement("div");
+    row.dataset.dayRow = String(day.value);
+    row.className =
+      "flex items-center gap-3 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-100";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.value = day.value;
+    checkbox.checked = !!rule;
+    checkbox.className = "h-4 w-4 rounded border-slate-600 bg-slate-900 text-lime-400";
+    checkbox.dataset.day = day.value;
+    const label = document.createElement("span");
+    label.textContent = day.label;
+    label.className = "w-8";
+    const start = document.createElement("input");
+    start.type = "time";
+    start.value = rule?.startTime || "09:00";
+    start.className =
+      "w-28 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100 focus:border-lime-400 focus:outline-none";
+    start.dataset.startFor = day.value;
+    start.disabled = !checkbox.checked;
+    const end = document.createElement("input");
+    end.type = "time";
+    end.value = rule?.endTime || "12:00";
+    end.className =
+      "w-28 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100 focus:border-lime-400 focus:outline-none";
+    end.dataset.endFor = day.value;
+    end.disabled = !checkbox.checked;
+    checkbox.addEventListener("change", () => {
+      const enabled = checkbox.checked;
+      start.disabled = !enabled;
+      end.disabled = !enabled;
+    });
+    row.appendChild(checkbox);
+    row.appendChild(label);
+    row.appendChild(start);
+    row.appendChild(document.createTextNode("–"));
+    row.appendChild(end);
+    container.appendChild(row);
   });
 }
 
-function formatTimeMapDays(days) {
-  return dayOptions
-    .filter((day) => days.includes(day.value))
-    .map((d) => d.label)
-    .join(" • ");
+function normalizeTimeMap(timeMap) {
+  if (Array.isArray(timeMap.rules) && timeMap.rules.length > 0) {
+    return { ...timeMap, rules: timeMap.rules.map((r) => ({ ...r, day: Number(r.day) })) };
+  }
+  const days = timeMap.days || [];
+  const startTime = timeMap.startTime || "09:00";
+  const endTime = timeMap.endTime || "12:00";
+  return {
+    ...timeMap,
+    rules: days.map((day) => ({ day: Number(day), startTime, endTime }))
+  };
 }
 
 function formatDateTime(value) {
@@ -97,15 +127,20 @@ function renderTimeMaps(timeMaps) {
       '<div class="flex items-center justify-center rounded-xl border border-dashed border-slate-700 bg-slate-900/60 px-3 py-4 text-sm text-slate-400">No TimeMaps yet. Add at least one availability map.</div>';
     return;
   }
-  timeMaps.forEach((tm) => {
+  timeMaps.forEach((tmRaw) => {
+    const tm = normalizeTimeMap(tmRaw);
     const card = document.createElement("div");
     card.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow";
+    const rulesText =
+      tm.rules
+        ?.map(
+          (r) =>
+            `${dayOptions.find((d) => d.value === Number(r.day))?.label || r.day}: ${r.startTime} – ${r.endTime}`
+        )
+        .join(" • ") || "";
     card.innerHTML = `
       <h3 class="text-base font-semibold">${tm.name}</h3>
-      <div class="mt-1 flex flex-wrap gap-2 text-xs text-slate-400">
-        <span>${formatTimeMapDays(tm.days)}</span>
-        <span>${tm.startTime} – ${tm.endTime}</span>
-      </div>
+      <div class="mt-1 flex flex-wrap gap-2 text-xs text-slate-400">${rulesText}</div>
       <div class="mt-3 flex gap-2">
         <button class="rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400" data-edit="${tm.id}">Edit</button>
         <button class="rounded-lg bg-orange-500/90 px-3 py-1 text-xs font-semibold text-slate-900 hover:bg-orange-400" data-delete="${tm.id}">Delete</button>
@@ -116,7 +151,8 @@ function renderTimeMaps(timeMaps) {
 }
 
 async function loadTimeMaps() {
-  const timeMaps = await getAllTimeMaps();
+  const timeMapsRaw = await getAllTimeMaps();
+  const timeMaps = timeMapsRaw.map(normalizeTimeMap);
   tasksTimeMapsCache = timeMaps;
   renderTimeMaps(timeMaps);
   renderTaskTimeMapOptions(timeMaps);
@@ -128,7 +164,8 @@ function renderTaskTimeMapOptions(timeMaps, selected = []) {
     taskTimeMapOptions.innerHTML = `<span class="text-xs text-slate-400">Create TimeMaps first.</span>`;
     return;
   }
-  timeMaps.forEach((tm) => {
+  timeMaps.forEach((tmRaw) => {
+    const tm = normalizeTimeMap(tmRaw);
     const id = `task-tm-${tm.id}`;
     const label = document.createElement("label");
     label.htmlFor = id;
@@ -155,7 +192,7 @@ function renderTasks(tasks, timeMaps) {
       '<div class="flex items-center justify-center rounded-xl border border-dashed border-slate-700 bg-slate-900/60 px-3 py-4 text-sm text-slate-400">No tasks yet. Add a task to schedule.</div>';
     return;
   }
-  const timeMapById = new Map(timeMaps.map((tm) => [tm.id, tm]));
+  const timeMapById = new Map(timeMaps.map((tm) => [tm.id, normalizeTimeMap(tm)]));
   tasks.forEach((task) => {
     const statusClass =
       task.scheduleStatus === "scheduled"
@@ -188,7 +225,8 @@ function renderTasks(tasks, timeMaps) {
 }
 
 async function loadTasks() {
-  const [tasks, timeMaps] = await Promise.all([getAllTasks(), getAllTimeMaps()]);
+  const [tasks, timeMapsRaw] = await Promise.all([getAllTasks(), getAllTimeMaps()]);
+  const timeMaps = timeMapsRaw.map(normalizeTimeMap);
   tasksTimeMapsCache = timeMaps;
   renderTasks(tasks, timeMaps);
 }
@@ -200,22 +238,37 @@ function collectSelectedValues(container) {
   });
 }
 
+function collectTimeMapRules(container) {
+  const rules = [];
+  container.querySelectorAll("[data-day-row]").forEach((row) => {
+    const day = Number(row.dataset.dayRow);
+    const checkbox = row.querySelector("input[type='checkbox']");
+    if (!checkbox?.checked) return;
+    const start = row.querySelector("input[data-start-for]");
+    const end = row.querySelector("input[data-end-for]");
+    const startTime = start?.value || "09:00";
+    const endTime = end?.value || "12:00";
+    if (startTime && endTime && startTime < endTime) {
+      rules.push({ day, startTime, endTime });
+    }
+  });
+  return rules.sort((a, b) => a.day - b.day);
+}
+
 async function handleTimeMapSubmit(event) {
   event.preventDefault();
   const id = document.getElementById("timemap-id").value || uuid();
   const name = document.getElementById("timemap-name").value.trim();
-  const days = collectSelectedValues(timeMapDays);
-  const startTime = document.getElementById("timemap-start").value;
-  const endTime = document.getElementById("timemap-end").value;
-  if (days.length === 0) {
-    alert("Select at least one day.");
+  const rules = collectTimeMapRules(timeMapDayRows);
+  if (rules.length === 0) {
+    alert("Select at least one day and a valid time window.");
     return;
   }
   if (!name) {
     alert("Name is required.");
     return;
   }
-  await saveTimeMap({ id, name, days, startTime, endTime });
+  await saveTimeMap({ id, name, rules });
   resetTimeMapForm();
   await loadTimeMaps();
 }
@@ -270,9 +323,7 @@ function resetTaskForm() {
 function resetTimeMapForm() {
   document.getElementById("timemap-id").value = "";
   document.getElementById("timemap-name").value = "";
-  document.getElementById("timemap-start").value = "09:00";
-  document.getElementById("timemap-end").value = "12:00";
-  renderDayChips(timeMapDays);
+  renderDayRows(timeMapDayRows);
 }
 
 function handleTaskListClick(event, tasks) {
@@ -302,13 +353,11 @@ function handleTimeMapListClick(event, timeMaps) {
   const editId = btn.dataset.edit;
   const deleteId = btn.dataset.delete;
   if (editId) {
-    const tm = timeMaps.find((t) => t.id === editId);
+    const tm = timeMaps.map(normalizeTimeMap).find((t) => t.id === editId);
     if (tm) {
       document.getElementById("timemap-id").value = tm.id;
       document.getElementById("timemap-name").value = tm.name;
-      document.getElementById("timemap-start").value = tm.startTime;
-      document.getElementById("timemap-end").value = tm.endTime;
-      renderDayChips(timeMapDays, tm.days);
+      renderDayRows(timeMapDayRows, tm.rules);
       switchView("timemaps");
     }
   } else if (deleteId) {
@@ -375,8 +424,9 @@ async function initSettings() {
 let tasksTimeMapsCache = [];
 
 async function hydrate() {
-  renderDayChips(timeMapDays);
-  const [tasks, timeMaps] = await Promise.all([getAllTasks(), getAllTimeMaps()]);
+  renderDayRows(timeMapDayRows);
+  const [tasks, timeMapsRaw] = await Promise.all([getAllTasks(), getAllTimeMaps()]);
+  const timeMaps = timeMapsRaw.map(normalizeTimeMap);
   tasksTimeMapsCache = timeMaps;
   renderTimeMaps(timeMaps);
   renderTaskTimeMapOptions(timeMaps);
@@ -402,7 +452,7 @@ timeMapList.addEventListener("click", async (event) => {
 
 taskList.addEventListener("click", async (event) => {
   const [tasks, timeMaps] = await Promise.all([getAllTasks(), getAllTimeMaps()]);
-  tasksTimeMapsCache = timeMaps;
+  tasksTimeMapsCache = timeMaps.map(normalizeTimeMap);
   handleTaskListClick(event, tasks);
 });
 

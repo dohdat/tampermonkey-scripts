@@ -126,31 +126,9 @@
               />
             </label>
             <label class="grid gap-2 text-sm text-slate-300">
-              Days
-              <div id="timemap-days" class="flex flex-wrap gap-2"></div>
+              Per-day availability (each day can differ)
+              <div id="timemap-day-rows" class="grid gap-2"></div>
             </label>
-            <div class="grid gap-3 md:grid-cols-2">
-              <label class="grid gap-2 text-sm text-slate-300">
-                Start Time
-                <input
-                  id="timemap-start"
-                  type="time"
-                  required
-                  value="09:00"
-                  class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 focus:border-lime-400 focus:outline-none"
-                />
-              </label>
-              <label class="grid gap-2 text-sm text-slate-300">
-                End Time
-                <input
-                  id="timemap-end"
-                  type="time"
-                  required
-                  value="12:00"
-                  class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 focus:border-lime-400 focus:outline-none"
-                />
-              </label>
-            </div>
             <div class="flex justify-end gap-2">
               <button
                 class="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"

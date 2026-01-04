@@ -9,37 +9,53 @@ function addDays(date, days) {
   return result;
 }
 
+function normalizeTimeMap(timeMap) {
+  if (Array.isArray(timeMap.rules) && timeMap.rules.length > 0) {
+    return { ...timeMap, rules: timeMap.rules.map((r) => ({ ...r, day: Number(r.day) })) };
+  }
+  const days = timeMap.days || [];
+  const startTime = timeMap.startTime || "09:00";
+  const endTime = timeMap.endTime || "12:00";
+  return {
+    ...timeMap,
+    rules: days.map((day) => ({ day: Number(day), startTime, endTime }))
+  };
+}
+
 function buildWindows(timeMaps, now, horizonEnd) {
   const windows = [];
-  timeMaps.forEach((timeMap) => {
-    const { hours: startH, minutes: startM } = parseTime(timeMap.startTime);
-    const { hours: endH, minutes: endM } = parseTime(timeMap.endTime);
-    for (let offset = 0; ; offset += 1) {
-      const day = addDays(now, offset);
-      if (day > horizonEnd) {
-        break;
+  timeMaps.forEach((timeMapRaw) => {
+    const timeMap = normalizeTimeMap(timeMapRaw);
+    timeMap.rules.forEach((rule) => {
+      const { hours: startH, minutes: startM } = parseTime(rule.startTime);
+      const { hours: endH, minutes: endM } = parseTime(rule.endTime);
+      for (let offset = 0; ; offset += 1) {
+        const day = addDays(now, offset);
+        if (day > horizonEnd) {
+          break;
+        }
+        if (day.getDay() !== rule.day) {
+          continue;
+        }
+        const start = new Date(day);
+        start.setHours(startH, startM, 0, 0);
+        const end = new Date(day);
+        end.setHours(endH, endM, 0, 0);
+        if (end > horizonEnd) {
+          end.setTime(horizonEnd.getTime());
+        }
+        if (start >= end) {
+          continue;
+        }
+        if (end <= now) {
+          continue;
+        }
+        if (start < now && now < end) {
+          start.setTime(now.getTime());
+        }
+        windows.push({ start, end, timeMapId: timeMap.id });
       }
-      if (!timeMap.days.includes(day.getDay())) {
-        continue;
-      }
-      const start = new Date(day);
-      start.setHours(startH, startM, 0, 0);
-      const end = new Date(day);
-      end.setHours(endH, endM, 0, 0);
-      if (end > horizonEnd) {
-        end.setTime(horizonEnd.getTime());
-      }
-      if (start >= end) {
-        continue;
-      }
-      if (end <= now) {
-        continue;
-      }
-      if (start < now && now < end) {
-        start.setTime(now.getTime());
-      }
-      windows.push({ start, end, timeMapId: timeMap.id });
-    }
+    });
   });
   return windows.sort((a, b) => a.start - b.start);
 }

@@ -47,75 +47,87 @@
       </header>
       <main class="mx-auto w-full max-w-4xl px-6 space-y-4 pb-8">
         <section id="tasks" class="view space-y-3">
-          <form id="task-form" class="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg">
-            <input type="hidden" id="task-id" />
-            <label class="grid gap-2 text-sm text-slate-300">
-              Title
-              <input
-                id="task-title"
-                required
-                placeholder="Write feature summary"
-                class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none"
-              />
-            </label>
-            <div class="grid gap-3 md:grid-cols-2">
+          <div class="flex items-center justify-between gap-2">
+            <div class="text-sm text-slate-300">Add tasks to schedule automatically.</div>
+            <button
+              id="task-toggle"
+              class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
+              type="button"
+            >
+              Show Task form
+            </button>
+          </div>
+          <div id="task-form-wrap" class="hidden">
+            <form id="task-form" class="mt-2 grid gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg">
+              <input type="hidden" id="task-id" />
               <label class="grid gap-2 text-sm text-slate-300">
-                Duration (minutes)
+                Title
                 <input
-                  id="task-duration"
-                  type="number"
-                  min="15"
-                  step="15"
+                  id="task-title"
                   required
-                  placeholder="30"
+                  placeholder="Write feature summary"
                   class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none"
                 />
               </label>
-              <label class="grid gap-2 text-sm text-slate-300">
-                Priority (1 low – 5 high)
-                <select
-                  id="task-priority"
-                  class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 focus:border-lime-400 focus:outline-none"
+              <div class="grid gap-3 md:grid-cols-2">
+                <label class="grid gap-2 text-sm text-slate-300">
+                  Duration (minutes)
+                  <input
+                    id="task-duration"
+                    type="number"
+                    min="15"
+                    step="15"
+                    required
+                    placeholder="30"
+                    class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none"
+                  />
+                </label>
+                <label class="grid gap-2 text-sm text-slate-300">
+                  Priority (1 low – 5 high)
+                  <select
+                    id="task-priority"
+                    class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 focus:border-lime-400 focus:outline-none"
+                  >
+                    <option value="5">5</option>
+                    <option value="4">4</option>
+                    <option value="3" selected>3</option>
+                    <option value="2">2</option>
+                    <option value="1">1</option>
+                  </select>
+                </label>
+              </div>
+              <div class="grid gap-3 md:grid-cols-2">
+                <label class="grid gap-2 text-sm text-slate-300">
+                  Deadline
+                  <input
+                    id="task-deadline"
+                    type="datetime-local"
+                    required
+                    class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 focus:border-lime-400 focus:outline-none"
+                  />
+                </label>
+                <label class="grid gap-2 text-sm text-slate-300">
+                  Allowed TimeMaps
+                  <div id="task-timemap-options" class="flex flex-wrap gap-2"></div>
+                </label>
+              </div>
+              <div class="flex justify-end gap-2">
+                <button
+                  class="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
+                  type="button"
+                  id="task-reset"
                 >
-                  <option value="5">5</option>
-                  <option value="4">4</option>
-                  <option value="3" selected>3</option>
-                  <option value="2">2</option>
-                  <option value="1">1</option>
-                </select>
-              </label>
-            </div>
-            <div class="grid gap-3 md:grid-cols-2">
-              <label class="grid gap-2 text-sm text-slate-300">
-                Deadline
-                <input
-                  id="task-deadline"
-                  type="datetime-local"
-                  required
-                  class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 focus:border-lime-400 focus:outline-none"
-                />
-              </label>
-              <label class="grid gap-2 text-sm text-slate-300">
-                Allowed TimeMaps
-                <div id="task-timemap-options" class="flex flex-wrap gap-2"></div>
-              </label>
-            </div>
-            <div class="flex justify-end gap-2">
-              <button
-                class="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
-                type="button"
-                id="task-reset"
-              >
-                Reset
-              </button>
-              <button
-                class="rounded-xl bg-lime-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow hover:bg-lime-300"
-                type="submit"
-              >
-                Save Task
-              </button>
-            </div>
-          </form>
+                  Reset
+                </button>
+                <button
+                  class="rounded-xl bg-lime-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow hover:bg-lime-300"
+                  type="submit"
+                >
+                  Save Task
+                </button>
+              </div>
+            </form>
+          </div>
           <div id="task-list" class="grid gap-3"></div>
         </section>
 

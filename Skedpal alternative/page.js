@@ -26,6 +26,8 @@ const timeMapList = document.getElementById("timemap-list");
 const timeMapDayRows = document.getElementById("timemap-day-rows");
 const timeMapFormWrap = document.getElementById("timemap-form-wrap");
 const timeMapToggle = document.getElementById("timemap-toggle");
+const taskFormWrap = document.getElementById("task-form-wrap");
+const taskToggle = document.getElementById("task-toggle");
 const taskTimeMapOptions = document.getElementById("task-timemap-options");
 const timeMapColorInput = document.getElementById("timemap-color");
 const scheduleStatus = document.getElementById("schedule-status");
@@ -409,6 +411,7 @@ function resetTaskForm() {
   document.getElementById("task-deadline").value = "";
   renderTaskTimeMapOptions([], []);
   loadTimeMaps();
+  closeTaskForm();
 }
 
 function resetTimeMapForm() {
@@ -432,6 +435,7 @@ function handleTaskListClick(event, tasks) {
       document.getElementById("task-priority").value = String(task.priority);
       document.getElementById("task-deadline").value = task.deadline.slice(0, 16);
       renderTaskTimeMapOptions(tasksTimeMapsCache, task.timeMapIds);
+      openTaskForm();
       switchView("tasks");
     }
   } else if (deleteId) {
@@ -555,11 +559,29 @@ function closeTimeMapForm() {
   timeMapToggle.textContent = "Show TimeMap form";
 }
 
+function openTaskForm() {
+  taskFormWrap.classList.remove("hidden");
+  taskToggle.textContent = "Hide Task form";
+}
+
+function closeTaskForm() {
+  taskFormWrap.classList.add("hidden");
+  taskToggle.textContent = "Show Task form";
+}
+
 timeMapToggle.addEventListener("click", () => {
   if (timeMapFormWrap.classList.contains("hidden")) {
     openTimeMapForm();
   } else {
     closeTimeMapForm();
+  }
+});
+
+taskToggle.addEventListener("click", () => {
+  if (taskFormWrap.classList.contains("hidden")) {
+    openTaskForm();
+  } else {
+    closeTaskForm();
   }
 });
 

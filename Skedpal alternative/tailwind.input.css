@@ -7,4 +7,8 @@
     @apply w-32;
     color-scheme: dark;
   }
+
+  input[type="date"] {
+    color-scheme: dark;
+  }
 }

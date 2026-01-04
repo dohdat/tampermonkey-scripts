@@ -30,6 +30,7 @@ const timeMapToggle = document.getElementById("timemap-toggle");
 const taskFormWrap = document.getElementById("task-form-wrap");
 const taskToggle = document.getElementById("task-toggle");
 const taskTimeMapOptions = document.getElementById("task-timemap-options");
+const taskDeadlineInput = document.getElementById("task-deadline");
 const timeMapColorInput = document.getElementById("timemap-color");
 const scheduleStatus = document.getElementById("schedule-status");
 const rescheduleButtons = [...document.querySelectorAll("[data-reschedule-btn]")];
@@ -192,7 +193,7 @@ function normalizeTimeMap(timeMap) {
 
 function formatDateTime(value) {
   const date = value ? new Date(value) : null;
-  return date ? date.toLocaleString() : "—";
+  return date && !Number.isNaN(date) ? date.toLocaleString() : "No date";
 }
 
 function renderTimeMaps(timeMaps) {
@@ -397,11 +398,11 @@ async function handleTaskSubmit(event) {
   const title = document.getElementById("task-title").value.trim();
   const durationMin = Number(document.getElementById("task-duration").value);
   const priority = Number(document.getElementById("task-priority").value);
-  const deadline = document.getElementById("task-deadline").value;
+  const deadline = taskDeadlineInput.value;
   const timeMapIds = collectSelectedValues(taskTimeMapOptions);
 
-  if (!title || !deadline || !durationMin) {
-    alert("Title, duration, and deadline are required.");
+  if (!title || !durationMin) {
+    alert("Title and duration are required.");
     return;
   }
   if (durationMin < 15 || durationMin % 15 !== 0) {
@@ -418,7 +419,7 @@ async function handleTaskSubmit(event) {
     title,
     durationMin,
     priority,
-    deadline: new Date(deadline).toISOString(),
+    deadline: deadline ? new Date(deadline).toISOString() : null,
     timeMapIds,
     scheduleStatus: "unscheduled",
     scheduledStart: null,
@@ -431,9 +432,9 @@ async function handleTaskSubmit(event) {
 function resetTaskForm() {
   document.getElementById("task-id").value = "";
   document.getElementById("task-title").value = "";
-  document.getElementById("task-duration").value = "";
+  document.getElementById("task-duration").value = "30";
   document.getElementById("task-priority").value = "3";
-  document.getElementById("task-deadline").value = "";
+  taskDeadlineInput.value = "";
   renderTaskTimeMapOptions([], []);
   loadTimeMaps();
   closeTaskForm();
@@ -458,7 +459,7 @@ function handleTaskListClick(event, tasks) {
       document.getElementById("task-title").value = task.title;
       document.getElementById("task-duration").value = task.durationMin;
       document.getElementById("task-priority").value = String(task.priority);
-      document.getElementById("task-deadline").value = task.deadline.slice(0, 16);
+      taskDeadlineInput.value = task.deadline ? task.deadline.slice(0, 10) : "";
       renderTaskTimeMapOptions(tasksTimeMapsCache, task.timeMapIds);
       openTaskForm();
       switchView("tasks");
@@ -601,6 +602,28 @@ function closeTaskForm() {
   taskToggle.textContent = "Show Task form";
 }
 
+function enableDeadlinePicker() {
+  const openPicker = (event) => {
+    if (!event?.isTrusted) return;
+    if (typeof taskDeadlineInput.showPicker === "function") {
+      try {
+        taskDeadlineInput.showPicker();
+      } catch (_err) {
+        // Some browsers block showPicker without a direct gesture; ignore.
+      }
+    } else {
+      taskDeadlineInput.focus();
+    }
+  };
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      openPicker(event);
+    }
+  };
+  taskDeadlineInput.addEventListener("click", openPicker);
+  taskDeadlineInput.addEventListener("keydown", handleKeyDown);
+}
+
 timeMapToggle.addEventListener("click", () => {
   if (timeMapFormWrap.classList.contains("hidden")) {
     openTimeMapForm();
@@ -629,3 +652,4 @@ taskList.addEventListener("click", async (event) => {
 });
 
 hydrate();
+enableDeadlinePicker();

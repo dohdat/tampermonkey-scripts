@@ -73,15 +73,16 @@
                 <label class="grid gap-2 text-sm text-slate-300">
                   Duration (minutes)
                   <input
-                    id="task-duration"
-                    type="number"
-                    min="15"
-                    step="15"
-                    required
-                    placeholder="30"
-                    class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none"
-                  />
-                </label>
+                  id="task-duration"
+                  type="number"
+                  min="15"
+                  step="15"
+                  value="30"
+                  required
+                  placeholder="30"
+                  class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none"
+                />
+              </label>
                 <label class="grid gap-2 text-sm text-slate-300">
                   Priority (1 low – 5 high)
                   <select
@@ -101,8 +102,7 @@
                   Deadline
                   <input
                     id="task-deadline"
-                    type="datetime-local"
-                    required
+                    type="date"
                     class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 focus:border-lime-400 focus:outline-none"
                   />
                 </label>

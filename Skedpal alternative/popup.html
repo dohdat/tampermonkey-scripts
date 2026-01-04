@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Personal SkedPal Scheduler</title>
+    <script src="tailwind-config.js"></script>
+    <script src="tailwindcdn.js"></script>
+  </head>
+  <body class="min-w-[380px] bg-slate-950 text-slate-100 font-body">
+    <div
+      class="bg-[radial-gradient(circle_at_10%_10%,rgba(34,197,94,0.08),transparent_32%),radial-gradient(circle_at_80%_0%,rgba(59,130,246,0.08),transparent_35%)]"
+    >
+      <header class="px-4 pt-4 pb-2 space-y-3">
+        <div>
+          <h1 class="text-lg font-semibold tracking-wide">Personal SkedPal</h1>
+          <p class="text-sm text-slate-400">Manual SkedPal-style scheduler for Google Calendar.</p>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <button
+            data-view="tasks"
+            class="nav-btn rounded-xl border border-lime-400/60 bg-slate-900/70 px-3 py-2 text-sm font-semibold text-slate-100 shadow ring-1 ring-lime-400/50"
+          >
+            Tasks
+          </button>
+          <button
+            data-view="timemaps"
+            class="nav-btn rounded-xl border border-slate-800 bg-slate-900/50 px-3 py-2 text-sm font-semibold text-slate-200 shadow"
+          >
+            TimeMaps
+          </button>
+          <button
+            data-view="schedule"
+            class="nav-btn rounded-xl border border-slate-800 bg-slate-900/50 px-3 py-2 text-sm font-semibold text-slate-200 shadow"
+          >
+            Schedule
+          </button>
+        </div>
+      </header>
+      <main class="px-4 pb-4 space-y-4">
+        <section id="tasks" class="view space-y-3">
+          <form id="task-form" class="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg">
+            <input type="hidden" id="task-id" />
+            <label class="grid gap-2 text-sm text-slate-300">
+              Title
+              <input
+                id="task-title"
+                required
+                placeholder="Write feature summary"
+                class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none"
+              />
+            </label>
+            <div class="grid gap-3 md:grid-cols-2">
+              <label class="grid gap-2 text-sm text-slate-300">
+                Duration (minutes)
+                <input
+                  id="task-duration"
+                  type="number"
+                  min="15"
+                  step="15"
+                  required
+                  placeholder="30"
+                  class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none"
+                />
+              </label>
+              <label class="grid gap-2 text-sm text-slate-300">
+                Priority (1 low – 5 high)
+                <select
+                  id="task-priority"
+                  class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 focus:border-lime-400 focus:outline-none"
+                >
+                  <option value="5">5</option>
+                  <option value="4">4</option>
+                  <option value="3" selected>3</option>
+                  <option value="2">2</option>
+                  <option value="1">1</option>
+                </select>
+              </label>
+            </div>
+            <div class="grid gap-3 md:grid-cols-2">
+              <label class="grid gap-2 text-sm text-slate-300">
+                Deadline
+                <input
+                  id="task-deadline"
+                  type="datetime-local"
+                  required
+                  class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 focus:border-lime-400 focus:outline-none"
+                />
+              </label>
+              <label class="grid gap-2 text-sm text-slate-300">
+                Allowed TimeMaps
+                <div id="task-timemap-options" class="flex flex-wrap gap-2"></div>
+              </label>
+            </div>
+            <div class="flex justify-end gap-2">
+              <button
+                class="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
+                type="button"
+                id="task-reset"
+              >
+                Reset
+              </button>
+              <button
+                class="rounded-xl bg-lime-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow hover:bg-lime-300"
+                type="submit"
+              >
+                Save Task
+              </button>
+            </div>
+          </form>
+          <div id="task-list" class="grid gap-3"></div>
+        </section>
+
+        <section id="timemaps" class="view hidden space-y-3">
+          <form
+            id="timemap-form"
+            class="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg"
+          >
+            <input type="hidden" id="timemap-id" />
+            <label class="grid gap-2 text-sm text-slate-300">
+              Name
+              <input
+                id="timemap-name"
+                required
+                placeholder="Deep Work"
+                class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none"
+              />
+            </label>
+            <label class="grid gap-2 text-sm text-slate-300">
+              Days
+              <div id="timemap-days" class="flex flex-wrap gap-2"></div>
+            </label>
+            <div class="grid gap-3 md:grid-cols-2">
+              <label class="grid gap-2 text-sm text-slate-300">
+                Start Time
+                <input
+                  id="timemap-start"
+                  type="time"
+                  required
+                  value="09:00"
+                  class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 focus:border-lime-400 focus:outline-none"
+                />
+              </label>
+              <label class="grid gap-2 text-sm text-slate-300">
+                End Time
+                <input
+                  id="timemap-end"
+                  type="time"
+                  required
+                  value="12:00"
+                  class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 focus:border-lime-400 focus:outline-none"
+                />
+              </label>
+            </div>
+            <div class="flex justify-end gap-2">
+              <button
+                class="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
+                type="button"
+                id="timemap-reset"
+              >
+                Reset
+              </button>
+              <button
+                class="rounded-xl bg-lime-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow hover:bg-lime-300"
+                type="submit"
+              >
+                Save TimeMap
+              </button>
+            </div>
+          </form>
+          <div id="timemap-list" class="grid gap-3"></div>
+        </section>
+
+        <section id="schedule" class="view hidden space-y-3">
+          <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg space-y-3">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <h3 class="text-base font-semibold">Reschedule</h3>
+                <p class="text-sm text-slate-400">
+                  Deletes previous scheduled task events (source=personal-skedpal), fetches FreeBusy, and fills the
+                  earliest valid slots.
+                </p>
+              </div>
+              <button
+                class="rounded-xl bg-lime-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow hover:bg-lime-300"
+                type="button"
+                id="reschedule-btn"
+              >
+                Reschedule Now
+              </button>
+            </div>
+            <div class="grid gap-3 md:grid-cols-[200px_1fr]">
+              <label class="grid gap-2 text-sm text-slate-300">
+                Horizon (days)
+                <input
+                  id="horizon"
+                  type="number"
+                  min="1"
+                  max="60"
+                  class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 focus:border-lime-400 focus:outline-none"
+                />
+              </label>
+              <div class="text-sm text-slate-400" id="schedule-status">Idle</div>
+            </div>
+          </div>
+          <div id="scheduled-summary" class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg"></div>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

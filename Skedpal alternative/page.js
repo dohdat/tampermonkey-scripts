@@ -25,6 +25,7 @@ const taskList = document.getElementById("task-list");
 const timeMapList = document.getElementById("timemap-list");
 const timeMapDayRows = document.getElementById("timemap-day-rows");
 const taskTimeMapOptions = document.getElementById("task-timemap-options");
+const timeMapColorInput = document.getElementById("timemap-color");
 const scheduleStatus = document.getElementById("schedule-status");
 const rescheduleButtons = [...document.querySelectorAll("[data-reschedule-btn]")];
 const scheduleSummary = document.getElementById("scheduled-summary");
@@ -131,6 +132,10 @@ function renderTimeMaps(timeMaps) {
     const tm = normalizeTimeMap(tmRaw);
     const card = document.createElement("div");
     card.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow";
+    if (tm.color) {
+      card.style.borderColor = tm.color;
+      card.style.backgroundColor = `${tm.color}1a`;
+    }
     const rulesText =
       tm.rules
         ?.map(
@@ -142,7 +147,7 @@ function renderTimeMaps(timeMaps) {
       <h3 class="text-base font-semibold">${tm.name}</h3>
       <div class="mt-1 flex flex-wrap gap-2 text-xs text-slate-400">${rulesText}</div>
       <div class="mt-3 flex gap-2">
-        <button class="rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400" data-edit="${tm.id}">Edit</button>
+        <button style="background:${tm.color || "transparent"};border-color:${tm.color || "#334155"};color:${tm.color ? "#0f172a" : "#e2e8f0"}" class="rounded-lg border px-3 py-1 text-xs font-semibold" data-edit="${tm.id}">Edit</button>
         <button class="rounded-lg bg-orange-500/90 px-3 py-1 text-xs font-semibold text-slate-900 hover:bg-orange-400" data-delete="${tm.id}">Delete</button>
       </div>
     `;
@@ -179,7 +184,15 @@ function renderTaskTimeMapOptions(timeMaps, selected = []) {
     input.className = "h-4 w-4 rounded border-slate-600 bg-slate-900 text-lime-400";
     const text = document.createElement("span");
     text.textContent = tm.name;
+    if (tm.color) {
+      text.style.color = tm.color;
+    }
+    const swatch = document.createElement("span");
+    swatch.className = "h-3 w-3 rounded-full border border-slate-700";
+    swatch.style.backgroundColor = tm.color || "#cbd5e1";
+    swatch.style.borderColor = tm.color || "#334155";
     label.appendChild(input);
+    label.appendChild(swatch);
     label.appendChild(text);
     taskTimeMapOptions.appendChild(label);
   });
@@ -203,6 +216,11 @@ function renderTasks(tasks, timeMaps) {
     const timeMapNames = task.timeMapIds.map((id) => timeMapById.get(id)?.name || "Unknown");
     const card = document.createElement("div");
     card.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow";
+    const color = timeMapById.get(task.timeMapIds[0])?.color;
+    if (color) {
+      card.style.borderColor = color;
+      card.style.backgroundColor = `${color}1a`;
+    }
     card.innerHTML = `
       <h3 class="text-base font-semibold">${task.title}</h3>
       <div class="mt-1 flex flex-wrap gap-2 text-xs text-slate-400">
@@ -259,6 +277,7 @@ async function handleTimeMapSubmit(event) {
   event.preventDefault();
   const id = document.getElementById("timemap-id").value || uuid();
   const name = document.getElementById("timemap-name").value.trim();
+  const color = timeMapColorInput.value || "#22c55e";
   const rules = collectTimeMapRules(timeMapDayRows);
   if (rules.length === 0) {
     alert("Select at least one day and a valid time window.");
@@ -268,7 +287,7 @@ async function handleTimeMapSubmit(event) {
     alert("Name is required.");
     return;
   }
-  await saveTimeMap({ id, name, rules });
+  await saveTimeMap({ id, name, rules, color });
   resetTimeMapForm();
   await loadTimeMaps();
 }
@@ -323,6 +342,7 @@ function resetTaskForm() {
 function resetTimeMapForm() {
   document.getElementById("timemap-id").value = "";
   document.getElementById("timemap-name").value = "";
+  timeMapColorInput.value = "#22c55e";
   renderDayRows(timeMapDayRows);
 }
 
@@ -357,6 +377,7 @@ function handleTimeMapListClick(event, timeMaps) {
     if (tm) {
       document.getElementById("timemap-id").value = tm.id;
       document.getElementById("timemap-name").value = tm.name;
+      timeMapColorInput.value = tm.color || "#22c55e";
       renderDayRows(timeMapDayRows, tm.rules);
       switchView("timemaps");
     }

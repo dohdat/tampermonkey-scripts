@@ -1,7 +1,8 @@
 const DB_NAME = "personal-skedpal";
 const DB_VERSION = 1;
 const DEFAULT_SETTINGS = {
-  schedulingHorizonDays: 14
+  schedulingHorizonDays: 14,
+  defaultTimeMapId: null
 };
 
 function openDb() {

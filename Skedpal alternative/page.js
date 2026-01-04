@@ -6,7 +6,8 @@ import {
   deleteTask,
   saveTimeMap,
   deleteTimeMap,
-  saveSettings
+  saveSettings,
+  DEFAULT_SETTINGS
 } from "./db.js";
 
 const dayOptions = [
@@ -34,6 +35,8 @@ const scheduleStatus = document.getElementById("schedule-status");
 const rescheduleButtons = [...document.querySelectorAll("[data-reschedule-btn]")];
 const scheduleSummary = document.getElementById("scheduled-summary");
 const horizonInput = document.getElementById("horizon");
+
+let settingsCache = { ...DEFAULT_SETTINGS };
 
 function uuid() {
   return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
@@ -201,6 +204,7 @@ function renderTimeMaps(timeMaps) {
   }
   timeMaps.forEach((tmRaw) => {
     const tm = normalizeTimeMap(tmRaw);
+    const isDefault = settingsCache.defaultTimeMapId === tm.id;
     const card = document.createElement("div");
     card.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow";
     if (tm.color) {
@@ -215,7 +219,10 @@ function renderTimeMaps(timeMaps) {
         )
         .join(" • ") || "";
     card.innerHTML = `
-      <h3 class="text-base font-semibold">${tm.name}</h3>
+      <h3 class="text-base font-semibold flex items-center gap-2">
+        <span>${tm.name}</span>
+        ${isDefault ? '<span class="rounded-full border border-lime-400/60 bg-lime-400/10 px-2 py-1 text-xs font-semibold text-lime-300">Default</span>' : ""}
+      </h3>
       <div class="mt-1 flex flex-wrap gap-2 text-xs text-slate-400">${rulesText}</div>
       <div class="mt-3 flex gap-2">
         <button style="background:${tm.color || "transparent"};border-color:${tm.color || "#334155"};color:${tm.color ? "#0f172a" : "#e2e8f0"}" class="rounded-lg border px-3 py-1 text-xs font-semibold" data-edit="${tm.id}">Edit</button>
@@ -234,7 +241,7 @@ async function loadTimeMaps() {
   renderTaskTimeMapOptions(timeMaps);
 }
 
-function renderTaskTimeMapOptions(timeMaps, selected = []) {
+function renderTaskTimeMapOptions(timeMaps, selected = [], defaultTimeMapId = settingsCache.defaultTimeMapId) {
   taskTimeMapOptions.innerHTML = "";
   if (timeMaps.length === 0) {
     taskTimeMapOptions.innerHTML = `<span class="text-xs text-slate-400">Create TimeMaps first.</span>`;
@@ -251,7 +258,8 @@ function renderTaskTimeMapOptions(timeMaps, selected = []) {
     input.type = "checkbox";
     input.value = tm.id;
     input.id = id;
-    input.checked = selected.includes(tm.id);
+    const hasExplicitSelection = Array.isArray(selected) && selected.length > 0;
+    input.checked = hasExplicitSelection ? selected.includes(tm.id) : tm.id === defaultTimeMapId;
     input.className = "h-4 w-4 rounded border-slate-600 bg-slate-900 text-lime-400";
     const text = document.createElement("span");
     text.textContent = tm.name;
@@ -346,24 +354,41 @@ function collectTimeMapRules(container) {
   return rules.sort((a, b) => a.day - b.day);
 }
 
-async function handleTimeMapSubmit(event) {
-  event.preventDefault();
+function getTimeMapFormData() {
   const id = document.getElementById("timemap-id").value || uuid();
   const name = document.getElementById("timemap-name").value.trim();
   const color = timeMapColorInput.value || "#22c55e";
   const rules = collectTimeMapRules(timeMapDayRows);
   if (rules.length === 0) {
     alert("Select at least one day and a valid time window.");
-    return;
+    return null;
   }
   if (!name) {
     alert("Name is required.");
-    return;
+    return null;
   }
-  await saveTimeMap({ id, name, rules, color });
+  document.getElementById("timemap-id").value = id;
+  return { id, name, rules, color };
+}
+
+async function handleTimeMapSubmit(event) {
+  event.preventDefault();
+  const timeMap = getTimeMapFormData();
+  if (!timeMap) return;
+  await saveTimeMap(timeMap);
   resetTimeMapForm();
   closeTimeMapForm();
   await loadTimeMaps();
+}
+
+async function handleSetDefaultTimeMap(event) {
+  event.preventDefault();
+  const timeMap = getTimeMapFormData();
+  if (!timeMap) return;
+  await saveTimeMap(timeMap);
+  settingsCache = { ...settingsCache, defaultTimeMapId: timeMap.id };
+  await saveSettings(settingsCache);
+  await Promise.all([loadTimeMaps(), loadTasks()]);
 }
 
 async function handleTaskSubmit(event) {
@@ -516,12 +541,14 @@ async function handleReschedule() {
   }
 }
 
-async function initSettings() {
-  const settings = await getSettings();
-  horizonInput.value = settings.schedulingHorizonDays;
+async function initSettings(prefetchedSettings) {
+  const settings = prefetchedSettings || (await getSettings());
+  settingsCache = { ...DEFAULT_SETTINGS, ...settings };
+  horizonInput.value = settingsCache.schedulingHorizonDays;
   horizonInput.addEventListener("change", async () => {
     const days = Number(horizonInput.value) || 14;
-    await saveSettings({ schedulingHorizonDays: days });
+    settingsCache = { ...settingsCache, schedulingHorizonDays: days };
+    await saveSettings(settingsCache);
   });
 }
 
@@ -529,17 +556,22 @@ let tasksTimeMapsCache = [];
 
 async function hydrate() {
   renderDayRows(timeMapDayRows);
-  const [tasks, timeMapsRaw] = await Promise.all([getAllTasks(), getAllTimeMaps()]);
+  const [tasks, timeMapsRaw, settings] = await Promise.all([
+    getAllTasks(),
+    getAllTimeMaps(),
+    getSettings()
+  ]);
+  await initSettings(settings);
   const timeMaps = timeMapsRaw.map(normalizeTimeMap);
   tasksTimeMapsCache = timeMaps;
   renderTimeMaps(timeMaps);
   renderTaskTimeMapOptions(timeMaps);
   renderTasks(tasks, timeMaps);
-  await initSettings();
   await updateScheduleSummary();
 }
 
 document.getElementById("timemap-form").addEventListener("submit", handleTimeMapSubmit);
+document.getElementById("timemap-set-default").addEventListener("click", handleSetDefaultTimeMap);
 document.getElementById("task-form").addEventListener("submit", handleTaskSubmit);
 document.getElementById("task-reset").addEventListener("click", resetTaskForm);
 document.getElementById("timemap-reset").addEventListener("click", resetTimeMapForm);

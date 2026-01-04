@@ -51,10 +51,10 @@
             <div class="text-sm text-slate-300">Add tasks to schedule automatically.</div>
             <button
               id="task-toggle"
-              class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
+              class="rounded-xl bg-lime-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow hover:bg-lime-300"
               type="button"
             >
-              Show Task form
+              Add task
             </button>
           </div>
           <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg space-y-3">
@@ -76,91 +76,6 @@
                 Add section
               </button>
             </div>
-          </div>
-          <div id="task-form-wrap" class="hidden">
-            <form id="task-form" class="mt-2 grid gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg">
-              <input type="hidden" id="task-id" />
-              <label class="grid gap-2 text-sm text-slate-300">
-                Title
-                <input
-                  id="task-title"
-                  required
-                  placeholder="Write feature summary"
-                  class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none"
-                />
-              </label>
-              <div class="grid gap-3 md:grid-cols-2">
-                <label class="grid gap-2 text-sm text-slate-300">
-                  Duration (minutes)
-                  <input
-                  id="task-duration"
-                  type="number"
-                  min="15"
-                  step="15"
-                  value="30"
-                  required
-                  placeholder="30"
-                  class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none"
-                />
-              </label>
-                <label class="grid gap-2 text-sm text-slate-300">
-                  Priority (1 low – 5 high)
-                  <select
-                    id="task-priority"
-                    class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 focus:border-lime-400 focus:outline-none"
-                  >
-                    <option value="5">5</option>
-                    <option value="4">4</option>
-                    <option value="3" selected>3</option>
-                    <option value="2">2</option>
-                    <option value="1">1</option>
-                  </select>
-                </label>
-              </div>
-              <div class="grid gap-3 md:grid-cols-2">
-                <label class="grid gap-2 text-sm text-slate-300">
-                  Deadline
-                  <input
-                    id="task-deadline"
-                    type="date"
-                    class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 focus:border-lime-400 focus:outline-none"
-                  />
-                </label>
-                <label class="grid gap-2 text-sm text-slate-300">
-                  Allowed TimeMaps
-                  <div id="task-timemap-options" class="flex flex-wrap gap-2"></div>
-                </label>
-                <label class="grid gap-2 text-sm text-slate-300">
-                  Section
-                  <select
-                    id="task-section"
-                    class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 focus:border-lime-400 focus:outline-none"
-                  ></select>
-                </label>
-                <label class="grid gap-2 text-sm text-slate-300">
-                  Subsection
-                  <select
-                    id="task-subsection"
-                    class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 focus:border-lime-400 focus:outline-none"
-                  ></select>
-                </label>
-              </div>
-              <div class="flex justify-end gap-2">
-                <button
-                  class="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
-                  type="button"
-                  id="task-reset"
-                >
-                  Reset
-                </button>
-                <button
-                  class="rounded-xl bg-lime-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow hover:bg-lime-300"
-                  type="submit"
-                >
-                  Save Task
-                </button>
-              </div>
-            </form>
           </div>
           <div id="task-list" class="grid gap-3"></div>
         </section>
@@ -266,7 +181,80 @@
           <div id="scheduled-summary" class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg"></div>
         </section>
       </main>
+      <div id="task-form-wrap" class="task-modal hidden">
+        <div class="task-modal__panel">
+          <div class="task-modal__header">
+            <div>
+              <p class="task-modal__eyebrow">Task intake</p>
+              <h3 class="task-modal__title">Plan a new task</h3>
+              <p class="task-modal__subtitle">Set deadline, duration, and allowed TimeMaps before scheduling.</p>
+            </div>
+            <button type="button" class="task-modal__close" data-task-modal-close aria-label="Close task form">
+              ×
+            </button>
+          </div>
+          <form id="task-form" class="task-modal__form">
+            <input type="hidden" id="task-id" />
+            <div class="task-form-grid">
+              <label class="field">
+                <span class="field-label">Title</span>
+                <input
+                  id="task-title"
+                  required
+                  placeholder="Write a short task title"
+                  class="field-input"
+                />
+              </label>
+              <label class="field">
+                <span class="field-label">Duration (minutes)</span>
+                <input
+                  id="task-duration"
+                  type="number"
+                  min="15"
+                  step="15"
+                  value="30"
+                  required
+                  placeholder="30"
+                  class="field-input"
+                />
+              </label>
+              <label class="field">
+                <span class="field-label">Priority (1 low – 5 high)</span>
+                <select id="task-priority" class="field-input">
+                  <option value="5">5</option>
+                  <option value="4">4</option>
+                  <option value="3" selected>3</option>
+                  <option value="2">2</option>
+                  <option value="1">1</option>
+                </select>
+              </label>
+              <label class="field">
+                <span class="field-label">Deadline</span>
+                <input id="task-deadline" type="date" class="field-input" />
+              </label>
+              <label class="field">
+                <span class="field-label">Section</span>
+                <select id="task-section" class="field-input"></select>
+              </label>
+              <label class="field">
+                <span class="field-label">Subsection</span>
+                <select id="task-subsection" class="field-input"></select>
+              </label>
+            </div>
+            <div class="field">
+              <span class="field-label">Allowed TimeMaps</span>
+              <div id="task-timemap-options" class="timemap-pills"></div>
+            </div>
+            <div class="task-modal__actions">
+              <button type="button" id="task-reset" class="btn ghost">Clear</button>
+              <button type="button" class="btn muted" data-task-modal-close>Cancel</button>
+              <button type="submit" class="btn primary">Save Task</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
     <script type="module" src="page.js"></script>
   </body>
 </html>
+

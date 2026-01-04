@@ -29,6 +29,7 @@ const timeMapFormWrap = document.getElementById("timemap-form-wrap");
 const timeMapToggle = document.getElementById("timemap-toggle");
 const taskFormWrap = document.getElementById("task-form-wrap");
 const taskToggle = document.getElementById("task-toggle");
+const taskModalCloseButtons = [...document.querySelectorAll("[data-task-modal-close]")];
 const taskTimeMapOptions = document.getElementById("task-timemap-options");
 const taskDeadlineInput = document.getElementById("task-deadline");
 const taskSectionSelect = document.getElementById("task-section");
@@ -774,11 +775,11 @@ async function handleTaskSubmit(event) {
     scheduledStart: null,
     scheduledEnd: null
   });
-  resetTaskForm();
+  resetTaskForm(true);
   await loadTasks();
 }
 
-function resetTaskForm() {
+function resetTaskForm(shouldClose = false) {
   document.getElementById("task-id").value = "";
   document.getElementById("task-title").value = "";
   document.getElementById("task-duration").value = "30";
@@ -786,8 +787,9 @@ function resetTaskForm() {
   taskDeadlineInput.value = "";
   renderTaskSectionOptions();
   renderTaskTimeMapOptions(tasksTimeMapsCache || [], []);
-  loadTimeMaps();
-  closeTaskForm();
+  if (shouldClose) {
+    closeTaskForm();
+  }
 }
 
 function startTaskInSection(sectionName, subsectionName = "") {
@@ -980,12 +982,17 @@ function closeTimeMapForm() {
 
 function openTaskForm() {
   taskFormWrap.classList.remove("hidden");
-  taskToggle.textContent = "Hide Task form";
+  taskToggle.textContent = "Add task";
+  document.body.classList.add("modal-open");
+  setTimeout(() => {
+    document.getElementById("task-title")?.focus();
+  }, 50);
 }
 
 function closeTaskForm() {
   taskFormWrap.classList.add("hidden");
-  taskToggle.textContent = "Show Task form";
+  taskToggle.textContent = "Add task";
+  document.body.classList.remove("modal-open");
 }
 
 function enableDeadlinePicker() {
@@ -1019,11 +1026,7 @@ timeMapToggle.addEventListener("click", () => {
 });
 
 taskToggle.addEventListener("click", () => {
-  if (taskFormWrap.classList.contains("hidden")) {
-    openTaskForm();
-  } else {
-    closeTaskForm();
-  }
+  startTaskInSection();
 });
 
 timeMapList.addEventListener("click", async (event) => {
@@ -1042,6 +1045,17 @@ taskList.addEventListener("dragover", handleTaskDragOver);
 taskList.addEventListener("dragenter", handleTaskDragOver);
 taskList.addEventListener("dragleave", handleTaskDragLeave);
 taskList.addEventListener("drop", handleTaskDrop);
+taskFormWrap.addEventListener("click", (event) => {
+  if (event.target === taskFormWrap) {
+    closeTaskForm();
+  }
+});
+taskModalCloseButtons.forEach((btn) => btn.addEventListener("click", closeTaskForm));
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !taskFormWrap.classList.contains("hidden")) {
+    closeTaskForm();
+  }
+});
 
 hydrate();
 enableDeadlinePicker();

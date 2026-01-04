@@ -31,6 +31,11 @@ const taskFormWrap = document.getElementById("task-form-wrap");
 const taskToggle = document.getElementById("task-toggle");
 const taskTimeMapOptions = document.getElementById("task-timemap-options");
 const taskDeadlineInput = document.getElementById("task-deadline");
+const taskSectionSelect = document.getElementById("task-section");
+const taskSubsectionSelect = document.getElementById("task-subsection");
+const sectionList = document.getElementById("section-list");
+const sectionInput = document.getElementById("section-new-name");
+const sectionAddBtn = document.getElementById("section-add");
 const timeMapColorInput = document.getElementById("timemap-color");
 const scheduleStatus = document.getElementById("schedule-status");
 const rescheduleButtons = [...document.querySelectorAll("[data-reschedule-btn]")];
@@ -38,6 +43,7 @@ const scheduleSummary = document.getElementById("scheduled-summary");
 const horizonInput = document.getElementById("horizon");
 
 let settingsCache = { ...DEFAULT_SETTINGS };
+let tasksTimeMapsCache = [];
 
 function uuid() {
   return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
@@ -278,15 +284,96 @@ function renderTaskTimeMapOptions(timeMaps, selected = [], defaultTimeMapId = se
   });
 }
 
+function renderSections() {
+  sectionList.innerHTML = "";
+  (settingsCache.sections || []).forEach((name) => {
+    const chip = document.createElement("div");
+    chip.className =
+      "flex items-center gap-1 rounded-full border border-slate-700 bg-slate-800/70 px-3 py-1 text-xs font-semibold text-slate-200";
+    const label = document.createElement("span");
+    label.textContent = name;
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.dataset.removeSection = name;
+    removeBtn.className =
+      "h-5 w-5 rounded-full border border-slate-700 text-[10px] font-bold text-slate-300 hover:border-orange-400 hover:text-orange-300";
+    removeBtn.textContent = "×";
+    chip.appendChild(label);
+    chip.appendChild(removeBtn);
+    sectionList.appendChild(chip);
+  });
+}
+
+function renderTaskSectionOptions(selected) {
+  const sections = [...(settingsCache.sections || [])];
+  if (selected && !sections.includes(selected)) {
+    sections.push(selected);
+  }
+  taskSectionSelect.innerHTML = "";
+  const noneOpt = document.createElement("option");
+  noneOpt.value = "";
+  noneOpt.textContent = "No section";
+  if (!selected) noneOpt.selected = true;
+  taskSectionSelect.appendChild(noneOpt);
+  sections.forEach((name) => {
+    const opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = name;
+    if (selected) opt.selected = selected === name;
+    taskSectionSelect.appendChild(opt);
+  });
+  taskSectionSelect.disabled = false;
+  renderTaskSubsectionOptions();
+}
+
+function renderTaskSubsectionOptions(selected) {
+  const section = taskSectionSelect.value;
+  const subsectionMap = settingsCache.subsections || {};
+  const subsections = section ? [...(subsectionMap[section] || [])] : [];
+  if (selected && section && !subsections.includes(selected)) {
+    subsections.push(selected);
+  }
+  taskSubsectionSelect.innerHTML = "";
+  const noneOpt = document.createElement("option");
+  noneOpt.value = "";
+  noneOpt.textContent = "None";
+  taskSubsectionSelect.appendChild(noneOpt);
+  subsections.forEach((name) => {
+    const opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = name;
+    if (selected) opt.selected = selected === name;
+    taskSubsectionSelect.appendChild(opt);
+  });
+  if (!taskSubsectionSelect.value) {
+    taskSubsectionSelect.value = "";
+  }
+}
+
+function attachTaskDragEvents(element) {
+  element.addEventListener("dragstart", handleTaskDragStart);
+  element.addEventListener("dragend", handleTaskDragEnd);
+}
+
+function attachDropZoneEvents(element) {
+  element.addEventListener("dragover", handleTaskDragOver);
+  element.addEventListener("dragenter", handleTaskDragOver);
+  element.addEventListener("dragleave", handleTaskDragLeave);
+  element.addEventListener("drop", handleTaskDrop);
+}
+
 function renderTasks(tasks, timeMaps) {
   taskList.innerHTML = "";
-  if (tasks.length === 0) {
-    taskList.innerHTML =
-      '<div class="flex items-center justify-center rounded-xl border border-dashed border-slate-700 bg-slate-900/60 px-3 py-4 text-sm text-slate-400">No tasks yet. Add a task to schedule.</div>';
-    return;
-  }
   const timeMapById = new Map(timeMaps.map((tm) => [tm.id, normalizeTimeMap(tm)]));
-  tasks.forEach((task) => {
+  const sections = [...(settingsCache.sections || [])];
+  const taskSections = Array.from(new Set(tasks.map((t) => t.section).filter(Boolean)));
+  taskSections.forEach((s) => {
+    if (!sections.includes(s)) sections.push(s);
+  });
+  const hasUnsectioned = tasks.some((t) => !t.section);
+  const allSections = [...sections, ...(hasUnsectioned || sections.length === 0 ? ["No section"] : [])];
+
+  const renderTaskCard = (task) => {
     const statusClass =
       task.scheduleStatus === "scheduled"
         ? "text-lime-300 font-semibold"
@@ -294,20 +381,25 @@ function renderTasks(tasks, timeMaps) {
           ? "text-slate-400 font-semibold"
           : "text-amber-300 font-semibold";
     const timeMapNames = task.timeMapIds.map((id) => timeMapById.get(id)?.name || "Unknown");
-    const card = document.createElement("div");
-    card.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow";
+    const taskCard = document.createElement("div");
+    taskCard.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow";
+    taskCard.draggable = true;
+    taskCard.dataset.taskId = task.id;
+    attachTaskDragEvents(taskCard);
     const color = timeMapById.get(task.timeMapIds[0])?.color;
     if (color) {
-      card.style.borderColor = color;
-      card.style.backgroundColor = `${color}1a`;
+      taskCard.style.borderColor = color;
+      taskCard.style.backgroundColor = `${color}1a`;
     }
-    card.innerHTML = `
+    taskCard.innerHTML = `
       <h3 class="text-base font-semibold">${task.title}</h3>
       <div class="mt-1 flex flex-wrap gap-2 text-xs text-slate-400">
         <span>Deadline: ${formatDateTime(task.deadline)}</span>
         <span>Duration: ${task.durationMin}m</span>
         <span>Priority: ${task.priority}</span>
         <span>TimeMaps: ${timeMapNames.join(", ")}</span>
+        ${task.section ? `<span>Section: ${task.section}</span>` : ""}
+        ${task.subsection ? `<span>Subsection: ${task.subsection}</span>` : ""}
       </div>
       <div class="mt-1 flex flex-wrap gap-3 text-xs text-slate-400">
         <span class="${statusClass}">${task.scheduleStatus || "unscheduled"}</span>
@@ -318,15 +410,268 @@ function renderTasks(tasks, timeMaps) {
         <button class="rounded-lg bg-orange-500/90 px-3 py-1 text-xs font-semibold text-slate-900 hover:bg-orange-400" data-delete="${task.id}">Delete</button>
       </div>
     `;
-    taskList.appendChild(card);
+    return taskCard;
+  };
+
+  const renderSectionCard = (sectionName) => {
+    const isNoSection = sectionName === "No section";
+    const sectionTasks = tasks.filter((t) => (isNoSection ? !t.section : t.section === sectionName));
+    const card = document.createElement("div");
+    card.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow space-y-3";
+    card.dataset.sectionCard = sectionName;
+    card.dataset.dropSection = isNoSection ? "" : sectionName;
+    card.dataset.dropSubsection = "";
+    attachDropZoneEvents(card);
+    const header = document.createElement("div");
+    header.className = "flex items-center justify-between gap-2";
+    const title = document.createElement("div");
+    title.className = "flex items-center gap-2 text-base font-semibold";
+    title.textContent = sectionName;
+    const addBtn = document.createElement("button");
+    addBtn.type = "button";
+    addBtn.dataset.addSection = isNoSection ? "" : sectionName;
+    addBtn.className =
+      "rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
+    addBtn.textContent = "Add task";
+    header.appendChild(title);
+    header.appendChild(addBtn);
+    card.appendChild(header);
+
+    if (!isNoSection) {
+      const subsectionInputWrap = document.createElement("div");
+      subsectionInputWrap.className = "flex flex-col gap-2 md:flex-row md:items-center";
+      subsectionInputWrap.innerHTML = `
+        <input data-subsection-input="${sectionName}" placeholder="Add subsection" class="w-full rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none" />
+        <button type="button" data-add-subsection="${sectionName}" class="rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-lime-400">Add subsection</button>
+      `;
+      card.appendChild(subsectionInputWrap);
+    }
+
+    const subsectionMap = settingsCache.subsections || {};
+    const subsections = !isNoSection ? [...(subsectionMap[sectionName] || [])] : [];
+    const taskSubsections = Array.from(
+      new Set(sectionTasks.map((t) => t.subsection).filter(Boolean))
+    );
+    taskSubsections.forEach((sub) => {
+      if (!subsections.includes(sub)) subsections.push(sub);
+    });
+
+    const ungroupedTasks = sectionTasks.filter((t) => !t.subsection);
+    const ungroupedZone = document.createElement("div");
+    ungroupedZone.dataset.dropSection = isNoSection ? "" : sectionName;
+    ungroupedZone.dataset.dropSubsection = "";
+    ungroupedZone.className =
+      "space-y-2 rounded-xl border border-dashed border-slate-700 bg-slate-900/50 px-3 py-3";
+    attachDropZoneEvents(ungroupedZone);
+    if (ungroupedTasks.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "text-xs text-slate-500";
+      empty.textContent = "Drag tasks here or add new.";
+      ungroupedZone.appendChild(empty);
+    } else {
+      ungroupedTasks.forEach((task) => ungroupedZone.appendChild(renderTaskCard(task)));
+    }
+    card.appendChild(ungroupedZone);
+
+    subsections.forEach((sub) => {
+      const subWrap = document.createElement("div");
+      subWrap.className = "space-y-2 rounded-xl border border-slate-800 bg-slate-900/60 p-3";
+      const subHeader = document.createElement("div");
+      subHeader.className = "flex items-center justify-between text-sm font-semibold text-slate-200";
+      subHeader.textContent = sub;
+      const addSubTaskBtn = document.createElement("button");
+      addSubTaskBtn.type = "button";
+      addSubTaskBtn.dataset.addSection = isNoSection ? "" : sectionName;
+      addSubTaskBtn.dataset.addSubsectionTarget = sub;
+      addSubTaskBtn.className =
+        "rounded-lg border border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-200 hover:border-lime-400";
+      addSubTaskBtn.textContent = "Add task";
+      subHeader.appendChild(addSubTaskBtn);
+      subWrap.appendChild(subHeader);
+
+      const subZone = document.createElement("div");
+      subZone.dataset.dropSection = isNoSection ? "" : sectionName;
+      subZone.dataset.dropSubsection = sub;
+      subZone.className =
+        "space-y-2 rounded-lg border border-dashed border-slate-700 bg-slate-900/40 px-2 py-2";
+      attachDropZoneEvents(subZone);
+      const subTasks = sectionTasks.filter((t) => t.subsection === sub);
+      if (subTasks.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "text-xs text-slate-500";
+        empty.textContent = "Drag tasks here or add new.";
+        subZone.appendChild(empty);
+      } else {
+        subTasks.forEach((task) => subZone.appendChild(renderTaskCard(task)));
+      }
+      subWrap.appendChild(subZone);
+      card.appendChild(subWrap);
+    });
+
+    return card;
+  };
+
+  if (allSections.length === 0) {
+    taskList.innerHTML =
+      '<div class="flex items-center justify-center rounded-xl border border-dashed border-slate-700 bg-slate-900/60 px-3 py-4 text-sm text-slate-400">No sections yet. Add a section to begin.</div>';
+    return;
+  }
+
+  allSections.forEach((sectionName) => {
+    taskList.appendChild(renderSectionCard(sectionName));
   });
 }
 
 async function loadTasks() {
-  const [tasks, timeMapsRaw] = await Promise.all([getAllTasks(), getAllTimeMaps()]);
+  const [tasksRaw, timeMapsRaw] = await Promise.all([getAllTasks(), getAllTimeMaps()]);
+  const tasks = await ensureTaskIds(tasksRaw);
   const timeMaps = timeMapsRaw.map(normalizeTimeMap);
   tasksTimeMapsCache = timeMaps;
   renderTasks(tasks, timeMaps);
+}
+
+async function handleAddSection() {
+  const name = sectionInput.value.trim();
+  if (!name) return;
+  const sections = settingsCache.sections || [];
+  if (sections.includes(name)) {
+    sectionInput.value = "";
+    return;
+  }
+  const updated = [...sections, name];
+  const subsections = { ...(settingsCache.subsections || {}), [name]: [] };
+  settingsCache = { ...settingsCache, sections: updated, subsections };
+  await saveSettings(settingsCache);
+  renderSections();
+  renderTaskSectionOptions(name);
+  sectionInput.value = "";
+  await loadTasks();
+}
+
+async function handleRemoveSection(name) {
+  const sections = settingsCache.sections || [];
+  const nextSections = sections.filter((s) => s !== name);
+  if (nextSections.length === sections.length) return;
+  const subsections = { ...(settingsCache.subsections || {}) };
+  delete subsections[name];
+  settingsCache = { ...settingsCache, sections: nextSections, subsections };
+  await saveSettings(settingsCache);
+  const tasks = await getAllTasks();
+  const updates = tasks
+    .filter((t) => t.section === name)
+    .map((t) => saveTask({ ...t, section: "", subsection: "" }));
+  if (updates.length) {
+    await Promise.all(updates);
+  }
+  renderSections();
+  renderTaskSectionOptions();
+  await loadTasks();
+}
+
+async function handleAddSubsection(sectionName, value) {
+  const name = value.trim();
+  if (!sectionName || !name) return;
+  const subsections = { ...(settingsCache.subsections || {}) };
+  const list = subsections[sectionName] || [];
+  if (list.includes(name)) return;
+  subsections[sectionName] = [...list, name];
+  settingsCache = { ...settingsCache, subsections };
+  await saveSettings(settingsCache);
+  renderTaskSectionOptions(sectionName);
+  await loadTasks();
+}
+
+let draggedTaskId = null;
+let activeDropZone = null;
+
+function clearDropHighlight() {
+  if (activeDropZone) {
+    activeDropZone.classList.remove("ring-1", "ring-lime-400/50");
+    activeDropZone = null;
+  }
+}
+
+function getDropZone(target, fallback) {
+  if (fallback?.dataset?.dropSection !== undefined) return fallback;
+  return target.closest("[data-drop-section]");
+}
+
+function handleTaskDragStart(event) {
+  const card = event.target.closest("[data-task-id]");
+  if (!card) return;
+  draggedTaskId = card.dataset.taskId;
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", draggedTaskId);
+  }
+}
+
+function handleTaskDragEnd() {
+  draggedTaskId = null;
+  clearDropHighlight();
+}
+
+function handleTaskDragOver(event) {
+  const zone = getDropZone(event.target, event.currentTarget);
+  if (!zone) return;
+  event.preventDefault();
+  if (activeDropZone !== zone) {
+    clearDropHighlight();
+    activeDropZone = zone;
+    activeDropZone.classList.add("ring-1", "ring-lime-400/50");
+  }
+  if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+}
+
+function handleTaskDragLeave(event) {
+  const zone = getDropZone(event.target, event.currentTarget);
+  if (!zone) return;
+  if (zone === activeDropZone && !zone.contains(event.relatedTarget)) {
+    clearDropHighlight();
+  }
+}
+
+async function handleTaskDrop(event) {
+  const zone = getDropZone(event.target, event.currentTarget);
+  if (!zone) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const dataId = event.dataTransfer?.getData("text/plain");
+  const taskId = draggedTaskId || dataId;
+  if (!taskId) {
+    clearDropHighlight();
+    return;
+  }
+  const section = (zone.dataset.dropSection || "").trim();
+  const subsection = (zone.dataset.dropSubsection || "").trim();
+  const tasks = await ensureTaskIds(await getAllTasks());
+  const task = tasks.find((t) => t.id === taskId);
+  if (!task) {
+    clearDropHighlight();
+    return;
+  }
+  if (task.section === section && (task.subsection || "") === subsection) {
+    clearDropHighlight();
+    return;
+  }
+  await saveTask({ ...task, section, subsection });
+  clearDropHighlight();
+  await loadTasks();
+}
+
+async function ensureTaskIds(tasks) {
+  const updates = [];
+  const withIds = tasks.map((task) => {
+    if (task.id) return task;
+    const id = uuid();
+    const updated = { ...task, id };
+    updates.push(saveTask(updated));
+    return updated;
+  });
+  if (updates.length) {
+    await Promise.all(updates);
+  }
+  return withIds;
 }
 
 function collectSelectedValues(container) {
@@ -400,6 +745,8 @@ async function handleTaskSubmit(event) {
   const priority = Number(document.getElementById("task-priority").value);
   const deadline = taskDeadlineInput.value;
   const timeMapIds = collectSelectedValues(taskTimeMapOptions);
+  const section = taskSectionSelect.value || (settingsCache.sections || [])[0] || "";
+  const subsection = taskSubsectionSelect.value || "";
 
   if (!title || !durationMin) {
     alert("Title and duration are required.");
@@ -421,6 +768,8 @@ async function handleTaskSubmit(event) {
     priority,
     deadline: deadline ? new Date(deadline).toISOString() : null,
     timeMapIds,
+    section,
+    subsection,
     scheduleStatus: "unscheduled",
     scheduledStart: null,
     scheduledEnd: null
@@ -435,9 +784,23 @@ function resetTaskForm() {
   document.getElementById("task-duration").value = "30";
   document.getElementById("task-priority").value = "3";
   taskDeadlineInput.value = "";
-  renderTaskTimeMapOptions([], []);
+  renderTaskSectionOptions();
+  renderTaskTimeMapOptions(tasksTimeMapsCache || [], []);
   loadTimeMaps();
   closeTaskForm();
+}
+
+function startTaskInSection(sectionName, subsectionName = "") {
+  document.getElementById("task-id").value = "";
+  document.getElementById("task-title").value = "";
+  document.getElementById("task-duration").value = "30";
+  document.getElementById("task-priority").value = "3";
+  taskDeadlineInput.value = "";
+  renderTaskSectionOptions(sectionName);
+  renderTaskSubsectionOptions(subsectionName);
+  renderTaskTimeMapOptions(tasksTimeMapsCache || [], []);
+  openTaskForm();
+  switchView("tasks");
 }
 
 function resetTimeMapForm() {
@@ -447,12 +810,25 @@ function resetTimeMapForm() {
   renderDayRows(timeMapDayRows);
 }
 
-function handleTaskListClick(event, tasks) {
+async function handleTaskListClick(event, tasks) {
   const btn = event.target.closest("button");
   if (!btn) return;
+  const addSection = btn.dataset.addSection;
+  const addSubsectionFor = btn.dataset.addSubsection;
+  const addSubsectionTaskTarget = btn.dataset.addSubsectionTarget;
   const editId = btn.dataset.edit;
   const deleteId = btn.dataset.delete;
-  if (editId) {
+  if (addSubsectionFor !== undefined) {
+    const card = btn.closest("[data-section-card]");
+    const input = card?.querySelector(`[data-subsection-input="${addSubsectionFor}"]`);
+    const value = input?.value || "";
+    if (value.trim()) {
+      await handleAddSubsection(addSubsectionFor, value);
+      if (input) input.value = "";
+    }
+  } else if (addSection !== undefined) {
+    startTaskInSection(addSection, addSubsectionTaskTarget || "");
+  } else if (editId) {
     const task = tasks.find((t) => t.id === editId);
     if (task) {
       document.getElementById("task-id").value = task.id;
@@ -460,6 +836,8 @@ function handleTaskListClick(event, tasks) {
       document.getElementById("task-duration").value = task.durationMin;
       document.getElementById("task-priority").value = String(task.priority);
       taskDeadlineInput.value = task.deadline ? task.deadline.slice(0, 10) : "";
+      renderTaskSectionOptions(task.section);
+      renderTaskSubsectionOptions(task.subsection);
       renderTaskTimeMapOptions(tasksTimeMapsCache, task.timeMapIds);
       openTaskForm();
       switchView("tasks");
@@ -553,19 +931,20 @@ async function initSettings(prefetchedSettings) {
   });
 }
 
-let tasksTimeMapsCache = [];
-
 async function hydrate() {
   renderDayRows(timeMapDayRows);
-  const [tasks, timeMapsRaw, settings] = await Promise.all([
+  const [tasksRaw, timeMapsRaw, settings] = await Promise.all([
     getAllTasks(),
     getAllTimeMaps(),
     getSettings()
   ]);
+  const tasks = await ensureTaskIds(tasksRaw);
   await initSettings(settings);
+  renderSections();
   const timeMaps = timeMapsRaw.map(normalizeTimeMap);
   tasksTimeMapsCache = timeMaps;
   renderTimeMaps(timeMaps);
+  renderTaskSectionOptions();
   renderTaskTimeMapOptions(timeMaps);
   renderTasks(tasks, timeMaps);
   await updateScheduleSummary();
@@ -577,6 +956,13 @@ document.getElementById("task-form").addEventListener("submit", handleTaskSubmit
 document.getElementById("task-reset").addEventListener("click", resetTaskForm);
 document.getElementById("timemap-reset").addEventListener("click", resetTimeMapForm);
 rescheduleButtons.forEach((btn) => btn.addEventListener("click", handleReschedule));
+sectionAddBtn.addEventListener("click", handleAddSection);
+sectionList.addEventListener("click", (event) => {
+  const btn = event.target.closest("button[data-remove-section]");
+  if (!btn) return;
+  handleRemoveSection(btn.dataset.removeSection);
+});
+taskSectionSelect.addEventListener("change", () => renderTaskSubsectionOptions());
 
 navButtons.forEach((btn) => {
   btn.addEventListener("click", () => switchView(btn.dataset.view));
@@ -648,8 +1034,14 @@ timeMapList.addEventListener("click", async (event) => {
 taskList.addEventListener("click", async (event) => {
   const [tasks, timeMaps] = await Promise.all([getAllTasks(), getAllTimeMaps()]);
   tasksTimeMapsCache = timeMaps.map(normalizeTimeMap);
-  handleTaskListClick(event, tasks);
+  await handleTaskListClick(event, tasks);
 });
+taskList.addEventListener("dragstart", handleTaskDragStart);
+taskList.addEventListener("dragend", handleTaskDragEnd);
+taskList.addEventListener("dragover", handleTaskDragOver);
+taskList.addEventListener("dragenter", handleTaskDragOver);
+taskList.addEventListener("dragleave", handleTaskDragLeave);
+taskList.addEventListener("drop", handleTaskDrop);
 
 hydrate();
 enableDeadlinePicker();

@@ -57,6 +57,26 @@
               Show Task form
             </button>
           </div>
+          <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg space-y-3">
+            <div class="flex flex-wrap items-center gap-3">
+              <h3 class="text-base font-semibold">Sections</h3>
+              <div id="section-list" class="flex flex-wrap gap-2 text-xs"></div>
+            </div>
+            <div class="flex flex-col gap-2 md:flex-row md:items-center">
+              <input
+                id="section-new-name"
+                placeholder="Add new section"
+                class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none"
+              />
+              <button
+                id="section-add"
+                type="button"
+                class="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
+              >
+                Add section
+              </button>
+            </div>
+          </div>
           <div id="task-form-wrap" class="hidden">
             <form id="task-form" class="mt-2 grid gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg">
               <input type="hidden" id="task-id" />
@@ -109,6 +129,20 @@
                 <label class="grid gap-2 text-sm text-slate-300">
                   Allowed TimeMaps
                   <div id="task-timemap-options" class="flex flex-wrap gap-2"></div>
+                </label>
+                <label class="grid gap-2 text-sm text-slate-300">
+                  Section
+                  <select
+                    id="task-section"
+                    class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 focus:border-lime-400 focus:outline-none"
+                  ></select>
+                </label>
+                <label class="grid gap-2 text-sm text-slate-300">
+                  Subsection
+                  <select
+                    id="task-subsection"
+                    class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 focus:border-lime-400 focus:outline-none"
+                  ></select>
                 </label>
               </div>
               <div class="flex justify-end gap-2">

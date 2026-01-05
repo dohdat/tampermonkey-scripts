@@ -28,6 +28,8 @@ const zoomInIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" he
 const zoomOutIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 10h4m2 1a6 6 0 1 1-12 0 6 6 0 0 1 12 0Zm-2.5 3.5L17 17"></path></svg>`;
 const checkboxIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7" stroke="currentColor" fill="none"></circle></svg>`;
 const checkboxCheckedIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="7" stroke="currentColor" fill="none"></circle><path d="m6.5 10 2.2 2.2 4.8-4.9" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
+const caretDownIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m5 7 5 5 5-5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
+const caretRightIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m8 5 5 5-5 5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
 
 const views = [...document.querySelectorAll(".view")];
 const navButtons = [...document.querySelectorAll(".nav-btn")];
@@ -101,6 +103,8 @@ let settingsCache = { ...DEFAULT_SETTINGS };
 let tasksTimeMapsCache = [];
 let tasksCache = [];
 let zoomFilter = null;
+const collapsedSections = new Set();
+const collapsedSubsections = new Set();
 
 function updateUrlWithZoom(filter) {
   const url = new URL(window.location.href);
@@ -1076,6 +1080,7 @@ function renderTasks(tasks, timeMaps) {
     const card = document.createElement("div");
     card.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow space-y-3";
     card.dataset.sectionCard = section.id;
+    const isCollapsed = collapsedSections.has(section.id);
     const header = document.createElement("div");
     header.className = "flex flex-wrap items-center justify-between gap-2";
     const title = document.createElement("div");
@@ -1087,6 +1092,12 @@ function renderTasks(tasks, timeMaps) {
     if (!isNoSection) {
       const titleActions = document.createElement("div");
       titleActions.className = "title-actions";
+      const collapseBtn = document.createElement("button");
+      collapseBtn.type = "button";
+      collapseBtn.dataset.toggleSectionCollapse = section.id;
+      collapseBtn.className = "title-icon-btn";
+      collapseBtn.title = "Expand/collapse section";
+      collapseBtn.innerHTML = isCollapsed ? caretRightIconSvg : caretDownIconSvg;
       const isDefaultSection =
         section.id === "section-work-default" || section.id === "section-personal-default";
       const editSectionBtn = document.createElement("button");
@@ -1130,6 +1141,7 @@ function renderTasks(tasks, timeMaps) {
       addTaskBtn.className =
         "rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
       addTaskBtn.textContent = "Add task";
+      titleActions.appendChild(collapseBtn);
       titleActions.appendChild(editSectionBtn);
       titleActions.appendChild(zoomSectionBtn);
       titleActions.appendChild(favoriteSectionBtn);
@@ -1141,6 +1153,10 @@ function renderTasks(tasks, timeMaps) {
     header.appendChild(title);
     card.appendChild(header);
 
+    const sectionBody = document.createElement("div");
+    sectionBody.dataset.sectionBody = section.id;
+    sectionBody.style.display = isCollapsed ? "none" : "";
+
     if (!isNoSection) {
     const subsectionInputWrap = document.createElement("div");
     subsectionInputWrap.className = "flex flex-col gap-2 md:flex-row md:items-center";
@@ -1150,7 +1166,7 @@ function renderTasks(tasks, timeMaps) {
         <input data-subsection-input="${section.id}" placeholder="Add subsection" class="w-full rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none" />
         <button type="button" data-add-subsection="${section.id}" class="rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-lime-400">Add subsection</button>
       `;
-      card.appendChild(subsectionInputWrap);
+      sectionBody.appendChild(subsectionInputWrap);
     }
 
     const subsectionMap = settingsCache.subsections || {};
@@ -1184,7 +1200,7 @@ function renderTasks(tasks, timeMaps) {
     } else {
       ungroupedTasks.forEach((task) => ungroupedZone.appendChild(renderTaskCard(task)));
     }
-    card.appendChild(ungroupedZone);
+    sectionBody.appendChild(ungroupedZone);
 
     const buildChildren = (parentId = "") =>
       subsections.filter((s) => (s.parentId || "") === (parentId || ""));
@@ -1203,6 +1219,14 @@ function renderTasks(tasks, timeMaps) {
       subTitleText.textContent = sub.name;
       const subTitleActions = document.createElement("div");
       subTitleActions.className = "title-actions";
+      const collapseSubBtn = document.createElement("button");
+      collapseSubBtn.type = "button";
+      collapseSubBtn.dataset.toggleSubsectionCollapse = sub.id;
+      collapseSubBtn.dataset.parentSection = section.id;
+      collapseSubBtn.className = "title-icon-btn";
+      const subCollapsed = collapsedSubsections.has(sub.id);
+      collapseSubBtn.title = "Expand/collapse subsection";
+      collapseSubBtn.innerHTML = subCollapsed ? caretRightIconSvg : caretDownIconSvg;
       const editSubBtn = document.createElement("button");
       editSubBtn.type = "button";
       editSubBtn.dataset.editSubsection = sub.id;
@@ -1245,6 +1269,7 @@ function renderTasks(tasks, timeMaps) {
       addChildSubBtn.className =
         "rounded-lg border border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-200 hover:border-lime-400";
       addChildSubBtn.textContent = "Add subsection";
+      subTitleActions.appendChild(collapseSubBtn);
       subTitleActions.appendChild(editSubBtn);
       subTitleActions.appendChild(zoomSubBtn);
       subTitleActions.appendChild(favoriteSubBtn);
@@ -1256,6 +1281,10 @@ function renderTasks(tasks, timeMaps) {
       subHeader.appendChild(subTitle);
       subWrap.appendChild(subHeader);
 
+      const subBody = document.createElement("div");
+      subBody.dataset.subsectionBody = sub.id;
+      subBody.style.display = subCollapsed ? "none" : "";
+
       const childSubsectionInputWrap = document.createElement("div");
       childSubsectionInputWrap.className =
         "hidden flex flex-col gap-2 md:flex-row md:items-center";
@@ -1266,7 +1295,7 @@ function renderTasks(tasks, timeMaps) {
           isNoSection ? "" : section.id
         }" class="rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-lime-400">Add</button>
       `;
-      subWrap.appendChild(childSubsectionInputWrap);
+      subBody.appendChild(childSubsectionInputWrap);
 
       const subZone = document.createElement("div");
       subZone.dataset.dropSection = isNoSection ? "" : section.id;
@@ -1283,7 +1312,7 @@ function renderTasks(tasks, timeMaps) {
       } else {
         subTasks.forEach((task) => subZone.appendChild(renderTaskCard(task)));
       }
-      subWrap.appendChild(subZone);
+      subBody.appendChild(subZone);
 
       const children = buildChildren(sub.id);
       if (children.length) {
@@ -1291,15 +1320,17 @@ function renderTasks(tasks, timeMaps) {
         childWrap.className = "space-y-2 border-l border-slate-800/60 pl-4 md:pl-6 border-lime-500/10";
         childWrap.style.marginLeft = "18px";
         children.forEach((child) => childWrap.appendChild(renderSubsection(child)));
-        subWrap.appendChild(childWrap);
+        subBody.appendChild(childWrap);
       }
+      subWrap.appendChild(subBody);
       return subWrap;
     };
 
     buildChildren().forEach((sub) => {
-      card.appendChild(renderSubsection(sub));
+      sectionBody.appendChild(renderSubsection(sub));
     });
 
+    card.appendChild(sectionBody);
     return card;
   };
 
@@ -2182,6 +2213,22 @@ async function handleTaskListClick(event, tasks) {
     openSubsectionModal(parentSectionId || "", "", editSubsectionId);
   } else if (removeSubsectionId !== undefined) {
     await handleRemoveSubsection(parentSectionId, removeSubsectionId);
+  } else if (btn.dataset.toggleSectionCollapse !== undefined) {
+    const sectionId = btn.dataset.toggleSectionCollapse || "";
+    if (collapsedSections.has(sectionId)) {
+      collapsedSections.delete(sectionId);
+    } else {
+      collapsedSections.add(sectionId);
+    }
+    renderTasks(tasksCache, tasksTimeMapsCache);
+  } else if (btn.dataset.toggleSubsectionCollapse !== undefined) {
+    const subId = btn.dataset.toggleSubsectionCollapse || "";
+    if (collapsedSubsections.has(subId)) {
+      collapsedSubsections.delete(subId);
+    } else {
+      collapsedSubsections.add(subId);
+    }
+    renderTasks(tasksCache, tasksTimeMapsCache);
   } else if (toggleSubsectionFor !== undefined) {
     openSubsectionModal(toggleSubsectionFor, "");
   } else if (addSubsectionFor !== undefined) {

@@ -238,6 +238,18 @@
                 />
               </label>
               <label class="field">
+                <span class="field-label">Min block length (minutes)</span>
+                <input
+                  id="task-min-block"
+                  type="number"
+                  min="15"
+                  step="15"
+                  value="30"
+                  placeholder="30"
+                  class="field-input"
+                />
+              </label>
+              <label class="field">
                 <span class="field-label">Priority (1 low – 5 high)</span>
                 <select id="task-priority" class="field-input">
                   <option value="5">5</option>
@@ -311,6 +323,17 @@
                 <span class="field-label">Default duration (minutes)</span>
                 <input
                   id="subsection-task-duration"
+                  type="number"
+                  min="15"
+                  step="15"
+                  value="30"
+                  class="field-input"
+                />
+              </label>
+              <label class="field">
+                <span class="field-label">Default min block length (minutes)</span>
+                <input
+                  id="subsection-task-min-block"
                   type="number"
                   min="15"
                   step="15"

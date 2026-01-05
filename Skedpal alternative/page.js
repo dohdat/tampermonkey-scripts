@@ -43,6 +43,7 @@ const taskModalCloseButtons = [...document.querySelectorAll("[data-task-modal-cl
 const taskTimeMapOptions = document.getElementById("task-timemap-options");
 const taskDeadlineInput = document.getElementById("task-deadline");
 const taskLinkInput = document.getElementById("task-link");
+const taskMinBlockInput = document.getElementById("task-min-block");
 const taskSectionSelect = document.getElementById("task-section");
 const taskSubsectionSelect = document.getElementById("task-subsection");
 const taskRepeatSelect = document.getElementById("task-repeat");
@@ -74,6 +75,7 @@ const subsectionNameInput = document.getElementById("subsection-name");
 const subsectionTaskTitleInput = document.getElementById("subsection-task-title");
 const subsectionTaskLinkInput = document.getElementById("subsection-task-link");
 const subsectionTaskDurationInput = document.getElementById("subsection-task-duration");
+const subsectionTaskMinBlockInput = document.getElementById("subsection-task-min-block");
 const subsectionTaskPriorityInput = document.getElementById("subsection-task-priority");
 const subsectionTaskDeadlineInput = document.getElementById("subsection-task-deadline");
 const subsectionTaskRepeatSelect = document.getElementById("subsection-task-repeat");
@@ -188,6 +190,7 @@ function getSubsectionsFor(sectionId) {
       title: "",
       link: "",
       durationMin: 30,
+      minBlockMin: 30,
       priority: 3,
       deadline: "",
       repeat: { type: "none" },
@@ -729,6 +732,7 @@ function openSubsectionModal(sectionId, parentId = "", existingSubsectionId = ""
     title: "",
     link: "",
     durationMin: 30,
+    minBlockMin: 30,
     priority: 3,
     deadline: "",
     repeat: { type: "none" },
@@ -737,6 +741,7 @@ function openSubsectionModal(sectionId, parentId = "", existingSubsectionId = ""
   subsectionTaskTitleInput.value = template.title || "";
   subsectionTaskLinkInput.value = template.link || "";
   subsectionTaskDurationInput.value = template.durationMin || 30;
+  subsectionTaskMinBlockInput.value = template.minBlockMin || 30;
   subsectionTaskPriorityInput.value = String(template.priority || 3);
   subsectionTaskDeadlineInput.value = template.deadline ? template.deadline.slice(0, 10) : "";
   subsectionTaskRepeatSelect.value = template.repeat?.type === "custom" ? "custom" : "none";
@@ -1042,6 +1047,7 @@ function renderTasks(tasks, timeMaps) {
     meta.innerHTML = `
         <span>Deadline: ${formatDateTime(task.deadline)}</span>
         <span>Duration: ${task.durationMin}m</span>
+        ${task.minBlockMin ? `<span>Min block: ${task.minBlockMin}m</span>` : ""}
         <span>Priority: ${task.priority}</span>
         <span>TimeMaps: ${timeMapNames.join(", ")}</span>
         <span>Repeat: ${repeatSummary}</span>
@@ -1387,6 +1393,7 @@ async function handleAddSubsection(sectionId, value, parentSubsectionId = "") {
       title: subsectionTaskTitleInput?.value || "",
       link: subsectionTaskLinkInput?.value || "",
       durationMin: Number(subsectionTaskDurationInput?.value) || 30,
+      minBlockMin: Number(subsectionTaskMinBlockInput?.value) || 30,
       priority: Number(subsectionTaskPriorityInput?.value) || 3,
       deadline: subsectionTaskDeadlineInput?.value || "",
       repeat:
@@ -1743,6 +1750,10 @@ async function ensureTaskIds(tasks) {
       nextTask = { ...nextTask, id: uuid() };
       changed = true;
     }
+    if (nextTask.minBlockMin === undefined) {
+      nextTask = { ...nextTask, minBlockMin: 30 };
+      changed = true;
+    }
     if (nextTask.completed === undefined) {
       nextTask = { ...nextTask, completed: false };
       changed = true;
@@ -1990,6 +2001,7 @@ async function handleTaskSubmit(event) {
   const id = document.getElementById("task-id").value || uuid();
   const title = document.getElementById("task-title").value.trim();
   const durationMin = Number(document.getElementById("task-duration").value);
+  const minBlockMin = Number(taskMinBlockInput.value) || 30;
   const priority = Number(document.getElementById("task-priority").value);
   const deadline = taskDeadlineInput.value;
   const link = (taskLinkInput.value || "").trim();
@@ -2022,6 +2034,7 @@ async function handleTaskSubmit(event) {
     id,
     title,
     durationMin,
+    minBlockMin,
     priority,
     deadline: deadline ? new Date(deadline).toISOString() : null,
     link: link || "",
@@ -2046,6 +2059,7 @@ function resetTaskForm(shouldClose = false) {
   document.getElementById("task-title").value = "";
   taskLinkInput.value = "";
   document.getElementById("task-duration").value = "30";
+  taskMinBlockInput.value = "30";
   document.getElementById("task-priority").value = "3";
   taskDeadlineInput.value = "";
   setRepeatFromSelection({ type: "none" });
@@ -2064,6 +2078,7 @@ function startTaskInSection(sectionId = "", subsectionId = "") {
   document.getElementById("task-title").value = template?.title || "";
   taskLinkInput.value = template?.link || "";
   document.getElementById("task-duration").value = template?.durationMin || "30";
+  taskMinBlockInput.value = template?.minBlockMin || "30";
   document.getElementById("task-priority").value = String(template?.priority || 3);
   taskDeadlineInput.value = template?.deadline ? template.deadline.slice(0, 10) : "";
   setRepeatFromSelection(template?.repeat || { type: "none" }, "task");
@@ -2177,6 +2192,7 @@ async function handleTaskListClick(event, tasks) {
       document.getElementById("task-title").value = task.title;
       taskLinkInput.value = task.link || "";
       document.getElementById("task-duration").value = task.durationMin;
+      taskMinBlockInput.value = task.minBlockMin || "30";
       document.getElementById("task-priority").value = String(task.priority);
       taskDeadlineInput.value = task.deadline ? task.deadline.slice(0, 10) : "";
       setRepeatFromSelection(task.repeat);
@@ -2579,6 +2595,7 @@ subsectionForm?.addEventListener("submit", async (event) => {
           title: subsectionTaskTitleInput?.value || "",
           link: subsectionTaskLinkInput?.value || "",
           durationMin: Number(subsectionTaskDurationInput?.value) || 30,
+          minBlockMin: Number(subsectionTaskMinBlockInput?.value) || 30,
           priority: Number(subsectionTaskPriorityInput?.value) || 3,
           deadline: subsectionTaskDeadlineInput?.value || "",
           repeat:

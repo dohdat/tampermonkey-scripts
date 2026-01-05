@@ -26,6 +26,8 @@ const removeIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" he
 const favoriteIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path d="m10 2.5 2.1 4.25 4.65.68-3.37 3.28.79 4.61L10 13.8 5.83 15.3l.79-4.61L3.25 7.43l4.65-.68Z"/></svg>`;
 const zoomInIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 4h2m0 0v2m0-2V2m0 2h2m1 5a6 6 0 1 1-12 0 6 6 0 0 1 12 0Zm-2.5 3.5L17 17"></path></svg>`;
 const zoomOutIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 10h4m2 1a6 6 0 1 1-12 0 6 6 0 0 1 12 0Zm-2.5 3.5L17 17"></path></svg>`;
+const checkboxIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7" stroke="currentColor" fill="none"></circle></svg>`;
+const checkboxCheckedIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="7" stroke="currentColor" fill="none"></circle><path d="m6.5 10 2.2 2.2 4.8-4.9" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
 
 const views = [...document.querySelectorAll(".view")];
 const navButtons = [...document.querySelectorAll(".nav-btn")];
@@ -518,18 +520,23 @@ function renderTasks(tasks, timeMaps) {
   destroyTaskSortables();
   taskList.innerHTML = "";
   const timeMapById = new Map(timeMaps.map((tm) => [tm.id, normalizeTimeMap(tm)]));
-  const filteredTasks =
-    zoomFilter?.type === "section"
-      ? tasks.filter((t) => (t.section || "") === (zoomFilter.sectionId || ""))
-      : zoomFilter?.type === "subsection"
-        ? tasks.filter(
-            (t) =>
-              (t.section || "") === (zoomFilter.sectionId || "") &&
-              (t.subsection || "") === (zoomFilter.subsectionId || "")
-          )
-        : zoomFilter?.type === "task"
-          ? tasks.filter((t) => t.id === zoomFilter.taskId)
-          : tasks;
+  const filteredTasks = (() => {
+    const base = tasks.filter((t) => !t.completed);
+    if (zoomFilter?.type === "section") {
+      return base.filter((t) => (t.section || "") === (zoomFilter.sectionId || ""));
+    }
+    if (zoomFilter?.type === "subsection") {
+      return base.filter(
+        (t) =>
+          (t.section || "") === (zoomFilter.sectionId || "") &&
+          (t.subsection || "") === (zoomFilter.subsectionId || "")
+      );
+    }
+    if (zoomFilter?.type === "task") {
+      return base.filter((t) => t.id === zoomFilter.taskId);
+    }
+    return base;
+  })();
   const sections = [...(settingsCache.sections || [])];
   const seenSectionIds = new Set(sections.map((s) => s.id));
   const missingSections = [];
@@ -558,12 +565,15 @@ function renderTasks(tasks, timeMaps) {
   };
 
   const renderTaskCard = (task) => {
+    const statusValue = task.completed ? "completed" : task.scheduleStatus || "unscheduled";
     const statusClass =
-      task.scheduleStatus === "scheduled"
+      statusValue === "scheduled"
         ? "text-lime-300 font-semibold"
-        : task.scheduleStatus === "ignored"
+        : statusValue === "ignored"
           ? "text-slate-400 font-semibold"
-          : "text-amber-300 font-semibold";
+          : statusValue === "completed"
+            ? "text-lime-300 font-semibold"
+            : "text-amber-300 font-semibold";
     const timeMapNames = task.timeMapIds.map((id) => timeMapById.get(id)?.name || "Unknown");
     const sectionName = task.section ? getSectionName(task.section) : "";
     const subsectionName = task.subsection ? getSubsectionName(task.section, task.subsection) : "";
@@ -588,7 +598,25 @@ function renderTasks(tasks, timeMaps) {
     header.className = "flex items-start justify-between gap-2";
     const titleWrap = document.createElement("h3");
     titleWrap.className = "text-base font-semibold title-hover-group flex items-center gap-2";
-    titleWrap.innerHTML = titleMarkup;
+    const completeBtn = document.createElement("button");
+    completeBtn.type = "button";
+    completeBtn.dataset.completeTask = task.id;
+    completeBtn.className = "title-icon-btn title-actions";
+    completeBtn.title = task.completed ? "Mark incomplete" : "Mark completed";
+    completeBtn.innerHTML = task.completed ? checkboxCheckedIconSvg : checkboxIconSvg;
+    if (task.completed) {
+      completeBtn.style.borderColor = "#4ade80";
+      completeBtn.style.color = "#4ade80";
+    }
+    titleWrap.appendChild(completeBtn);
+    const titleTextWrap = document.createElement("div");
+    titleTextWrap.innerHTML = titleMarkup;
+    titleWrap.appendChild(titleTextWrap);
+    if (task.completed) {
+      titleTextWrap.style.opacity = "0.8";
+      titleTextWrap.style.textDecoration = "line-through";
+      titleTextWrap.style.textDecorationColor = "#4ade80";
+    }
     const titleActions = document.createElement("div");
     titleActions.className = "title-actions";
     const zoomTaskBtn = document.createElement("button");
@@ -633,7 +661,7 @@ function renderTasks(tasks, timeMaps) {
     const statusRow = document.createElement("div");
     statusRow.className = "mt-1 flex flex-wrap gap-3 text-xs text-slate-400";
     statusRow.innerHTML = `
-        <span class="${statusClass}">${task.scheduleStatus || "unscheduled"}</span>
+        <span class="${statusClass}">${statusValue}</span>
         <span>Scheduled: ${formatDateTime(task.scheduledStart)}</span>
       `;
     taskCard.appendChild(statusRow);
@@ -1267,6 +1295,18 @@ async function ensureTaskIds(tasks) {
       nextTask = { ...nextTask, id: uuid() };
       changed = true;
     }
+    if (nextTask.completed === undefined) {
+      nextTask = { ...nextTask, completed: false };
+      changed = true;
+    }
+    if (nextTask.completedAt === undefined) {
+      nextTask = { ...nextTask, completedAt: null };
+      changed = true;
+    }
+    if (!nextTask.scheduleStatus) {
+      nextTask = { ...nextTask, scheduleStatus: "unscheduled" };
+      changed = true;
+    }
     const key = getContainerKey(nextTask.section, nextTask.subsection);
     const numericOrder = Number(nextTask.order);
     const hasOrder = Number.isFinite(numericOrder);
@@ -1535,6 +1575,8 @@ async function handleTaskSubmit(event) {
     section,
     subsection,
     order,
+    completed: existingTask?.completed || false,
+    completedAt: existingTask?.completedAt || null,
     scheduleStatus: "unscheduled",
     scheduledStart: null,
     scheduledEnd: null
@@ -1581,6 +1623,7 @@ function resetTimeMapForm() {
 async function handleTaskListClick(event, tasks) {
   const btn = event.target.closest("button");
   if (!btn) return;
+  const completeTaskId = btn.dataset.completeTask;
   const addSection = btn.dataset.addSection;
   const addSubsectionFor = btn.dataset.addSubsection;
   const toggleSubsectionFor = btn.dataset.toggleSubsection;
@@ -1601,7 +1644,25 @@ async function handleTaskListClick(event, tasks) {
   const parentSectionId = btn.dataset.parentSection;
   const editId = btn.dataset.edit;
   const deleteId = btn.dataset.delete;
-  if (zoomTaskId !== undefined) {
+  if (completeTaskId !== undefined) {
+    const task = tasks.find((t) => t.id === completeTaskId);
+    if (task) {
+      const completed = !task.completed;
+      const updatedStatus =
+        completed && task.scheduleStatus !== "completed"
+          ? "completed"
+          : !completed && task.scheduleStatus === "completed"
+            ? "unscheduled"
+            : task.scheduleStatus || "unscheduled";
+      await saveTask({
+        ...task,
+        completed,
+        completedAt: completed ? new Date().toISOString() : null,
+        scheduleStatus: updatedStatus
+      });
+      await loadTasks();
+    }
+  } else if (zoomTaskId !== undefined) {
     setZoomFilter({
       type: "task",
       taskId: zoomTaskId,

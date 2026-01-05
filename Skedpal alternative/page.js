@@ -114,6 +114,7 @@ let zoomFilter = null;
 const collapsedSections = new Set();
 const collapsedSubsections = new Set();
 const collapsedTasks = new Set();
+const expandedTaskDetails = new Set();
 let notificationHideTimeout = null;
 let notificationUndoHandler = null;
 
@@ -1134,36 +1135,56 @@ function renderTasks(tasks, timeMaps) {
       "rounded-lg border border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-200 hover:border-lime-400 title-actions";
     addSubtaskBtn.textContent = "Add subtask";
     addSubtaskBtn.style.marginLeft = "12px";
+    const detailsToggleBtn = document.createElement("button");
+    detailsToggleBtn.type = "button";
+    detailsToggleBtn.dataset.toggleTaskDetails = task.id;
+    detailsToggleBtn.className =
+      "rounded-lg border border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-200 hover:border-lime-400 title-actions";
+    const detailsOpen = expandedTaskDetails.has(task.id);
+    detailsToggleBtn.innerHTML = `${
+      detailsOpen ? caretDownIconSvg : caretRightIconSvg
+    }<span class="ml-1">${detailsOpen ? "Hide details" : "Show details"}</span>`;
     titleActions.appendChild(zoomTaskBtn);
     titleActions.appendChild(editTaskBtn);
     titleActions.appendChild(addSubtaskBtn);
+    titleActions.appendChild(detailsToggleBtn);
     titleActions.appendChild(deleteTaskBtn);
     titleWrap.appendChild(titleActions);
     header.appendChild(titleWrap);
     taskCard.appendChild(header);
 
-    const meta = document.createElement("div");
-    meta.className = "mt-1 flex flex-wrap gap-2 text-xs text-slate-400";
-    meta.innerHTML = `
-        <span>Deadline: ${formatDateTime(task.deadline)}</span>
-        <span>Duration: ${task.durationMin}m</span>
-        ${task.minBlockMin ? `<span>Min block: ${task.minBlockMin}m</span>` : ""}
-        <span>Priority: ${task.priority}</span>
-        <span>TimeMaps: ${timeMapNames.join(", ")}</span>
-        <span>Repeat: ${repeatSummary}</span>
-        ${sectionName ? `<span>Section: ${sectionName}</span>` : ""}
-        ${subsectionName ? `<span>Subsection: ${subsectionName}</span>` : ""}
-      `;
-    taskCard.appendChild(meta);
-
-    const statusRow = document.createElement("div");
-    statusRow.className = "mt-1 flex flex-wrap gap-3 text-xs text-slate-400";
-    statusRow.innerHTML = `
+    const summaryRow = document.createElement("div");
+    summaryRow.className = "mt-1 flex flex-wrap gap-3 text-xs text-slate-300";
+    summaryRow.innerHTML = `
         <span class="${statusClass}">${statusValue}</span>
+        <span>Duration: ${task.durationMin}m</span>
         <span>Scheduled: ${formatDateTime(task.scheduledStart)}</span>
       `;
-    taskCard.appendChild(statusRow);
+    taskCard.appendChild(summaryRow);
 
+    if (detailsOpen) {
+      const meta = document.createElement("div");
+      meta.className = "mt-2 flex flex-wrap gap-2 text-xs text-slate-400";
+      meta.innerHTML = `
+          <span>Deadline: ${formatDateTime(task.deadline)}</span>
+          ${task.minBlockMin ? `<span>Min block: ${task.minBlockMin}m</span>` : ""}
+          <span>Priority: ${task.priority}</span>
+          <span>TimeMaps: ${timeMapNames.join(", ")}</span>
+          <span>Repeat: ${repeatSummary}</span>
+          ${sectionName ? `<span>Section: ${sectionName}</span>` : ""}
+          ${subsectionName ? `<span>Subsection: ${subsectionName}</span>` : ""}
+          ${task.link ? `<span class="text-lime-300 underline">Link attached</span>` : ""}
+        `;
+      taskCard.appendChild(meta);
+
+      const statusRow = document.createElement("div");
+      statusRow.className = "mt-1 flex flex-wrap gap-3 text-xs text-slate-400";
+      statusRow.innerHTML = `
+          <span>Scheduled start: ${formatDateTime(task.scheduledStart)}</span>
+          <span>Scheduled end: ${formatDateTime(task.scheduledEnd)}</span>
+        `;
+      taskCard.appendChild(statusRow);
+    }
 
     return taskCard;
   };
@@ -2305,6 +2326,7 @@ async function handleTaskListClick(event, tasks) {
   const editId = btn.dataset.edit;
   const deleteId = btn.dataset.delete;
   const addSubtaskId = btn.dataset.addSubtask;
+  const toggleTaskDetailsId = btn.dataset.toggleTaskDetails;
   const toggleTaskCollapseId = btn.dataset.toggleTaskCollapse;
   if (completeTaskId !== undefined) {
     const task = tasks.find((t) => t.id === completeTaskId);
@@ -2418,6 +2440,13 @@ async function handleTaskListClick(event, tasks) {
     if (parentTask) {
       startSubtaskFromTask(parentTask);
     }
+  } else if (toggleTaskDetailsId !== undefined) {
+    if (expandedTaskDetails.has(toggleTaskDetailsId)) {
+      expandedTaskDetails.delete(toggleTaskDetailsId);
+    } else {
+      expandedTaskDetails.add(toggleTaskDetailsId);
+    }
+    renderTasks(tasksCache, tasksTimeMapsCache);
   } else if (toggleTaskCollapseId !== undefined) {
     if (collapsedTasks.has(toggleTaskCollapseId)) {
       collapsedTasks.delete(toggleTaskCollapseId);

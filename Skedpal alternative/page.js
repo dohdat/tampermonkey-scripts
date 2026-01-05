@@ -978,6 +978,29 @@ function getNextSubtaskOrder(parentTask, section, subsection, tasks = tasksCache
   return baseOrder + SUBTASK_ORDER_OFFSET;
 }
 
+function getTaskAndDescendants(taskId, tasks = tasksCache) {
+  if (!taskId) return [];
+  const byParent = tasks.reduce((map, task) => {
+    const pid = task.subtaskParentId || "";
+    if (!map.has(pid)) map.set(pid, []);
+    map.get(pid).push(task);
+    return map;
+  }, new Map());
+  const byId = new Map(tasks.map((t) => [t.id, t]));
+  const result = [];
+  const stack = [taskId];
+  while (stack.length) {
+    const current = stack.pop();
+    const children = byParent.get(current) || [];
+    children.forEach((child) => {
+      result.push(child);
+      stack.push(child.id);
+    });
+  }
+  const root = byId.get(taskId);
+  return root ? [root, ...result] : result;
+}
+
 function renderTasks(tasks, timeMaps) {
   destroyTaskSortables();
   taskList.innerHTML = "";
@@ -2369,29 +2392,37 @@ async function handleTaskListClick(event, tasks) {
   const toggleTaskDetailsId = btn.dataset.toggleTaskDetails;
   const toggleTaskCollapseId = btn.dataset.toggleTaskCollapse;
   if (completeTaskId !== undefined) {
-    const task = tasks.find((t) => t.id === completeTaskId);
-    if (task) {
-      const snapshot = JSON.parse(JSON.stringify(task));
-      const completed = !task.completed;
-      const updatedStatus =
-        completed && task.scheduleStatus !== "completed"
-          ? "completed"
-          : !completed && task.scheduleStatus === "completed"
-            ? "unscheduled"
-            : task.scheduleStatus || "unscheduled";
-      const updatedTask = {
-        ...task,
-        completed,
-        completedAt: completed ? new Date().toISOString() : null,
-        scheduleStatus: updatedStatus
-      };
-      await saveTask(updatedTask);
-      await loadTasks();
-      const name = task.title || "Untitled task";
-      showUndoBanner(`${completed ? "Completed" : "Marked incomplete"} "${name}".`, async () => {
-        await saveTask(snapshot);
-        await loadTasks();
+    const affected = getTaskAndDescendants(completeTaskId, tasks);
+    const target = affected[0];
+    if (target) {
+      const snapshots = affected.map((t) => JSON.parse(JSON.stringify(t)));
+      const completed = !target.completed;
+      const timestamp = completed ? new Date().toISOString() : null;
+      const updates = snapshots.map((t) => {
+        const updatedStatus =
+          completed && t.scheduleStatus !== "completed"
+            ? "completed"
+            : !completed && t.scheduleStatus === "completed"
+              ? "unscheduled"
+              : t.scheduleStatus || "unscheduled";
+        return {
+          ...t,
+          completed,
+          completedAt: timestamp,
+          scheduleStatus: updatedStatus
+        };
       });
+      await Promise.all(updates.map((t) => saveTask(t)));
+      await loadTasks();
+      const name = target.title || "Untitled task";
+      const extra = updates.length > 1 ? ` and ${updates.length - 1} subtasks` : "";
+      showUndoBanner(
+        `${completed ? "Completed" : "Marked incomplete"} "${name}"${extra}.`,
+        async () => {
+          await Promise.all(snapshots.map((snap) => saveTask(snap)));
+          await loadTasks();
+        }
+      );
     }
   } else if (zoomTaskId !== undefined) {
     setZoomFilter({
@@ -2495,14 +2526,15 @@ async function handleTaskListClick(event, tasks) {
     }
     renderTasks(tasksCache, tasksTimeMapsCache);
   } else if (deleteId) {
-    const task = tasks.find((t) => t.id === deleteId);
-    const snapshot = task ? JSON.parse(JSON.stringify(task)) : null;
-    await deleteTask(deleteId);
+    const affected = getTaskAndDescendants(deleteId, tasks);
+    const snapshot = affected.map((t) => JSON.parse(JSON.stringify(t)));
+    await Promise.all(affected.map((t) => deleteTask(t.id)));
     await loadTasks();
-    if (snapshot) {
-      const name = snapshot.title || "Untitled task";
-      showUndoBanner(`Deleted "${name}".`, async () => {
-        await saveTask(snapshot);
+    if (snapshot.length) {
+      const name = snapshot[0].title || "Untitled task";
+      const extra = snapshot.length > 1 ? ` and ${snapshot.length - 1} subtasks` : "";
+      showUndoBanner(`Deleted "${name}"${extra}.`, async () => {
+        await Promise.all(snapshot.map((t) => saveTask(t)));
         await loadTasks();
       });
     }

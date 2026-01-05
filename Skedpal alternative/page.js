@@ -37,6 +37,8 @@ const taskSubsectionSelect = document.getElementById("task-subsection");
 const sectionList = document.getElementById("section-list");
 const sectionInput = document.getElementById("section-new-name");
 const sectionAddBtn = document.getElementById("section-add");
+const sectionFormRow = document.getElementById("section-form-row");
+const sectionFormToggle = document.getElementById("section-form-toggle");
 const timeMapColorInput = document.getElementById("timemap-color");
 const scheduleStatus = document.getElementById("schedule-status");
 const rescheduleButtons = [...document.querySelectorAll("[data-reschedule-btn]")];
@@ -305,6 +307,28 @@ function renderSections() {
   });
 }
 
+function openSectionForm() {
+  if (sectionFormRow) {
+    sectionFormRow.classList.remove("hidden");
+  }
+  if (sectionFormToggle) {
+    sectionFormToggle.textContent = "Hide section form";
+  }
+  sectionInput?.focus();
+}
+
+function closeSectionForm() {
+  if (sectionFormRow) {
+    sectionFormRow.classList.add("hidden");
+  }
+  if (sectionFormToggle) {
+    sectionFormToggle.textContent = "Add section";
+  }
+  if (sectionInput) {
+    sectionInput.value = "";
+  }
+}
+
 function renderTaskSectionOptions(selected) {
   const sections = [...(settingsCache.sections || [])];
   if (selected && !sections.includes(selected)) {
@@ -424,10 +448,12 @@ function renderTasks(tasks, timeMaps) {
     card.dataset.dropSubsection = "";
     attachDropZoneEvents(card);
     const header = document.createElement("div");
-    header.className = "flex items-center justify-between gap-2";
+    header.className = "flex flex-wrap items-center justify-between gap-2";
     const title = document.createElement("div");
     title.className = "flex items-center gap-2 text-base font-semibold";
     title.textContent = sectionName;
+    const actions = document.createElement("div");
+    actions.className = "flex items-center gap-2";
     const addBtn = document.createElement("button");
     addBtn.type = "button";
     addBtn.dataset.addSection = isNoSection ? "" : sectionName;
@@ -435,12 +461,23 @@ function renderTasks(tasks, timeMaps) {
       "rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
     addBtn.textContent = "Add task";
     header.appendChild(title);
-    header.appendChild(addBtn);
+    if (!isNoSection) {
+      const addSubsectionToggle = document.createElement("button");
+      addSubsectionToggle.type = "button";
+      addSubsectionToggle.dataset.toggleSubsection = sectionName;
+      addSubsectionToggle.className =
+        "rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
+      addSubsectionToggle.textContent = "Add subsection";
+      actions.appendChild(addSubsectionToggle);
+    }
+    actions.appendChild(addBtn);
+    header.appendChild(actions);
     card.appendChild(header);
 
     if (!isNoSection) {
       const subsectionInputWrap = document.createElement("div");
-      subsectionInputWrap.className = "flex flex-col gap-2 md:flex-row md:items-center";
+      subsectionInputWrap.className = "hidden flex flex-col gap-2 md:flex-row md:items-center";
+      subsectionInputWrap.dataset.subsectionForm = sectionName;
       subsectionInputWrap.innerHTML = `
         <input data-subsection-input="${sectionName}" placeholder="Add subsection" class="w-full rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none" />
         <button type="button" data-add-subsection="${sectionName}" class="rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-lime-400">Add subsection</button>
@@ -546,6 +583,7 @@ async function handleAddSection() {
   renderSections();
   renderTaskSectionOptions(name);
   sectionInput.value = "";
+  closeSectionForm();
   await loadTasks();
 }
 
@@ -817,16 +855,33 @@ async function handleTaskListClick(event, tasks) {
   if (!btn) return;
   const addSection = btn.dataset.addSection;
   const addSubsectionFor = btn.dataset.addSubsection;
+  const toggleSubsectionFor = btn.dataset.toggleSubsection;
   const addSubsectionTaskTarget = btn.dataset.addSubsectionTarget;
   const editId = btn.dataset.edit;
   const deleteId = btn.dataset.delete;
-  if (addSubsectionFor !== undefined) {
+  if (toggleSubsectionFor !== undefined) {
+    const card = btn.closest("[data-section-card]");
+    const form = card?.querySelector(`[data-subsection-form="${toggleSubsectionFor}"]`);
+    const input = card?.querySelector(`[data-subsection-input="${toggleSubsectionFor}"]`);
+    if (form) {
+      form.classList.toggle("hidden");
+      if (!form.classList.contains("hidden")) {
+        input?.focus();
+      } else if (input) {
+        input.value = "";
+      }
+    }
+  } else if (addSubsectionFor !== undefined) {
     const card = btn.closest("[data-section-card]");
     const input = card?.querySelector(`[data-subsection-input="${addSubsectionFor}"]`);
     const value = input?.value || "";
     if (value.trim()) {
       await handleAddSubsection(addSubsectionFor, value);
-      if (input) input.value = "";
+      if (input) {
+        input.value = "";
+        const wrap = input.closest(`[data-subsection-form="${addSubsectionFor}"]`);
+        wrap?.classList.add("hidden");
+      }
     }
   } else if (addSection !== undefined) {
     startTaskInSection(addSection, addSubsectionTaskTarget || "");
@@ -959,6 +1014,13 @@ document.getElementById("task-reset").addEventListener("click", resetTaskForm);
 document.getElementById("timemap-reset").addEventListener("click", resetTimeMapForm);
 rescheduleButtons.forEach((btn) => btn.addEventListener("click", handleReschedule));
 sectionAddBtn.addEventListener("click", handleAddSection);
+sectionFormToggle.addEventListener("click", () => {
+  if (sectionFormRow.classList.contains("hidden")) {
+    openSectionForm();
+  } else {
+    closeSectionForm();
+  }
+});
 sectionList.addEventListener("click", (event) => {
   const btn = event.target.closest("button[data-remove-section]");
   if (!btn) return;

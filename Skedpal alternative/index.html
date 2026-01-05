@@ -61,8 +61,15 @@
             <div class="flex flex-wrap items-center gap-3">
               <h3 class="text-base font-semibold">Sections</h3>
               <div id="section-list" class="flex flex-wrap gap-2 text-xs"></div>
+              <button
+                id="section-form-toggle"
+                type="button"
+                class="rounded-xl border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400"
+              >
+                Add section
+              </button>
             </div>
-            <div class="flex flex-col gap-2 md:flex-row md:items-center">
+            <div id="section-form-row" class="hidden flex flex-col gap-2 md:flex-row md:items-center">
               <input
                 id="section-new-name"
                 placeholder="Add new section"

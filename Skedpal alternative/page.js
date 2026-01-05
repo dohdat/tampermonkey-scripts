@@ -675,7 +675,13 @@ function setRepeatFromSelection(repeat = { type: "none" }) {
       : Array.isArray(repeat.byWeekdays)
         ? repeat.byWeekdays
         : base.weeklyDays,
-    monthlyMode: repeat.monthlyMode || repeat.bySetPos ? "nth" : repeat.byMonthDay ? "day" : "day",
+    monthlyMode: repeat.monthlyMode
+      ? repeat.monthlyMode
+      : repeat.bySetPos
+        ? "nth"
+        : repeat.byMonthDay
+          ? "day"
+          : "day",
     monthlyDay: repeat.monthlyDay || repeat.byMonthDay || base.monthlyDay,
     monthlyNth: repeat.monthlyNth || repeat.bySetPos || base.monthlyNth,
     monthlyWeekday: repeat.monthlyWeekday ??
@@ -2189,7 +2195,6 @@ async function hydrate() {
 document.getElementById("timemap-form").addEventListener("submit", handleTimeMapSubmit);
 document.getElementById("timemap-set-default").addEventListener("click", handleSetDefaultTimeMap);
 document.getElementById("task-form").addEventListener("submit", handleTaskSubmit);
-document.getElementById("task-reset").addEventListener("click", resetTaskForm);
 document.getElementById("timemap-reset").addEventListener("click", resetTimeMapForm);
 rescheduleButtons.forEach((btn) => btn.addEventListener("click", handleReschedule));
 sectionAddBtn.addEventListener("click", handleAddSection);

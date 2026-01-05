@@ -22,6 +22,7 @@ const dayOptions = [
 
 const editIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path d="M14.7 2.3a1 1 0 0 1 1.4 0l1.6 1.6a1 1 0 0 1 0 1.4l-9.2 9.2-3.3.7a.5.5 0 0 1-.6-.6l.7-3.3 9.2-9.2Z"></path><path d="M2.5 17.5h15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>`;
 const removeIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h12"></path><path d="M8 6v9m4-9v9"></path><path d="M7 6V4.5A1.5 1.5 0 0 1 8.5 3h3A1.5 1.5 0 0 1 13 4.5V6"></path><path d="M5 6v9.5A1.5 1.5 0 0 0 6.5 17h7A1.5 1.5 0 0 0 15 15.5V6"></path></svg>`;
+const favoriteIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path d="m10 2.5 2.1 4.25 4.65.68-3.37 3.28.79 4.61L10 13.8 5.83 15.3l.79-4.61L3.25 7.43l4.65-.68Z"/></svg>`;
 
 const views = [...document.querySelectorAll(".view")];
 const navButtons = [...document.querySelectorAll(".nav-btn")];
@@ -65,7 +66,10 @@ function getSectionName(id) {
 }
 
 function getSubsectionsFor(sectionId) {
-  return (settingsCache.subsections || {})[sectionId] || [];
+  return ((settingsCache.subsections || {})[sectionId] || []).map((s) => ({
+    favorite: false,
+    ...s
+  }));
 }
 
 function switchView(target) {
@@ -413,7 +417,7 @@ function renderTasks(tasks, timeMaps) {
   tasks.forEach((t) => {
     if (t.section && !seenSectionIds.has(t.section)) {
       seenSectionIds.add(t.section);
-      missingSections.push({ id: t.section, name: "Untitled section" });
+      missingSections.push({ id: t.section, name: "Untitled section", favorite: false });
     }
   });
   const hasUnsectioned = tasks.some((t) => !t.section);
@@ -502,6 +506,12 @@ function renderTasks(tasks, timeMaps) {
       editSectionBtn.className = "title-icon-btn";
       editSectionBtn.title = "Edit section";
       editSectionBtn.innerHTML = editIconSvg;
+      const favoriteSectionBtn = document.createElement("button");
+      favoriteSectionBtn.type = "button";
+      favoriteSectionBtn.dataset.favoriteSection = section.id;
+      favoriteSectionBtn.className = `title-icon-btn${section.favorite ? " favorite-active" : ""}`;
+      favoriteSectionBtn.title = section.favorite ? "Unfavorite section" : "Favorite section";
+      favoriteSectionBtn.innerHTML = favoriteIconSvg;
       const removeSectionBtn = document.createElement("button");
       removeSectionBtn.type = "button";
       removeSectionBtn.dataset.removeSection = section.id;
@@ -509,6 +519,7 @@ function renderTasks(tasks, timeMaps) {
       removeSectionBtn.title = "Remove section";
       removeSectionBtn.innerHTML = removeIconSvg;
       titleActions.appendChild(editSectionBtn);
+      titleActions.appendChild(favoriteSectionBtn);
       titleActions.appendChild(removeSectionBtn);
       title.appendChild(titleActions);
     }
@@ -546,12 +557,18 @@ function renderTasks(tasks, timeMaps) {
     }
 
     const subsectionMap = settingsCache.subsections || {};
-    const subsections = !isNoSection ? [...(subsectionMap[section.id] || [])] : [];
+    const subsections = !isNoSection
+      ? [...(subsectionMap[section.id] || [])].map((s) => ({ favorite: false, ...s }))
+      : [];
     const taskSubsections = Array.from(new Set(sectionTasks.map((t) => t.subsection).filter(Boolean)));
     taskSubsections.forEach((subId) => {
       if (subsections.find((s) => s.id === subId)) return;
       if (subId) {
-        subsections.push({ id: subId, name: getSubsectionName(section.id, subId) || "Unnamed subsection" });
+        subsections.push({
+          id: subId,
+          name: getSubsectionName(section.id, subId) || "Unnamed subsection",
+          favorite: false
+        });
       }
     });
 
@@ -590,6 +607,13 @@ function renderTasks(tasks, timeMaps) {
       editSubBtn.className = "title-icon-btn";
       editSubBtn.title = "Edit subsection";
       editSubBtn.innerHTML = editIconSvg;
+      const favoriteSubBtn = document.createElement("button");
+      favoriteSubBtn.type = "button";
+      favoriteSubBtn.dataset.favoriteSubsection = sub.id;
+      favoriteSubBtn.dataset.parentSection = section.id;
+      favoriteSubBtn.className = `title-icon-btn${sub.favorite ? " favorite-active" : ""}`;
+      favoriteSubBtn.title = sub.favorite ? "Unfavorite subsection" : "Favorite subsection";
+      favoriteSubBtn.innerHTML = favoriteIconSvg;
       const removeSubBtn = document.createElement("button");
       removeSubBtn.type = "button";
       removeSubBtn.dataset.removeSubsection = sub.id;
@@ -598,6 +622,7 @@ function renderTasks(tasks, timeMaps) {
       removeSubBtn.title = "Remove subsection";
       removeSubBtn.innerHTML = removeIconSvg;
       subTitleActions.appendChild(editSubBtn);
+      subTitleActions.appendChild(favoriteSubBtn);
       subTitleActions.appendChild(removeSubBtn);
       subTitle.appendChild(subTitleText);
       subTitle.appendChild(subTitleActions);
@@ -661,7 +686,7 @@ async function handleAddSection() {
     sectionInput.value = "";
     return;
   }
-  const newSection = { id: uuid(), name };
+  const newSection = { id: uuid(), name, favorite: false };
   const updated = [...sections, newSection];
   const subsections = { ...(settingsCache.subsections || {}), [newSection.id]: [] };
   settingsCache = { ...settingsCache, sections: updated, subsections };
@@ -704,7 +729,7 @@ async function handleAddSubsection(sectionId, value) {
   const subsections = { ...(settingsCache.subsections || {}) };
   const list = subsections[sectionId] || [];
   if (list.some((s) => s.name.toLowerCase() === name.toLowerCase())) return;
-  const entry = { id: uuid(), name };
+  const entry = { id: uuid(), name, favorite: false };
   subsections[sectionId] = [...list, entry];
   settingsCache = { ...settingsCache, subsections };
   await saveSettings(settingsCache);
@@ -769,6 +794,31 @@ async function handleRemoveSubsection(sectionId, subsectionId) {
   if (updates.length) {
     await Promise.all(updates);
   }
+  renderTaskSectionOptions(sectionId);
+  await loadTasks();
+}
+
+async function handleToggleSectionFavorite(sectionId) {
+  const sections = settingsCache.sections || [];
+  const updatedSections = sections.map((s) =>
+    s.id === sectionId ? { ...s, favorite: !s.favorite } : { favorite: false, ...s }
+  );
+  settingsCache = { ...settingsCache, sections: updatedSections };
+  await saveSettings(settingsCache);
+  renderSections();
+  await loadTasks();
+}
+
+async function handleToggleSubsectionFavorite(sectionId, subsectionId) {
+  if (!sectionId || !subsectionId) return;
+  const subsections = { ...(settingsCache.subsections || {}) };
+  const list = subsections[sectionId] || [];
+  const updatedList = list.map((s) =>
+    s.id === subsectionId ? { ...s, favorite: !s.favorite } : { favorite: false, ...s }
+  );
+  subsections[sectionId] = updatedList;
+  settingsCache = { ...settingsCache, subsections };
+  await saveSettings(settingsCache);
   renderTaskSectionOptions(sectionId);
   await loadTasks();
 }
@@ -873,10 +923,10 @@ async function migrateSectionsAndTasks(tasks, settings) {
   const sectionNameMap = new Map();
   const sections = [];
 
-  const addSection = (name, id) => {
+  const addSection = (name, id, favorite = false) => {
     const finalId = id || uuid();
     if (sectionIdMap.has(finalId)) return sectionIdMap.get(finalId);
-    const section = { id: finalId, name: name || "Untitled section" };
+    const section = { id: finalId, name: name || "Untitled section", favorite: Boolean(favorite) };
     sectionIdMap.set(finalId, section);
     if (section.name) sectionNameMap.set(section.name.toLowerCase(), finalId);
     sections.push(section);
@@ -885,13 +935,13 @@ async function migrateSectionsAndTasks(tasks, settings) {
 
   sectionsInput.forEach((entry) => {
     if (entry && typeof entry === "object" && entry.id) {
-      addSection(entry.name, entry.id);
+      addSection(entry.name, entry.id, entry.favorite);
     } else if (typeof entry === "string") {
-      addSection(entry);
+      addSection(entry, undefined, false);
     }
   });
   if (sections.length === 0) {
-    DEFAULT_SETTINGS.sections.forEach((s) => addSection(s.name, s.id));
+    DEFAULT_SETTINGS.sections.forEach((s) => addSection(s.name, s.id, s.favorite));
   }
 
   const subsectionsRaw = mergedSettings.subsections || {};
@@ -926,8 +976,9 @@ async function migrateSectionsAndTasks(tasks, settings) {
     (list || []).forEach((item) => {
       const name = typeof item === "string" ? item : item?.name || "Untitled subsection";
       const id = typeof item === "object" && item?.id ? item.id : uuid();
+      const favorite = typeof item === "object" && item?.favorite ? Boolean(item.favorite) : false;
       if (subsectionIdMaps[targetSectionId].has(id)) return;
-      const sub = { id, name };
+      const sub = { id, name, favorite };
       subsections[targetSectionId].push(sub);
       subsectionIdMaps[targetSectionId].set(id, sub);
       if (name) subsectionNameMaps[targetSectionId].set(name.toLowerCase(), id);
@@ -967,7 +1018,7 @@ async function migrateSectionsAndTasks(tasks, settings) {
           newSubsectionId = fromName;
         } else {
           const subId = uuid();
-          const sub = { id: subId, name: task.subsection };
+          const sub = { id: subId, name: task.subsection, favorite: false };
           subsections[newSectionId].push(sub);
           idMap.set(subId, sub);
           if (sub.name) nameMap.set(sub.name.toLowerCase(), subId);
@@ -1150,13 +1201,19 @@ async function handleTaskListClick(event, tasks) {
   const toggleSubsectionFor = btn.dataset.toggleSubsection;
   const addSubsectionTaskTarget = btn.dataset.addSubsectionTarget;
   const editSectionId = btn.dataset.editSection;
+  const favoriteSectionId = btn.dataset.favoriteSection;
   const removeSectionId = btn.dataset.removeSection;
   const editSubsectionId = btn.dataset.editSubsection;
+  const favoriteSubsectionId = btn.dataset.favoriteSubsection;
   const removeSubsectionId = btn.dataset.removeSubsection;
   const parentSectionId = btn.dataset.parentSection;
   const editId = btn.dataset.edit;
   const deleteId = btn.dataset.delete;
-  if (editSectionId !== undefined) {
+  if (favoriteSectionId !== undefined) {
+    await handleToggleSectionFavorite(favoriteSectionId);
+  } else if (favoriteSubsectionId !== undefined) {
+    await handleToggleSubsectionFavorite(parentSectionId, favoriteSubsectionId);
+  } else if (editSectionId !== undefined) {
     await handleRenameSection(editSectionId);
   } else if (removeSectionId !== undefined) {
     await handleRemoveSection(removeSectionId);

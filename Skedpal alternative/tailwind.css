@@ -33,3 +33,4 @@ body.modal-open{overflow:hidden}
 .title-hover-group:hover .title-actions{opacity:1;pointer-events:auto}
 .title-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:9999px;border:1px solid #334155;background:#0f172a;color:#cbd5e1}
 .title-icon-btn:hover{border-color:#38bdf8;color:#e2e8f0}
+.favorite-active{border-color:#fbbf24;color:#fbbf24;background:#451a03}

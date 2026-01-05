@@ -20,6 +20,9 @@ const dayOptions = [
   { label: "Sat", value: 6 }
 ];
 
+const editIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path d="M14.7 2.3a1 1 0 0 1 1.4 0l1.6 1.6a1 1 0 0 1 0 1.4l-9.2 9.2-3.3.7a.5.5 0 0 1-.6-.6l.7-3.3 9.2-9.2Z"></path><path d="M2.5 17.5h15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>`;
+const removeIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h12"></path><path d="M8 6v9m4-9v9"></path><path d="M7 6V4.5A1.5 1.5 0 0 1 8.5 3h3A1.5 1.5 0 0 1 13 4.5V6"></path><path d="M5 6v9.5A1.5 1.5 0 0 0 6.5 17h7A1.5 1.5 0 0 0 15 15.5V6"></path></svg>`;
+
 const views = [...document.querySelectorAll(".view")];
 const navButtons = [...document.querySelectorAll(".nav-btn")];
 const taskList = document.getElementById("task-list");
@@ -485,8 +488,30 @@ function renderTasks(tasks, timeMaps) {
     const header = document.createElement("div");
     header.className = "flex flex-wrap items-center justify-between gap-2";
     const title = document.createElement("div");
-    title.className = "flex items-center gap-2 text-base font-semibold";
-    title.textContent = section.name || "Untitled section";
+    title.className =
+      "title-hover-group flex items-center gap-2 text-base font-semibold text-slate-100";
+    const titleText = document.createElement("span");
+    titleText.textContent = section.name || "Untitled section";
+    title.appendChild(titleText);
+    if (!isNoSection) {
+      const titleActions = document.createElement("div");
+      titleActions.className = "title-actions";
+      const editSectionBtn = document.createElement("button");
+      editSectionBtn.type = "button";
+      editSectionBtn.dataset.editSection = section.id;
+      editSectionBtn.className = "title-icon-btn";
+      editSectionBtn.title = "Edit section";
+      editSectionBtn.innerHTML = editIconSvg;
+      const removeSectionBtn = document.createElement("button");
+      removeSectionBtn.type = "button";
+      removeSectionBtn.dataset.removeSection = section.id;
+      removeSectionBtn.className = "title-icon-btn";
+      removeSectionBtn.title = "Remove section";
+      removeSectionBtn.innerHTML = removeIconSvg;
+      titleActions.appendChild(editSectionBtn);
+      titleActions.appendChild(removeSectionBtn);
+      title.appendChild(titleActions);
+    }
     const actions = document.createElement("div");
     actions.className = "flex items-center gap-2";
     const addBtn = document.createElement("button");
@@ -552,7 +577,30 @@ function renderTasks(tasks, timeMaps) {
       subWrap.className = "space-y-2 rounded-xl border border-slate-800 bg-slate-900/60 p-3";
       const subHeader = document.createElement("div");
       subHeader.className = "flex items-center justify-between text-sm font-semibold text-slate-200";
-      subHeader.textContent = sub.name;
+      const subTitle = document.createElement("div");
+      subTitle.className = "title-hover-group flex items-center gap-2";
+      const subTitleText = document.createElement("span");
+      subTitleText.textContent = sub.name;
+      const subTitleActions = document.createElement("div");
+      subTitleActions.className = "title-actions";
+      const editSubBtn = document.createElement("button");
+      editSubBtn.type = "button";
+      editSubBtn.dataset.editSubsection = sub.id;
+      editSubBtn.dataset.parentSection = section.id;
+      editSubBtn.className = "title-icon-btn";
+      editSubBtn.title = "Edit subsection";
+      editSubBtn.innerHTML = editIconSvg;
+      const removeSubBtn = document.createElement("button");
+      removeSubBtn.type = "button";
+      removeSubBtn.dataset.removeSubsection = sub.id;
+      removeSubBtn.dataset.parentSection = section.id;
+      removeSubBtn.className = "title-icon-btn";
+      removeSubBtn.title = "Remove subsection";
+      removeSubBtn.innerHTML = removeIconSvg;
+      subTitleActions.appendChild(editSubBtn);
+      subTitleActions.appendChild(removeSubBtn);
+      subTitle.appendChild(subTitleText);
+      subTitle.appendChild(subTitleActions);
       const addSubTaskBtn = document.createElement("button");
       addSubTaskBtn.type = "button";
       addSubTaskBtn.dataset.addSection = isNoSection ? "" : section.id;
@@ -560,6 +608,7 @@ function renderTasks(tasks, timeMaps) {
       addSubTaskBtn.className =
         "rounded-lg border border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-200 hover:border-lime-400";
       addSubTaskBtn.textContent = "Add task";
+      subHeader.appendChild(subTitle);
       subHeader.appendChild(addSubTaskBtn);
       subWrap.appendChild(subHeader);
 
@@ -628,6 +677,11 @@ async function handleRemoveSection(id) {
   const sections = settingsCache.sections || [];
   const nextSections = sections.filter((s) => s.id !== id);
   if (nextSections.length === sections.length) return;
+  const target = sections.find((s) => s.id === id);
+  const confirmRemove = confirm(
+    `Delete section "${target?.name || "Untitled section"}" and clear its tasks' section/subsection?`
+  );
+  if (!confirmRemove) return;
   const subsections = { ...(settingsCache.subsections || {}) };
   delete subsections[id];
   settingsCache = { ...settingsCache, sections: nextSections, subsections };
@@ -654,6 +708,67 @@ async function handleAddSubsection(sectionId, value) {
   subsections[sectionId] = [...list, entry];
   settingsCache = { ...settingsCache, subsections };
   await saveSettings(settingsCache);
+  renderTaskSectionOptions(sectionId);
+  await loadTasks();
+}
+
+async function handleRenameSection(sectionId) {
+  const sections = settingsCache.sections || [];
+  const section = sections.find((s) => s.id === sectionId);
+  if (!section) return;
+  const next = prompt("Rename section", section.name || "");
+  if (next === null) return;
+  const name = next.trim();
+  if (!name || name.toLowerCase() === section.name.toLowerCase()) return;
+  if (sections.some((s) => s.id !== sectionId && s.name.toLowerCase() === name.toLowerCase())) return;
+  const updatedSections = sections.map((s) => (s.id === sectionId ? { ...s, name } : s));
+  settingsCache = { ...settingsCache, sections: updatedSections };
+  await saveSettings(settingsCache);
+  renderSections();
+  renderTaskSectionOptions(sectionId);
+  await loadTasks();
+}
+
+async function handleRenameSubsection(sectionId, subsectionId) {
+  if (!sectionId || !subsectionId) return;
+  const subsections = { ...(settingsCache.subsections || {}) };
+  const list = subsections[sectionId] || [];
+  const target = list.find((s) => s.id === subsectionId);
+  if (!target) return;
+  const next = prompt("Rename subsection", target.name || "");
+  if (next === null) return;
+  const name = next.trim();
+  if (!name || name.toLowerCase() === target.name.toLowerCase()) return;
+  if (list.some((s) => s.id !== subsectionId && s.name.toLowerCase() === name.toLowerCase())) return;
+  const updatedList = list.map((s) => (s.id === subsectionId ? { ...s, name } : s));
+  subsections[sectionId] = updatedList;
+  settingsCache = { ...settingsCache, subsections };
+  await saveSettings(settingsCache);
+  renderTaskSectionOptions(sectionId);
+  await loadTasks();
+}
+
+async function handleRemoveSubsection(sectionId, subsectionId) {
+  if (!sectionId || !subsectionId) return;
+  const subsections = { ...(settingsCache.subsections || {}) };
+  const list = subsections[sectionId] || [];
+  const nextList = list.filter((s) => s.id !== subsectionId);
+  if (nextList.length === list.length) return;
+  const target = list.find((s) => s.id === subsectionId);
+  const confirmRemove = confirm(
+    `Delete subsection "${target?.name || "Untitled subsection"}" and clear its tasks from this subsection?`
+  );
+  if (!confirmRemove) return;
+  subsections[sectionId] = nextList;
+  settingsCache = { ...settingsCache, subsections };
+  await saveSettings(settingsCache);
+  const tasks = await getAllTasks();
+  const updates = tasks
+    .filter((t) => t.section === sectionId && t.subsection === subsectionId)
+    .map((t) => saveTask({ ...t, subsection: "" }));
+  if (updates.length) {
+    await Promise.all(updates);
+  }
   renderTaskSectionOptions(sectionId);
   await loadTasks();
 }
@@ -1034,9 +1149,22 @@ async function handleTaskListClick(event, tasks) {
   const addSubsectionFor = btn.dataset.addSubsection;
   const toggleSubsectionFor = btn.dataset.toggleSubsection;
   const addSubsectionTaskTarget = btn.dataset.addSubsectionTarget;
+  const editSectionId = btn.dataset.editSection;
+  const removeSectionId = btn.dataset.removeSection;
+  const editSubsectionId = btn.dataset.editSubsection;
+  const removeSubsectionId = btn.dataset.removeSubsection;
+  const parentSectionId = btn.dataset.parentSection;
   const editId = btn.dataset.edit;
   const deleteId = btn.dataset.delete;
-  if (toggleSubsectionFor !== undefined) {
+  if (editSectionId !== undefined) {
+    await handleRenameSection(editSectionId);
+  } else if (removeSectionId !== undefined) {
+    await handleRemoveSection(removeSectionId);
+  } else if (editSubsectionId !== undefined) {
+    await handleRenameSubsection(parentSectionId, editSubsectionId);
+  } else if (removeSubsectionId !== undefined) {
+    await handleRemoveSubsection(parentSectionId, removeSubsectionId);
+  } else if (toggleSubsectionFor !== undefined) {
     const card = btn.closest("[data-section-card]");
     const form = card?.querySelector(`[data-subsection-form="${toggleSubsectionFor}"]`);
     const input = card?.querySelector(`[data-subsection-input="${toggleSubsectionFor}"]`);

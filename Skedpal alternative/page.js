@@ -66,6 +66,19 @@ const taskRepeatEndCount = document.getElementById("task-repeat-end-count");
 const repeatModal = document.getElementById("repeat-modal");
 const repeatModalCloseBtns = [...document.querySelectorAll("[data-repeat-modal-close]")];
 const repeatModalSaveBtn = document.getElementById("task-repeat-save");
+const subsectionFormWrap = document.getElementById("subsection-form-wrap");
+const subsectionForm = document.getElementById("subsection-form");
+const subsectionSectionIdInput = document.getElementById("subsection-section-id");
+const subsectionParentIdInput = document.getElementById("subsection-parent-id");
+const subsectionNameInput = document.getElementById("subsection-name");
+const subsectionTaskTitleInput = document.getElementById("subsection-task-title");
+const subsectionTaskLinkInput = document.getElementById("subsection-task-link");
+const subsectionTaskDurationInput = document.getElementById("subsection-task-duration");
+const subsectionTaskPriorityInput = document.getElementById("subsection-task-priority");
+const subsectionTaskDeadlineInput = document.getElementById("subsection-task-deadline");
+const subsectionTaskRepeatSelect = document.getElementById("subsection-task-repeat");
+const subsectionTimeMapOptions = document.getElementById("subsection-timemap-options");
+const subsectionModalCloseBtns = [...document.querySelectorAll("[data-subsection-modal-close]")];
 const sectionList = document.getElementById("section-list");
 const sectionInput = document.getElementById("section-new-name");
 const sectionAddBtn = document.getElementById("section-add");
@@ -171,6 +184,16 @@ function getSubsectionsFor(sectionId) {
   return ((settingsCache.subsections || {})[sectionId] || []).map((s) => ({
     favorite: false,
     parentId: "",
+    template: {
+      title: "",
+      link: "",
+      durationMin: 30,
+      priority: 3,
+      deadline: "",
+      repeat: { type: "none" },
+      timeMapIds: [],
+      ...(s.template || {})
+    },
     ...s
   }));
 }
@@ -530,6 +553,31 @@ function getWeekdayShortLabel(day) {
   return ["S", "M", "T", "W", "T", "F", "S"][day] || "S";
 }
 
+function renderTimeMapOptions(container, selectedIds = [], timeMaps = tasksTimeMapsCache || []) {
+  if (!container) return;
+  container.innerHTML = "";
+  const normalized = timeMaps.map(normalizeTimeMap);
+  normalized.forEach((tm) => {
+    const label = document.createElement("label");
+    label.className =
+      "flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-xs text-slate-200";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.value = tm.id;
+    checkbox.checked = selectedIds.includes(tm.id);
+    checkbox.className = "h-4 w-4 rounded border-slate-700 bg-slate-900 text-lime-400";
+    const colorDot = document.createElement("span");
+    colorDot.className = "h-3 w-3 rounded-full";
+    colorDot.style.backgroundColor = tm.color || "#22c55e";
+    const name = document.createElement("span");
+    name.textContent = tm.name || "Unnamed TimeMap";
+    label.appendChild(checkbox);
+    label.appendChild(colorDot);
+    label.appendChild(name);
+    container.appendChild(label);
+  });
+}
+
 function getNthWeekday(date) {
   const day = date.getDay();
   const dayOfMonth = date.getDate();
@@ -646,6 +694,12 @@ function renderRepeatUI() {
   taskRepeatEndCount.value = repeatState.end?.count ? Number(repeatState.end.count) : 1;
   taskRepeatSelect.value = lastRepeatSelection.type === "custom" ? "custom" : "none";
   syncRepeatSelectLabel();
+}
+
+function getSubsectionTemplate(sectionId, subsectionId) {
+  const subs = getSubsectionsFor(sectionId);
+  const sub = subs.find((s) => s.id === subsectionId);
+  return sub?.template || null;
 }
 
 function setRepeatFromSelection(repeat = { type: "none" }) {
@@ -1014,8 +1068,9 @@ function renderTasks(tasks, timeMaps) {
     card.appendChild(header);
 
     if (!isNoSection) {
-      const subsectionInputWrap = document.createElement("div");
-      subsectionInputWrap.className = "hidden flex flex-col gap-2 md:flex-row md:items-center";
+    const subsectionInputWrap = document.createElement("div");
+    subsectionInputWrap.className = "flex flex-col gap-2 md:flex-row md:items-center";
+    subsectionInputWrap.style.display = "none";
       subsectionInputWrap.dataset.subsectionForm = section.id;
       subsectionInputWrap.innerHTML = `
         <input data-subsection-input="${section.id}" placeholder="Add subsection" class="w-full rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none" />
@@ -1255,7 +1310,21 @@ async function handleAddSubsection(sectionId, value, parentSubsectionId = "") {
     )
   )
     return;
-  const entry = { id: uuid(), name, favorite: false, parentId };
+  const entry = {
+    id: uuid(),
+    name,
+    favorite: false,
+    parentId,
+    template: {
+      title: subsectionTaskTitleInput?.value || "",
+      link: subsectionTaskLinkInput?.value || "",
+      durationMin: Number(subsectionTaskDurationInput?.value) || 30,
+      priority: Number(subsectionTaskPriorityInput?.value) || 3,
+      deadline: subsectionTaskDeadlineInput?.value || "",
+      repeat: { type: "none" },
+      timeMapIds: collectSelectedValues(subsectionTimeMapOptions) || []
+    }
+  };
   subsections[sectionId] = [...list, entry];
   settingsCache = { ...settingsCache, subsections };
   await saveSettings(settingsCache);
@@ -1914,17 +1983,19 @@ function resetTaskForm(shouldClose = false) {
   }
 }
 
-function startTaskInSection(sectionName, subsectionName = "") {
+function startTaskInSection(sectionId = "", subsectionId = "") {
   document.getElementById("task-id").value = "";
-  document.getElementById("task-title").value = "";
-  taskLinkInput.value = "";
-  document.getElementById("task-duration").value = "30";
-  document.getElementById("task-priority").value = "3";
-  taskDeadlineInput.value = "";
-  setRepeatFromSelection({ type: "none" });
-  renderTaskSectionOptions(sectionName);
-  renderTaskSubsectionOptions(subsectionName);
-  renderTaskTimeMapOptions(tasksTimeMapsCache || [], []);
+  const template =
+    subsectionId && sectionId ? getSubsectionTemplate(sectionId, subsectionId) : null;
+  document.getElementById("task-title").value = template?.title || "";
+  taskLinkInput.value = template?.link || "";
+  document.getElementById("task-duration").value = template?.durationMin || "30";
+  document.getElementById("task-priority").value = String(template?.priority || 3);
+  taskDeadlineInput.value = template?.deadline ? template.deadline.slice(0, 10) : "";
+  setRepeatFromSelection(template?.repeat || { type: "none" });
+  renderTaskSectionOptions(sectionId);
+  renderTaskSubsectionOptions(subsectionId);
+  renderTaskTimeMapOptions(tasksTimeMapsCache || [], template?.timeMapIds || []);
   openTaskForm();
   switchView("tasks");
 }
@@ -1994,22 +2065,8 @@ async function handleTaskListClick(event, tasks) {
   } else if (zoomSectionId !== undefined && hasZoomSubAttr) {
     setZoomFilter({ type: "section", sectionId: zoomSectionId || "" });
   } else if (addChildSubsectionId !== undefined) {
-    const card = btn.closest(`[data-subsection-card="${addChildSubsectionId}"]`);
-    const form = card?.querySelector(`[data-child-subsection-form="${addChildSubsectionId}"]`);
-    const input = card?.querySelector(`[data-child-subsection-input="${addChildSubsectionId}"]`);
-    if (form) {
-      const isHidden = form.classList.contains("hidden");
-      if (isHidden) {
-        form.classList.remove("hidden");
-        input?.focus();
-      } else if (input && input.value.trim()) {
-        await handleAddSubsection(addChildSectionId || "", input.value, addChildSubsectionId);
-        input.value = "";
-        form.classList.add("hidden");
-      } else {
-        form.classList.add("hidden");
-      }
-    }
+    const sectionId = addChildSectionId || "";
+    openSubsectionModal(sectionId, addChildSubsectionId);
   } else if (submitChildSubsectionId !== undefined) {
     const card = btn.closest(`[data-subsection-card="${submitChildSubsectionId}"]`);
     const form = card?.querySelector(`[data-child-subsection-form="${submitChildSubsectionId}"]`);
@@ -2034,29 +2091,9 @@ async function handleTaskListClick(event, tasks) {
   } else if (removeSubsectionId !== undefined) {
     await handleRemoveSubsection(parentSectionId, removeSubsectionId);
   } else if (toggleSubsectionFor !== undefined) {
-    const card = btn.closest("[data-section-card]");
-    const form = card?.querySelector(`[data-subsection-form="${toggleSubsectionFor}"]`);
-    const input = card?.querySelector(`[data-subsection-input="${toggleSubsectionFor}"]`);
-    if (form) {
-      form.classList.toggle("hidden");
-      if (!form.classList.contains("hidden")) {
-        input?.focus();
-      } else if (input) {
-        input.value = "";
-      }
-    }
+    openSubsectionModal(toggleSubsectionFor, "");
   } else if (addSubsectionFor !== undefined) {
-    const card = btn.closest("[data-section-card]");
-    const input = card?.querySelector(`[data-subsection-input="${addSubsectionFor}"]`);
-    const value = input?.value || "";
-    if (value.trim()) {
-      await handleAddSubsection(addSubsectionFor, value);
-      if (input) {
-        input.value = "";
-        const wrap = input.closest(`[data-subsection-form="${addSubsectionFor}"]`);
-        wrap?.classList.add("hidden");
-      }
-    }
+    openSubsectionModal(addSubsectionFor, "");
   } else if (addSection !== undefined) {
     startTaskInSection(addSection, addSubsectionTaskTarget || "");
   } else if (editId) {
@@ -2400,6 +2437,35 @@ horizonInput?.addEventListener("input", (event) => {
   const value = Number(event.target.value);
   const parsed = Number.isFinite(value) ? Math.max(1, Math.min(90, value)) : 14;
   event.target.value = parsed;
+});
+function openSubsectionModal(sectionId, parentId = "") {
+  if (!subsectionFormWrap) return;
+  subsectionSectionIdInput.value = sectionId || "";
+  subsectionParentIdInput.value = parentId || "";
+  subsectionNameInput.value = "";
+  subsectionTaskTitleInput.value = "";
+  subsectionTaskLinkInput.value = "";
+  subsectionTaskDurationInput.value = "30";
+  subsectionTaskPriorityInput.value = "3";
+  subsectionTaskDeadlineInput.value = "";
+  renderTimeMapOptions(subsectionTimeMapOptions, [], tasksTimeMapsCache);
+  subsectionFormWrap.classList.remove("hidden");
+}
+
+function closeSubsectionModal() {
+  if (subsectionFormWrap) subsectionFormWrap.classList.add("hidden");
+}
+
+subsectionModalCloseBtns.forEach((btn) => btn.addEventListener("click", closeSubsectionModal));
+
+subsectionForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const sectionId = subsectionSectionIdInput.value || "";
+  const parentId = subsectionParentIdInput.value || "";
+  const name = subsectionNameInput.value || "";
+  if (!sectionId || !name) return;
+  await handleAddSubsection(sectionId, name, parentId);
+  closeSubsectionModal();
 });
 taskList.addEventListener("keydown", async (event) => {
   if (event.key !== "Enter") return;

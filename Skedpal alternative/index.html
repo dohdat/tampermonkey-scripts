@@ -279,6 +279,77 @@
           </form>
         </div>
       </div>
+      <div id="subsection-form-wrap" class="task-modal hidden">
+        <div class="task-modal__panel">
+          <div class="task-modal__header">
+            <div>
+              <p class="task-modal__eyebrow">Subsection</p>
+              <h3 class="task-modal__title">Add subsection</h3>
+              <p class="task-modal__subtitle">Define a subsection and default task settings it should inherit.</p>
+            </div>
+            <button type="button" class="task-modal__close" data-subsection-modal-close aria-label="Close subsection form">
+              x
+            </button>
+          </div>
+          <form id="subsection-form" class="task-modal__form">
+            <input type="hidden" id="subsection-section-id" />
+            <input type="hidden" id="subsection-parent-id" />
+            <div class="task-form-grid">
+              <label class="field">
+                <span class="field-label">Subsection name</span>
+                <input id="subsection-name" required placeholder="Planning, Backlog, etc." class="field-input" />
+              </label>
+              <label class="field">
+                <span class="field-label">Default task title</span>
+                <input id="subsection-task-title" placeholder="Optional default title" class="field-input" />
+              </label>
+              <label class="field">
+                <span class="field-label">Default link</span>
+                <input id="subsection-task-link" placeholder="https://example.com" class="field-input" />
+              </label>
+              <label class="field">
+                <span class="field-label">Default duration (minutes)</span>
+                <input
+                  id="subsection-task-duration"
+                  type="number"
+                  min="15"
+                  step="15"
+                  value="30"
+                  class="field-input"
+                />
+              </label>
+              <label class="field">
+                <span class="field-label">Default priority</span>
+                <select id="subsection-task-priority" class="field-input">
+                  <option value="5">5</option>
+                  <option value="4">4</option>
+                  <option value="3" selected>3</option>
+                  <option value="2">2</option>
+                  <option value="1">1</option>
+                </select>
+              </label>
+              <label class="field">
+                <span class="field-label">Default deadline</span>
+                <input id="subsection-task-deadline" type="date" class="field-input" />
+              </label>
+              <label class="field">
+                <span class="field-label">Default repeat</span>
+                <select id="subsection-task-repeat" class="field-input">
+                  <option value="none" selected>Does not repeat</option>
+                </select>
+              </label>
+            </div>
+            <div class="field">
+              <span class="field-label">Allowed TimeMaps</span>
+              <div id="subsection-timemap-options" class="timemap-pills"></div>
+            </div>
+            <div class="task-modal__actions">
+              <button type="button" class="btn muted" data-subsection-modal-close>Cancel</button>
+              <button type="submit" class="btn primary">Save Subsection</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
     <div id="repeat-modal" class="task-modal hidden">
       <div class="task-modal__panel">

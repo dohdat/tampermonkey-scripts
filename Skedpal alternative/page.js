@@ -656,32 +656,27 @@ function renderTasks(tasks, timeMaps) {
       removeSectionBtn.className = "title-icon-btn";
       removeSectionBtn.title = "Remove section";
       removeSectionBtn.innerHTML = removeIconSvg;
-      titleActions.appendChild(editSectionBtn);
-      titleActions.appendChild(zoomSectionBtn);
-      titleActions.appendChild(favoriteSectionBtn);
-      titleActions.appendChild(removeSectionBtn);
-      title.appendChild(titleActions);
-    }
-    const actions = document.createElement("div");
-    actions.className = "flex items-center gap-2";
-    const addBtn = document.createElement("button");
-    addBtn.type = "button";
-    addBtn.dataset.addSection = isNoSection ? "" : section.id;
-    addBtn.className =
-      "rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
-    addBtn.textContent = "Add task";
-    header.appendChild(title);
-    if (!isNoSection) {
       const addSubsectionToggle = document.createElement("button");
       addSubsectionToggle.type = "button";
       addSubsectionToggle.dataset.toggleSubsection = section.id;
       addSubsectionToggle.className =
         "rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
       addSubsectionToggle.textContent = "Add subsection";
-      actions.appendChild(addSubsectionToggle);
+      const addTaskBtn = document.createElement("button");
+      addTaskBtn.type = "button";
+      addTaskBtn.dataset.addSection = section.id;
+      addTaskBtn.className =
+        "rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
+      addTaskBtn.textContent = "Add task";
+      titleActions.appendChild(editSectionBtn);
+      titleActions.appendChild(zoomSectionBtn);
+      titleActions.appendChild(favoriteSectionBtn);
+      titleActions.appendChild(addSubsectionToggle);
+      titleActions.appendChild(addTaskBtn);
+      titleActions.appendChild(removeSectionBtn);
+      title.appendChild(titleActions);
     }
-    actions.appendChild(addBtn);
-    header.appendChild(actions);
+    header.appendChild(title);
     card.appendChild(header);
 
     if (!isNoSection) {
@@ -771,12 +766,6 @@ function renderTasks(tasks, timeMaps) {
       removeSubBtn.className = "title-icon-btn";
       removeSubBtn.title = "Remove subsection";
       removeSubBtn.innerHTML = removeIconSvg;
-      subTitleActions.appendChild(editSubBtn);
-      subTitleActions.appendChild(zoomSubBtn);
-      subTitleActions.appendChild(favoriteSubBtn);
-      subTitleActions.appendChild(removeSubBtn);
-      subTitle.appendChild(subTitleText);
-      subTitle.appendChild(subTitleActions);
       const addSubTaskBtn = document.createElement("button");
       addSubTaskBtn.type = "button";
       addSubTaskBtn.dataset.addSection = isNoSection ? "" : section.id;
@@ -791,12 +780,15 @@ function renderTasks(tasks, timeMaps) {
       addChildSubBtn.className =
         "rounded-lg border border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-200 hover:border-lime-400";
       addChildSubBtn.textContent = "Add subsection";
-      const subHeaderActions = document.createElement("div");
-      subHeaderActions.className = "flex items-center gap-2";
-      subHeaderActions.appendChild(addChildSubBtn);
-      subHeaderActions.appendChild(addSubTaskBtn);
+      subTitleActions.appendChild(editSubBtn);
+      subTitleActions.appendChild(zoomSubBtn);
+      subTitleActions.appendChild(favoriteSubBtn);
+      subTitleActions.appendChild(addChildSubBtn);
+      subTitleActions.appendChild(addSubTaskBtn);
+      subTitleActions.appendChild(removeSubBtn);
+      subTitle.appendChild(subTitleText);
+      subTitle.appendChild(subTitleActions);
       subHeader.appendChild(subTitle);
-      subHeader.appendChild(subHeaderActions);
       subWrap.appendChild(subHeader);
 
       const childSubsectionInputWrap = document.createElement("div");

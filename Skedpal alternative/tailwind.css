@@ -29,7 +29,7 @@ body.modal-open{overflow:hidden}
 .btn.ghost:hover{border-color:#a3e635;color:#a3e635}
 
 .title-hover-group{display:inline-flex;align-items:center;gap:.5rem}
-.title-actions{display:inline-flex;align-items:center;gap:.25rem;opacity:0;pointer-events:none;transition:opacity .15s ease}
+.title-actions{display:inline-flex;align-items:center;gap:.25rem;opacity:0;pointer-events:none;transition:opacity .25s ease}
 .title-hover-group:hover .title-actions{opacity:1;pointer-events:auto}
 .title-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:9999px;border:1px solid #334155;background:#0f172a;color:#cbd5e1}
 .title-icon-btn:hover{border-color:#38bdf8;color:#e2e8f0}

@@ -32,6 +32,7 @@ const taskToggle = document.getElementById("task-toggle");
 const taskModalCloseButtons = [...document.querySelectorAll("[data-task-modal-close]")];
 const taskTimeMapOptions = document.getElementById("task-timemap-options");
 const taskDeadlineInput = document.getElementById("task-deadline");
+const taskLinkInput = document.getElementById("task-link");
 const taskSectionSelect = document.getElementById("task-section");
 const taskSubsectionSelect = document.getElementById("task-subsection");
 const sectionList = document.getElementById("section-list");
@@ -416,8 +417,14 @@ function renderTasks(tasks, timeMaps) {
       taskCard.style.borderColor = color;
       taskCard.style.backgroundColor = `${color}1a`;
     }
+    const titleMarkup = task.link
+      ? `<a href="${task.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-lime-300 hover:text-lime-200 underline decoration-lime-400">
+          <span>${task.title}</span>
+          <span class="">🔗</span>
+        </a>`
+      : task.title;
     taskCard.innerHTML = `
-      <h3 class="text-base font-semibold">${task.title}</h3>
+      <h3 class="text-base font-semibold">${titleMarkup}</h3>
       <div class="mt-1 flex flex-wrap gap-2 text-xs text-slate-400">
         <span>Deadline: ${formatDateTime(task.deadline)}</span>
         <span>Duration: ${task.durationMin}m</span>
@@ -783,6 +790,7 @@ async function handleTaskSubmit(event) {
   const durationMin = Number(document.getElementById("task-duration").value);
   const priority = Number(document.getElementById("task-priority").value);
   const deadline = taskDeadlineInput.value;
+  const link = (taskLinkInput.value || "").trim();
   const timeMapIds = collectSelectedValues(taskTimeMapOptions);
   const section = taskSectionSelect.value || (settingsCache.sections || [])[0] || "";
   const subsection = taskSubsectionSelect.value || "";
@@ -806,6 +814,7 @@ async function handleTaskSubmit(event) {
     durationMin,
     priority,
     deadline: deadline ? new Date(deadline).toISOString() : null,
+    link: link || "",
     timeMapIds,
     section,
     subsection,
@@ -820,6 +829,7 @@ async function handleTaskSubmit(event) {
 function resetTaskForm(shouldClose = false) {
   document.getElementById("task-id").value = "";
   document.getElementById("task-title").value = "";
+  taskLinkInput.value = "";
   document.getElementById("task-duration").value = "30";
   document.getElementById("task-priority").value = "3";
   taskDeadlineInput.value = "";
@@ -833,6 +843,7 @@ function resetTaskForm(shouldClose = false) {
 function startTaskInSection(sectionName, subsectionName = "") {
   document.getElementById("task-id").value = "";
   document.getElementById("task-title").value = "";
+  taskLinkInput.value = "";
   document.getElementById("task-duration").value = "30";
   document.getElementById("task-priority").value = "3";
   taskDeadlineInput.value = "";
@@ -890,6 +901,7 @@ async function handleTaskListClick(event, tasks) {
     if (task) {
       document.getElementById("task-id").value = task.id;
       document.getElementById("task-title").value = task.title;
+      taskLinkInput.value = task.link || "";
       document.getElementById("task-duration").value = task.durationMin;
       document.getElementById("task-priority").value = String(task.priority);
       taskDeadlineInput.value = task.deadline ? task.deadline.slice(0, 10) : "";

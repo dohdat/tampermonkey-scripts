@@ -9,6 +9,7 @@ import {
   saveSettings,
   DEFAULT_SETTINGS
 } from "./db.js";
+import Sortable from "./sortable.esm.js";
 
 const dayOptions = [
   { label: "Sun", value: 0 },
@@ -52,6 +53,11 @@ const scheduleStatus = document.getElementById("schedule-status");
 const rescheduleButtons = [...document.querySelectorAll("[data-reschedule-btn]")];
 const scheduleSummary = document.getElementById("scheduled-summary");
 const horizonInput = document.getElementById("horizon");
+
+const TASK_ZONE_CLASS = "task-drop-zone";
+const TASK_PLACEHOLDER_CLASS = "task-drop-placeholder";
+const TASK_SORT_GROUP = "tasks-board";
+const TASK_SORTABLE_STYLE_ID = "task-sortable-styles";
 
 let settingsCache = { ...DEFAULT_SETTINGS };
 let tasksTimeMapsCache = [];
@@ -482,18 +488,6 @@ function renderTaskSubsectionOptions(selected) {
   }
 }
 
-function attachTaskDragEvents(element) {
-  element.addEventListener("dragstart", handleTaskDragStart);
-  element.addEventListener("dragend", handleTaskDragEnd);
-}
-
-function attachDropZoneEvents(element) {
-  element.addEventListener("dragover", handleTaskDragOver);
-  element.addEventListener("dragenter", handleTaskDragOver);
-  element.addEventListener("dragleave", handleTaskDragLeave);
-  element.addEventListener("drop", handleTaskDrop);
-}
-
 function getContainerKey(section, subsection) {
   return `${section || ""}__${subsection || ""}`;
 }
@@ -521,6 +515,7 @@ function getNextOrder(section, subsection, tasks = tasksCache) {
 }
 
 function renderTasks(tasks, timeMaps) {
+  destroyTaskSortables();
   taskList.innerHTML = "";
   const timeMapById = new Map(timeMaps.map((tm) => [tm.id, normalizeTimeMap(tm)]));
   const filteredTasks =
@@ -574,12 +569,10 @@ function renderTasks(tasks, timeMaps) {
     const subsectionName = task.subsection ? getSubsectionName(task.section, task.subsection) : "";
     const taskCard = document.createElement("div");
     taskCard.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow";
-    taskCard.draggable = true;
     taskCard.dataset.taskId = task.id;
     taskCard.dataset.sectionId = task.section || "";
     taskCard.dataset.subsectionId = task.subsection || "";
     taskCard.style.minHeight = "96px";
-    attachTaskDragEvents(taskCard);
     const color = timeMapById.get(task.timeMapIds[0])?.color;
     if (color) {
       taskCard.style.borderColor = color;
@@ -657,9 +650,6 @@ function renderTasks(tasks, timeMaps) {
     const card = document.createElement("div");
     card.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow space-y-3";
     card.dataset.sectionCard = section.id;
-    card.dataset.dropSection = isNoSection ? "" : section.id;
-    card.dataset.dropSubsection = "";
-    attachDropZoneEvents(card);
     const header = document.createElement("div");
     header.className = "flex flex-wrap items-center justify-between gap-2";
     const title = document.createElement("div");
@@ -758,10 +748,10 @@ function renderTasks(tasks, timeMaps) {
     ungroupedZone.dataset.dropSubsection = "";
     ungroupedZone.className =
       "space-y-2 rounded-xl border border-dashed border-slate-700 bg-slate-900/50 px-3 py-3";
-    attachDropZoneEvents(ungroupedZone);
+    ungroupedZone.classList.add(TASK_ZONE_CLASS);
     if (ungroupedTasks.length === 0) {
       const empty = document.createElement("div");
-      empty.className = "text-xs text-slate-500";
+      empty.className = `text-xs text-slate-500 ${TASK_PLACEHOLDER_CLASS}`;
       empty.textContent = "Drag tasks here or add new.";
       ungroupedZone.appendChild(empty);
     } else {
@@ -854,11 +844,11 @@ function renderTasks(tasks, timeMaps) {
       subZone.dataset.dropSubsection = sub.id;
       subZone.className =
         "space-y-2 rounded-lg border border-dashed border-slate-700 bg-slate-900/40 px-2 py-2";
-      attachDropZoneEvents(subZone);
+      subZone.classList.add(TASK_ZONE_CLASS);
       const subTasks = sortTasksByOrder(sectionTasks.filter((t) => t.subsection === sub.id));
       if (subTasks.length === 0) {
         const empty = document.createElement("div");
-        empty.className = "text-xs text-slate-500";
+        empty.className = `text-xs text-slate-500 ${TASK_PLACEHOLDER_CLASS}`;
         empty.textContent = "Drag tasks here or add new.";
         subZone.appendChild(empty);
       } else {
@@ -892,6 +882,7 @@ function renderTasks(tasks, timeMaps) {
   allSections.forEach((section) => {
     taskList.appendChild(renderSectionCard(section));
   });
+  setupTaskSortables();
 }
 
 async function loadTasks() {
@@ -1126,77 +1117,92 @@ function goHome() {
   switchView("tasks");
 }
 
-let draggedTaskId = null;
-let activeDropZone = null;
-let dropIndicatorEl = null;
-let activeDropCard = null;
+const sortableHighlightClasses = ["ring-1", "ring-lime-400/50"];
+let sortableInstances = [];
 
-function clearDropHighlight() {
-  if (activeDropZone) {
-    activeDropZone.classList.remove("ring-1", "ring-lime-400/50");
-    activeDropZone = null;
-  }
-  clearDropIndicator();
-  clearDropCardHighlight();
+function toggleZoneHighlight(zone, shouldHighlight) {
+  if (!zone) return;
+  sortableHighlightClasses.forEach((cls) =>
+    zone.classList[shouldHighlight ? "add" : "remove"](cls)
+  );
 }
 
-function getDropZone(target, fallback) {
-  if (fallback?.dataset?.dropSection !== undefined) return fallback;
-  return target.closest("[data-drop-section]");
+function destroyTaskSortables() {
+  sortableInstances.forEach((instance) => instance?.destroy?.());
+  sortableInstances = [];
 }
 
-function getDropIndicator() {
-  if (!dropIndicatorEl) {
-    dropIndicatorEl = document.createElement("div");
-    dropIndicatorEl.className = "h-0.5 bg-lime-400/80 shadow-lime-400/30 rounded-full";
-    dropIndicatorEl.style.height = "2px";
-    dropIndicatorEl.style.margin = "2px 4px";
-  }
-  return dropIndicatorEl;
+function ensureSortableStyles() {
+  if (document.getElementById(TASK_SORTABLE_STYLE_ID)) return;
+  const style = document.createElement("style");
+  style.id = TASK_SORTABLE_STYLE_ID;
+  style.textContent = `
+.sortable-ghost { opacity: 0.6; }
+.sortable-drag { opacity: 0.8; }
+.sortable-chosen {
+  box-shadow: 0 10px 25px rgba(74, 222, 128, 0.45);
+  outline: 2px solid rgba(74, 222, 128, 0.7);
+  outline-offset: 2px;
+}
+`;
+  document.head.appendChild(style);
 }
 
-function placeDropIndicator(zone, beforeElement) {
-  const indicator = getDropIndicator();
-  indicator.dataset.section = zone.dataset.dropSection || "";
-  indicator.dataset.subsection = zone.dataset.dropSubsection || "";
-  if (indicator.parentElement !== zone) {
-    indicator.remove();
-  }
-  if (beforeElement) {
-    beforeElement.parentElement?.insertBefore(indicator, beforeElement);
-  } else {
-    zone.appendChild(indicator);
-  }
+function getDropBeforeId(element) {
+  const nextTask = element?.nextElementSibling?.closest?.("[data-task-id]");
+  return nextTask ? nextTask.dataset.taskId : null;
 }
 
-function clearDropIndicator() {
-  if (dropIndicatorEl?.parentElement) {
-    dropIndicatorEl.parentElement.removeChild(dropIndicatorEl);
+async function handleTaskSortEnd(evt) {
+  const movedTaskId = evt.item?.dataset?.taskId;
+  const targetZone = evt.to?.closest?.("[data-drop-section]");
+  if (!movedTaskId || !targetZone) return;
+  if (evt.from === evt.to && evt.oldIndex === evt.newIndex) return;
+  const targetSection = (targetZone.dataset.dropSection || "").trim();
+  const targetSubsection = (targetZone.dataset.dropSubsection || "").trim();
+  const dropBeforeId = getDropBeforeId(evt.item);
+  const { updates, changed } = computeTaskReorderUpdates(
+    tasksCache,
+    movedTaskId,
+    targetSection,
+    targetSubsection,
+    dropBeforeId
+  );
+  if (!changed) {
+    await loadTasks();
+    return;
   }
+  await Promise.all(updates.map((t) => saveTask(t)));
+  await loadTasks();
 }
 
-function setActiveDropCard(card) {
-  if (activeDropCard === card) return;
-  clearDropCardHighlight();
-  if (card) {
-    activeDropCard = card;
-    activeDropCard.dataset.dropPrevBg = activeDropCard.style.backgroundColor || "";
-    activeDropCard.dataset.dropPrevBorder = activeDropCard.style.borderColor || "";
-    activeDropCard.classList.add("ring-1", "ring-lime-400/60", "shadow-lime-400/30");
-    activeDropCard.style.backgroundColor = "rgba(74,222,128,0.12)"; // lime-400/15
-    activeDropCard.style.borderColor = "#4ade80";
-  }
-}
-
-function clearDropCardHighlight() {
-  if (activeDropCard) {
-    activeDropCard.classList.remove("ring-1", "ring-lime-400/60", "shadow-lime-400/30");
-    activeDropCard.style.backgroundColor = activeDropCard.dataset.dropPrevBg || "";
-    activeDropCard.style.borderColor = activeDropCard.dataset.dropPrevBorder || "";
-    delete activeDropCard.dataset.dropPrevBg;
-    delete activeDropCard.dataset.dropPrevBorder;
-    activeDropCard = null;
-  }
+function setupTaskSortables() {
+  destroyTaskSortables();
+  ensureSortableStyles();
+  const zones = [...taskList.querySelectorAll(`.${TASK_ZONE_CLASS}`)];
+  zones.forEach((zone) => {
+    const sortable = new Sortable(zone, {
+      group: TASK_SORT_GROUP,
+      animation: 160,
+      draggable: "[data-task-id]",
+      handle: undefined,
+      filter: `.${TASK_PLACEHOLDER_CLASS}, button, a, input, textarea, select, label`,
+      ghostClass: "sortable-ghost",
+      chosenClass: "sortable-chosen",
+      dragClass: "sortable-drag",
+      swapThreshold: 0.6,
+      fallbackOnBody: true,
+      onStart: (event) => {
+        toggleZoneHighlight(event.from, true);
+      },
+      onEnd: (event) => {
+        toggleZoneHighlight(event.from, false);
+        toggleZoneHighlight(event.to, false);
+        handleTaskSortEnd(event).catch((error) => console.error("Task sort failed", error));
+      }
+    });
+    sortableInstances.push(sortable);
+  });
 }
 
 function computeTaskReorderUpdates(tasks, movedTaskId, targetSection, targetSubsection, dropBeforeId) {
@@ -1249,97 +1255,6 @@ function computeTaskReorderUpdates(tasks, movedTaskId, targetSection, targetSubs
     assignOrders(destinationList, targetSection, targetSubsection);
   }
   return { updates, changed: updates.length > 0 };
-}
-
-function handleTaskDragStart(event) {
-  const card = event.target.closest("[data-task-id]");
-  if (!card) return;
-  draggedTaskId = card.dataset.taskId;
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", draggedTaskId);
-  }
-}
-
-function handleTaskDragEnd() {
-  draggedTaskId = null;
-  clearDropHighlight();
-}
-
-function handleTaskDragOver(event) {
-  const zone = getDropZone(event.target, event.currentTarget);
-  if (!zone) return;
-  event.preventDefault();
-  if (activeDropZone !== zone) {
-    clearDropHighlight();
-    activeDropZone = zone;
-    activeDropZone.classList.add("ring-1", "ring-lime-400/50");
-  }
-  const zoneSection = (zone.dataset.dropSection || "").trim();
-  const zoneSubsection = (zone.dataset.dropSubsection || "").trim();
-  const candidateCard = event.target.closest("[data-task-id]");
-  const validCard =
-    candidateCard &&
-    (candidateCard.dataset.sectionId || "") === zoneSection &&
-    (candidateCard.dataset.subsectionId || "") === zoneSubsection
-      ? candidateCard
-      : null;
-  placeDropIndicator(zone, validCard);
-  setActiveDropCard(validCard);
-  if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
-}
-
-function handleTaskDragLeave(event) {
-  const zone = getDropZone(event.target, event.currentTarget);
-  if (!zone) return;
-  if (zone === activeDropZone && !zone.contains(event.relatedTarget)) {
-    clearDropHighlight();
-  }
-}
-
-async function handleTaskDrop(event) {
-  const zone = getDropZone(event.target, event.currentTarget);
-  if (!zone) return;
-  event.preventDefault();
-  event.stopPropagation();
-  const dataId = event.dataTransfer?.getData("text/plain");
-  const taskId = draggedTaskId || dataId;
-  if (!taskId) {
-    clearDropHighlight();
-    return;
-  }
-  const section = (zone.dataset.dropSection || "").trim();
-  const subsection = (zone.dataset.dropSubsection || "").trim();
-  const tasks = await ensureTaskIds(await getAllTasks());
-  const dropBeforeId =
-    dropIndicatorEl && dropIndicatorEl.parentElement === zone
-      ? dropIndicatorEl.nextElementSibling?.dataset?.taskId || null
-      : (() => {
-          const dropTargetCard = event.target.closest("[data-task-id]");
-          if (
-            dropTargetCard &&
-            (dropTargetCard.dataset.sectionId || "") === section &&
-            (dropTargetCard.dataset.subsectionId || "") === subsection &&
-            dropTargetCard.dataset.taskId !== taskId
-          ) {
-            return dropTargetCard.dataset.taskId;
-          }
-          return null;
-        })();
-  const { updates, changed } = computeTaskReorderUpdates(
-    tasks,
-    taskId,
-    section,
-    subsection,
-    dropBeforeId
-  );
-  if (!changed) {
-    clearDropHighlight();
-    return;
-  }
-  await Promise.all(updates.map((t) => saveTask(t)));
-  clearDropHighlight();
-  await loadTasks();
 }
 
 async function ensureTaskIds(tasks) {
@@ -2027,12 +1942,6 @@ taskList.addEventListener("keydown", async (event) => {
     }
   }
 });
-taskList.addEventListener("dragstart", handleTaskDragStart);
-taskList.addEventListener("dragend", handleTaskDragEnd);
-taskList.addEventListener("dragover", handleTaskDragOver);
-taskList.addEventListener("dragenter", handleTaskDragOver);
-taskList.addEventListener("dragleave", handleTaskDragLeave);
-taskList.addEventListener("drop", handleTaskDrop);
 taskFormWrap.addEventListener("click", (event) => {
   if (event.target === taskFormWrap) {
     closeTaskForm();

@@ -1782,7 +1782,7 @@ function renderZoomBanner() {
     </div>
   `;
   zoomBanner.querySelector("#zoom-out-btn")?.addEventListener("click", () => {
-    clearZoomFilter();
+    zoomOutOneLevel();
   });
   zoomBanner.querySelector("#zoom-home-btn")?.addEventListener("click", () => {
     goHome();
@@ -1806,6 +1806,33 @@ function clearZoomFilter() {
 function goHome() {
   clearZoomFilter();
   switchView("tasks");
+}
+
+function zoomOutOneLevel() {
+  if (!zoomFilter) return;
+  if (zoomFilter.type === "task") {
+    if (zoomFilter.subsectionId) {
+      setZoomFilter({
+        type: "subsection",
+        sectionId: zoomFilter.sectionId || "",
+        subsectionId: zoomFilter.subsectionId
+      });
+      return;
+    }
+    if (zoomFilter.sectionId !== undefined) {
+      setZoomFilter({ type: "section", sectionId: zoomFilter.sectionId || "" });
+      return;
+    }
+    clearZoomFilter();
+    return;
+  }
+  if (zoomFilter.type === "subsection") {
+    setZoomFilter({ type: "section", sectionId: zoomFilter.sectionId || "" });
+    return;
+  }
+  if (zoomFilter.type === "section") {
+    clearZoomFilter();
+  }
 }
 
 const sortableHighlightClasses = ["ring-1", "ring-lime-400/50"];

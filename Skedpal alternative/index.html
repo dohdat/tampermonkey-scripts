@@ -46,6 +46,15 @@
         </div>
       </header>
       <main class="mx-auto w-full max-w-4xl px-6 space-y-4 pb-8">
+        <div
+          id="notification-banner"
+          class="notification-banner hidden"
+          role="status"
+          aria-live="polite"
+        >
+          <span id="notification-message" class="notification-banner__message"></span>
+          <button id="notification-undo" type="button" class="notification-banner__undo">Undo</button>
+        </div>
         <section id="tasks" class="view space-y-3">
           <div class="flex items-center justify-between gap-2">
             <div class="text-sm text-slate-300">Add tasks to schedule automatically.</div>

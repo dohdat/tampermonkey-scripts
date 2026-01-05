@@ -97,6 +97,9 @@ const scheduleStatus = document.getElementById("schedule-status");
 const rescheduleButtons = [...document.querySelectorAll("[data-reschedule-btn]")];
 const scheduleSummary = document.getElementById("scheduled-summary");
 const horizonInput = document.getElementById("horizon");
+const notificationBanner = document.getElementById("notification-banner");
+const notificationMessage = document.getElementById("notification-message");
+const notificationUndoButton = document.getElementById("notification-undo");
 
 const TASK_ZONE_CLASS = "task-drop-zone";
 const TASK_PLACEHOLDER_CLASS = "task-drop-placeholder";
@@ -110,6 +113,41 @@ let zoomFilter = null;
 const collapsedSections = new Set();
 const collapsedSubsections = new Set();
 const collapsedTasks = new Set();
+let notificationHideTimeout = null;
+let notificationUndoHandler = null;
+
+function hideNotificationBanner() {
+  if (notificationHideTimeout) {
+    clearTimeout(notificationHideTimeout);
+    notificationHideTimeout = null;
+  }
+  notificationBanner?.classList.add("hidden");
+  if (notificationUndoButton) {
+    notificationUndoButton.disabled = false;
+  }
+  notificationUndoHandler = null;
+}
+
+function showUndoBanner(message, undoHandler) {
+  if (!notificationBanner || !notificationMessage || !notificationUndoButton) return;
+  hideNotificationBanner();
+  notificationMessage.textContent = message;
+  notificationUndoHandler = undoHandler;
+  notificationBanner.classList.remove("hidden");
+  notificationUndoButton.disabled = false;
+  notificationUndoButton.onclick = async () => {
+    notificationUndoButton.disabled = true;
+    try {
+      await notificationUndoHandler?.();
+    } catch (error) {
+      console.error("Undo failed", error);
+    }
+    hideNotificationBanner();
+  };
+  notificationHideTimeout = window.setTimeout(() => {
+    hideNotificationBanner();
+  }, 6500);
+}
 
 function updateUrlWithZoom(filter) {
   const url = new URL(window.location.href);
@@ -1032,12 +1070,11 @@ function renderTasks(tasks, timeMaps) {
     const completeBtn = document.createElement("button");
     completeBtn.type = "button";
     completeBtn.dataset.completeTask = task.id;
-    completeBtn.className = "title-icon-btn title-actions";
+    completeBtn.className = "title-icon-btn title-actions task-complete-btn";
     completeBtn.title = task.completed ? "Mark incomplete" : "Mark completed";
     completeBtn.innerHTML = task.completed ? checkboxCheckedIconSvg : checkboxIconSvg;
     if (task.completed) {
-      completeBtn.style.borderColor = "#4ade80";
-      completeBtn.style.color = "#4ade80";
+      completeBtn.classList.add("task-complete-btn--checked");
     }
     titleWrap.appendChild(completeBtn);
     const titleTextWrap = document.createElement("div");
@@ -2247,6 +2284,7 @@ async function handleTaskListClick(event, tasks) {
   if (completeTaskId !== undefined) {
     const task = tasks.find((t) => t.id === completeTaskId);
     if (task) {
+      const snapshot = JSON.parse(JSON.stringify(task));
       const completed = !task.completed;
       const updatedStatus =
         completed && task.scheduleStatus !== "completed"
@@ -2254,13 +2292,19 @@ async function handleTaskListClick(event, tasks) {
           : !completed && task.scheduleStatus === "completed"
             ? "unscheduled"
             : task.scheduleStatus || "unscheduled";
-      await saveTask({
+      const updatedTask = {
         ...task,
         completed,
         completedAt: completed ? new Date().toISOString() : null,
         scheduleStatus: updatedStatus
-      });
+      };
+      await saveTask(updatedTask);
       await loadTasks();
+      const name = task.title || "Untitled task";
+      showUndoBanner(`${completed ? "Completed" : "Marked incomplete"} "${name}".`, async () => {
+        await saveTask(snapshot);
+        await loadTasks();
+      });
     }
   } else if (zoomTaskId !== undefined) {
     setZoomFilter({
@@ -2357,7 +2401,17 @@ async function handleTaskListClick(event, tasks) {
     }
     renderTasks(tasksCache, tasksTimeMapsCache);
   } else if (deleteId) {
-    deleteTask(deleteId).then(loadTasks);
+    const task = tasks.find((t) => t.id === deleteId);
+    const snapshot = task ? JSON.parse(JSON.stringify(task)) : null;
+    await deleteTask(deleteId);
+    await loadTasks();
+    if (snapshot) {
+      const name = snapshot.title || "Untitled task";
+      showUndoBanner(`Deleted "${name}".`, async () => {
+        await saveTask(snapshot);
+        await loadTasks();
+      });
+    }
   }
 }
 

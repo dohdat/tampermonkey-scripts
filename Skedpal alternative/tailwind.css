@@ -34,3 +34,13 @@ body.modal-open{overflow:hidden}
 .title-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:9999px;border:1px solid #334155;background:#0f172a;color:#cbd5e1}
 .title-icon-btn:hover{border-color:#38bdf8;color:#e2e8f0}
 .favorite-active{border-color:#fbbf24;color:#fbbf24;background:#451a03}
+.task-complete-btn{border-color:#4ade80;color:#a3e635;box-shadow:0 0 0 1px rgba(74,222,128,.18)}
+.task-complete-btn:hover{border-color:#86efac;color:#d9f99d}
+.task-complete-btn--checked{border-color:#86efac;background:#0a2415;color:#c5f6c7;box-shadow:0 10px 24px rgba(0,0,0,.28),0 0 0 1px rgba(134,239,172,.35)}
+.task-complete-btn--checked:hover{border-color:#a3e635;color:#e9fac8}
+.notification-banner{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:50;display:flex;align-items:center;gap:.75rem;min-width:260px;max-width:80%;padding:.85rem 1rem;border-radius:14px;border:1px solid #4ade80;background:rgba(15,23,42,.95);color:#e2e8f0;box-shadow:0 15px 30px rgba(0,0,0,.35),0 0 0 1px rgba(74,222,128,.2)}
+.notification-banner.hidden{display:none!important}
+.notification-banner__message{flex:1;font-weight:700}
+.notification-banner__undo{border:1px solid #86efac;border-radius:10px;padding:.35rem .85rem;background:#14532d;color:#e2fbe6;font-weight:700;transition:all .15s ease}
+.notification-banner__undo:hover{border-color:#bbf7d0;color:#bbf7d0;box-shadow:0 10px 20px rgba(134,239,172,.35)}
+@media (max-width:640px){.notification-banner{width:calc(100% - 2rem)}}

@@ -47,6 +47,7 @@ const taskDeadlineInput = document.getElementById("task-deadline");
 const taskStartFromInput = document.getElementById("task-start-from");
 const taskLinkInput = document.getElementById("task-link");
 const taskMinBlockInput = document.getElementById("task-min-block");
+const taskParentIdInput = document.getElementById("task-parent-id");
 const taskSectionSelect = document.getElementById("task-section");
 const taskSubsectionSelect = document.getElementById("task-subsection");
 const taskRepeatSelect = document.getElementById("task-repeat");
@@ -983,11 +984,16 @@ function renderTasks(tasks, timeMaps) {
     const subsectionName = task.subsection ? getSubsectionName(task.section, task.subsection) : "";
     const repeatSummary = getRepeatSummary(task.repeat);
     const taskCard = document.createElement("div");
+    const isSubtask = Boolean(task.subtaskParentId);
     taskCard.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow";
     taskCard.dataset.taskId = task.id;
     taskCard.dataset.sectionId = task.section || "";
     taskCard.dataset.subsectionId = task.subsection || "";
     taskCard.style.minHeight = "96px";
+    if (isSubtask) {
+      taskCard.style.marginLeft = "12px";
+      taskCard.style.borderStyle = "dashed";
+    }
     const color = timeMapById.get(task.timeMapIds[0])?.color;
     if (color) {
       taskCard.style.borderColor = color;
@@ -1048,8 +1054,16 @@ function renderTasks(tasks, timeMaps) {
     deleteTaskBtn.innerHTML = removeIconSvg;
     deleteTaskBtn.style.borderColor = "#f97316";
     deleteTaskBtn.style.color = "#f97316";
+    const addSubtaskBtn = document.createElement("button");
+    addSubtaskBtn.type = "button";
+    addSubtaskBtn.dataset.addSubtask = task.id;
+    addSubtaskBtn.className =
+      "rounded-lg border border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-200 hover:border-lime-400 title-actions";
+    addSubtaskBtn.textContent = "Add subtask";
+    addSubtaskBtn.style.marginLeft = "12px";
     titleActions.appendChild(zoomTaskBtn);
     titleActions.appendChild(editTaskBtn);
+    titleActions.appendChild(addSubtaskBtn);
     titleActions.appendChild(deleteTaskBtn);
     titleWrap.appendChild(titleActions);
     header.appendChild(titleWrap);
@@ -1451,6 +1465,7 @@ async function handleAddSubsection(sectionId, value, parentSubsectionId = "") {
         subsectionRepeatSelection?.type && subsectionRepeatSelection.type !== "none"
           ? subsectionRepeatSelection
           : { type: "none" },
+      startFrom: subsectionTaskStartFromInput?.value || "",
       timeMapIds: collectSelectedValues(subsectionTimeMapOptions) || []
     }
   };
@@ -1797,14 +1812,22 @@ async function ensureTaskIds(tasks) {
   const withIds = tasks.map((task) => {
     let changed = false;
     let nextTask = task;
-    if (!nextTask.id) {
-      nextTask = { ...nextTask, id: uuid() };
-      changed = true;
-    }
-    if (nextTask.minBlockMin === undefined) {
-      nextTask = { ...nextTask, minBlockMin: 30 };
-      changed = true;
-    }
+  if (!nextTask.id) {
+    nextTask = { ...nextTask, id: uuid() };
+    changed = true;
+  }
+  if (nextTask.minBlockMin === undefined) {
+    nextTask = { ...nextTask, minBlockMin: 30 };
+    changed = true;
+  }
+  if (nextTask.subtaskParentId === undefined) {
+    nextTask = { ...nextTask, subtaskParentId: null };
+    changed = true;
+  }
+  if (nextTask.startFrom === undefined) {
+    nextTask = { ...nextTask, startFrom: null };
+    changed = true;
+  }
     if (nextTask.completed === undefined) {
       nextTask = { ...nextTask, completed: false };
       changed = true;
@@ -2090,6 +2113,7 @@ async function handleTaskSubmit(event) {
     priority,
     deadline: deadline ? new Date(deadline).toISOString() : null,
     startFrom: startFrom ? new Date(startFrom).toISOString() : null,
+    subtaskParentId: taskParentIdInput.value || null,
     link: link || "",
     timeMapIds,
     section,
@@ -2109,6 +2133,7 @@ async function handleTaskSubmit(event) {
 function resetTaskForm(shouldClose = false) {
   repeatTarget = "task";
   document.getElementById("task-id").value = "";
+  taskParentIdInput.value = "";
   document.getElementById("task-title").value = "";
   taskLinkInput.value = "";
   document.getElementById("task-duration").value = "30";
@@ -2116,7 +2141,7 @@ function resetTaskForm(shouldClose = false) {
   document.getElementById("task-priority").value = "3";
   taskDeadlineInput.value = "";
   taskStartFromInput.value = "";
-  setRepeatFromSelection({ type: "none" });
+  setRepeatFromSelection({ type: "none" }, "task");
   renderTaskSectionOptions();
   renderTaskTimeMapOptions(tasksTimeMapsCache || [], []);
   if (shouldClose) {
@@ -2127,6 +2152,7 @@ function resetTaskForm(shouldClose = false) {
 function startTaskInSection(sectionId = "", subsectionId = "") {
   repeatTarget = "task";
   document.getElementById("task-id").value = "";
+  taskParentIdInput.value = "";
   const template =
     subsectionId && sectionId ? getSubsectionTemplate(sectionId, subsectionId) : null;
   document.getElementById("task-title").value = template?.title || "";
@@ -2140,6 +2166,27 @@ function startTaskInSection(sectionId = "", subsectionId = "") {
   renderTaskSectionOptions(sectionId);
   renderTaskSubsectionOptions(subsectionId);
   renderTaskTimeMapOptions(tasksTimeMapsCache || [], template?.timeMapIds || []);
+  openTaskForm();
+  switchView("tasks");
+}
+
+function startSubtaskFromTask(task) {
+  repeatTarget = "task";
+  document.getElementById("task-id").value = "";
+  taskParentIdInput.value = task.id;
+  document.getElementById("task-title").value = task.title || "";
+  taskLinkInput.value = task.link || "";
+  document.getElementById("task-duration").value = task.durationMin || "30";
+  taskMinBlockInput.value = task.minBlockMin || task.durationMin || "30";
+  document.getElementById("task-priority").value = String(task.priority || 3);
+  taskDeadlineInput.value = task.deadline ? task.deadline.slice(0, 10) : "";
+  taskStartFromInput.value = task.startFrom ? task.startFrom.slice(0, 10) : "";
+  setRepeatFromSelection(task.repeat || { type: "none" }, "task");
+  renderTaskSectionOptions(task.section || "");
+  renderTaskSubsectionOptions(task.subsection || "");
+  taskSectionSelect.value = task.section || "";
+  taskSubsectionSelect.value = task.subsection || "";
+  renderTaskTimeMapOptions(tasksTimeMapsCache || [], task.timeMapIds || []);
   openTaskForm();
   switchView("tasks");
 }
@@ -2175,6 +2222,7 @@ async function handleTaskListClick(event, tasks) {
   const parentSectionId = btn.dataset.parentSection;
   const editId = btn.dataset.edit;
   const deleteId = btn.dataset.delete;
+  const addSubtaskId = btn.dataset.addSubtask;
   if (completeTaskId !== undefined) {
     const task = tasks.find((t) => t.id === completeTaskId);
     if (task) {
@@ -2263,15 +2311,22 @@ async function handleTaskListClick(event, tasks) {
       document.getElementById("task-title").value = task.title;
       taskLinkInput.value = task.link || "";
       document.getElementById("task-duration").value = task.durationMin;
-      taskMinBlockInput.value = task.minBlockMin || "30";
-      document.getElementById("task-priority").value = String(task.priority);
-      taskDeadlineInput.value = task.deadline ? task.deadline.slice(0, 10) : "";
-      setRepeatFromSelection(task.repeat);
+    taskMinBlockInput.value = task.minBlockMin || "30";
+    document.getElementById("task-priority").value = String(task.priority);
+    taskDeadlineInput.value = task.deadline ? task.deadline.slice(0, 10) : "";
+    taskStartFromInput.value = task.startFrom ? task.startFrom.slice(0, 10) : "";
+    taskParentIdInput.value = task.subtaskParentId || "";
+    setRepeatFromSelection(task.repeat, "task");
       renderTaskSectionOptions(task.section);
       renderTaskSubsectionOptions(task.subsection);
       renderTaskTimeMapOptions(tasksTimeMapsCache, task.timeMapIds);
       openTaskForm();
       switchView("tasks");
+    }
+  } else if (addSubtaskId !== undefined) {
+    const parentTask = tasks.find((t) => t.id === addSubtaskId);
+    if (parentTask) {
+      startSubtaskFromTask(parentTask);
     }
   } else if (deleteId) {
     deleteTask(deleteId).then(loadTasks);
@@ -2673,6 +2728,7 @@ subsectionForm?.addEventListener("submit", async (event) => {
             subsectionRepeatSelection?.type && subsectionRepeatSelection.type !== "none"
               ? subsectionRepeatSelection
               : { type: "none" },
+          startFrom: subsectionTaskStartFromInput?.value || "",
           timeMapIds: collectSelectedValues(subsectionTimeMapOptions) || []
         }
       };

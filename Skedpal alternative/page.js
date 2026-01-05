@@ -454,6 +454,32 @@ function attachDropZoneEvents(element) {
   element.addEventListener("drop", handleTaskDrop);
 }
 
+function getContainerKey(section, subsection) {
+  return `${section || ""}__${subsection || ""}`;
+}
+
+function sortTasksByOrder(list = []) {
+  return [...list].sort((a, b) => {
+    const aOrder = Number.isFinite(a.order) ? a.order : Number.MAX_SAFE_INTEGER;
+    const bOrder = Number.isFinite(b.order) ? b.order : Number.MAX_SAFE_INTEGER;
+    if (aOrder === bOrder) {
+      return (a.title || "").localeCompare(b.title || "");
+    }
+    return aOrder - bOrder;
+  });
+}
+
+function getNextOrder(section, subsection, tasks = tasksCache) {
+  const key = getContainerKey(section, subsection);
+  const maxOrder = (tasks || []).reduce((max, task) => {
+    if (getContainerKey(task.section, task.subsection) !== key) return max;
+    const orderValue = Number(task.order);
+    if (!Number.isFinite(orderValue)) return max;
+    return Math.max(max, orderValue);
+  }, 0);
+  return maxOrder + 1;
+}
+
 function renderTasks(tasks, timeMaps) {
   taskList.innerHTML = "";
   const timeMapById = new Map(timeMaps.map((tm) => [tm.id, normalizeTimeMap(tm)]));
@@ -510,6 +536,8 @@ function renderTasks(tasks, timeMaps) {
     taskCard.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow";
     taskCard.draggable = true;
     taskCard.dataset.taskId = task.id;
+    taskCard.dataset.sectionId = task.section || "";
+    taskCard.dataset.subsectionId = task.subsection || "";
     attachTaskDragEvents(taskCard);
     const color = timeMapById.get(task.timeMapIds[0])?.color;
     if (color) {
@@ -675,7 +703,7 @@ function renderTasks(tasks, timeMaps) {
       }
     });
 
-    const ungroupedTasks = sectionTasks.filter((t) => !t.subsection);
+    const ungroupedTasks = sortTasksByOrder(sectionTasks.filter((t) => !t.subsection));
     const ungroupedZone = document.createElement("div");
     ungroupedZone.dataset.dropSection = isNoSection ? "" : section.id;
     ungroupedZone.dataset.dropSubsection = "";
@@ -768,7 +796,7 @@ function renderTasks(tasks, timeMaps) {
       subZone.className =
         "space-y-2 rounded-lg border border-dashed border-slate-700 bg-slate-900/40 px-2 py-2";
       attachDropZoneEvents(subZone);
-      const subTasks = sectionTasks.filter((t) => t.subsection === sub.id);
+      const subTasks = sortTasksByOrder(sectionTasks.filter((t) => t.subsection === sub.id));
       if (subTasks.length === 0) {
         const empty = document.createElement("div");
         empty.className = "text-xs text-slate-500";
@@ -1039,17 +1067,101 @@ function goHome() {
 
 let draggedTaskId = null;
 let activeDropZone = null;
+let dropIndicatorEl = null;
 
 function clearDropHighlight() {
   if (activeDropZone) {
     activeDropZone.classList.remove("ring-1", "ring-lime-400/50");
     activeDropZone = null;
   }
+  clearDropIndicator();
 }
 
 function getDropZone(target, fallback) {
   if (fallback?.dataset?.dropSection !== undefined) return fallback;
   return target.closest("[data-drop-section]");
+}
+
+function getDropIndicator() {
+  if (!dropIndicatorEl) {
+    dropIndicatorEl = document.createElement("div");
+    dropIndicatorEl.className = "h-0.5 bg-lime-400/80 shadow-lime-400/30 rounded-full";
+    dropIndicatorEl.style.height = "2px";
+    dropIndicatorEl.style.margin = "2px 4px";
+  }
+  return dropIndicatorEl;
+}
+
+function placeDropIndicator(zone, beforeElement) {
+  const indicator = getDropIndicator();
+  indicator.dataset.section = zone.dataset.dropSection || "";
+  indicator.dataset.subsection = zone.dataset.dropSubsection || "";
+  if (indicator.parentElement !== zone) {
+    indicator.remove();
+  }
+  if (beforeElement) {
+    beforeElement.parentElement?.insertBefore(indicator, beforeElement);
+  } else {
+    zone.appendChild(indicator);
+  }
+}
+
+function clearDropIndicator() {
+  if (dropIndicatorEl?.parentElement) {
+    dropIndicatorEl.parentElement.removeChild(dropIndicatorEl);
+  }
+}
+
+function computeTaskReorderUpdates(tasks, movedTaskId, targetSection, targetSubsection, dropBeforeId) {
+  const movedTask = tasks.find((t) => t.id === movedTaskId);
+  if (!movedTask) return { updates: [], changed: false };
+  const sourceKey = getContainerKey(movedTask.section, movedTask.subsection);
+  const targetKey = getContainerKey(targetSection, targetSubsection);
+  const remainingSource = sortTasksByOrder(
+    tasks.filter(
+      (t) => getContainerKey(t.section, t.subsection) === sourceKey && t.id !== movedTaskId
+    )
+  );
+  const destinationExisting =
+    sourceKey === targetKey
+      ? remainingSource
+      : sortTasksByOrder(
+          tasks.filter(
+            (t) =>
+              getContainerKey(t.section, t.subsection) === targetKey && t.id !== movedTaskId
+          )
+        );
+  const destinationList = [...destinationExisting];
+  const insertAtCandidate =
+    dropBeforeId && dropBeforeId !== movedTaskId
+      ? destinationList.findIndex((t) => t.id === dropBeforeId)
+      : -1;
+  const insertAt = insertAtCandidate >= 0 ? insertAtCandidate : destinationList.length;
+  destinationList.splice(insertAt, 0, {
+    ...movedTask,
+    section: targetSection,
+    subsection: targetSubsection
+  });
+  const updates = [];
+  const assignOrders = (list, section, subsection) => {
+    list.forEach((task, index) => {
+      const desiredOrder = index + 1;
+      if (
+        task.section !== section ||
+        (task.subsection || "") !== (subsection || "") ||
+        task.order !== desiredOrder
+      ) {
+        updates.push({ ...task, section, subsection, order: desiredOrder });
+      }
+    });
+  };
+  if (sourceKey === targetKey) {
+    assignOrders(destinationList, targetSection, targetSubsection);
+  } else {
+    assignOrders(remainingSource, movedTask.section || "", movedTask.subsection || "");
+    assignOrders(destinationList, targetSection, targetSubsection);
+  }
+  return { updates, changed: updates.length > 0 };
 }
 
 function handleTaskDragStart(event) {
@@ -1076,6 +1188,16 @@ function handleTaskDragOver(event) {
     activeDropZone = zone;
     activeDropZone.classList.add("ring-1", "ring-lime-400/50");
   }
+  const zoneSection = (zone.dataset.dropSection || "").trim();
+  const zoneSubsection = (zone.dataset.dropSubsection || "").trim();
+  const candidateCard = event.target.closest("[data-task-id]");
+  const validCard =
+    candidateCard &&
+    (candidateCard.dataset.sectionId || "") === zoneSection &&
+    (candidateCard.dataset.subsectionId || "") === zoneSubsection
+      ? candidateCard
+      : null;
+  placeDropIndicator(zone, validCard);
   if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
 }
 
@@ -1101,28 +1223,67 @@ async function handleTaskDrop(event) {
   const section = (zone.dataset.dropSection || "").trim();
   const subsection = (zone.dataset.dropSubsection || "").trim();
   const tasks = await ensureTaskIds(await getAllTasks());
-  const task = tasks.find((t) => t.id === taskId);
-  if (!task) {
+  const dropBeforeId =
+    dropIndicatorEl && dropIndicatorEl.parentElement === zone
+      ? dropIndicatorEl.nextElementSibling?.dataset?.taskId || null
+      : (() => {
+          const dropTargetCard = event.target.closest("[data-task-id]");
+          if (
+            dropTargetCard &&
+            (dropTargetCard.dataset.sectionId || "") === section &&
+            (dropTargetCard.dataset.subsectionId || "") === subsection &&
+            dropTargetCard.dataset.taskId !== taskId
+          ) {
+            return dropTargetCard.dataset.taskId;
+          }
+          return null;
+        })();
+  const { updates, changed } = computeTaskReorderUpdates(
+    tasks,
+    taskId,
+    section,
+    subsection,
+    dropBeforeId
+  );
+  if (!changed) {
     clearDropHighlight();
     return;
   }
-  if (task.section === section && (task.subsection || "") === subsection) {
-    clearDropHighlight();
-    return;
-  }
-  await saveTask({ ...task, section, subsection });
+  await Promise.all(updates.map((t) => saveTask(t)));
   clearDropHighlight();
   await loadTasks();
 }
 
 async function ensureTaskIds(tasks) {
   const updates = [];
+  const orderTracker = new Map();
   const withIds = tasks.map((task) => {
-    if (task.id) return task;
-    const id = uuid();
-    const updated = { ...task, id };
-    updates.push(saveTask(updated));
-    return updated;
+    let changed = false;
+    let nextTask = task;
+    if (!nextTask.id) {
+      nextTask = { ...nextTask, id: uuid() };
+      changed = true;
+    }
+    const key = getContainerKey(nextTask.section, nextTask.subsection);
+    const numericOrder = Number(nextTask.order);
+    const hasOrder = Number.isFinite(numericOrder);
+    const currentMax = orderTracker.get(key) || 0;
+    if (!hasOrder) {
+      const assignedOrder = currentMax + 1;
+      orderTracker.set(key, assignedOrder);
+      nextTask = { ...nextTask, order: assignedOrder };
+      changed = true;
+    } else {
+      orderTracker.set(key, Math.max(currentMax, numericOrder));
+      if (nextTask.order !== numericOrder) {
+        nextTask = { ...nextTask, order: numericOrder };
+        changed = true;
+      }
+    }
+    if (changed) {
+      updates.push(saveTask(nextTask));
+    }
+    return nextTask;
   });
   if (updates.length) {
     await Promise.all(updates);
@@ -1341,6 +1502,11 @@ async function handleTaskSubmit(event) {
   const defaultSectionId = (settingsCache.sections || [])[0]?.id || "";
   const section = taskSectionSelect.value || defaultSectionId;
   const subsection = taskSubsectionSelect.value || "";
+  const existingTask = tasksCache.find((t) => t.id === id);
+  const order =
+    existingTask && existingTask.section === section && (existingTask.subsection || "") === subsection
+      ? existingTask.order
+      : getNextOrder(section, subsection);
 
   if (!title || !durationMin) {
     alert("Title and duration are required.");
@@ -1365,6 +1531,7 @@ async function handleTaskSubmit(event) {
     timeMapIds,
     section,
     subsection,
+    order,
     scheduleStatus: "unscheduled",
     scheduledStart: null,
     scheduledEnd: null

@@ -1872,6 +1872,12 @@ sectionFormToggle.addEventListener("click", () => {
     closeSectionForm();
   }
 });
+sectionInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    handleAddSection();
+  }
+});
 sectionList.addEventListener("click", (event) => {
   const btn = event.target.closest("button[data-remove-section]");
   if (!btn) return;
@@ -1951,6 +1957,34 @@ taskList.addEventListener("click", async (event) => {
   const [tasks, timeMaps] = await Promise.all([getAllTasks(), getAllTimeMaps()]);
   tasksTimeMapsCache = timeMaps.map(normalizeTimeMap);
   await handleTaskListClick(event, tasks);
+});
+taskList.addEventListener("keydown", async (event) => {
+  if (event.key !== "Enter") return;
+  const input = event.target;
+  if (!(input instanceof HTMLElement)) return;
+  if (input.matches("[data-subsection-input]")) {
+    event.preventDefault();
+    const sectionId = input.dataset.subsectionInput || "";
+    const value = input.value || "";
+    if (value.trim()) {
+      await handleAddSubsection(sectionId, value);
+      input.value = "";
+      const wrap = input.closest(`[data-subsection-form="${sectionId}"]`);
+      wrap?.classList.add("hidden");
+    }
+  } else if (input.matches("[data-child-subsection-input]")) {
+    event.preventDefault();
+    const parentSubId = input.dataset.childSubsectionInput || "";
+    const card = input.closest(`[data-subsection-card="${parentSubId}"]`);
+    const parentSectionId = card?.closest("[data-section-card]")?.dataset.sectionCard || "";
+    const value = input.value || "";
+    if (value.trim()) {
+      await handleAddSubsection(parentSectionId, value, parentSubId);
+      input.value = "";
+      const wrap = input.closest(`[data-child-subsection-form="${parentSubId}"]`);
+      wrap?.classList.add("hidden");
+    }
+  }
 });
 taskList.addEventListener("dragstart", handleTaskDragStart);
 taskList.addEventListener("dragend", handleTaskDragEnd);

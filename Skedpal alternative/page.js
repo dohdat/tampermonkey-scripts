@@ -1033,12 +1033,16 @@ function renderTasks(tasks, timeMaps) {
     editTaskBtn.className = "title-icon-btn";
     editTaskBtn.title = "Edit task";
     editTaskBtn.innerHTML = editIconSvg;
+    editTaskBtn.style.borderColor = "#22c55e";
+    editTaskBtn.style.color = "#22c55e";
     const deleteTaskBtn = document.createElement("button");
     deleteTaskBtn.type = "button";
     deleteTaskBtn.dataset.delete = task.id;
     deleteTaskBtn.className = "title-icon-btn";
     deleteTaskBtn.title = "Delete task";
     deleteTaskBtn.innerHTML = removeIconSvg;
+    deleteTaskBtn.style.borderColor = "#f97316";
+    deleteTaskBtn.style.color = "#f97316";
     titleActions.appendChild(zoomTaskBtn);
     titleActions.appendChild(editTaskBtn);
     titleActions.appendChild(deleteTaskBtn);
@@ -1106,6 +1110,8 @@ function renderTasks(tasks, timeMaps) {
       editSectionBtn.className = "title-icon-btn";
       editSectionBtn.title = "Edit section";
       editSectionBtn.innerHTML = editIconSvg;
+      editSectionBtn.style.borderColor = "#22c55e";
+      editSectionBtn.style.color = "#22c55e";
       const zoomSectionBtn = document.createElement("button");
       zoomSectionBtn.type = "button";
       zoomSectionBtn.dataset.zoomSection = section.id;
@@ -1125,6 +1131,8 @@ function renderTasks(tasks, timeMaps) {
       removeSectionBtn.className = "title-icon-btn";
       removeSectionBtn.title = "Remove section";
       removeSectionBtn.innerHTML = removeIconSvg;
+      removeSectionBtn.style.borderColor = "#f97316";
+      removeSectionBtn.style.color = "#f97316";
       if (isDefaultSection) {
         removeSectionBtn.disabled = true;
         removeSectionBtn.classList.add("opacity-50", "cursor-not-allowed");
@@ -1234,6 +1242,8 @@ function renderTasks(tasks, timeMaps) {
       editSubBtn.className = "title-icon-btn";
       editSubBtn.title = "Edit subsection";
       editSubBtn.innerHTML = editIconSvg;
+      editSubBtn.style.borderColor = "#22c55e";
+      editSubBtn.style.color = "#22c55e";
       const zoomSubBtn = document.createElement("button");
       zoomSubBtn.type = "button";
       zoomSubBtn.dataset.zoomSubsection = sub.id;
@@ -1255,6 +1265,8 @@ function renderTasks(tasks, timeMaps) {
       removeSubBtn.className = "title-icon-btn";
       removeSubBtn.title = "Remove subsection";
       removeSubBtn.innerHTML = removeIconSvg;
+      removeSubBtn.style.borderColor = "#f97316";
+      removeSubBtn.style.color = "#f97316";
       const addSubTaskBtn = document.createElement("button");
       addSubTaskBtn.type = "button";
       addSubTaskBtn.dataset.addSection = isNoSection ? "" : section.id;

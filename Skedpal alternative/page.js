@@ -23,10 +23,13 @@ const dayOptions = [
 const editIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path d="M14.7 2.3a1 1 0 0 1 1.4 0l1.6 1.6a1 1 0 0 1 0 1.4l-9.2 9.2-3.3.7a.5.5 0 0 1-.6-.6l.7-3.3 9.2-9.2Z"></path><path d="M2.5 17.5h15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>`;
 const removeIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h12"></path><path d="M8 6v9m4-9v9"></path><path d="M7 6V4.5A1.5 1.5 0 0 1 8.5 3h3A1.5 1.5 0 0 1 13 4.5V6"></path><path d="M5 6v9.5A1.5 1.5 0 0 0 6.5 17h7A1.5 1.5 0 0 0 15 15.5V6"></path></svg>`;
 const favoriteIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path d="m10 2.5 2.1 4.25 4.65.68-3.37 3.28.79 4.61L10 13.8 5.83 15.3l.79-4.61L3.25 7.43l4.65-.68Z"/></svg>`;
+const zoomInIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 4h2m0 0v2m0-2V2m0 2h2m1 5a6 6 0 1 1-12 0 6 6 0 0 1 12 0Zm-2.5 3.5L17 17"></path></svg>`;
+const zoomOutIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 10h4m2 1a6 6 0 1 1-12 0 6 6 0 0 1 12 0Zm-2.5 3.5L17 17"></path></svg>`;
 
 const views = [...document.querySelectorAll(".view")];
 const navButtons = [...document.querySelectorAll(".nav-btn")];
 const taskList = document.getElementById("task-list");
+const zoomBanner = document.getElementById("zoom-banner");
 const timeMapList = document.getElementById("timemap-list");
 const timeMapDayRows = document.getElementById("timemap-day-rows");
 const timeMapFormWrap = document.getElementById("timemap-form-wrap");
@@ -52,6 +55,41 @@ const horizonInput = document.getElementById("horizon");
 
 let settingsCache = { ...DEFAULT_SETTINGS };
 let tasksTimeMapsCache = [];
+let tasksCache = [];
+let zoomFilter = null;
+
+function updateUrlWithZoom(filter) {
+  const url = new URL(window.location.href);
+  if (!filter) {
+    url.searchParams.delete("zoom");
+  } else {
+    const parts =
+      filter.type === "section"
+        ? ["section", filter.sectionId || ""]
+        : filter.type === "subsection"
+          ? ["subsection", filter.sectionId || "", filter.subsectionId || ""]
+          : ["task", filter.taskId || "", filter.sectionId || "", filter.subsectionId || ""];
+    url.searchParams.set("zoom", parts.join(":"));
+  }
+  history.replaceState({}, "", url.toString());
+}
+
+function parseZoomFromUrl() {
+  const url = new URL(window.location.href);
+  const zoom = url.searchParams.get("zoom");
+  if (!zoom) return null;
+  const [type, a, b, c] = zoom.split(":");
+  if (type === "section") {
+    return { type, sectionId: a || "" };
+  }
+  if (type === "subsection") {
+    return { type, sectionId: a || "", subsectionId: b || "" };
+  }
+  if (type === "task") {
+    return { type, taskId: a || "", sectionId: b || "", subsectionId: c || "" };
+  }
+  return null;
+}
 
 function uuid() {
   return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
@@ -68,6 +106,7 @@ function getSectionName(id) {
 function getSubsectionsFor(sectionId) {
   return ((settingsCache.subsections || {})[sectionId] || []).map((s) => ({
     favorite: false,
+    parentId: "",
     ...s
   }));
 }
@@ -373,8 +412,7 @@ function renderTaskSectionOptions(selected) {
 
 function renderTaskSubsectionOptions(selected) {
   const section = taskSectionSelect.value;
-  const subsectionMap = settingsCache.subsections || {};
-  const subsections = section ? [...(subsectionMap[section] || [])] : [];
+  const subsections = section ? getSubsectionsFor(section) : [];
   const selectedSubsection =
     selected && section
       ? subsections.find((s) => s.id === selected) || subsections.find((s) => s.name === selected)
@@ -384,13 +422,21 @@ function renderTaskSubsectionOptions(selected) {
   noneOpt.value = "";
   noneOpt.textContent = "None";
   taskSubsectionSelect.appendChild(noneOpt);
-  subsections.forEach((sub) => {
-    const opt = document.createElement("option");
-    opt.value = sub.id;
-    opt.textContent = sub.name;
-    if (selectedSubsection) opt.selected = selectedSubsection.id === sub.id;
-    taskSubsectionSelect.appendChild(opt);
-  });
+
+  const addOptions = (parentId = "", depth = 0) => {
+    const siblings = subsections.filter((s) => (s.parentId || "") === (parentId || ""));
+    siblings.forEach((sub) => {
+      const opt = document.createElement("option");
+      opt.value = sub.id;
+      const prefix = depth > 0 ? `${"-- ".repeat(depth)}` : "";
+      opt.textContent = `${prefix}${sub.name}`;
+      if (selectedSubsection) opt.selected = selectedSubsection.id === sub.id;
+      taskSubsectionSelect.appendChild(opt);
+      addOptions(sub.id, depth + 1);
+    });
+  };
+
+  addOptions();
   if (!taskSubsectionSelect.value) {
     taskSubsectionSelect.value = "";
   }
@@ -411,21 +457,39 @@ function attachDropZoneEvents(element) {
 function renderTasks(tasks, timeMaps) {
   taskList.innerHTML = "";
   const timeMapById = new Map(timeMaps.map((tm) => [tm.id, normalizeTimeMap(tm)]));
+  const filteredTasks =
+    zoomFilter?.type === "section"
+      ? tasks.filter((t) => (t.section || "") === (zoomFilter.sectionId || ""))
+      : zoomFilter?.type === "subsection"
+        ? tasks.filter(
+            (t) =>
+              (t.section || "") === (zoomFilter.sectionId || "") &&
+              (t.subsection || "") === (zoomFilter.subsectionId || "")
+          )
+        : zoomFilter?.type === "task"
+          ? tasks.filter((t) => t.id === zoomFilter.taskId)
+          : tasks;
   const sections = [...(settingsCache.sections || [])];
   const seenSectionIds = new Set(sections.map((s) => s.id));
   const missingSections = [];
-  tasks.forEach((t) => {
+  filteredTasks.forEach((t) => {
     if (t.section && !seenSectionIds.has(t.section)) {
       seenSectionIds.add(t.section);
       missingSections.push({ id: t.section, name: "Untitled section", favorite: false });
     }
   });
-  const hasUnsectioned = tasks.some((t) => !t.section);
+  const hasUnsectioned = filteredTasks.some((t) => !t.section);
+  const relevantSectionIds = new Set(
+    filteredTasks.map((t) => (t.section === undefined ? "" : t.section || ""))
+  );
+  if (zoomFilter?.type === "section") relevantSectionIds.add(zoomFilter.sectionId || "");
+  if (zoomFilter?.type === "subsection") relevantSectionIds.add(zoomFilter.sectionId || "");
+  if (zoomFilter?.type === "task") relevantSectionIds.add(zoomFilter.sectionId || "");
   const allSections = [
     ...sections,
     ...missingSections,
     ...(hasUnsectioned || sections.length === 0 ? [{ id: "", name: "No section" }] : [])
-  ];
+  ].filter((s) => (relevantSectionIds.size ? relevantSectionIds.has(s.id || "") : true));
 
   const getSubsectionName = (sectionId, subsectionId) => {
     const subs = getSubsectionsFor(sectionId);
@@ -458,31 +522,62 @@ function renderTasks(tasks, timeMaps) {
           <span>🔗</span>
         </a>`
       : task.title;
-    taskCard.innerHTML = `
-      <h3 class="text-base font-semibold">${titleMarkup}</h3>
-      <div class="mt-1 flex flex-wrap gap-2 text-xs text-slate-400">
+    const header = document.createElement("div");
+    header.className = "flex items-start justify-between gap-2";
+    const titleWrap = document.createElement("h3");
+    titleWrap.className = "text-base font-semibold title-hover-group flex items-center gap-2";
+    titleWrap.innerHTML = titleMarkup;
+    const titleActions = document.createElement("div");
+    titleActions.className = "title-actions";
+    const zoomTaskBtn = document.createElement("button");
+    zoomTaskBtn.type = "button";
+    zoomTaskBtn.dataset.zoomTask = task.id;
+    zoomTaskBtn.dataset.zoomSection = task.section || "";
+    zoomTaskBtn.dataset.zoomSubsection = task.subsection || "";
+    zoomTaskBtn.className = "title-icon-btn";
+    zoomTaskBtn.title = "Zoom into task";
+    zoomTaskBtn.innerHTML = zoomInIconSvg;
+    titleActions.appendChild(zoomTaskBtn);
+    titleWrap.appendChild(titleActions);
+    header.appendChild(titleWrap);
+    taskCard.appendChild(header);
+
+    const meta = document.createElement("div");
+    meta.className = "mt-1 flex flex-wrap gap-2 text-xs text-slate-400";
+    meta.innerHTML = `
         <span>Deadline: ${formatDateTime(task.deadline)}</span>
         <span>Duration: ${task.durationMin}m</span>
         <span>Priority: ${task.priority}</span>
         <span>TimeMaps: ${timeMapNames.join(", ")}</span>
         ${sectionName ? `<span>Section: ${sectionName}</span>` : ""}
         ${subsectionName ? `<span>Subsection: ${subsectionName}</span>` : ""}
-      </div>
-      <div class="mt-1 flex flex-wrap gap-3 text-xs text-slate-400">
+      `;
+    taskCard.appendChild(meta);
+
+    const statusRow = document.createElement("div");
+    statusRow.className = "mt-1 flex flex-wrap gap-3 text-xs text-slate-400";
+    statusRow.innerHTML = `
         <span class="${statusClass}">${task.scheduleStatus || "unscheduled"}</span>
         <span>Scheduled: ${formatDateTime(task.scheduledStart)}</span>
-      </div>
-      <div class="mt-3 flex gap-2">
+      `;
+    taskCard.appendChild(statusRow);
+
+    const actionsRow = document.createElement("div");
+    actionsRow.className = "mt-3 flex gap-2";
+    actionsRow.innerHTML = `
         <button class="rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400" data-edit="${task.id}">Edit</button>
         <button class="rounded-lg bg-orange-500/90 px-3 py-1 text-xs font-semibold text-slate-900 hover:bg-orange-400" data-delete="${task.id}">Delete</button>
-      </div>
-    `;
+      `;
+    taskCard.appendChild(actionsRow);
+
     return taskCard;
   };
 
   const renderSectionCard = (section) => {
     const isNoSection = !section.id;
-    const sectionTasks = tasks.filter((t) => (isNoSection ? !t.section : t.section === section.id));
+    const sectionTasks = filteredTasks.filter((t) =>
+      isNoSection ? !t.section : t.section === section.id
+    );
     const card = document.createElement("div");
     card.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow space-y-3";
     card.dataset.sectionCard = section.id;
@@ -506,6 +601,13 @@ function renderTasks(tasks, timeMaps) {
       editSectionBtn.className = "title-icon-btn";
       editSectionBtn.title = "Edit section";
       editSectionBtn.innerHTML = editIconSvg;
+      const zoomSectionBtn = document.createElement("button");
+      zoomSectionBtn.type = "button";
+      zoomSectionBtn.dataset.zoomSection = section.id;
+      zoomSectionBtn.dataset.zoomSubsection = "";
+      zoomSectionBtn.className = "title-icon-btn";
+      zoomSectionBtn.title = "Zoom into section";
+      zoomSectionBtn.innerHTML = zoomInIconSvg;
       const favoriteSectionBtn = document.createElement("button");
       favoriteSectionBtn.type = "button";
       favoriteSectionBtn.dataset.favoriteSection = section.id;
@@ -519,6 +621,7 @@ function renderTasks(tasks, timeMaps) {
       removeSectionBtn.title = "Remove section";
       removeSectionBtn.innerHTML = removeIconSvg;
       titleActions.appendChild(editSectionBtn);
+      titleActions.appendChild(zoomSectionBtn);
       titleActions.appendChild(favoriteSectionBtn);
       titleActions.appendChild(removeSectionBtn);
       title.appendChild(titleActions);
@@ -558,7 +661,7 @@ function renderTasks(tasks, timeMaps) {
 
     const subsectionMap = settingsCache.subsections || {};
     const subsections = !isNoSection
-      ? [...(subsectionMap[section.id] || [])].map((s) => ({ favorite: false, ...s }))
+      ? [...(subsectionMap[section.id] || [])].map((s) => ({ favorite: false, parentId: "", ...s }))
       : [];
     const taskSubsections = Array.from(new Set(sectionTasks.map((t) => t.subsection).filter(Boolean)));
     taskSubsections.forEach((subId) => {
@@ -589,7 +692,10 @@ function renderTasks(tasks, timeMaps) {
     }
     card.appendChild(ungroupedZone);
 
-    subsections.forEach((sub) => {
+    const buildChildren = (parentId = "") =>
+      subsections.filter((s) => (s.parentId || "") === (parentId || ""));
+
+    const renderSubsection = (sub) => {
       const subWrap = document.createElement("div");
       subWrap.className = "space-y-2 rounded-xl border border-slate-800 bg-slate-900/60 p-3";
       const subHeader = document.createElement("div");
@@ -607,6 +713,13 @@ function renderTasks(tasks, timeMaps) {
       editSubBtn.className = "title-icon-btn";
       editSubBtn.title = "Edit subsection";
       editSubBtn.innerHTML = editIconSvg;
+      const zoomSubBtn = document.createElement("button");
+      zoomSubBtn.type = "button";
+      zoomSubBtn.dataset.zoomSubsection = sub.id;
+      zoomSubBtn.dataset.zoomSection = section.id;
+      zoomSubBtn.className = "title-icon-btn";
+      zoomSubBtn.title = "Zoom into subsection";
+      zoomSubBtn.innerHTML = zoomInIconSvg;
       const favoriteSubBtn = document.createElement("button");
       favoriteSubBtn.type = "button";
       favoriteSubBtn.dataset.favoriteSubsection = sub.id;
@@ -622,6 +735,7 @@ function renderTasks(tasks, timeMaps) {
       removeSubBtn.title = "Remove subsection";
       removeSubBtn.innerHTML = removeIconSvg;
       subTitleActions.appendChild(editSubBtn);
+      subTitleActions.appendChild(zoomSubBtn);
       subTitleActions.appendChild(favoriteSubBtn);
       subTitleActions.appendChild(removeSubBtn);
       subTitle.appendChild(subTitleText);
@@ -633,8 +747,19 @@ function renderTasks(tasks, timeMaps) {
       addSubTaskBtn.className =
         "rounded-lg border border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-200 hover:border-lime-400";
       addSubTaskBtn.textContent = "Add task";
+      const addChildSubBtn = document.createElement("button");
+      addChildSubBtn.type = "button";
+      addChildSubBtn.dataset.addChildSubsection = sub.id;
+      addChildSubBtn.dataset.sectionId = isNoSection ? "" : section.id;
+      addChildSubBtn.className =
+        "rounded-lg border border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-200 hover:border-lime-400";
+      addChildSubBtn.textContent = "Add subsection";
+      const subHeaderActions = document.createElement("div");
+      subHeaderActions.className = "flex items-center gap-2";
+      subHeaderActions.appendChild(addChildSubBtn);
+      subHeaderActions.appendChild(addSubTaskBtn);
       subHeader.appendChild(subTitle);
-      subHeader.appendChild(addSubTaskBtn);
+      subHeader.appendChild(subHeaderActions);
       subWrap.appendChild(subHeader);
 
       const subZone = document.createElement("div");
@@ -653,7 +778,19 @@ function renderTasks(tasks, timeMaps) {
         subTasks.forEach((task) => subZone.appendChild(renderTaskCard(task)));
       }
       subWrap.appendChild(subZone);
-      card.appendChild(subWrap);
+
+      const children = buildChildren(sub.id);
+      if (children.length) {
+        const childWrap = document.createElement("div");
+        childWrap.className = "space-y-2 border-l border-slate-800/60 pl-3";
+        children.forEach((child) => childWrap.appendChild(renderSubsection(child)));
+        subWrap.appendChild(childWrap);
+      }
+      return subWrap;
+    };
+
+    buildChildren().forEach((sub) => {
+      card.appendChild(renderSubsection(sub));
     });
 
     return card;
@@ -675,7 +812,9 @@ async function loadTasks() {
   const tasks = await ensureTaskIds(tasksRaw);
   const timeMaps = timeMapsRaw.map(normalizeTimeMap);
   tasksTimeMapsCache = timeMaps;
-  renderTasks(tasks, timeMaps);
+  tasksCache = tasks;
+  renderTasks(tasksCache, timeMaps);
+  renderZoomBanner();
 }
 
 async function handleAddSection() {
@@ -723,13 +862,22 @@ async function handleRemoveSection(id) {
   await loadTasks();
 }
 
-async function handleAddSubsection(sectionId, value) {
+async function handleAddSubsection(sectionId, value, parentSubsectionId = "") {
   const name = value.trim();
   if (!sectionId || !name) return;
   const subsections = { ...(settingsCache.subsections || {}) };
   const list = subsections[sectionId] || [];
-  if (list.some((s) => s.name.toLowerCase() === name.toLowerCase())) return;
-  const entry = { id: uuid(), name, favorite: false };
+  const parentId = parentSubsectionId || "";
+  if (
+    list.some(
+      (s) =>
+        (s.parentId || "") === parentId &&
+        s.name &&
+        s.name.toLowerCase() === name.toLowerCase()
+    )
+  )
+    return;
+  const entry = { id: uuid(), name, favorite: false, parentId };
   subsections[sectionId] = [...list, entry];
   settingsCache = { ...settingsCache, subsections };
   await saveSettings(settingsCache);
@@ -821,6 +969,72 @@ async function handleToggleSubsectionFavorite(sectionId, subsectionId) {
   await saveSettings(settingsCache);
   renderTaskSectionOptions(sectionId);
   await loadTasks();
+}
+
+function getZoomLabel() {
+  if (!zoomFilter) return "";
+  if (zoomFilter.type === "section") {
+    const name = zoomFilter.sectionId ? getSectionName(zoomFilter.sectionId) : "No section";
+    return `section "${name || "Untitled section"}"`;
+  }
+  if (zoomFilter.type === "subsection") {
+    const subName = getSubsectionsFor(zoomFilter.sectionId).find(
+      (s) => s.id === zoomFilter.subsectionId
+    )?.name;
+    return `subsection "${subName || "Untitled subsection"}"`;
+  }
+  if (zoomFilter.type === "task") {
+    const task = tasksCache.find((t) => t.id === zoomFilter.taskId);
+    return task ? `task "${task.title}"` : "task";
+  }
+  return "";
+}
+
+function renderZoomBanner() {
+  if (!zoomBanner) return;
+  if (!zoomFilter) {
+    zoomBanner.classList.add("hidden");
+    zoomBanner.innerHTML = "";
+    return;
+  }
+  const label = getZoomLabel();
+  zoomBanner.classList.remove("hidden");
+  zoomBanner.innerHTML = `
+    <div class="flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2 text-sm text-slate-200">
+        <span>Zoomed into ${label}</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="zoom-home-btn" class="rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400">Home</button>
+        <button id="zoom-out-btn" class="rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400">Zoom out</button>
+      </div>
+    </div>
+  `;
+  zoomBanner.querySelector("#zoom-out-btn")?.addEventListener("click", () => {
+    clearZoomFilter();
+  });
+  zoomBanner.querySelector("#zoom-home-btn")?.addEventListener("click", () => {
+    goHome();
+  });
+}
+
+function setZoomFilter(filter) {
+  zoomFilter = filter;
+  updateUrlWithZoom(filter);
+  renderZoomBanner();
+  renderTasks(tasksCache, tasksTimeMapsCache);
+}
+
+function clearZoomFilter() {
+  zoomFilter = null;
+  updateUrlWithZoom(null);
+  renderZoomBanner();
+  renderTasks(tasksCache, tasksTimeMapsCache);
+}
+
+function goHome() {
+  clearZoomFilter();
+  switchView("tasks");
 }
 
 let draggedTaskId = null;
@@ -977,8 +1191,9 @@ async function migrateSectionsAndTasks(tasks, settings) {
       const name = typeof item === "string" ? item : item?.name || "Untitled subsection";
       const id = typeof item === "object" && item?.id ? item.id : uuid();
       const favorite = typeof item === "object" && item?.favorite ? Boolean(item.favorite) : false;
+      const parentId = typeof item === "object" && item?.parentId ? item.parentId : "";
       if (subsectionIdMaps[targetSectionId].has(id)) return;
-      const sub = { id, name, favorite };
+      const sub = { id, name, favorite, parentId };
       subsections[targetSectionId].push(sub);
       subsectionIdMaps[targetSectionId].set(id, sub);
       if (name) subsectionNameMaps[targetSectionId].set(name.toLowerCase(), id);
@@ -1200,6 +1415,12 @@ async function handleTaskListClick(event, tasks) {
   const addSubsectionFor = btn.dataset.addSubsection;
   const toggleSubsectionFor = btn.dataset.toggleSubsection;
   const addSubsectionTaskTarget = btn.dataset.addSubsectionTarget;
+  const zoomSectionId = btn.dataset.zoomSection;
+  const zoomSubsectionId = btn.dataset.zoomSubsection;
+  const zoomTaskId = btn.dataset.zoomTask;
+  const hasZoomSubAttr = btn.getAttribute("data-zoom-subsection") !== null;
+  const addChildSubsectionId = btn.dataset.addChildSubsection;
+  const addChildSectionId = btn.dataset.sectionId;
   const editSectionId = btn.dataset.editSection;
   const favoriteSectionId = btn.dataset.favoriteSection;
   const removeSectionId = btn.dataset.removeSection;
@@ -1209,7 +1430,27 @@ async function handleTaskListClick(event, tasks) {
   const parentSectionId = btn.dataset.parentSection;
   const editId = btn.dataset.edit;
   const deleteId = btn.dataset.delete;
-  if (favoriteSectionId !== undefined) {
+  if (zoomTaskId !== undefined) {
+    setZoomFilter({
+      type: "task",
+      taskId: zoomTaskId,
+      sectionId: zoomSectionId || "",
+      subsectionId: zoomSubsectionId || ""
+    });
+  } else if (hasZoomSubAttr && zoomSubsectionId !== "") {
+    setZoomFilter({
+      type: "subsection",
+      sectionId: zoomSectionId || "",
+      subsectionId: zoomSubsectionId || ""
+    });
+  } else if (zoomSectionId !== undefined && hasZoomSubAttr) {
+    setZoomFilter({ type: "section", sectionId: zoomSectionId || "" });
+  } else if (addChildSubsectionId !== undefined) {
+    const name = prompt("Add subsection", "");
+    if (name && name.trim()) {
+      await handleAddSubsection(addChildSectionId || "", name, addChildSubsectionId);
+    }
+  } else if (favoriteSectionId !== undefined) {
     await handleToggleSectionFavorite(favoriteSectionId);
   } else if (favoriteSubsectionId !== undefined) {
     await handleToggleSubsectionFavorite(parentSectionId, favoriteSubsectionId);
@@ -1364,10 +1605,17 @@ async function hydrate() {
   renderSections();
   const timeMaps = timeMapsRaw.map(normalizeTimeMap);
   tasksTimeMapsCache = timeMaps;
+  tasksCache = tasks;
   renderTimeMaps(timeMaps);
   renderTaskSectionOptions();
   renderTaskTimeMapOptions(timeMaps);
-  renderTasks(tasks, timeMaps);
+  const initialZoom = parseZoomFromUrl();
+  if (initialZoom) {
+    setZoomFilter(initialZoom);
+  } else {
+    renderTasks(tasksCache, timeMaps);
+    renderZoomBanner();
+  }
   await updateScheduleSummary();
 }
 

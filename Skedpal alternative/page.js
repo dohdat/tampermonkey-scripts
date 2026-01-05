@@ -28,6 +28,7 @@ const zoomInIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" he
 const zoomOutIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 10h4m2 1a6 6 0 1 1-12 0 6 6 0 0 1 12 0Zm-2.5 3.5L17 17"></path></svg>`;
 const checkboxIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7" stroke="currentColor" fill="none"></circle></svg>`;
 const checkboxCheckedIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="7" stroke="currentColor" fill="none"></circle><path d="m6.5 10 2.2 2.2 4.8-4.9" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
+const bulletIconSvg = `<svg aria-hidden="true" viewBox="0 0 8 8" width="8" height="8" fill="currentColor"><circle cx="4" cy="4" r="3"></circle></svg>`;
 const caretDownIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m5 7 5 5 5-5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
 const caretRightIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m8 5 5 5-5 5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
 
@@ -108,6 +109,7 @@ let tasksCache = [];
 let zoomFilter = null;
 const collapsedSections = new Set();
 const collapsedSubsections = new Set();
+const collapsedTasks = new Set();
 
 function updateUrlWithZoom(filter) {
   const url = new URL(window.location.href);
@@ -927,20 +929,26 @@ function renderTasks(tasks, timeMaps) {
   const timeMapById = new Map(timeMaps.map((tm) => [tm.id, normalizeTimeMap(tm)]));
   const filteredTasks = (() => {
     const base = tasks.filter((t) => !t.completed);
+    const hiddenByParent = new Set(
+      base
+        .filter((t) => t.subtaskParentId && collapsedTasks.has(t.subtaskParentId))
+        .map((t) => t.id)
+    );
+    const visible = base.filter((t) => !hiddenByParent.has(t.id));
     if (zoomFilter?.type === "section") {
-      return base.filter((t) => (t.section || "") === (zoomFilter.sectionId || ""));
+      return visible.filter((t) => (t.section || "") === (zoomFilter.sectionId || ""));
     }
     if (zoomFilter?.type === "subsection") {
-      return base.filter(
+      return visible.filter(
         (t) =>
           (t.section || "") === (zoomFilter.sectionId || "") &&
           (t.subsection || "") === (zoomFilter.subsectionId || "")
       );
     }
     if (zoomFilter?.type === "task") {
-      return base.filter((t) => t.id === zoomFilter.taskId);
+      return visible.filter((t) => t.id === zoomFilter.taskId);
     }
-    return base;
+    return visible;
   })();
   const sections = [...(settingsCache.sections || [])];
   const seenSectionIds = new Set(sections.map((s) => s.id));
@@ -970,6 +978,9 @@ function renderTasks(tasks, timeMaps) {
   };
 
   const renderTaskCard = (task) => {
+    const childTasks = tasks.filter((t) => t.subtaskParentId === task.id);
+    const hasChildren = childTasks.length > 0;
+    const isCollapsed = collapsedTasks.has(task.id);
     const statusValue = task.completed ? "completed" : task.scheduleStatus || "unscheduled";
     const statusClass =
       statusValue === "scheduled"
@@ -1009,6 +1020,15 @@ function renderTasks(tasks, timeMaps) {
     header.className = "flex items-start justify-between gap-2";
     const titleWrap = document.createElement("h3");
     titleWrap.className = "text-base font-semibold title-hover-group flex items-center gap-2";
+    if (hasChildren) {
+      const collapseTaskBtn = document.createElement("button");
+      collapseTaskBtn.type = "button";
+      collapseTaskBtn.dataset.toggleTaskCollapse = task.id;
+      collapseTaskBtn.className = "title-icon-btn";
+      collapseTaskBtn.title = "Expand/collapse subtasks";
+      collapseTaskBtn.innerHTML = isCollapsed ? caretRightIconSvg : caretDownIconSvg;
+      titleWrap.appendChild(collapseTaskBtn);
+    }
     const completeBtn = document.createElement("button");
     completeBtn.type = "button";
     completeBtn.dataset.completeTask = task.id;
@@ -2223,6 +2243,7 @@ async function handleTaskListClick(event, tasks) {
   const editId = btn.dataset.edit;
   const deleteId = btn.dataset.delete;
   const addSubtaskId = btn.dataset.addSubtask;
+  const toggleTaskCollapseId = btn.dataset.toggleTaskCollapse;
   if (completeTaskId !== undefined) {
     const task = tasks.find((t) => t.id === completeTaskId);
     if (task) {
@@ -2328,6 +2349,13 @@ async function handleTaskListClick(event, tasks) {
     if (parentTask) {
       startSubtaskFromTask(parentTask);
     }
+  } else if (toggleTaskCollapseId !== undefined) {
+    if (collapsedTasks.has(toggleTaskCollapseId)) {
+      collapsedTasks.delete(toggleTaskCollapseId);
+    } else {
+      collapsedTasks.add(toggleTaskCollapseId);
+    }
+    renderTasks(tasksCache, tasksTimeMapsCache);
   } else if (deleteId) {
     deleteTask(deleteId).then(loadTasks);
   }

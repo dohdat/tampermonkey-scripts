@@ -550,7 +550,7 @@ function getStartDate() {
 }
 
 function getWeekdayShortLabel(day) {
-  return ["S", "M", "T", "W", "T", "F", "S"][day] || "S";
+  return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][day] || "Sun";
 }
 
 function renderTimeMapOptions(container, selectedIds = [], timeMaps = tasksTimeMapsCache || []) {

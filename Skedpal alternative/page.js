@@ -448,7 +448,7 @@ function renderTasks(tasks, timeMaps) {
     const titleMarkup = task.link
       ? `<a href="${task.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-lime-300 hover:text-lime-200 underline decoration-lime-400">
           <span>${task.title}</span>
-          <span class="rounded border border-lime-400/60 bg-lime-400/10 px-1.5 py-0.5 text-[11px] font-semibold text-lime-200">LINK</span>
+          <span>🔗</span>
         </a>`
       : task.title;
     taskCard.innerHTML = `

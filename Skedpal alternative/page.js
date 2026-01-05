@@ -538,6 +538,7 @@ function renderTasks(tasks, timeMaps) {
     taskCard.dataset.taskId = task.id;
     taskCard.dataset.sectionId = task.section || "";
     taskCard.dataset.subsectionId = task.subsection || "";
+    taskCard.style.minHeight = "96px";
     attachTaskDragEvents(taskCard);
     const color = timeMapById.get(task.timeMapIds[0])?.color;
     if (color) {
@@ -565,7 +566,21 @@ function renderTasks(tasks, timeMaps) {
     zoomTaskBtn.className = "title-icon-btn";
     zoomTaskBtn.title = "Zoom into task";
     zoomTaskBtn.innerHTML = zoomInIconSvg;
+    const editTaskBtn = document.createElement("button");
+    editTaskBtn.type = "button";
+    editTaskBtn.dataset.edit = task.id;
+    editTaskBtn.className = "title-icon-btn";
+    editTaskBtn.title = "Edit task";
+    editTaskBtn.innerHTML = editIconSvg;
+    const deleteTaskBtn = document.createElement("button");
+    deleteTaskBtn.type = "button";
+    deleteTaskBtn.dataset.delete = task.id;
+    deleteTaskBtn.className = "title-icon-btn";
+    deleteTaskBtn.title = "Delete task";
+    deleteTaskBtn.innerHTML = removeIconSvg;
     titleActions.appendChild(zoomTaskBtn);
+    titleActions.appendChild(editTaskBtn);
+    titleActions.appendChild(deleteTaskBtn);
     titleWrap.appendChild(titleActions);
     header.appendChild(titleWrap);
     taskCard.appendChild(header);
@@ -590,13 +605,6 @@ function renderTasks(tasks, timeMaps) {
       `;
     taskCard.appendChild(statusRow);
 
-    const actionsRow = document.createElement("div");
-    actionsRow.className = "mt-3 flex gap-2";
-    actionsRow.innerHTML = `
-        <button class="rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400" data-edit="${task.id}">Edit</button>
-        <button class="rounded-lg bg-orange-500/90 px-3 py-1 text-xs font-semibold text-slate-900 hover:bg-orange-400" data-delete="${task.id}">Delete</button>
-      `;
-    taskCard.appendChild(actionsRow);
 
     return taskCard;
   };

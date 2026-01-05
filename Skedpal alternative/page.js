@@ -515,7 +515,7 @@ function renderTasks(tasks, timeMaps) {
     ...sections,
     ...missingSections,
     ...(hasUnsectioned || sections.length === 0 ? [{ id: "", name: "No section" }] : [])
-  ].filter((s) => (relevantSectionIds.size ? relevantSectionIds.has(s.id || "") : true));
+  ].filter((s) => (zoomFilter ? relevantSectionIds.has(s.id || "") : true));
 
   const getSubsectionName = (sectionId, subsectionId) => {
     const subs = getSubsectionsFor(sectionId);

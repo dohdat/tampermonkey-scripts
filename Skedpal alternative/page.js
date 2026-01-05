@@ -645,6 +645,7 @@ function renderRepeatUI() {
   taskRepeatEndDate.value = repeatState.end?.date ? repeatState.end.date.slice(0, 10) : "";
   taskRepeatEndCount.value = repeatState.end?.count ? Number(repeatState.end.count) : 1;
   taskRepeatSelect.value = lastRepeatSelection.type === "custom" ? "custom" : "none";
+  syncRepeatSelectLabel();
 }
 
 function setRepeatFromSelection(repeat = { type: "none" }) {
@@ -687,6 +688,23 @@ function setRepeatFromSelection(repeat = { type: "none" }) {
   };
   lastRepeatSelection = buildRepeatFromState();
   renderRepeatUI();
+}
+
+function syncRepeatSelectLabel() {
+  if (!taskRepeatSelect) return;
+  const noneOpt = taskRepeatSelect.querySelector('option[value="none"]');
+  const customOpt = taskRepeatSelect.querySelector('option[value="custom"]');
+  const customNewOpt = taskRepeatSelect.querySelector('option[value="custom-new"]');
+  if (noneOpt) noneOpt.textContent = "Does not repeat";
+  if (customOpt) {
+    customOpt.textContent =
+      lastRepeatSelection.type === "custom"
+        ? getRepeatSummary(lastRepeatSelection)
+        : "Saved pattern";
+  }
+  if (customNewOpt) {
+    customNewOpt.textContent = "Custom...";
+  }
 }
 
 function buildRepeatFromState() {
@@ -2269,12 +2287,16 @@ taskList.addEventListener("click", async (event) => {
   await handleTaskListClick(event, tasks);
 });
 taskRepeatSelect?.addEventListener("change", () => {
-  if (taskRepeatSelect.value === "custom") {
-    repeatSelectionBeforeModal = lastRepeatSelection;
+  const value = taskRepeatSelect.value;
+  const baseSelection = lastRepeatSelection?.type === "custom" ? lastRepeatSelection : { type: "none" };
+  if (value === "custom" || value === "custom-new") {
+    repeatSelectionBeforeModal = baseSelection;
     openRepeatModal();
-    setRepeatFromSelection(
-      lastRepeatSelection.type === "custom" ? lastRepeatSelection : { type: "custom", unit: "week" }
-    );
+    const initial =
+      lastRepeatSelection?.type === "custom"
+        ? lastRepeatSelection
+        : { type: "custom", unit: repeatState.unit === "none" ? "week" : repeatState.unit };
+    setRepeatFromSelection(initial);
   } else {
     setRepeatFromSelection({ type: "none" });
   }
@@ -2357,7 +2379,8 @@ repeatModalCloseBtns.forEach((btn) =>
   btn.addEventListener("click", () => {
     closeRepeatModal();
     setRepeatFromSelection(repeatSelectionBeforeModal || { type: "none" });
-    taskRepeatSelect.value = (repeatSelectionBeforeModal || { type: "none" }).type === "custom" ? "custom" : "none";
+    const prev = repeatSelectionBeforeModal || { type: "none" };
+    taskRepeatSelect.value = prev.type === "custom" ? "custom" : "none";
   })
 );
 repeatModalSaveBtn?.addEventListener("click", () => {

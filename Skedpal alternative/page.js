@@ -44,6 +44,7 @@ const taskToggle = document.getElementById("task-toggle");
 const taskModalCloseButtons = [...document.querySelectorAll("[data-task-modal-close]")];
 const taskTimeMapOptions = document.getElementById("task-timemap-options");
 const taskDeadlineInput = document.getElementById("task-deadline");
+const taskStartFromInput = document.getElementById("task-start-from");
 const taskLinkInput = document.getElementById("task-link");
 const taskMinBlockInput = document.getElementById("task-min-block");
 const taskSectionSelect = document.getElementById("task-section");
@@ -80,6 +81,7 @@ const subsectionTaskDurationInput = document.getElementById("subsection-task-dur
 const subsectionTaskMinBlockInput = document.getElementById("subsection-task-min-block");
 const subsectionTaskPriorityInput = document.getElementById("subsection-task-priority");
 const subsectionTaskDeadlineInput = document.getElementById("subsection-task-deadline");
+const subsectionTaskStartFromInput = document.getElementById("subsection-task-start-from");
 const subsectionTaskRepeatSelect = document.getElementById("subsection-task-repeat");
 const subsectionTimeMapOptions = document.getElementById("subsection-timemap-options");
 const subsectionModalCloseBtns = [...document.querySelectorAll("[data-subsection-modal-close]")];
@@ -197,6 +199,7 @@ function getSubsectionsFor(sectionId) {
       minBlockMin: 30,
       priority: 3,
       deadline: "",
+      startFrom: "",
       repeat: { type: "none" },
       timeMapIds: [],
       ...(s.template || {})
@@ -739,6 +742,7 @@ function openSubsectionModal(sectionId, parentId = "", existingSubsectionId = ""
     minBlockMin: 30,
     priority: 3,
     deadline: "",
+    startFrom: "",
     repeat: { type: "none" },
     timeMapIds: []
   };
@@ -748,6 +752,7 @@ function openSubsectionModal(sectionId, parentId = "", existingSubsectionId = ""
   subsectionTaskMinBlockInput.value = template.minBlockMin || 30;
   subsectionTaskPriorityInput.value = String(template.priority || 3);
   subsectionTaskDeadlineInput.value = template.deadline ? template.deadline.slice(0, 10) : "";
+  subsectionTaskStartFromInput.value = template.startFrom ? template.startFrom.slice(0, 10) : "";
   subsectionTaskRepeatSelect.value = template.repeat?.type === "custom" ? "custom" : "none";
   setRepeatFromSelection(template.repeat || { type: "none" }, "subsection");
   syncSubsectionRepeatLabel();
@@ -2050,6 +2055,7 @@ async function handleTaskSubmit(event) {
   const minBlockMin = Number(taskMinBlockInput.value) || 30;
   const priority = Number(document.getElementById("task-priority").value);
   const deadline = taskDeadlineInput.value;
+  const startFrom = taskStartFromInput.value;
   const link = (taskLinkInput.value || "").trim();
   const timeMapIds = collectSelectedValues(taskTimeMapOptions);
   const defaultSectionId = (settingsCache.sections || [])[0]?.id || "";
@@ -2083,6 +2089,7 @@ async function handleTaskSubmit(event) {
     minBlockMin,
     priority,
     deadline: deadline ? new Date(deadline).toISOString() : null,
+    startFrom: startFrom ? new Date(startFrom).toISOString() : null,
     link: link || "",
     timeMapIds,
     section,
@@ -2108,6 +2115,7 @@ function resetTaskForm(shouldClose = false) {
   taskMinBlockInput.value = "30";
   document.getElementById("task-priority").value = "3";
   taskDeadlineInput.value = "";
+  taskStartFromInput.value = "";
   setRepeatFromSelection({ type: "none" });
   renderTaskSectionOptions();
   renderTaskTimeMapOptions(tasksTimeMapsCache || [], []);
@@ -2127,6 +2135,7 @@ function startTaskInSection(sectionId = "", subsectionId = "") {
   taskMinBlockInput.value = template?.minBlockMin || "30";
   document.getElementById("task-priority").value = String(template?.priority || 3);
   taskDeadlineInput.value = template?.deadline ? template.deadline.slice(0, 10) : "";
+  taskStartFromInput.value = template?.startFrom ? template.startFrom.slice(0, 10) : "";
   setRepeatFromSelection(template?.repeat || { type: "none" }, "task");
   renderTaskSectionOptions(sectionId);
   renderTaskSubsectionOptions(subsectionId);

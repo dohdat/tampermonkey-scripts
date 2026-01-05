@@ -1007,14 +1007,11 @@ function renderTasks(tasks, timeMaps) {
             return ids;
           })()
         : null;
-    const hiddenByParent =
-      zoomFilter?.type === "task"
-        ? new Set()
-        : new Set(
-            base
-              .filter((t) => t.subtaskParentId && collapsedTasks.has(t.subtaskParentId))
-              .map((t) => t.id)
-          );
+    const hiddenByParent = new Set(
+      base
+        .filter((t) => t.subtaskParentId && collapsedTasks.has(t.subtaskParentId))
+        .map((t) => t.id)
+    );
     const visible = base.filter((t) => !hiddenByParent.has(t.id));
     if (zoomFilter?.type === "section") {
       return visible.filter((t) => (t.section || "") === (zoomFilter.sectionId || ""));

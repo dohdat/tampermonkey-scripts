@@ -625,6 +625,9 @@ function defaultRepeatState(startDate = getStartDate()) {
 let repeatState = defaultRepeatState();
 let lastRepeatSelection = { type: "none" };
 let repeatSelectionBeforeModal = { type: "none" };
+let repeatTarget = "task";
+let subsectionRepeatSelection = { type: "none" };
+let subsectionRepeatBeforeModal = { type: "none" };
 let editingSubsectionId = "";
 let editingSectionId = "";
 
@@ -653,7 +656,7 @@ function closeRepeatModal() {
   if (repeatModal) repeatModal.classList.add("hidden");
 }
 
-function renderRepeatUI() {
+function renderRepeatUI(target = repeatTarget) {
   if (!taskRepeatUnit) return;
   taskRepeatUnit.value = repeatState.unit === "none" ? "week" : repeatState.unit;
   taskRepeatInterval.value = repeatState.interval;
@@ -694,8 +697,16 @@ function renderRepeatUI() {
   taskRepeatEndAfter.checked = endType === "after";
   taskRepeatEndDate.value = repeatState.end?.date ? repeatState.end.date.slice(0, 10) : "";
   taskRepeatEndCount.value = repeatState.end?.count ? Number(repeatState.end.count) : 1;
-  taskRepeatSelect.value = lastRepeatSelection.type === "custom" ? "custom" : "none";
-  syncRepeatSelectLabel();
+  if (target === "task") {
+    taskRepeatSelect.value = lastRepeatSelection.type === "custom" ? "custom" : "none";
+    syncRepeatSelectLabel();
+  } else if (target === "subsection") {
+    if (subsectionTaskRepeatSelect) {
+      subsectionTaskRepeatSelect.value =
+        subsectionRepeatSelection.type === "custom" ? "custom" : "none";
+    }
+    syncSubsectionRepeatLabel();
+  }
 }
 
 function getSubsectionTemplate(sectionId, subsectionId) {
@@ -706,6 +717,7 @@ function getSubsectionTemplate(sectionId, subsectionId) {
 
 function openSubsectionModal(sectionId, parentId = "", existingSubsectionId = "") {
   if (!subsectionFormWrap) return;
+  repeatTarget = "subsection";
   const subs = getSubsectionsFor(sectionId);
   const existing = subs.find((s) => s.id === existingSubsectionId);
   editingSubsectionId = existing ? existing.id : "";
@@ -727,16 +739,23 @@ function openSubsectionModal(sectionId, parentId = "", existingSubsectionId = ""
   subsectionTaskDurationInput.value = template.durationMin || 30;
   subsectionTaskPriorityInput.value = String(template.priority || 3);
   subsectionTaskDeadlineInput.value = template.deadline ? template.deadline.slice(0, 10) : "";
+  subsectionTaskRepeatSelect.value = template.repeat?.type === "custom" ? "custom" : "none";
+  setRepeatFromSelection(template.repeat || { type: "none" }, "subsection");
+  syncSubsectionRepeatLabel();
   renderTimeMapOptions(subsectionTimeMapOptions, template.timeMapIds || [], tasksTimeMapsCache);
   subsectionFormWrap.classList.remove("hidden");
 }
 
-function setRepeatFromSelection(repeat = { type: "none" }) {
+function setRepeatFromSelection(repeat = { type: "none" }, target = repeatTarget || "task") {
   const base = defaultRepeatState();
   if (!repeat || repeat.type === "none") {
     repeatState = { ...base, unit: "none" };
-    lastRepeatSelection = { type: "none" };
-    renderRepeatUI();
+    if (target === "task") {
+      lastRepeatSelection = { type: "none" };
+    } else {
+      subsectionRepeatSelection = { type: "none" };
+    }
+    renderRepeatUI(target);
     return;
   }
   const unit = repeat.unit || (repeat.frequency === "daily"
@@ -775,8 +794,13 @@ function setRepeatFromSelection(repeat = { type: "none" }) {
     yearlyDay: repeat.yearlyDay || repeat.byMonthDay || base.yearlyDay,
     end: repeat.end || { type: "never", date: "", count: 1 }
   };
-  lastRepeatSelection = buildRepeatFromState();
-  renderRepeatUI();
+  const built = buildRepeatFromState();
+  if (target === "task") {
+    lastRepeatSelection = built;
+  } else {
+    subsectionRepeatSelection = built;
+  }
+  renderRepeatUI(target);
 }
 
 function syncRepeatSelectLabel() {
@@ -794,6 +818,21 @@ function syncRepeatSelectLabel() {
   if (customNewOpt) {
     customNewOpt.textContent = "Custom...";
   }
+}
+
+function syncSubsectionRepeatLabel() {
+  if (!subsectionTaskRepeatSelect) return;
+  const noneOpt = subsectionTaskRepeatSelect.querySelector('option[value="none"]');
+  const customOpt = subsectionTaskRepeatSelect.querySelector('option[value="custom"]');
+  const customNewOpt = subsectionTaskRepeatSelect.querySelector('option[value="custom-new"]');
+  if (noneOpt) noneOpt.textContent = "Does not repeat";
+  if (customOpt) {
+    customOpt.textContent =
+      subsectionRepeatSelection.type === "custom"
+        ? getRepeatSummary(subsectionRepeatSelection)
+        : "Saved pattern";
+  }
+  if (customNewOpt) customNewOpt.textContent = "Custom...";
 }
 
 function buildRepeatFromState() {
@@ -1350,7 +1389,10 @@ async function handleAddSubsection(sectionId, value, parentSubsectionId = "") {
       durationMin: Number(subsectionTaskDurationInput?.value) || 30,
       priority: Number(subsectionTaskPriorityInput?.value) || 3,
       deadline: subsectionTaskDeadlineInput?.value || "",
-      repeat: { type: "none" },
+      repeat:
+        subsectionRepeatSelection?.type && subsectionRepeatSelection.type !== "none"
+          ? subsectionRepeatSelection
+          : { type: "none" },
       timeMapIds: collectSelectedValues(subsectionTimeMapOptions) || []
     }
   };
@@ -1999,6 +2041,7 @@ async function handleTaskSubmit(event) {
 }
 
 function resetTaskForm(shouldClose = false) {
+  repeatTarget = "task";
   document.getElementById("task-id").value = "";
   document.getElementById("task-title").value = "";
   taskLinkInput.value = "";
@@ -2014,6 +2057,7 @@ function resetTaskForm(shouldClose = false) {
 }
 
 function startTaskInSection(sectionId = "", subsectionId = "") {
+  repeatTarget = "task";
   document.getElementById("task-id").value = "";
   const template =
     subsectionId && sectionId ? getSubsectionTemplate(sectionId, subsectionId) : null;
@@ -2022,7 +2066,7 @@ function startTaskInSection(sectionId = "", subsectionId = "") {
   document.getElementById("task-duration").value = template?.durationMin || "30";
   document.getElementById("task-priority").value = String(template?.priority || 3);
   taskDeadlineInput.value = template?.deadline ? template.deadline.slice(0, 10) : "";
-  setRepeatFromSelection(template?.repeat || { type: "none" });
+  setRepeatFromSelection(template?.repeat || { type: "none" }, "task");
   renderTaskSectionOptions(sectionId);
   renderTaskSubsectionOptions(subsectionId);
   renderTaskTimeMapOptions(tasksTimeMapsCache || [], template?.timeMapIds || []);
@@ -2362,6 +2406,7 @@ taskRepeatSelect?.addEventListener("change", () => {
   const value = taskRepeatSelect.value;
   const baseSelection = lastRepeatSelection?.type === "custom" ? lastRepeatSelection : { type: "none" };
   if (value === "custom" || value === "custom-new") {
+    repeatTarget = "task";
     repeatSelectionBeforeModal = baseSelection;
     openRepeatModal();
     const initial =
@@ -2371,6 +2416,25 @@ taskRepeatSelect?.addEventListener("change", () => {
     setRepeatFromSelection(initial);
   } else {
     setRepeatFromSelection({ type: "none" });
+  }
+});
+subsectionTaskRepeatSelect?.addEventListener("change", () => {
+  const value = subsectionTaskRepeatSelect.value;
+  const baseSelection =
+    subsectionRepeatSelection?.type === "custom" ? subsectionRepeatSelection : { type: "none" };
+  if (value === "custom" || value === "custom-new") {
+    repeatTarget = "subsection";
+    subsectionRepeatBeforeModal = baseSelection;
+    openRepeatModal();
+    const initial =
+      subsectionRepeatSelection?.type === "custom"
+        ? subsectionRepeatSelection
+        : { type: "custom", unit: repeatState.unit === "none" ? "week" : repeatState.unit };
+    setRepeatFromSelection(initial, "subsection");
+  } else {
+    repeatTarget = "subsection";
+    setRepeatFromSelection({ type: "none" }, "subsection");
+    syncSubsectionRepeatLabel();
   }
 });
 taskRepeatUnit?.addEventListener("change", () => {
@@ -2450,17 +2514,35 @@ taskRepeatEndCount?.addEventListener("input", () => {
 repeatModalCloseBtns.forEach((btn) =>
   btn.addEventListener("click", () => {
     closeRepeatModal();
-    setRepeatFromSelection(repeatSelectionBeforeModal || { type: "none" });
-    const prev = repeatSelectionBeforeModal || { type: "none" };
-    taskRepeatSelect.value = prev.type === "custom" ? "custom" : "none";
+    if (repeatTarget === "subsection") {
+      setRepeatFromSelection(subsectionRepeatBeforeModal || { type: "none" }, "subsection");
+      const prev = subsectionRepeatBeforeModal || { type: "none" };
+      subsectionTaskRepeatSelect.value = prev.type === "custom" ? "custom" : "none";
+      syncSubsectionRepeatLabel();
+    } else {
+      setRepeatFromSelection(repeatSelectionBeforeModal || { type: "none" }, "task");
+      const prev = repeatSelectionBeforeModal || { type: "none" };
+      taskRepeatSelect.value = prev.type === "custom" ? "custom" : "none";
+      syncRepeatSelectLabel();
+    }
+    repeatTarget = "task";
   })
 );
 repeatModalSaveBtn?.addEventListener("click", () => {
   const repeat = buildRepeatFromState();
-  lastRepeatSelection = repeat;
-  setRepeatFromSelection(repeat);
-  taskRepeatSelect.value = "custom";
+  if (repeatTarget === "subsection") {
+    subsectionRepeatSelection = repeat;
+    setRepeatFromSelection(repeat, "subsection");
+    subsectionTaskRepeatSelect.value = "custom";
+    syncSubsectionRepeatLabel();
+  } else {
+    lastRepeatSelection = repeat;
+    setRepeatFromSelection(repeat, "task");
+    taskRepeatSelect.value = "custom";
+    syncRepeatSelectLabel();
+  }
   closeRepeatModal();
+  repeatTarget = "task";
 });
 setRepeatFromSelection({ type: "none" });
 horizonInput?.addEventListener("input", (event) => {
@@ -2472,6 +2554,8 @@ function closeSubsectionModal() {
   if (subsectionFormWrap) subsectionFormWrap.classList.add("hidden");
   editingSubsectionId = "";
   editingSectionId = "";
+  subsectionRepeatSelection = { type: "none" };
+  repeatTarget = "task";
 }
 
 subsectionModalCloseBtns.forEach((btn) => btn.addEventListener("click", closeSubsectionModal));
@@ -2497,7 +2581,10 @@ subsectionForm?.addEventListener("submit", async (event) => {
           durationMin: Number(subsectionTaskDurationInput?.value) || 30,
           priority: Number(subsectionTaskPriorityInput?.value) || 3,
           deadline: subsectionTaskDeadlineInput?.value || "",
-          repeat: list[idx].template?.repeat || { type: "none" },
+          repeat:
+            subsectionRepeatSelection?.type && subsectionRepeatSelection.type !== "none"
+              ? subsectionRepeatSelection
+              : { type: "none" },
           timeMapIds: collectSelectedValues(subsectionTimeMapOptions) || []
         }
       };

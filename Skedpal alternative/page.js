@@ -100,7 +100,42 @@ function getSectionById(id) {
 }
 
 function getSectionName(id) {
+  if (!id) return "";
+  if (id === "section-work-default") return "Work";
+  if (id === "section-personal-default") return "Personal";
   return getSectionById(id)?.name || "";
+}
+
+async function ensureDefaultSectionsPresent() {
+  const defaults = [
+    { id: "section-work-default", name: "Work", favorite: false },
+    { id: "section-personal-default", name: "Personal", favorite: false }
+  ];
+  let sections = [...(settingsCache.sections || [])];
+  const subsections = { ...(settingsCache.subsections || {}) };
+  let changed = false;
+  defaults.forEach((def) => {
+    const idx = sections.findIndex((s) => s.id === def.id);
+    if (idx >= 0) {
+      const current = sections[idx];
+      if (current.name !== def.name) {
+        sections[idx] = { ...current, name: def.name };
+        changed = true;
+      }
+    } else {
+      sections.push(def);
+      changed = true;
+    }
+    if (!Array.isArray(subsections[def.id])) {
+      subsections[def.id] = [];
+      changed = true;
+    }
+  });
+  if (changed) {
+    settingsCache = { ...settingsCache, sections, subsections };
+    await saveSettings(settingsCache);
+  }
+  return settingsCache.sections;
 }
 
 function getSubsectionsFor(sectionId) {
@@ -349,17 +384,22 @@ function renderTaskTimeMapOptions(timeMaps, selected = [], defaultTimeMapId = se
 function renderSections() {
   sectionList.innerHTML = "";
   (settingsCache.sections || []).forEach((section) => {
+    const isDefault =
+      section.id === "section-work-default" || section.id === "section-personal-default";
     const chip = document.createElement("div");
     chip.className =
       "flex items-center gap-1 rounded-full border border-slate-700 bg-slate-800/70 px-3 py-1 text-xs font-semibold text-slate-200";
     const label = document.createElement("span");
-    label.textContent = section.name;
+    label.textContent = getSectionName(section.id) || section.name;
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
     removeBtn.dataset.removeSection = section.id;
     removeBtn.className =
       "h-5 w-5 rounded-full border border-slate-700 text-[10px] font-bold text-slate-300 hover:border-orange-400 hover:text-orange-300";
     removeBtn.textContent = "×";
+    if (isDefault) {
+      removeBtn.classList.add("hidden");
+    }
     chip.appendChild(label);
     chip.appendChild(removeBtn);
     sectionList.appendChild(chip);
@@ -626,11 +666,13 @@ function renderTasks(tasks, timeMaps) {
     title.className =
       "title-hover-group flex items-center gap-2 text-base font-semibold text-slate-100";
     const titleText = document.createElement("span");
-    titleText.textContent = section.name || "Untitled section";
+    titleText.textContent = getSectionName(section.id) || section.name || "Untitled section";
     title.appendChild(titleText);
     if (!isNoSection) {
       const titleActions = document.createElement("div");
       titleActions.className = "title-actions";
+      const isDefaultSection =
+        section.id === "section-work-default" || section.id === "section-personal-default";
       const editSectionBtn = document.createElement("button");
       editSectionBtn.type = "button";
       editSectionBtn.dataset.editSection = section.id;
@@ -656,6 +698,10 @@ function renderTasks(tasks, timeMaps) {
       removeSectionBtn.className = "title-icon-btn";
       removeSectionBtn.title = "Remove section";
       removeSectionBtn.innerHTML = removeIconSvg;
+      if (isDefaultSection) {
+        removeSectionBtn.disabled = true;
+        removeSectionBtn.classList.add("opacity-50", "cursor-not-allowed");
+      }
       const addSubsectionToggle = document.createElement("button");
       addSubsectionToggle.type = "button";
       addSubsectionToggle.dataset.toggleSubsection = section.id;
@@ -853,6 +899,7 @@ async function loadTasks() {
   const tasks = await ensureTaskIds(tasksRaw);
   const timeMaps = timeMapsRaw.map(normalizeTimeMap);
   tasksTimeMapsCache = timeMaps;
+  await ensureDefaultSectionsPresent();
   tasksCache = tasks;
   renderTasks(tasksCache, timeMaps);
   renderZoomBanner();
@@ -879,6 +926,7 @@ async function handleAddSection() {
 }
 
 async function handleRemoveSection(id) {
+  if (id === "section-work-default" || id === "section-personal-default") return;
   const sections = settingsCache.sections || [];
   const nextSections = sections.filter((s) => s.id !== id);
   if (nextSections.length === sections.length) return;
@@ -1833,6 +1881,7 @@ async function hydrate() {
   const tasksWithIds = await ensureTaskIds(tasksRaw);
   const { tasks, settings: normalizedSettings } = await migrateSectionsAndTasks(tasksWithIds, settings);
   await initSettings(normalizedSettings);
+  await ensureDefaultSectionsPresent();
   renderSections();
   const timeMaps = timeMapsRaw.map(normalizeTimeMap);
   tasksTimeMapsCache = timeMaps;

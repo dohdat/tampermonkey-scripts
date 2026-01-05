@@ -1668,15 +1668,15 @@ function setupTaskSortables() {
   const zones = [...taskList.querySelectorAll(`.${TASK_ZONE_CLASS}`)];
   zones.forEach((zone) => {
     const sortable = new Sortable(zone, {
-      group: TASK_SORT_GROUP,
-      animation: 160,
+      group: { name: TASK_SORT_GROUP, pull: true, put: true },
+      animation: 150,
       draggable: "[data-task-id]",
       handle: undefined,
       filter: `.${TASK_PLACEHOLDER_CLASS}, button, a, input, textarea, select, label`,
       ghostClass: "sortable-ghost",
       chosenClass: "sortable-chosen",
       dragClass: "sortable-drag",
-      swapThreshold: 0.6,
+      swapThreshold: 0.65,
       fallbackOnBody: true,
       onStart: (event) => {
         toggleZoneHighlight(event.from, true);

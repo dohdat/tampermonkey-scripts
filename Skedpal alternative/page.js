@@ -105,6 +105,7 @@ const TASK_ZONE_CLASS = "task-drop-zone";
 const TASK_PLACEHOLDER_CLASS = "task-drop-placeholder";
 const TASK_SORT_GROUP = "tasks-board";
 const TASK_SORTABLE_STYLE_ID = "task-sortable-styles";
+const SUBTASK_ORDER_OFFSET = 0.01;
 
 let settingsCache = { ...DEFAULT_SETTINGS };
 let tasksTimeMapsCache = [];
@@ -959,6 +960,21 @@ function getNextOrder(section, subsection, tasks = tasksCache) {
     return Math.max(max, orderValue);
   }, 0);
   return maxOrder + 1;
+}
+
+function getNextSubtaskOrder(parentTask, section, subsection, tasks = tasksCache) {
+  if (!parentTask) return getNextOrder(section, subsection, tasks);
+  const targetKey = getContainerKey(section, subsection);
+  const siblings = sortTasksByOrder(
+    (tasks || []).filter(
+      (t) =>
+        getContainerKey(t.section, t.subsection) === targetKey &&
+        t.subtaskParentId === parentTask.id
+    )
+  );
+  const baseline = siblings.length > 0 ? siblings[siblings.length - 1] : parentTask;
+  const baseOrder = Number.isFinite(baseline.order) ? baseline.order : 0;
+  return baseOrder + SUBTASK_ORDER_OFFSET;
 }
 
 function renderTasks(tasks, timeMaps) {
@@ -2141,10 +2157,19 @@ async function handleTaskSubmit(event) {
   const defaultSectionId = (settingsCache.sections || [])[0]?.id || "";
   const section = taskSectionSelect.value || defaultSectionId;
   const subsection = taskSubsectionSelect.value || "";
+  const parentId = (taskParentIdInput.value || "").trim();
+  const parentTask = parentId ? tasksCache.find((t) => t.id === parentId) : null;
   const existingTask = tasksCache.find((t) => t.id === id);
-  const order =
-    existingTask && existingTask.section === section && (existingTask.subsection || "") === subsection
-      ? existingTask.order
+  const targetKey = getContainerKey(section, subsection);
+  const isEditingInPlace =
+    existingTask &&
+    getContainerKey(existingTask.section, existingTask.subsection) === targetKey;
+  const canUseParentOrdering =
+    parentTask && getContainerKey(parentTask.section, parentTask.subsection) === targetKey;
+  const order = isEditingInPlace
+    ? existingTask.order
+    : canUseParentOrdering
+      ? getNextSubtaskOrder(parentTask, section, subsection, tasksCache)
       : getNextOrder(section, subsection);
 
   if (!title || !durationMin) {
@@ -2170,7 +2195,7 @@ async function handleTaskSubmit(event) {
     priority,
     deadline: deadline ? new Date(deadline).toISOString() : null,
     startFrom: startFrom ? new Date(startFrom).toISOString() : null,
-    subtaskParentId: taskParentIdInput.value || null,
+    subtaskParentId: parentTask?.id || parentId || null,
     link: link || "",
     timeMapIds,
     section,

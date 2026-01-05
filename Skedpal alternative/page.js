@@ -625,6 +625,8 @@ function defaultRepeatState(startDate = getStartDate()) {
 let repeatState = defaultRepeatState();
 let lastRepeatSelection = { type: "none" };
 let repeatSelectionBeforeModal = { type: "none" };
+let editingSubsectionId = "";
+let editingSectionId = "";
 
 function renderRepeatWeekdayOptions(selected = []) {
   if (!taskRepeatWeekdays) return;
@@ -700,6 +702,33 @@ function getSubsectionTemplate(sectionId, subsectionId) {
   const subs = getSubsectionsFor(sectionId);
   const sub = subs.find((s) => s.id === subsectionId);
   return sub?.template || null;
+}
+
+function openSubsectionModal(sectionId, parentId = "", existingSubsectionId = "") {
+  if (!subsectionFormWrap) return;
+  const subs = getSubsectionsFor(sectionId);
+  const existing = subs.find((s) => s.id === existingSubsectionId);
+  editingSubsectionId = existing ? existing.id : "";
+  editingSectionId = sectionId;
+  subsectionSectionIdInput.value = sectionId || "";
+  subsectionParentIdInput.value = parentId || existing?.parentId || "";
+  subsectionNameInput.value = existing?.name || "";
+  const template = existing?.template || {
+    title: "",
+    link: "",
+    durationMin: 30,
+    priority: 3,
+    deadline: "",
+    repeat: { type: "none" },
+    timeMapIds: []
+  };
+  subsectionTaskTitleInput.value = template.title || "";
+  subsectionTaskLinkInput.value = template.link || "";
+  subsectionTaskDurationInput.value = template.durationMin || 30;
+  subsectionTaskPriorityInput.value = String(template.priority || 3);
+  subsectionTaskDeadlineInput.value = template.deadline ? template.deadline.slice(0, 10) : "";
+  renderTimeMapOptions(subsectionTimeMapOptions, template.timeMapIds || [], tasksTimeMapsCache);
+  subsectionFormWrap.classList.remove("hidden");
 }
 
 function setRepeatFromSelection(repeat = { type: "none" }) {
@@ -1330,6 +1359,7 @@ async function handleAddSubsection(sectionId, value, parentSubsectionId = "") {
   await saveSettings(settingsCache);
   renderTaskSectionOptions(sectionId);
   await loadTasks();
+  return entry;
 }
 
 async function handleRenameSection(sectionId) {
@@ -2083,11 +2113,11 @@ async function handleTaskListClick(event, tasks) {
   } else if (favoriteSubsectionId !== undefined) {
     await handleToggleSubsectionFavorite(parentSectionId, favoriteSubsectionId);
   } else if (editSectionId !== undefined) {
-    await handleRenameSection(editSectionId);
+    openSubsectionModal(editSectionId, "");
   } else if (removeSectionId !== undefined) {
     await handleRemoveSection(removeSectionId);
   } else if (editSubsectionId !== undefined) {
-    await handleRenameSubsection(parentSectionId, editSubsectionId);
+    openSubsectionModal(parentSectionId || "", "", editSubsectionId);
   } else if (removeSubsectionId !== undefined) {
     await handleRemoveSubsection(parentSectionId, removeSubsectionId);
   } else if (toggleSubsectionFor !== undefined) {
@@ -2438,22 +2468,10 @@ horizonInput?.addEventListener("input", (event) => {
   const parsed = Number.isFinite(value) ? Math.max(1, Math.min(90, value)) : 14;
   event.target.value = parsed;
 });
-function openSubsectionModal(sectionId, parentId = "") {
-  if (!subsectionFormWrap) return;
-  subsectionSectionIdInput.value = sectionId || "";
-  subsectionParentIdInput.value = parentId || "";
-  subsectionNameInput.value = "";
-  subsectionTaskTitleInput.value = "";
-  subsectionTaskLinkInput.value = "";
-  subsectionTaskDurationInput.value = "30";
-  subsectionTaskPriorityInput.value = "3";
-  subsectionTaskDeadlineInput.value = "";
-  renderTimeMapOptions(subsectionTimeMapOptions, [], tasksTimeMapsCache);
-  subsectionFormWrap.classList.remove("hidden");
-}
-
 function closeSubsectionModal() {
   if (subsectionFormWrap) subsectionFormWrap.classList.add("hidden");
+  editingSubsectionId = "";
+  editingSectionId = "";
 }
 
 subsectionModalCloseBtns.forEach((btn) => btn.addEventListener("click", closeSubsectionModal));
@@ -2464,7 +2482,35 @@ subsectionForm?.addEventListener("submit", async (event) => {
   const parentId = subsectionParentIdInput.value || "";
   const name = subsectionNameInput.value || "";
   if (!sectionId || !name) return;
-  await handleAddSubsection(sectionId, name, parentId);
+  if (editingSubsectionId) {
+    const subsections = { ...(settingsCache.subsections || {}) };
+    const list = subsections[sectionId] || [];
+    const idx = list.findIndex((s) => s.id === editingSubsectionId);
+    if (idx >= 0) {
+      const updated = {
+        ...list[idx],
+        name,
+        parentId,
+        template: {
+          title: subsectionTaskTitleInput?.value || "",
+          link: subsectionTaskLinkInput?.value || "",
+          durationMin: Number(subsectionTaskDurationInput?.value) || 30,
+          priority: Number(subsectionTaskPriorityInput?.value) || 3,
+          deadline: subsectionTaskDeadlineInput?.value || "",
+          repeat: list[idx].template?.repeat || { type: "none" },
+          timeMapIds: collectSelectedValues(subsectionTimeMapOptions) || []
+        }
+      };
+      list[idx] = updated;
+      subsections[sectionId] = list;
+      settingsCache = { ...settingsCache, subsections };
+      await saveSettings(settingsCache);
+      renderTaskSectionOptions(sectionId);
+      await loadTasks();
+    }
+  } else {
+    await handleAddSubsection(sectionId, name, parentId);
+  }
   closeSubsectionModal();
 });
 taskList.addEventListener("keydown", async (event) => {

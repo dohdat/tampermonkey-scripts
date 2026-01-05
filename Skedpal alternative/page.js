@@ -45,6 +45,25 @@ const taskDeadlineInput = document.getElementById("task-deadline");
 const taskLinkInput = document.getElementById("task-link");
 const taskSectionSelect = document.getElementById("task-section");
 const taskSubsectionSelect = document.getElementById("task-subsection");
+const taskRepeatSelect = document.getElementById("task-repeat");
+const taskRepeatCustom = document.getElementById("task-repeat-custom");
+const taskRepeatUnit = document.getElementById("task-repeat-unit");
+const taskRepeatInterval = document.getElementById("task-repeat-interval");
+const taskRepeatWeekdays = document.getElementById("task-repeat-weekdays");
+const taskRepeatMonthlyMode = document.getElementById("task-repeat-monthly-mode");
+const taskRepeatMonthlyDay = document.getElementById("task-repeat-monthly-day");
+const taskRepeatMonthlyNth = document.getElementById("task-repeat-monthly-nth");
+const taskRepeatMonthlyWeekday = document.getElementById("task-repeat-monthly-weekday");
+const taskRepeatWeeklySection = document.getElementById("task-repeat-weekly-section");
+const taskRepeatMonthlySection = document.getElementById("task-repeat-monthly-section");
+const taskRepeatEndNever = document.getElementById("task-repeat-end-never");
+const taskRepeatEndOn = document.getElementById("task-repeat-end-on");
+const taskRepeatEndAfter = document.getElementById("task-repeat-end-after");
+const taskRepeatEndDate = document.getElementById("task-repeat-end-date");
+const taskRepeatEndCount = document.getElementById("task-repeat-end-count");
+const repeatModal = document.getElementById("repeat-modal");
+const repeatModalCloseBtns = [...document.querySelectorAll("[data-repeat-modal-close]")];
+const repeatModalSaveBtn = document.getElementById("task-repeat-save");
 const sectionList = document.getElementById("section-list");
 const sectionInput = document.getElementById("section-new-name");
 const sectionAddBtn = document.getElementById("section-add");
@@ -307,6 +326,11 @@ function formatDateTime(value) {
   return date && !Number.isNaN(date) ? date.toLocaleString() : "No date";
 }
 
+function formatDate(value) {
+  const date = value ? new Date(value) : null;
+  return date && !Number.isNaN(date) ? date.toLocaleDateString() : "";
+}
+
 function renderTimeMaps(timeMaps) {
   timeMapList.innerHTML = "";
   if (timeMaps.length === 0) {
@@ -494,6 +518,214 @@ function getContainerKey(section, subsection) {
   return `${section || ""}__${subsection || ""}`;
 }
 
+function getStartDate() {
+  const raw = taskDeadlineInput?.value;
+  const date = raw ? new Date(raw) : new Date();
+  return Number.isNaN(date) ? new Date() : date;
+}
+
+function getWeekdayShortLabel(day) {
+  return ["S", "M", "T", "W", "T", "F", "S"][day] || "S";
+}
+
+function getNthWeekday(date) {
+  const day = date.getDay();
+  const dayOfMonth = date.getDate();
+  const nth = Math.ceil(dayOfMonth / 7);
+  return { nth: nth > 4 ? -1 : nth, weekday: day };
+}
+
+function formatOrdinal(n) {
+  if (n === -1) return "last";
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${n}st`;
+  if (mod10 === 2 && mod100 !== 12) return `${n}nd`;
+  if (mod10 === 3 && mod100 !== 13) return `${n}rd`;
+  return `${n}th`;
+}
+
+function formatRRuleDate(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d)) return "";
+  const y = d.getFullYear();
+  const m = `${d.getMonth() + 1}`.padStart(2, "0");
+  const day = `${d.getDate()}`.padStart(2, "0");
+  return `${y}${m}${day}`;
+}
+
+function defaultRepeatState(startDate = getStartDate()) {
+  const monthDay = startDate.getDate();
+  const { nth, weekday } = getNthWeekday(startDate);
+  return {
+    unit: "none",
+    interval: 1,
+    weeklyDays: [weekday],
+    monthlyMode: "day",
+    monthlyDay: monthDay,
+    monthlyNth: nth,
+    monthlyWeekday: weekday,
+    yearlyMonth: startDate.getMonth() + 1,
+    yearlyDay: monthDay,
+    end: { type: "never", date: "", count: 1 }
+  };
+}
+
+let repeatState = defaultRepeatState();
+let lastRepeatSelection = { type: "none" };
+let repeatSelectionBeforeModal = { type: "none" };
+
+function renderRepeatWeekdayOptions(selected = []) {
+  if (!taskRepeatWeekdays) return;
+  taskRepeatWeekdays.innerHTML = "";
+  dayOptions.forEach((day) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.dataset.dayValue = String(day.value);
+    btn.className =
+      "rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200";
+    btn.textContent = getWeekdayShortLabel(day.value);
+    if (selected.includes(day.value)) {
+      btn.classList.add("bg-lime-400/10", "border-lime-400", "text-lime-300");
+    }
+    taskRepeatWeekdays.appendChild(btn);
+  });
+}
+
+function openRepeatModal() {
+  if (repeatModal) repeatModal.classList.remove("hidden");
+}
+
+function closeRepeatModal() {
+  if (repeatModal) repeatModal.classList.add("hidden");
+}
+
+function renderRepeatUI() {
+  if (!taskRepeatUnit) return;
+  taskRepeatUnit.value = repeatState.unit === "none" ? "week" : repeatState.unit;
+  taskRepeatInterval.value = repeatState.interval;
+  taskRepeatWeeklySection.classList.toggle("hidden", repeatState.unit !== "week");
+  taskRepeatMonthlySection.classList.toggle("hidden", repeatState.unit !== "month");
+  renderRepeatWeekdayOptions(repeatState.weeklyDays || []);
+  if (taskRepeatMonthlyMode) taskRepeatMonthlyMode.value = repeatState.monthlyMode || "day";
+  if (taskRepeatMonthlyDay) taskRepeatMonthlyDay.value = repeatState.monthlyDay || 1;
+  if (taskRepeatMonthlyNth) taskRepeatMonthlyNth.value = String(repeatState.monthlyNth || 1);
+  if (taskRepeatMonthlyWeekday)
+    taskRepeatMonthlyWeekday.value = String(repeatState.monthlyWeekday ?? 0);
+  if (taskRepeatMonthlyMode) {
+    const dayOpt = taskRepeatMonthlyMode.querySelector('option[value="day"]');
+    const nthOpt = taskRepeatMonthlyMode.querySelector('option[value="nth"]');
+    if (dayOpt) dayOpt.textContent = `Monthly on day ${repeatState.monthlyDay || 1}`;
+    if (nthOpt)
+      nthOpt.textContent = `Monthly on the ${formatOrdinal(
+        repeatState.monthlyNth || 1
+      )} ${dayOptions.find((d) => d.value === repeatState.monthlyWeekday)?.label || "weekday"}`;
+  }
+  if (taskRepeatMonthlyDay) taskRepeatMonthlyDay.disabled = repeatState.monthlyMode !== "day";
+  if (taskRepeatMonthlyNth) taskRepeatMonthlyNth.disabled = repeatState.monthlyMode !== "nth";
+  if (taskRepeatMonthlyWeekday)
+    taskRepeatMonthlyWeekday.disabled = repeatState.monthlyMode !== "nth";
+  const endType = repeatState.end?.type || "never";
+  taskRepeatEndNever.checked = endType === "never";
+  taskRepeatEndOn.checked = endType === "on";
+  taskRepeatEndAfter.checked = endType === "after";
+  taskRepeatEndDate.value = repeatState.end?.date ? repeatState.end.date.slice(0, 10) : "";
+  taskRepeatEndCount.value = repeatState.end?.count ? Number(repeatState.end.count) : 1;
+  taskRepeatSelect.value = lastRepeatSelection.type === "custom" ? "custom" : "none";
+}
+
+function setRepeatFromSelection(repeat = { type: "none" }) {
+  const base = defaultRepeatState();
+  if (!repeat || repeat.type === "none") {
+    repeatState = { ...base, unit: "none" };
+    lastRepeatSelection = { type: "none" };
+    renderRepeatUI();
+    return;
+  }
+  const unit = repeat.unit || (repeat.frequency === "daily"
+    ? "day"
+    : repeat.frequency === "weekly"
+      ? "week"
+      : repeat.frequency === "monthly"
+        ? "month"
+        : repeat.frequency === "yearly"
+          ? "year"
+          : "week");
+  repeatState = {
+    ...base,
+    ...repeat,
+    unit,
+    interval: Math.max(1, Number(repeat.interval) || 1),
+    weeklyDays: Array.isArray(repeat.weeklyDays)
+      ? repeat.weeklyDays
+      : Array.isArray(repeat.byWeekdays)
+        ? repeat.byWeekdays
+        : base.weeklyDays,
+    monthlyMode: repeat.monthlyMode || repeat.bySetPos ? "nth" : repeat.byMonthDay ? "day" : "day",
+    monthlyDay: repeat.monthlyDay || repeat.byMonthDay || base.monthlyDay,
+    monthlyNth: repeat.monthlyNth || repeat.bySetPos || base.monthlyNth,
+    monthlyWeekday: repeat.monthlyWeekday ??
+      (Array.isArray(repeat.byWeekdays) && repeat.byWeekdays.length
+        ? repeat.byWeekdays[0]
+        : base.monthlyWeekday),
+    yearlyMonth: repeat.yearlyMonth || repeat.byMonth || base.yearlyMonth,
+    yearlyDay: repeat.yearlyDay || repeat.byMonthDay || base.yearlyDay,
+    end: repeat.end || { type: "never", date: "", count: 1 }
+  };
+  lastRepeatSelection = buildRepeatFromState();
+  renderRepeatUI();
+}
+
+function buildRepeatFromState() {
+  if (!repeatState || repeatState.unit === "none") return { type: "none" };
+  const startDate = getStartDate();
+  const unit = repeatState.unit;
+  const interval = Math.max(1, Number(repeatState.interval) || 1);
+  const end = repeatState.end || { type: "never" };
+  let rule = "";
+  const byDayCodes = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+  if (unit === "day") {
+    rule = `FREQ=DAILY;INTERVAL=${interval}`;
+  } else if (unit === "week") {
+    const days = (repeatState.weeklyDays || [startDate.getDay()]).map((d) => byDayCodes[d]);
+    rule = `FREQ=WEEKLY;INTERVAL=${interval};BYDAY=${days.join(",")}`;
+  } else if (unit === "month") {
+    if (repeatState.monthlyMode === "nth") {
+      const byday = byDayCodes[repeatState.monthlyWeekday ?? startDate.getDay()];
+      const bysetpos = repeatState.monthlyNth ?? getNthWeekday(startDate).nth;
+      rule = `FREQ=MONTHLY;INTERVAL=${interval};BYDAY=${byday};BYSETPOS=${bysetpos}`;
+    } else {
+      const day = repeatState.monthlyDay || startDate.getDate();
+      rule = `FREQ=MONTHLY;INTERVAL=${interval};BYMONTHDAY=${day}`;
+    }
+  } else if (unit === "year") {
+    const month = repeatState.yearlyMonth || startDate.getMonth() + 1;
+    const day = repeatState.yearlyDay || startDate.getDate();
+    rule = `FREQ=YEARLY;INTERVAL=${interval};BYMONTH=${month};BYMONTHDAY=${day}`;
+  }
+  if (end.type === "after" && end.count) {
+    rule += `;COUNT=${end.count}`;
+  } else if (end.type === "on" && end.date) {
+    const until = formatRRuleDate(end.date);
+    if (until) rule += `;UNTIL=${until}`;
+  }
+  return {
+    type: "custom",
+    unit,
+    interval,
+    weeklyDays: repeatState.weeklyDays,
+    monthlyMode: repeatState.monthlyMode,
+    monthlyDay: repeatState.monthlyDay,
+    monthlyNth: repeatState.monthlyNth,
+    monthlyWeekday: repeatState.monthlyWeekday,
+    yearlyMonth: repeatState.yearlyMonth,
+    yearlyDay: repeatState.yearlyDay,
+    end,
+    rrule: rule
+  };
+}
+
 function sortTasksByOrder(list = []) {
   return [...list].sort((a, b) => {
     const aOrder = Number.isFinite(a.order) ? a.order : Number.MAX_SAFE_INTEGER;
@@ -577,6 +809,7 @@ function renderTasks(tasks, timeMaps) {
     const timeMapNames = task.timeMapIds.map((id) => timeMapById.get(id)?.name || "Unknown");
     const sectionName = task.section ? getSectionName(task.section) : "";
     const subsectionName = task.subsection ? getSubsectionName(task.section, task.subsection) : "";
+    const repeatSummary = getRepeatSummary(task.repeat);
     const taskCard = document.createElement("div");
     taskCard.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow";
     taskCard.dataset.taskId = task.id;
@@ -653,6 +886,7 @@ function renderTasks(tasks, timeMaps) {
         <span>Duration: ${task.durationMin}m</span>
         <span>Priority: ${task.priority}</span>
         <span>TimeMaps: ${timeMapNames.join(", ")}</span>
+        <span>Repeat: ${repeatSummary}</span>
         ${sectionName ? `<span>Section: ${sectionName}</span>` : ""}
         ${subsectionName ? `<span>Subsection: ${subsectionName}</span>` : ""}
       `;
@@ -1176,6 +1410,43 @@ function ensureSortableStyles() {
   document.head.appendChild(style);
 }
 
+function getRepeatSummary(repeat) {
+  if (!repeat || repeat.type === "none") return "Does not repeat";
+  const unit = repeat.unit || "week";
+  const interval = Math.max(1, Number(repeat.interval) || 1);
+  const end = repeat.end || { type: "never" };
+  const parts = [];
+  parts.push(`Every ${interval} ${unit}${interval > 1 ? "s" : ""}`);
+  const weeklyDays = Array.isArray(repeat.weeklyDays)
+    ? repeat.weeklyDays
+    : Array.isArray(repeat.byWeekdays)
+      ? repeat.byWeekdays
+      : [];
+  if (unit === "week" && weeklyDays.length) {
+    const labels = weeklyDays
+      .map((d) => getWeekdayShortLabel(d))
+      .filter(Boolean);
+    if (labels.length) parts.push(`on ${labels.join(", ")}`);
+  }
+  if (unit === "month" && repeat.monthlyMode === "nth") {
+    parts.push(
+      `on the ${formatOrdinal(repeat.monthlyNth || 1)} ${dayOptions.find((d) => d.value === repeat.monthlyWeekday)?.label || ""
+      }`
+    );
+  } else if (unit === "month") {
+    parts.push(`on day ${repeat.monthlyDay || 1}`);
+  }
+  if (unit === "year") {
+    parts.push(`on ${repeat.yearlyMonth || ""}/${repeat.yearlyDay || ""}`);
+  }
+  if (end.type === "on" && end.date) {
+    parts.push(`until ${formatDate(end.date)}`);
+  } else if (end.type === "after" && end.count) {
+    parts.push(`for ${end.count} time${end.count > 1 ? "s" : ""}`);
+  }
+  return parts.join(" · ") || "Custom repeat";
+}
+
 function getDropBeforeId(element) {
   const nextTask = element?.nextElementSibling?.closest?.("[data-task-id]");
   return nextTask ? nextTask.dataset.taskId : null;
@@ -1301,6 +1572,10 @@ async function ensureTaskIds(tasks) {
     }
     if (nextTask.completedAt === undefined) {
       nextTask = { ...nextTask, completedAt: null };
+      changed = true;
+    }
+    if (!nextTask.repeat) {
+      nextTask = { ...nextTask, repeat: { type: "none" } };
       changed = true;
     }
     if (!nextTask.scheduleStatus) {
@@ -1564,6 +1839,8 @@ async function handleTaskSubmit(event) {
     return;
   }
 
+  const repeat = taskRepeatSelect.value === "custom" ? lastRepeatSelection : { type: "none" };
+
   await saveTask({
     id,
     title,
@@ -1575,6 +1852,7 @@ async function handleTaskSubmit(event) {
     section,
     subsection,
     order,
+    repeat,
     completed: existingTask?.completed || false,
     completedAt: existingTask?.completedAt || null,
     scheduleStatus: "unscheduled",
@@ -1592,6 +1870,7 @@ function resetTaskForm(shouldClose = false) {
   document.getElementById("task-duration").value = "30";
   document.getElementById("task-priority").value = "3";
   taskDeadlineInput.value = "";
+  setRepeatFromSelection({ type: "none" });
   renderTaskSectionOptions();
   renderTaskTimeMapOptions(tasksTimeMapsCache || [], []);
   if (shouldClose) {
@@ -1606,6 +1885,7 @@ function startTaskInSection(sectionName, subsectionName = "") {
   document.getElementById("task-duration").value = "30";
   document.getElementById("task-priority").value = "3";
   taskDeadlineInput.value = "";
+  setRepeatFromSelection({ type: "none" });
   renderTaskSectionOptions(sectionName);
   renderTaskSubsectionOptions(subsectionName);
   renderTaskTimeMapOptions(tasksTimeMapsCache || [], []);
@@ -1752,6 +2032,7 @@ async function handleTaskListClick(event, tasks) {
       document.getElementById("task-duration").value = task.durationMin;
       document.getElementById("task-priority").value = String(task.priority);
       taskDeadlineInput.value = task.deadline ? task.deadline.slice(0, 10) : "";
+      setRepeatFromSelection(task.repeat);
       renderTaskSectionOptions(task.section);
       renderTaskSubsectionOptions(task.subsection);
       renderTaskTimeMapOptions(tasksTimeMapsCache, task.timeMapIds);
@@ -1974,6 +2255,111 @@ taskList.addEventListener("click", async (event) => {
   const [tasks, timeMaps] = await Promise.all([getAllTasks(), getAllTimeMaps()]);
   tasksTimeMapsCache = timeMaps.map(normalizeTimeMap);
   await handleTaskListClick(event, tasks);
+});
+taskRepeatSelect?.addEventListener("change", () => {
+  if (taskRepeatSelect.value === "custom") {
+    repeatSelectionBeforeModal = lastRepeatSelection;
+    openRepeatModal();
+    setRepeatFromSelection(
+      lastRepeatSelection.type === "custom" ? lastRepeatSelection : { type: "custom", unit: "week" }
+    );
+  } else {
+    setRepeatFromSelection({ type: "none" });
+  }
+});
+taskRepeatUnit?.addEventListener("change", () => {
+  const unit = taskRepeatUnit.value || "week";
+  repeatState.unit = unit;
+  if (unit === "week" && (!repeatState.weeklyDays || repeatState.weeklyDays.length === 0)) {
+    repeatState.weeklyDays = [getStartDate().getDay()];
+  }
+  if (unit === "month") {
+    const start = getStartDate();
+    repeatState.monthlyDay = start.getDate();
+    const { nth, weekday } = getNthWeekday(start);
+    repeatState.monthlyNth = nth;
+    repeatState.monthlyWeekday = weekday;
+  }
+  if (unit === "year") {
+    const start = getStartDate();
+    repeatState.yearlyMonth = start.getMonth() + 1;
+    repeatState.yearlyDay = start.getDate();
+  }
+  renderRepeatUI();
+});
+taskRepeatInterval?.addEventListener("input", () => {
+  const parsed = Math.max(1, Number(taskRepeatInterval.value) || 1);
+  repeatState.interval = parsed;
+  taskRepeatInterval.value = parsed;
+});
+taskRepeatWeekdays?.addEventListener("click", (event) => {
+  const btn = event.target.closest("button[data-day-value]");
+  if (!btn) return;
+  const day = Number(btn.dataset.dayValue);
+  const set = new Set(repeatState.weeklyDays || []);
+  if (set.has(day)) {
+    set.delete(day);
+  } else {
+    set.add(day);
+  }
+  if (set.size === 0) set.add(getStartDate().getDay());
+  repeatState.weeklyDays = Array.from(set);
+  renderRepeatUI();
+});
+taskRepeatMonthlyMode?.addEventListener("change", () => {
+  repeatState.monthlyMode = taskRepeatMonthlyMode.value || "day";
+  renderRepeatUI();
+});
+taskRepeatMonthlyDay?.addEventListener("input", () => {
+  const val = Math.min(31, Math.max(1, Number(taskRepeatMonthlyDay.value) || 1));
+  repeatState.monthlyDay = val;
+  taskRepeatMonthlyDay.value = val;
+});
+taskRepeatMonthlyNth?.addEventListener("change", () => {
+  repeatState.monthlyNth = Number(taskRepeatMonthlyNth.value) || 1;
+});
+taskRepeatMonthlyWeekday?.addEventListener("change", () => {
+  repeatState.monthlyWeekday = Number(taskRepeatMonthlyWeekday.value) || 0;
+});
+const updateRepeatEnd = () => {
+  if (taskRepeatEndAfter.checked) {
+    repeatState.end = {
+      type: "after",
+      count: Math.max(1, Number(taskRepeatEndCount.value) || 1)
+    };
+  } else if (taskRepeatEndOn.checked) {
+    repeatState.end = { type: "on", date: taskRepeatEndDate.value };
+  } else {
+    repeatState.end = { type: "never", date: "", count: 1 };
+  }
+};
+taskRepeatEndNever?.addEventListener("change", updateRepeatEnd);
+taskRepeatEndOn?.addEventListener("change", updateRepeatEnd);
+taskRepeatEndAfter?.addEventListener("change", updateRepeatEnd);
+taskRepeatEndDate?.addEventListener("input", updateRepeatEnd);
+taskRepeatEndCount?.addEventListener("input", () => {
+  taskRepeatEndCount.value = Math.max(1, Number(taskRepeatEndCount.value) || 1);
+  updateRepeatEnd();
+});
+repeatModalCloseBtns.forEach((btn) =>
+  btn.addEventListener("click", () => {
+    closeRepeatModal();
+    setRepeatFromSelection(repeatSelectionBeforeModal || { type: "none" });
+    taskRepeatSelect.value = (repeatSelectionBeforeModal || { type: "none" }).type === "custom" ? "custom" : "none";
+  })
+);
+repeatModalSaveBtn?.addEventListener("click", () => {
+  const repeat = buildRepeatFromState();
+  lastRepeatSelection = repeat;
+  setRepeatFromSelection(repeat);
+  taskRepeatSelect.value = "custom";
+  closeRepeatModal();
+});
+setRepeatFromSelection({ type: "none" });
+horizonInput?.addEventListener("input", (event) => {
+  const value = Number(event.target.value);
+  const parsed = Number.isFinite(value) ? Math.max(1, Math.min(90, value)) : 14;
+  event.target.value = parsed;
 });
 taskList.addEventListener("keydown", async (event) => {
   if (event.key !== "Enter") return;

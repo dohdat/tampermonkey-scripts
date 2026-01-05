@@ -1076,6 +1076,7 @@ function goHome() {
 let draggedTaskId = null;
 let activeDropZone = null;
 let dropIndicatorEl = null;
+let activeDropCard = null;
 
 function clearDropHighlight() {
   if (activeDropZone) {
@@ -1083,6 +1084,7 @@ function clearDropHighlight() {
     activeDropZone = null;
   }
   clearDropIndicator();
+  clearDropCardHighlight();
 }
 
 function getDropZone(target, fallback) {
@@ -1117,6 +1119,30 @@ function placeDropIndicator(zone, beforeElement) {
 function clearDropIndicator() {
   if (dropIndicatorEl?.parentElement) {
     dropIndicatorEl.parentElement.removeChild(dropIndicatorEl);
+  }
+}
+
+function setActiveDropCard(card) {
+  if (activeDropCard === card) return;
+  clearDropCardHighlight();
+  if (card) {
+    activeDropCard = card;
+    activeDropCard.dataset.dropPrevBg = activeDropCard.style.backgroundColor || "";
+    activeDropCard.dataset.dropPrevBorder = activeDropCard.style.borderColor || "";
+    activeDropCard.classList.add("ring-1", "ring-lime-400/60", "shadow-lime-400/30");
+    activeDropCard.style.backgroundColor = "rgba(74,222,128,0.12)"; // lime-400/15
+    activeDropCard.style.borderColor = "#4ade80";
+  }
+}
+
+function clearDropCardHighlight() {
+  if (activeDropCard) {
+    activeDropCard.classList.remove("ring-1", "ring-lime-400/60", "shadow-lime-400/30");
+    activeDropCard.style.backgroundColor = activeDropCard.dataset.dropPrevBg || "";
+    activeDropCard.style.borderColor = activeDropCard.dataset.dropPrevBorder || "";
+    delete activeDropCard.dataset.dropPrevBg;
+    delete activeDropCard.dataset.dropPrevBorder;
+    activeDropCard = null;
   }
 }
 
@@ -1206,6 +1232,7 @@ function handleTaskDragOver(event) {
       ? candidateCard
       : null;
   placeDropIndicator(zone, validCard);
+  setActiveDropCard(validCard);
   if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
 }
 

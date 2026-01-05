@@ -56,6 +56,8 @@ const taskRepeatMonthlyNth = document.getElementById("task-repeat-monthly-nth");
 const taskRepeatMonthlyWeekday = document.getElementById("task-repeat-monthly-weekday");
 const taskRepeatWeeklySection = document.getElementById("task-repeat-weekly-section");
 const taskRepeatMonthlySection = document.getElementById("task-repeat-monthly-section");
+const taskRepeatMonthlyDayWrap = document.getElementById("task-repeat-monthly-day-wrap");
+const taskRepeatMonthlyNthWrap = document.getElementById("task-repeat-monthly-nth-wrap");
 const taskRepeatEndNever = document.getElementById("task-repeat-end-never");
 const taskRepeatEndOn = document.getElementById("task-repeat-end-on");
 const taskRepeatEndAfter = document.getElementById("task-repeat-end-after");
@@ -626,6 +628,16 @@ function renderRepeatUI() {
   if (taskRepeatMonthlyNth) taskRepeatMonthlyNth.disabled = repeatState.monthlyMode !== "nth";
   if (taskRepeatMonthlyWeekday)
     taskRepeatMonthlyWeekday.disabled = repeatState.monthlyMode !== "nth";
+  const isDayMode = repeatState.monthlyMode === "day";
+  const isNthMode = repeatState.monthlyMode === "nth";
+  if (taskRepeatMonthlyDayWrap) {
+    taskRepeatMonthlyDayWrap.classList.toggle("hidden", !isDayMode);
+    taskRepeatMonthlyDayWrap.style.display = isDayMode ? "" : "none";
+  }
+  if (taskRepeatMonthlyNthWrap) {
+    taskRepeatMonthlyNthWrap.classList.toggle("hidden", !isNthMode);
+    taskRepeatMonthlyNthWrap.style.display = isNthMode ? "" : "none";
+  }
   const endType = repeatState.end?.type || "never";
   taskRepeatEndNever.checked = endType === "never";
   taskRepeatEndOn.checked = endType === "on";

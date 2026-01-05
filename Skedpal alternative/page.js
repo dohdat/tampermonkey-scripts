@@ -984,11 +984,37 @@ function renderTasks(tasks, timeMaps) {
   const timeMapById = new Map(timeMaps.map((tm) => [tm.id, normalizeTimeMap(tm)]));
   const filteredTasks = (() => {
     const base = tasks.filter((t) => !t.completed);
-    const hiddenByParent = new Set(
-      base
-        .filter((t) => t.subtaskParentId && collapsedTasks.has(t.subtaskParentId))
-        .map((t) => t.id)
-    );
+    const zoomTaskIds =
+      zoomFilter?.type === "task"
+        ? (() => {
+            const ids = new Set([zoomFilter.taskId]);
+            const stack = [zoomFilter.taskId];
+            const childrenByParent = base.reduce((map, task) => {
+              if (!task.subtaskParentId) return map;
+              if (!map.has(task.subtaskParentId)) map.set(task.subtaskParentId, []);
+              map.get(task.subtaskParentId).push(task.id);
+              return map;
+            }, new Map());
+            while (stack.length) {
+              const current = stack.pop();
+              const children = childrenByParent.get(current) || [];
+              children.forEach((childId) => {
+                if (ids.has(childId)) return;
+                ids.add(childId);
+                stack.push(childId);
+              });
+            }
+            return ids;
+          })()
+        : null;
+    const hiddenByParent =
+      zoomFilter?.type === "task"
+        ? new Set()
+        : new Set(
+            base
+              .filter((t) => t.subtaskParentId && collapsedTasks.has(t.subtaskParentId))
+              .map((t) => t.id)
+          );
     const visible = base.filter((t) => !hiddenByParent.has(t.id));
     if (zoomFilter?.type === "section") {
       return visible.filter((t) => (t.section || "") === (zoomFilter.sectionId || ""));
@@ -1001,10 +1027,11 @@ function renderTasks(tasks, timeMaps) {
       );
     }
     if (zoomFilter?.type === "task") {
-      return visible.filter((t) => t.id === zoomFilter.taskId);
+      return visible.filter((t) => zoomTaskIds?.has(t.id));
     }
     return visible;
   })();
+  const suppressPlaceholders = zoomFilter?.type === "task";
   const sections = [...(settingsCache.sections || [])];
   const seenSectionIds = new Set(sections.map((s) => s.id));
   const missingSections = [];
@@ -1197,7 +1224,7 @@ function renderTasks(tasks, timeMaps) {
     const card = document.createElement("div");
     card.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow space-y-3";
     card.dataset.sectionCard = section.id;
-    const isCollapsed = collapsedSections.has(section.id);
+    const isCollapsed = zoomFilter ? false : collapsedSections.has(section.id);
     const header = document.createElement("div");
     header.className = "flex flex-wrap items-center justify-between gap-2";
     const title = document.createElement("div");
@@ -1305,6 +1332,22 @@ function renderTasks(tasks, timeMaps) {
         });
       }
     });
+    if (zoomFilter?.type === "task") {
+      const subsectionsById = new Map(subsections.map((s) => [s.id, s]));
+      const allowedSubsections = new Set();
+      const markWithAncestors = (subsectionId) => {
+        let current = subsectionsById.get(subsectionId);
+        while (current) {
+          if (allowedSubsections.has(current.id)) break;
+          allowedSubsections.add(current.id);
+          const parentId = current.parentId || "";
+          current = parentId ? subsectionsById.get(parentId) : null;
+        }
+      };
+      taskSubsections.filter(Boolean).forEach((id) => markWithAncestors(id));
+      const filtered = subsections.filter((s) => allowedSubsections.has(s.id));
+      subsections.splice(0, subsections.length, ...filtered);
+    }
 
     const ungroupedTasks = sortTasksByOrder(sectionTasks.filter((t) => !t.subsection));
     const ungroupedZone = document.createElement("div");
@@ -1313,7 +1356,7 @@ function renderTasks(tasks, timeMaps) {
     ungroupedZone.className =
       "space-y-2 rounded-xl border border-dashed border-slate-700 bg-slate-900/50 px-3 py-3";
     ungroupedZone.classList.add(TASK_ZONE_CLASS);
-    if (ungroupedTasks.length === 0) {
+    if (ungroupedTasks.length === 0 && !suppressPlaceholders) {
       const empty = document.createElement("div");
       empty.className = `text-xs text-slate-500 ${TASK_PLACEHOLDER_CLASS}`;
       empty.textContent = "Drag tasks here or add new.";
@@ -1345,7 +1388,7 @@ function renderTasks(tasks, timeMaps) {
       collapseSubBtn.dataset.toggleSubsectionCollapse = sub.id;
       collapseSubBtn.dataset.parentSection = section.id;
       collapseSubBtn.className = "title-icon-btn";
-      const subCollapsed = collapsedSubsections.has(sub.id);
+      const subCollapsed = zoomFilter ? false : collapsedSubsections.has(sub.id);
       collapseSubBtn.title = "Expand/collapse subsection";
       collapseSubBtn.innerHTML = subCollapsed ? caretRightIconSvg : caretDownIconSvg;
       const editSubBtn = document.createElement("button");
@@ -1429,7 +1472,7 @@ function renderTasks(tasks, timeMaps) {
         "space-y-2 rounded-lg border border-dashed border-slate-700 bg-slate-900/40 px-2 py-2";
       subZone.classList.add(TASK_ZONE_CLASS);
       const subTasks = sortTasksByOrder(sectionTasks.filter((t) => t.subsection === sub.id));
-      if (subTasks.length === 0) {
+      if (subTasks.length === 0 && !suppressPlaceholders) {
         const empty = document.createElement("div");
         empty.className = `text-xs text-slate-500 ${TASK_PLACEHOLDER_CLASS}`;
         empty.textContent = "Drag tasks here or add new.";

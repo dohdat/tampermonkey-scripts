@@ -53,6 +53,18 @@ function uuid() {
   return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
 }
 
+function getSectionById(id) {
+  return (settingsCache.sections || []).find((s) => s.id === id);
+}
+
+function getSectionName(id) {
+  return getSectionById(id)?.name || "";
+}
+
+function getSubsectionsFor(sectionId) {
+  return (settingsCache.subsections || {})[sectionId] || [];
+}
+
 function switchView(target) {
   views.forEach((view) => {
     const active = view.id === target;
@@ -290,15 +302,15 @@ function renderTaskTimeMapOptions(timeMaps, selected = [], defaultTimeMapId = se
 
 function renderSections() {
   sectionList.innerHTML = "";
-  (settingsCache.sections || []).forEach((name) => {
+  (settingsCache.sections || []).forEach((section) => {
     const chip = document.createElement("div");
     chip.className =
       "flex items-center gap-1 rounded-full border border-slate-700 bg-slate-800/70 px-3 py-1 text-xs font-semibold text-slate-200";
     const label = document.createElement("span");
-    label.textContent = name;
+    label.textContent = section.name;
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
-    removeBtn.dataset.removeSection = name;
+    removeBtn.dataset.removeSection = section.id;
     removeBtn.className =
       "h-5 w-5 rounded-full border border-slate-700 text-[10px] font-bold text-slate-300 hover:border-orange-400 hover:text-orange-300";
     removeBtn.textContent = "×";
@@ -332,20 +344,20 @@ function closeSectionForm() {
 
 function renderTaskSectionOptions(selected) {
   const sections = [...(settingsCache.sections || [])];
-  if (selected && !sections.includes(selected)) {
-    sections.push(selected);
-  }
+  const selectedSection = selected
+    ? sections.find((s) => s.id === selected) || sections.find((s) => s.name === selected)
+    : null;
   taskSectionSelect.innerHTML = "";
   const noneOpt = document.createElement("option");
   noneOpt.value = "";
   noneOpt.textContent = "No section";
-  if (!selected) noneOpt.selected = true;
+  if (!selectedSection) noneOpt.selected = true;
   taskSectionSelect.appendChild(noneOpt);
-  sections.forEach((name) => {
+  sections.forEach((section) => {
     const opt = document.createElement("option");
-    opt.value = name;
-    opt.textContent = name;
-    if (selected) opt.selected = selected === name;
+    opt.value = section.id;
+    opt.textContent = section.name;
+    if (selectedSection) opt.selected = selectedSection.id === section.id;
     taskSectionSelect.appendChild(opt);
   });
   taskSectionSelect.disabled = false;
@@ -356,19 +368,20 @@ function renderTaskSubsectionOptions(selected) {
   const section = taskSectionSelect.value;
   const subsectionMap = settingsCache.subsections || {};
   const subsections = section ? [...(subsectionMap[section] || [])] : [];
-  if (selected && section && !subsections.includes(selected)) {
-    subsections.push(selected);
-  }
+  const selectedSubsection =
+    selected && section
+      ? subsections.find((s) => s.id === selected) || subsections.find((s) => s.name === selected)
+      : null;
   taskSubsectionSelect.innerHTML = "";
   const noneOpt = document.createElement("option");
   noneOpt.value = "";
   noneOpt.textContent = "None";
   taskSubsectionSelect.appendChild(noneOpt);
-  subsections.forEach((name) => {
+  subsections.forEach((sub) => {
     const opt = document.createElement("option");
-    opt.value = name;
-    opt.textContent = name;
-    if (selected) opt.selected = selected === name;
+    opt.value = sub.id;
+    opt.textContent = sub.name;
+    if (selectedSubsection) opt.selected = selectedSubsection.id === sub.id;
     taskSubsectionSelect.appendChild(opt);
   });
   if (!taskSubsectionSelect.value) {
@@ -392,12 +405,25 @@ function renderTasks(tasks, timeMaps) {
   taskList.innerHTML = "";
   const timeMapById = new Map(timeMaps.map((tm) => [tm.id, normalizeTimeMap(tm)]));
   const sections = [...(settingsCache.sections || [])];
-  const taskSections = Array.from(new Set(tasks.map((t) => t.section).filter(Boolean)));
-  taskSections.forEach((s) => {
-    if (!sections.includes(s)) sections.push(s);
+  const seenSectionIds = new Set(sections.map((s) => s.id));
+  const missingSections = [];
+  tasks.forEach((t) => {
+    if (t.section && !seenSectionIds.has(t.section)) {
+      seenSectionIds.add(t.section);
+      missingSections.push({ id: t.section, name: "Untitled section" });
+    }
   });
   const hasUnsectioned = tasks.some((t) => !t.section);
-  const allSections = [...sections, ...(hasUnsectioned || sections.length === 0 ? ["No section"] : [])];
+  const allSections = [
+    ...sections,
+    ...missingSections,
+    ...(hasUnsectioned || sections.length === 0 ? [{ id: "", name: "No section" }] : [])
+  ];
+
+  const getSubsectionName = (sectionId, subsectionId) => {
+    const subs = getSubsectionsFor(sectionId);
+    return subs.find((s) => s.id === subsectionId)?.name || "";
+  };
 
   const renderTaskCard = (task) => {
     const statusClass =
@@ -407,6 +433,8 @@ function renderTasks(tasks, timeMaps) {
           ? "text-slate-400 font-semibold"
           : "text-amber-300 font-semibold";
     const timeMapNames = task.timeMapIds.map((id) => timeMapById.get(id)?.name || "Unknown");
+    const sectionName = task.section ? getSectionName(task.section) : "";
+    const subsectionName = task.subsection ? getSubsectionName(task.section, task.subsection) : "";
     const taskCard = document.createElement("div");
     taskCard.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow";
     taskCard.draggable = true;
@@ -420,7 +448,7 @@ function renderTasks(tasks, timeMaps) {
     const titleMarkup = task.link
       ? `<a href="${task.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-lime-300 hover:text-lime-200 underline decoration-lime-400">
           <span>${task.title}</span>
-          <span class="">🔗</span>
+          <span class="rounded border border-lime-400/60 bg-lime-400/10 px-1.5 py-0.5 text-[11px] font-semibold text-lime-200">LINK</span>
         </a>`
       : task.title;
     taskCard.innerHTML = `
@@ -430,8 +458,8 @@ function renderTasks(tasks, timeMaps) {
         <span>Duration: ${task.durationMin}m</span>
         <span>Priority: ${task.priority}</span>
         <span>TimeMaps: ${timeMapNames.join(", ")}</span>
-        ${task.section ? `<span>Section: ${task.section}</span>` : ""}
-        ${task.subsection ? `<span>Subsection: ${task.subsection}</span>` : ""}
+        ${sectionName ? `<span>Section: ${sectionName}</span>` : ""}
+        ${subsectionName ? `<span>Subsection: ${subsectionName}</span>` : ""}
       </div>
       <div class="mt-1 flex flex-wrap gap-3 text-xs text-slate-400">
         <span class="${statusClass}">${task.scheduleStatus || "unscheduled"}</span>
@@ -445,25 +473,25 @@ function renderTasks(tasks, timeMaps) {
     return taskCard;
   };
 
-  const renderSectionCard = (sectionName) => {
-    const isNoSection = sectionName === "No section";
-    const sectionTasks = tasks.filter((t) => (isNoSection ? !t.section : t.section === sectionName));
+  const renderSectionCard = (section) => {
+    const isNoSection = !section.id;
+    const sectionTasks = tasks.filter((t) => (isNoSection ? !t.section : t.section === section.id));
     const card = document.createElement("div");
     card.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow space-y-3";
-    card.dataset.sectionCard = sectionName;
-    card.dataset.dropSection = isNoSection ? "" : sectionName;
+    card.dataset.sectionCard = section.id;
+    card.dataset.dropSection = isNoSection ? "" : section.id;
     card.dataset.dropSubsection = "";
     attachDropZoneEvents(card);
     const header = document.createElement("div");
     header.className = "flex flex-wrap items-center justify-between gap-2";
     const title = document.createElement("div");
     title.className = "flex items-center gap-2 text-base font-semibold";
-    title.textContent = sectionName;
+    title.textContent = section.name || "Untitled section";
     const actions = document.createElement("div");
     actions.className = "flex items-center gap-2";
     const addBtn = document.createElement("button");
     addBtn.type = "button";
-    addBtn.dataset.addSection = isNoSection ? "" : sectionName;
+    addBtn.dataset.addSection = isNoSection ? "" : section.id;
     addBtn.className =
       "rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
     addBtn.textContent = "Add task";
@@ -471,7 +499,7 @@ function renderTasks(tasks, timeMaps) {
     if (!isNoSection) {
       const addSubsectionToggle = document.createElement("button");
       addSubsectionToggle.type = "button";
-      addSubsectionToggle.dataset.toggleSubsection = sectionName;
+      addSubsectionToggle.dataset.toggleSubsection = section.id;
       addSubsectionToggle.className =
         "rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
       addSubsectionToggle.textContent = "Add subsection";
@@ -484,26 +512,27 @@ function renderTasks(tasks, timeMaps) {
     if (!isNoSection) {
       const subsectionInputWrap = document.createElement("div");
       subsectionInputWrap.className = "hidden flex flex-col gap-2 md:flex-row md:items-center";
-      subsectionInputWrap.dataset.subsectionForm = sectionName;
+      subsectionInputWrap.dataset.subsectionForm = section.id;
       subsectionInputWrap.innerHTML = `
-        <input data-subsection-input="${sectionName}" placeholder="Add subsection" class="w-full rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none" />
-        <button type="button" data-add-subsection="${sectionName}" class="rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-lime-400">Add subsection</button>
+        <input data-subsection-input="${section.id}" placeholder="Add subsection" class="w-full rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none" />
+        <button type="button" data-add-subsection="${section.id}" class="rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-lime-400">Add subsection</button>
       `;
       card.appendChild(subsectionInputWrap);
     }
 
     const subsectionMap = settingsCache.subsections || {};
-    const subsections = !isNoSection ? [...(subsectionMap[sectionName] || [])] : [];
-    const taskSubsections = Array.from(
-      new Set(sectionTasks.map((t) => t.subsection).filter(Boolean))
-    );
-    taskSubsections.forEach((sub) => {
-      if (!subsections.includes(sub)) subsections.push(sub);
+    const subsections = !isNoSection ? [...(subsectionMap[section.id] || [])] : [];
+    const taskSubsections = Array.from(new Set(sectionTasks.map((t) => t.subsection).filter(Boolean)));
+    taskSubsections.forEach((subId) => {
+      if (subsections.find((s) => s.id === subId)) return;
+      if (subId) {
+        subsections.push({ id: subId, name: getSubsectionName(section.id, subId) || "Unnamed subsection" });
+      }
     });
 
     const ungroupedTasks = sectionTasks.filter((t) => !t.subsection);
     const ungroupedZone = document.createElement("div");
-    ungroupedZone.dataset.dropSection = isNoSection ? "" : sectionName;
+    ungroupedZone.dataset.dropSection = isNoSection ? "" : section.id;
     ungroupedZone.dataset.dropSubsection = "";
     ungroupedZone.className =
       "space-y-2 rounded-xl border border-dashed border-slate-700 bg-slate-900/50 px-3 py-3";
@@ -523,11 +552,11 @@ function renderTasks(tasks, timeMaps) {
       subWrap.className = "space-y-2 rounded-xl border border-slate-800 bg-slate-900/60 p-3";
       const subHeader = document.createElement("div");
       subHeader.className = "flex items-center justify-between text-sm font-semibold text-slate-200";
-      subHeader.textContent = sub;
+      subHeader.textContent = sub.name;
       const addSubTaskBtn = document.createElement("button");
       addSubTaskBtn.type = "button";
-      addSubTaskBtn.dataset.addSection = isNoSection ? "" : sectionName;
-      addSubTaskBtn.dataset.addSubsectionTarget = sub;
+      addSubTaskBtn.dataset.addSection = isNoSection ? "" : section.id;
+      addSubTaskBtn.dataset.addSubsectionTarget = sub.id;
       addSubTaskBtn.className =
         "rounded-lg border border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-200 hover:border-lime-400";
       addSubTaskBtn.textContent = "Add task";
@@ -535,12 +564,12 @@ function renderTasks(tasks, timeMaps) {
       subWrap.appendChild(subHeader);
 
       const subZone = document.createElement("div");
-      subZone.dataset.dropSection = isNoSection ? "" : sectionName;
-      subZone.dataset.dropSubsection = sub;
+      subZone.dataset.dropSection = isNoSection ? "" : section.id;
+      subZone.dataset.dropSubsection = sub.id;
       subZone.className =
         "space-y-2 rounded-lg border border-dashed border-slate-700 bg-slate-900/40 px-2 py-2";
       attachDropZoneEvents(subZone);
-      const subTasks = sectionTasks.filter((t) => t.subsection === sub);
+      const subTasks = sectionTasks.filter((t) => t.subsection === sub.id);
       if (subTasks.length === 0) {
         const empty = document.createElement("div");
         empty.className = "text-xs text-slate-500";
@@ -562,8 +591,8 @@ function renderTasks(tasks, timeMaps) {
     return;
   }
 
-  allSections.forEach((sectionName) => {
-    taskList.appendChild(renderSectionCard(sectionName));
+  allSections.forEach((section) => {
+    taskList.appendChild(renderSectionCard(section));
   });
 }
 
@@ -579,32 +608,33 @@ async function handleAddSection() {
   const name = sectionInput.value.trim();
   if (!name) return;
   const sections = settingsCache.sections || [];
-  if (sections.includes(name)) {
+  if (sections.some((s) => s.name.toLowerCase() === name.toLowerCase())) {
     sectionInput.value = "";
     return;
   }
-  const updated = [...sections, name];
-  const subsections = { ...(settingsCache.subsections || {}), [name]: [] };
+  const newSection = { id: uuid(), name };
+  const updated = [...sections, newSection];
+  const subsections = { ...(settingsCache.subsections || {}), [newSection.id]: [] };
   settingsCache = { ...settingsCache, sections: updated, subsections };
   await saveSettings(settingsCache);
   renderSections();
-  renderTaskSectionOptions(name);
+  renderTaskSectionOptions(newSection.id);
   sectionInput.value = "";
   closeSectionForm();
   await loadTasks();
 }
 
-async function handleRemoveSection(name) {
+async function handleRemoveSection(id) {
   const sections = settingsCache.sections || [];
-  const nextSections = sections.filter((s) => s !== name);
+  const nextSections = sections.filter((s) => s.id !== id);
   if (nextSections.length === sections.length) return;
   const subsections = { ...(settingsCache.subsections || {}) };
-  delete subsections[name];
+  delete subsections[id];
   settingsCache = { ...settingsCache, sections: nextSections, subsections };
   await saveSettings(settingsCache);
   const tasks = await getAllTasks();
   const updates = tasks
-    .filter((t) => t.section === name)
+    .filter((t) => t.section === id)
     .map((t) => saveTask({ ...t, section: "", subsection: "" }));
   if (updates.length) {
     await Promise.all(updates);
@@ -614,16 +644,17 @@ async function handleRemoveSection(name) {
   await loadTasks();
 }
 
-async function handleAddSubsection(sectionName, value) {
+async function handleAddSubsection(sectionId, value) {
   const name = value.trim();
-  if (!sectionName || !name) return;
+  if (!sectionId || !name) return;
   const subsections = { ...(settingsCache.subsections || {}) };
-  const list = subsections[sectionName] || [];
-  if (list.includes(name)) return;
-  subsections[sectionName] = [...list, name];
+  const list = subsections[sectionId] || [];
+  if (list.some((s) => s.name.toLowerCase() === name.toLowerCase())) return;
+  const entry = { id: uuid(), name };
+  subsections[sectionId] = [...list, entry];
   settingsCache = { ...settingsCache, subsections };
   await saveSettings(settingsCache);
-  renderTaskSectionOptions(sectionName);
+  renderTaskSectionOptions(sectionId);
   await loadTasks();
 }
 
@@ -720,6 +751,140 @@ async function ensureTaskIds(tasks) {
   return withIds;
 }
 
+async function migrateSectionsAndTasks(tasks, settings) {
+  const mergedSettings = { ...DEFAULT_SETTINGS, ...(settings || {}) };
+  const sectionsInput = Array.isArray(mergedSettings.sections) ? mergedSettings.sections : [];
+  const sectionIdMap = new Map();
+  const sectionNameMap = new Map();
+  const sections = [];
+
+  const addSection = (name, id) => {
+    const finalId = id || uuid();
+    if (sectionIdMap.has(finalId)) return sectionIdMap.get(finalId);
+    const section = { id: finalId, name: name || "Untitled section" };
+    sectionIdMap.set(finalId, section);
+    if (section.name) sectionNameMap.set(section.name.toLowerCase(), finalId);
+    sections.push(section);
+    return section;
+  };
+
+  sectionsInput.forEach((entry) => {
+    if (entry && typeof entry === "object" && entry.id) {
+      addSection(entry.name, entry.id);
+    } else if (typeof entry === "string") {
+      addSection(entry);
+    }
+  });
+  if (sections.length === 0) {
+    DEFAULT_SETTINGS.sections.forEach((s) => addSection(s.name, s.id));
+  }
+
+  const subsectionsRaw = mergedSettings.subsections || {};
+  const subsections = {};
+  const subsectionIdMaps = {};
+  const subsectionNameMaps = {};
+
+  const ensureSubsectionMaps = (sectionId) => {
+    if (!subsections[sectionId]) {
+      subsections[sectionId] = [];
+    }
+    if (!subsectionIdMaps[sectionId]) {
+      const idMap = new Map();
+      const nameMap = new Map();
+      (subsections[sectionId] || []).forEach((sub) => {
+        if (sub?.id) {
+          idMap.set(sub.id, sub);
+          if (sub.name) nameMap.set(sub.name.toLowerCase(), sub.id);
+        }
+      });
+      subsectionIdMaps[sectionId] = idMap;
+      subsectionNameMaps[sectionId] = nameMap;
+    }
+  };
+
+  Object.entries(subsectionsRaw).forEach(([key, list]) => {
+    const targetSectionId = sectionIdMap.has(key)
+      ? key
+      : sectionNameMap.get((key || "").toLowerCase());
+    if (!targetSectionId) return;
+    ensureSubsectionMaps(targetSectionId);
+    (list || []).forEach((item) => {
+      const name = typeof item === "string" ? item : item?.name || "Untitled subsection";
+      const id = typeof item === "object" && item?.id ? item.id : uuid();
+      if (subsectionIdMaps[targetSectionId].has(id)) return;
+      const sub = { id, name };
+      subsections[targetSectionId].push(sub);
+      subsectionIdMaps[targetSectionId].set(id, sub);
+      if (name) subsectionNameMaps[targetSectionId].set(name.toLowerCase(), id);
+    });
+  });
+
+  sections.forEach((section) => ensureSubsectionMaps(section.id));
+
+  const tasksById = new Map(tasks.map((t) => [t.id, t]));
+  const updatedTasks = [];
+  const taskUpdates = [];
+
+  tasks.forEach((task) => {
+    let newSectionId = "";
+    if (task.section) {
+      if (sectionIdMap.has(task.section)) {
+        newSectionId = task.section;
+      } else {
+        const fromName = sectionNameMap.get(task.section.toLowerCase?.() || task.section);
+        if (fromName) {
+          newSectionId = fromName;
+        } else {
+          newSectionId = addSection(task.section).id;
+        }
+      }
+    }
+    ensureSubsectionMaps(newSectionId);
+    let newSubsectionId = "";
+    if (task.subsection && newSectionId) {
+      const idMap = subsectionIdMaps[newSectionId];
+      const nameMap = subsectionNameMaps[newSectionId];
+      if (idMap.has(task.subsection)) {
+        newSubsectionId = task.subsection;
+      } else {
+        const fromName = nameMap.get(task.subsection.toLowerCase?.() || task.subsection);
+        if (fromName) {
+          newSubsectionId = fromName;
+        } else {
+          const subId = uuid();
+          const sub = { id: subId, name: task.subsection };
+          subsections[newSectionId].push(sub);
+          idMap.set(subId, sub);
+          if (sub.name) nameMap.set(sub.name.toLowerCase(), subId);
+          newSubsectionId = subId;
+        }
+      }
+    }
+    const updated = { ...task, section: newSectionId, subsection: newSubsectionId };
+    updatedTasks.push(updated);
+    const original = tasksById.get(task.id);
+    if (!original || original.section !== newSectionId || (original.subsection || "") !== newSubsectionId) {
+      taskUpdates.push(saveTask(updated));
+    }
+  });
+
+  const normalizedSettings = {
+    ...mergedSettings,
+    sections,
+    subsections
+  };
+
+  const settingsChanged = JSON.stringify(mergedSettings) !== JSON.stringify(normalizedSettings);
+  if (settingsChanged) {
+    await saveSettings(normalizedSettings);
+  }
+  if (taskUpdates.length) {
+    await Promise.all(taskUpdates);
+  }
+
+  return { tasks: updatedTasks, settings: normalizedSettings };
+}
+
 function collectSelectedValues(container) {
   return [...container.querySelectorAll("input[type='checkbox']:checked")].map((el) => {
     const val = el.value;
@@ -792,7 +957,8 @@ async function handleTaskSubmit(event) {
   const deadline = taskDeadlineInput.value;
   const link = (taskLinkInput.value || "").trim();
   const timeMapIds = collectSelectedValues(taskTimeMapOptions);
-  const section = taskSectionSelect.value || (settingsCache.sections || [])[0] || "";
+  const defaultSectionId = (settingsCache.sections || [])[0]?.id || "";
+  const section = taskSectionSelect.value || defaultSectionId;
   const subsection = taskSubsectionSelect.value || "";
 
   if (!title || !durationMin) {
@@ -1007,8 +1173,9 @@ async function hydrate() {
     getAllTimeMaps(),
     getSettings()
   ]);
-  const tasks = await ensureTaskIds(tasksRaw);
-  await initSettings(settings);
+  const tasksWithIds = await ensureTaskIds(tasksRaw);
+  const { tasks, settings: normalizedSettings } = await migrateSectionsAndTasks(tasksWithIds, settings);
+  await initSettings(normalizedSettings);
   renderSections();
   const timeMaps = timeMapsRaw.map(normalizeTimeMap);
   tasksTimeMapsCache = timeMaps;

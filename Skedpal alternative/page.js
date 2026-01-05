@@ -1051,7 +1051,7 @@ function renderTasks(tasks, timeMaps) {
     }
     return visible;
   })();
-  const suppressPlaceholders = zoomFilter?.type === "task";
+  const suppressPlaceholders = Boolean(zoomFilter);
   const sections = [...(settingsCache.sections || [])];
   const seenSectionIds = new Set(sections.map((s) => s.id));
   const missingSections = [];
@@ -1352,8 +1352,14 @@ function renderTasks(tasks, timeMaps) {
         });
       }
     });
-    if (zoomFilter?.type === "task") {
+    if (zoomFilter?.type === "task" || zoomFilter?.type === "subsection") {
       const subsectionsById = new Map(subsections.map((s) => [s.id, s]));
+      const childrenByParent = subsections.reduce((map, sub) => {
+        const pid = sub.parentId || "";
+        if (!map.has(pid)) map.set(pid, []);
+        map.get(pid).push(sub.id);
+        return map;
+      }, new Map());
       const allowedSubsections = new Set();
       const markWithAncestors = (subsectionId) => {
         let current = subsectionsById.get(subsectionId);
@@ -1364,9 +1370,25 @@ function renderTasks(tasks, timeMaps) {
           current = parentId ? subsectionsById.get(parentId) : null;
         }
       };
-      taskSubsections.filter(Boolean).forEach((id) => markWithAncestors(id));
-      const filtered = subsections.filter((s) => allowedSubsections.has(s.id));
-      subsections.splice(0, subsections.length, ...filtered);
+      const markDescendants = (subsectionId) => {
+        (childrenByParent.get(subsectionId) || []).forEach((childId) => {
+          if (allowedSubsections.has(childId)) return;
+          allowedSubsections.add(childId);
+          markDescendants(childId);
+        });
+      };
+      if (zoomFilter?.type === "task") {
+        taskSubsections.filter(Boolean).forEach((id) => markWithAncestors(id));
+      }
+      if (zoomFilter?.type === "subsection" && zoomFilter.sectionId === section.id) {
+        const targetId = zoomFilter.subsectionId || "";
+        markWithAncestors(targetId);
+        markDescendants(targetId);
+      }
+      if (allowedSubsections.size > 0) {
+        const filtered = subsections.filter((s) => allowedSubsections.has(s.id));
+        subsections.splice(0, subsections.length, ...filtered);
+      }
     }
 
     const ungroupedTasks = sortTasksByOrder(sectionTasks.filter((t) => !t.subsection));

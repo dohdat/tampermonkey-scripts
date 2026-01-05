@@ -734,6 +734,7 @@ function renderTasks(tasks, timeMaps) {
     const renderSubsection = (sub) => {
       const subWrap = document.createElement("div");
       subWrap.className = "space-y-2 rounded-xl border border-slate-800 bg-slate-900/60 p-3";
+      subWrap.dataset.subsectionCard = sub.id;
       const subHeader = document.createElement("div");
       subHeader.className = "flex items-center justify-between text-sm font-semibold text-slate-200";
       const subTitle = document.createElement("div");
@@ -797,6 +798,18 @@ function renderTasks(tasks, timeMaps) {
       subHeader.appendChild(subTitle);
       subHeader.appendChild(subHeaderActions);
       subWrap.appendChild(subHeader);
+
+      const childSubsectionInputWrap = document.createElement("div");
+      childSubsectionInputWrap.className =
+        "hidden flex flex-col gap-2 md:flex-row md:items-center";
+      childSubsectionInputWrap.dataset.childSubsectionForm = sub.id;
+      childSubsectionInputWrap.innerHTML = `
+        <input data-child-subsection-input="${sub.id}" placeholder="Add subsection" class="w-full rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none" />
+        <button type="button" data-submit-child-subsection="${sub.id}" data-parent-section="${
+          isNoSection ? "" : section.id
+        }" class="rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-lime-400">Add</button>
+      `;
+      subWrap.appendChild(childSubsectionInputWrap);
 
       const subZone = document.createElement("div");
       subZone.dataset.dropSection = isNoSection ? "" : section.id;
@@ -1623,6 +1636,7 @@ async function handleTaskListClick(event, tasks) {
   const hasZoomSubAttr = btn.getAttribute("data-zoom-subsection") !== null;
   const addChildSubsectionId = btn.dataset.addChildSubsection;
   const addChildSectionId = btn.dataset.sectionId;
+  const submitChildSubsectionId = btn.dataset.submitChildSubsection;
   const editSectionId = btn.dataset.editSection;
   const favoriteSectionId = btn.dataset.favoriteSection;
   const removeSectionId = btn.dataset.removeSection;
@@ -1648,9 +1662,32 @@ async function handleTaskListClick(event, tasks) {
   } else if (zoomSectionId !== undefined && hasZoomSubAttr) {
     setZoomFilter({ type: "section", sectionId: zoomSectionId || "" });
   } else if (addChildSubsectionId !== undefined) {
-    const name = prompt("Add subsection", "");
-    if (name && name.trim()) {
-      await handleAddSubsection(addChildSectionId || "", name, addChildSubsectionId);
+    const card = btn.closest(`[data-subsection-card="${addChildSubsectionId}"]`);
+    const form = card?.querySelector(`[data-child-subsection-form="${addChildSubsectionId}"]`);
+    const input = card?.querySelector(`[data-child-subsection-input="${addChildSubsectionId}"]`);
+    if (form) {
+      const isHidden = form.classList.contains("hidden");
+      if (isHidden) {
+        form.classList.remove("hidden");
+        input?.focus();
+      } else if (input && input.value.trim()) {
+        await handleAddSubsection(addChildSectionId || "", input.value, addChildSubsectionId);
+        input.value = "";
+        form.classList.add("hidden");
+      } else {
+        form.classList.add("hidden");
+      }
+    }
+  } else if (submitChildSubsectionId !== undefined) {
+    const card = btn.closest(`[data-subsection-card="${submitChildSubsectionId}"]`);
+    const form = card?.querySelector(`[data-child-subsection-form="${submitChildSubsectionId}"]`);
+    const input = card?.querySelector(`[data-child-subsection-input="${submitChildSubsectionId}"]`);
+    const value = input?.value?.trim();
+    if (value) {
+      const parentSection = btn.dataset.parentSection || "";
+      await handleAddSubsection(parentSection, value, submitChildSubsectionId);
+      input.value = "";
+      form?.classList.add("hidden");
     }
   } else if (favoriteSectionId !== undefined) {
     await handleToggleSectionFavorite(favoriteSectionId);

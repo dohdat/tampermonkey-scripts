@@ -1191,7 +1191,9 @@ function renderTasks(tasks, timeMaps) {
 
     const renderSubsection = (sub) => {
       const subWrap = document.createElement("div");
-      subWrap.className = "space-y-2 rounded-xl border border-slate-800 bg-slate-900/60 p-3";
+      subWrap.className =
+        "space-y-2 rounded-xl border border-slate-800 bg-slate-900/60 p-3 pl-4 md:pl-6";
+      subWrap.style.marginLeft = "12px";
       subWrap.dataset.subsectionCard = sub.id;
       const subHeader = document.createElement("div");
       subHeader.className = "flex items-center justify-between text-sm font-semibold text-slate-200";
@@ -1286,7 +1288,8 @@ function renderTasks(tasks, timeMaps) {
       const children = buildChildren(sub.id);
       if (children.length) {
         const childWrap = document.createElement("div");
-        childWrap.className = "space-y-2 border-l border-slate-800/60 pl-3";
+        childWrap.className = "space-y-2 border-l border-slate-800/60 pl-4 md:pl-6 border-lime-500/10";
+        childWrap.style.marginLeft = "18px";
         children.forEach((child) => childWrap.appendChild(renderSubsection(child)));
         subWrap.appendChild(childWrap);
       }

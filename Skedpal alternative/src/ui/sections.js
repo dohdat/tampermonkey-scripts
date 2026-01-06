@@ -6,7 +6,7 @@ import {
   getNextFavoriteOrder,
   toggleFavoriteById
 } from "./favorites.js";
-import { getSectionColorMap, isStartAfterDeadline, uuid } from "./utils.js";
+import { getSectionColorMap, isStartAfterDeadline, normalizeSubtaskScheduleMode, uuid } from "./utils.js";
 import { state } from "./state/page-state.js";
 import { repeatStore, setRepeatFromSelection, syncSubsectionRepeatLabel } from "./repeat.js";
 import { renderTimeMapOptions, collectSelectedValues } from "./time-maps.js";
@@ -29,6 +29,7 @@ const {
   subsectionTaskDeadlineInput,
   subsectionTaskStartFromInput,
   subsectionTaskRepeatSelect,
+  subsectionTaskSubtaskScheduleSelect,
   subsectionTimeMapOptions,
   subsectionModalCloseBtns,
   sidebarFavorites
@@ -81,10 +82,8 @@ export async function ensureDefaultSectionsPresent() {
 }
 
 export function getSubsectionsFor(sectionId) {
-  return ((state.settingsCache.subsections || {})[sectionId] || []).map((s) => ({
-    favorite: false,
-    parentId: "",
-    template: {
+  return ((state.settingsCache.subsections || {})[sectionId] || []).map((s) => {
+    const template = {
       title: "",
       link: "",
       durationMin: 30,
@@ -94,10 +93,19 @@ export function getSubsectionsFor(sectionId) {
       startFrom: "",
       repeat: { type: "none" },
       timeMapIds: [],
+      subtaskScheduleMode: "parallel",
       ...(s.template || {})
-    },
-    ...s
-  }));
+    };
+    return {
+      favorite: false,
+      parentId: "",
+      template: {
+        ...template,
+        subtaskScheduleMode: normalizeSubtaskScheduleMode(template.subtaskScheduleMode)
+      },
+      ...s
+    };
+  });
 }
 
 export function renderSections() {
@@ -232,7 +240,8 @@ export function openSubsectionModal(sectionId, parentId = "", existingSubsection
     deadline: "",
     startFrom: "",
     repeat: { type: "none" },
-    timeMapIds: []
+    timeMapIds: [],
+    subtaskScheduleMode: "parallel"
   };
   subsectionTaskTitleInput.value = template.title || "";
   subsectionTaskLinkInput.value = template.link || "";
@@ -244,6 +253,9 @@ export function openSubsectionModal(sectionId, parentId = "", existingSubsection
   subsectionTaskRepeatSelect.value = template.repeat?.type === "custom" ? "custom" : "none";
   setRepeatFromSelection(template.repeat || { type: "none" }, "subsection");
   syncSubsectionRepeatLabel();
+  if (subsectionTaskSubtaskScheduleSelect) {
+    subsectionTaskSubtaskScheduleSelect.value = normalizeSubtaskScheduleMode(template.subtaskScheduleMode);
+  }
   renderTimeMapOptions(subsectionTimeMapOptions, template.timeMapIds || [], state.tasksTimeMapsCache);
   subsectionFormWrap.classList.remove("hidden");
 }
@@ -336,7 +348,8 @@ export async function handleAddSubsection(sectionId, value, parentSubsectionId =
           ? repeatStore.subsectionRepeatSelection
           : { type: "none" },
       startFrom: subsectionTaskStartFromInput?.value || "",
-      timeMapIds: collectSelectedValues(subsectionTimeMapOptions) || []
+      timeMapIds: collectSelectedValues(subsectionTimeMapOptions) || [],
+      subtaskScheduleMode: normalizeSubtaskScheduleMode(subsectionTaskSubtaskScheduleSelect?.value)
     }
   };
   subsections[sectionId] = [...list, entry];
@@ -571,7 +584,8 @@ export async function handleSubsectionFormSubmit() {
               ? repeatStore.subsectionRepeatSelection
               : { type: "none" },
           startFrom: subsectionTaskStartFromInput?.value || "",
-          timeMapIds: collectSelectedValues(subsectionTimeMapOptions) || []
+          timeMapIds: collectSelectedValues(subsectionTimeMapOptions) || [],
+          subtaskScheduleMode: normalizeSubtaskScheduleMode(subsectionTaskSubtaskScheduleSelect?.value)
         }
       };
       list[idx] = updated;

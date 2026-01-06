@@ -127,9 +127,10 @@ export async function handleTaskSubmit(event) {
   }
 
   const repeat = taskRepeatSelect.value === "custom" ? repeatStore.lastRepeatSelection : { type: "none" };
+  const normalizedSubtaskScheduleMode = normalizeSubtaskScheduleMode(taskSubtaskScheduleSelect?.value);
   const subtaskScheduleMode = isParentTask
-    ? normalizeSubtaskScheduleMode(taskSubtaskScheduleSelect?.value)
-    : existingTask?.subtaskScheduleMode || null;
+    ? normalizedSubtaskScheduleMode
+    : existingTask?.subtaskScheduleMode || normalizedSubtaskScheduleMode;
 
   await saveTask({
     id,
@@ -188,6 +189,7 @@ export function startTaskInSection(sectionId = "", subsectionId = "") {
   taskParentIdInput.value = "";
   const template =
     subsectionId && sectionId ? getSubsectionTemplate(sectionId, subsectionId) : null;
+  const templateSubtaskScheduleMode = normalizeSubtaskScheduleMode(template?.subtaskScheduleMode);
   document.getElementById("task-title").value = template?.title || "";
   taskLinkInput.value = template?.link || "";
   document.getElementById("task-duration").value = template?.durationMin || "30";
@@ -203,7 +205,7 @@ export function startTaskInSection(sectionId = "", subsectionId = "") {
     taskSubtaskScheduleWrap.classList.add("hidden");
   }
   if (taskSubtaskScheduleSelect) {
-    taskSubtaskScheduleSelect.value = "parallel";
+    taskSubtaskScheduleSelect.value = templateSubtaskScheduleMode;
   }
   openTaskForm();
   switchView("tasks");

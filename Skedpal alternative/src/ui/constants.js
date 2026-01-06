@@ -90,6 +90,8 @@ export const domRefs = {
   subsectionTaskDeadlineInput: document.getElementById("subsection-task-deadline"),
   subsectionTaskStartFromInput: document.getElementById("subsection-task-start-from"),
   subsectionTaskRepeatSelect: document.getElementById("subsection-task-repeat"),
+  subsectionTaskSubtaskScheduleWrap: document.getElementById("subsection-task-subtask-schedule-wrap"),
+  subsectionTaskSubtaskScheduleSelect: document.getElementById("subsection-task-subtask-schedule"),
   subsectionTimeMapOptions: document.getElementById("subsection-timemap-options"),
   subsectionModalCloseBtns: [...document.querySelectorAll("[data-subsection-modal-close]")],
   sectionList: document.getElementById("section-list"),

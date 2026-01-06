@@ -2099,11 +2099,14 @@ function setupTaskSortables() {
 function computeTaskReorderUpdates(tasks, movedTaskId, targetSection, targetSubsection, dropBeforeId) {
   const movedTask = tasks.find((t) => t.id === movedTaskId);
   if (!movedTask) return { updates: [], changed: false };
+  const movedSubtree = getTaskAndDescendants(movedTaskId, tasks);
+  const movedIds = new Set(movedSubtree.map((t) => t.id));
   const sourceKey = getContainerKey(movedTask.section, movedTask.subsection);
   const targetKey = getContainerKey(targetSection, targetSubsection);
   const remainingSource = sortTasksByOrder(
     tasks.filter(
-      (t) => getContainerKey(t.section, t.subsection) === sourceKey && t.id !== movedTaskId
+      (t) =>
+        getContainerKey(t.section, t.subsection) === sourceKey && !movedIds.has(t.id)
     )
   );
   const destinationExisting =
@@ -2112,20 +2115,22 @@ function computeTaskReorderUpdates(tasks, movedTaskId, targetSection, targetSubs
       : sortTasksByOrder(
           tasks.filter(
             (t) =>
-              getContainerKey(t.section, t.subsection) === targetKey && t.id !== movedTaskId
+              getContainerKey(t.section, t.subsection) === targetKey && !movedIds.has(t.id)
           )
         );
   const destinationList = [...destinationExisting];
+  const cleanedDropBeforeId = dropBeforeId && !movedIds.has(dropBeforeId) ? dropBeforeId : null;
   const insertAtCandidate =
-    dropBeforeId && dropBeforeId !== movedTaskId
-      ? destinationList.findIndex((t) => t.id === dropBeforeId)
+    cleanedDropBeforeId && cleanedDropBeforeId !== movedTaskId
+      ? destinationList.findIndex((t) => t.id === cleanedDropBeforeId)
       : -1;
   const insertAt = insertAtCandidate >= 0 ? insertAtCandidate : destinationList.length;
-  destinationList.splice(insertAt, 0, {
-    ...movedTask,
+  const movedBlock = sortTasksByOrder(movedSubtree).map((task) => ({
+    ...task,
     section: targetSection,
     subsection: targetSubsection
-  });
+  }));
+  destinationList.splice(insertAt, 0, ...movedBlock);
   const updates = [];
   const assignOrders = (list, section, subsection) => {
     list.forEach((task, index) => {

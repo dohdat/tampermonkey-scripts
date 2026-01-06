@@ -150,8 +150,8 @@ async function runReschedule() {
     getSettings()
   ]);
 
-  const token = await getAuthToken(true);
-  const deleted = await deleteExistingScheduledEvents(token);
+  // Temporarily disable Google Calendar sync to avoid OAuth errors.
+  const deleted = 0;
 
   if (timeMaps.length === 0 || tasks.length === 0) {
     return {
@@ -164,7 +164,7 @@ async function runReschedule() {
   }
 
   const horizonEnd = new Date(now.getTime() + settings.schedulingHorizonDays * 24 * 60 * 60 * 1000);
-  const busy = await fetchBusy(token, now.toISOString(), horizonEnd.toISOString());
+  const busy = [];
 
   const { scheduled, unscheduled, ignored } = scheduleTasks({
     tasks,
@@ -174,9 +174,6 @@ async function runReschedule() {
     now
   });
 
-  const tasksById = mapById(tasks);
-  const timeMapsById = mapById(timeMaps);
-  await createEvents(scheduled, tasksById, timeMapsById, token);
   await persistSchedule(tasks, scheduled, unscheduled, ignored);
 
   return { scheduled: scheduled.length, unscheduled: unscheduled.length, ignored: ignored.length };

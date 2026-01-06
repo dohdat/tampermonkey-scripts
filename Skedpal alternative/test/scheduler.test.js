@@ -364,6 +364,53 @@ describe("scheduler", () => {
     assert.ok(result.unscheduled.includes("child-1"));
   });
 
+  it("schedules only one subtask for sequential one-at-a-time parents", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 2);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "12:00" }] }
+    ];
+    const tasks = [
+      {
+        id: "parent",
+        title: "Parent",
+        completed: true,
+        subtaskScheduleMode: "sequential-single"
+      },
+      {
+        id: "child-1",
+        title: "First",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59),
+        subtaskParentId: "parent",
+        order: 1
+      },
+      {
+        id: "child-2",
+        title: "Second",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59),
+        subtaskParentId: "parent",
+        order: 2
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 1,
+      now
+    });
+
+    assert.strictEqual(result.scheduled.length, 1);
+    assert.strictEqual(result.scheduled[0].taskId, "child-1");
+    assert.ok(result.unscheduled.includes("child-2"));
+  });
+
   it("skips scheduling parent tasks that have subtasks", () => {
     const now = nextWeekday(new Date(2026, 0, 1), 1);
     const timeMaps = [

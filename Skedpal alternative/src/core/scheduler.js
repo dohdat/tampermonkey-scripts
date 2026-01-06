@@ -492,8 +492,13 @@ export function scheduleTasks({
     const parentId = task.subtaskParentId || "";
     const mode = parentId ? parentModeById.get(parentId) || "parallel" : "parallel";
     if (parentId && mode !== "parallel") {
-      const state = parentState.get(parentId) || { failed: false, lastEnd: null };
+      const state = parentState.get(parentId) || { failed: false, lastEnd: null, scheduledOne: false };
       if (state.failed) {
+        unscheduled.add(task.id);
+        parentState.set(parentId, state);
+        return;
+      }
+      if (mode === "sequential-single" && state.scheduledOne) {
         unscheduled.add(task.id);
         parentState.set(parentId, state);
         return;
@@ -512,10 +517,18 @@ export function scheduleTasks({
           (latest, placement) => (placement.end > latest ? placement.end : latest),
           placements[0].end
         );
-        parentState.set(parentId, { failed: false, lastEnd });
+        parentState.set(parentId, {
+          failed: false,
+          lastEnd,
+          scheduledOne: mode === "sequential-single" ? true : state.scheduledOne
+        });
       } else {
         unscheduled.add(task.id);
-        parentState.set(parentId, { failed: true, lastEnd: state.lastEnd });
+        parentState.set(parentId, {
+          failed: true,
+          lastEnd: state.lastEnd,
+          scheduledOne: state.scheduledOne
+        });
       }
       return;
     }

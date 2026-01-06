@@ -1035,6 +1035,23 @@ function renderTasks(tasks, timeMaps) {
     depthMemo.set(taskId, depth);
     return depth;
   };
+  const collapsedAncestorMemo = new Map();
+  const hasCollapsedAncestor = (taskId) => {
+    if (!taskId) return false;
+    if (collapsedAncestorMemo.has(taskId)) return collapsedAncestorMemo.get(taskId);
+    const parentId = parentById.get(taskId);
+    if (!parentId) {
+      collapsedAncestorMemo.set(taskId, false);
+      return false;
+    }
+    if (collapsedTasks.has(parentId)) {
+      collapsedAncestorMemo.set(taskId, true);
+      return true;
+    }
+    const result = hasCollapsedAncestor(parentId);
+    collapsedAncestorMemo.set(taskId, result);
+    return result;
+  };
   const childrenByParent = tasks.reduce((map, task) => {
     const pid = task.subtaskParentId || "";
     if (!pid) return map;
@@ -1081,12 +1098,7 @@ function renderTasks(tasks, timeMaps) {
             return ids;
           })()
         : null;
-    const hiddenByParent = new Set(
-      base
-        .filter((t) => t.subtaskParentId && collapsedTasks.has(t.subtaskParentId))
-        .map((t) => t.id)
-    );
-    const visible = base.filter((t) => !hiddenByParent.has(t.id));
+    const visible = base.filter((t) => !hasCollapsedAncestor(t.id));
     if (zoomFilter?.type === "section") {
       return visible.filter((t) => (t.section || "") === (zoomFilter.sectionId || ""));
     }

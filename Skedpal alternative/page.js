@@ -9,105 +9,100 @@ import {
   saveSettings,
   DEFAULT_SETTINGS
 } from "./db.js";
+import {
+  bulletIconSvg,
+  caretDownIconSvg,
+  caretRightIconSvg,
+  checkboxCheckedIconSvg,
+  checkboxIconSvg,
+  dayOptions,
+  editIconSvg,
+  favoriteIconSvg,
+  plusIconSvg,
+  removeIconSvg,
+  subtaskIconSvg,
+  TASK_PLACEHOLDER_CLASS,
+  TASK_SORTABLE_STYLE_ID,
+  TASK_SORT_GROUP,
+  TASK_ZONE_CLASS,
+  SUBTASK_ORDER_OFFSET,
+  zoomInIconSvg,
+  zoomOutIconSvg,
+  sortableHighlightClasses,
+  domRefs
+} from "./constants.js";
 import Sortable from "./sortable.esm.js";
 
-const dayOptions = [
-  { label: "Sun", value: 0 },
-  { label: "Mon", value: 1 },
-  { label: "Tue", value: 2 },
-  { label: "Wed", value: 3 },
-  { label: "Thu", value: 4 },
-  { label: "Fri", value: 5 },
-  { label: "Sat", value: 6 }
-];
-
-const editIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path d="M14.7 2.3a1 1 0 0 1 1.4 0l1.6 1.6a1 1 0 0 1 0 1.4l-9.2 9.2-3.3.7a.5.5 0 0 1-.6-.6l.7-3.3 9.2-9.2Z"></path><path d="M2.5 17.5h15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>`;
-const removeIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h12"></path><path d="M8 6v9m4-9v9"></path><path d="M7 6V4.5A1.5 1.5 0 0 1 8.5 3h3A1.5 1.5 0 0 1 13 4.5V6"></path><path d="M5 6v9.5A1.5 1.5 0 0 0 6.5 17h7A1.5 1.5 0 0 0 15 15.5V6"></path></svg>`;
-const favoriteIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path d="m10 2.5 2.1 4.25 4.65.68-3.37 3.28.79 4.61L10 13.8 5.83 15.3l.79-4.61L3.25 7.43l4.65-.68Z"/></svg>`;
-const zoomInIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 4h2m0 0v2m0-2V2m0 2h2m1 5a6 6 0 1 1-12 0 6 6 0 0 1 12 0Zm-2.5 3.5L17 17"></path></svg>`;
-const zoomOutIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 10h4m2 1a6 6 0 1 1-12 0 6 6 0 0 1 12 0Zm-2.5 3.5L17 17"></path></svg>`;
-const plusIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 4v12M4 10h12" stroke-linecap="round"></path></svg>`;
-const subtaskIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 4v12"></path><path d="M9 8h6l-2.5-2.5M15 8l-2.5 2.5"></path></svg>`;
-const checkboxIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7" stroke="currentColor" fill="none"></circle></svg>`;
-const checkboxCheckedIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="7" stroke="currentColor" fill="none"></circle><path d="m6.5 10 2.2 2.2 4.8-4.9" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
-const bulletIconSvg = `<svg aria-hidden="true" viewBox="0 0 8 8" width="8" height="8" fill="currentColor"><circle cx="4" cy="4" r="3"></circle></svg>`;
-const caretDownIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m5 7 5 5 5-5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
-const caretRightIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m8 5 5 5-5 5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
-
-const views = [...document.querySelectorAll(".view")];
-const navButtons = [...document.querySelectorAll(".nav-btn")];
-const taskList = document.getElementById("task-list");
-const zoomBanner = document.getElementById("zoom-banner");
-const timeMapList = document.getElementById("timemap-list");
-const timeMapDayRows = document.getElementById("timemap-day-rows");
-const timeMapFormWrap = document.getElementById("timemap-form-wrap");
-const timeMapToggle = document.getElementById("timemap-toggle");
-const taskFormWrap = document.getElementById("task-form-wrap");
-const taskToggle = document.getElementById("task-toggle");
-const taskModalCloseButtons = [...document.querySelectorAll("[data-task-modal-close]")];
-const taskTimeMapOptions = document.getElementById("task-timemap-options");
-const taskDeadlineInput = document.getElementById("task-deadline");
-const taskStartFromInput = document.getElementById("task-start-from");
-const taskLinkInput = document.getElementById("task-link");
-const taskMinBlockInput = document.getElementById("task-min-block");
-const taskParentIdInput = document.getElementById("task-parent-id");
-const taskSectionSelect = document.getElementById("task-section");
-const taskSubsectionSelect = document.getElementById("task-subsection");
-const taskRepeatSelect = document.getElementById("task-repeat");
-const taskRepeatCustom = document.getElementById("task-repeat-custom");
-const taskRepeatUnit = document.getElementById("task-repeat-unit");
-const taskRepeatInterval = document.getElementById("task-repeat-interval");
-const taskRepeatWeekdays = document.getElementById("task-repeat-weekdays");
-const taskRepeatMonthlyMode = document.getElementById("task-repeat-monthly-mode");
-const taskRepeatMonthlyDay = document.getElementById("task-repeat-monthly-day");
-const taskRepeatMonthlyNth = document.getElementById("task-repeat-monthly-nth");
-const taskRepeatMonthlyWeekday = document.getElementById("task-repeat-monthly-weekday");
-const taskRepeatWeeklySection = document.getElementById("task-repeat-weekly-section");
-const taskRepeatMonthlySection = document.getElementById("task-repeat-monthly-section");
-const taskRepeatMonthlyDayWrap = document.getElementById("task-repeat-monthly-day-wrap");
-const taskRepeatMonthlyNthWrap = document.getElementById("task-repeat-monthly-nth-wrap");
-const taskRepeatEndNever = document.getElementById("task-repeat-end-never");
-const taskRepeatEndOn = document.getElementById("task-repeat-end-on");
-const taskRepeatEndAfter = document.getElementById("task-repeat-end-after");
-const taskRepeatEndDate = document.getElementById("task-repeat-end-date");
-const taskRepeatEndCount = document.getElementById("task-repeat-end-count");
-const repeatModal = document.getElementById("repeat-modal");
-const repeatModalCloseBtns = [...document.querySelectorAll("[data-repeat-modal-close]")];
-const repeatModalSaveBtn = document.getElementById("task-repeat-save");
-const subsectionFormWrap = document.getElementById("subsection-form-wrap");
-const subsectionForm = document.getElementById("subsection-form");
-const subsectionSectionIdInput = document.getElementById("subsection-section-id");
-const subsectionParentIdInput = document.getElementById("subsection-parent-id");
-const subsectionNameInput = document.getElementById("subsection-name");
-const subsectionTaskTitleInput = document.getElementById("subsection-task-title");
-const subsectionTaskLinkInput = document.getElementById("subsection-task-link");
-const subsectionTaskDurationInput = document.getElementById("subsection-task-duration");
-const subsectionTaskMinBlockInput = document.getElementById("subsection-task-min-block");
-const subsectionTaskPriorityInput = document.getElementById("subsection-task-priority");
-const subsectionTaskDeadlineInput = document.getElementById("subsection-task-deadline");
-const subsectionTaskStartFromInput = document.getElementById("subsection-task-start-from");
-const subsectionTaskRepeatSelect = document.getElementById("subsection-task-repeat");
-const subsectionTimeMapOptions = document.getElementById("subsection-timemap-options");
-const subsectionModalCloseBtns = [...document.querySelectorAll("[data-subsection-modal-close]")];
-const sectionList = document.getElementById("section-list");
-const sectionInput = document.getElementById("section-new-name");
-const sectionAddBtn = document.getElementById("section-add");
-const sectionFormRow = document.getElementById("section-form-row");
-const sectionFormToggle = document.getElementById("section-form-toggle");
-const timeMapColorInput = document.getElementById("timemap-color");
-const scheduleStatus = document.getElementById("schedule-status");
-const rescheduleButtons = [...document.querySelectorAll("[data-reschedule-btn]")];
-const scheduleSummary = document.getElementById("scheduled-summary");
-const horizonInput = document.getElementById("horizon");
-const notificationBanner = document.getElementById("notification-banner");
-const notificationMessage = document.getElementById("notification-message");
-const notificationUndoButton = document.getElementById("notification-undo");
-
-const TASK_ZONE_CLASS = "task-drop-zone";
-const TASK_PLACEHOLDER_CLASS = "task-drop-placeholder";
-const TASK_SORT_GROUP = "tasks-board";
-const TASK_SORTABLE_STYLE_ID = "task-sortable-styles";
-const SUBTASK_ORDER_OFFSET = 0.01;
+const {
+  views,
+  navButtons,
+  taskList,
+  zoomBanner,
+  timeMapList,
+  timeMapDayRows,
+  timeMapFormWrap,
+  timeMapToggle,
+  taskFormWrap,
+  taskToggle,
+  taskModalCloseButtons,
+  taskTimeMapOptions,
+  taskDeadlineInput,
+  taskStartFromInput,
+  taskLinkInput,
+  taskMinBlockInput,
+  taskParentIdInput,
+  taskSectionSelect,
+  taskSubsectionSelect,
+  taskRepeatSelect,
+  taskRepeatCustom,
+  taskRepeatUnit,
+  taskRepeatInterval,
+  taskRepeatWeekdays,
+  taskRepeatMonthlyMode,
+  taskRepeatMonthlyDay,
+  taskRepeatMonthlyNth,
+  taskRepeatMonthlyWeekday,
+  taskRepeatWeeklySection,
+  taskRepeatMonthlySection,
+  taskRepeatMonthlyDayWrap,
+  taskRepeatMonthlyNthWrap,
+  taskRepeatEndNever,
+  taskRepeatEndOn,
+  taskRepeatEndAfter,
+  taskRepeatEndDate,
+  taskRepeatEndCount,
+  repeatModal,
+  repeatModalCloseBtns,
+  repeatModalSaveBtn,
+  subsectionFormWrap,
+  subsectionForm,
+  subsectionSectionIdInput,
+  subsectionParentIdInput,
+  subsectionNameInput,
+  subsectionTaskTitleInput,
+  subsectionTaskLinkInput,
+  subsectionTaskDurationInput,
+  subsectionTaskMinBlockInput,
+  subsectionTaskPriorityInput,
+  subsectionTaskDeadlineInput,
+  subsectionTaskStartFromInput,
+  subsectionTaskRepeatSelect,
+  subsectionTimeMapOptions,
+  subsectionModalCloseBtns,
+  sectionList,
+  sectionInput,
+  sectionAddBtn,
+  sectionFormRow,
+  sectionFormToggle,
+  timeMapColorInput,
+  scheduleStatus,
+  rescheduleButtons,
+  scheduleSummary,
+  horizonInput,
+  notificationBanner,
+  notificationMessage,
+  notificationUndoButton
+} = domRefs;
 
 let settingsCache = { ...DEFAULT_SETTINGS };
 let tasksTimeMapsCache = [];
@@ -1956,7 +1951,6 @@ function zoomOutOneLevel() {
   }
 }
 
-const sortableHighlightClasses = ["ring-1", "ring-lime-400/50"];
 let sortableInstances = [];
 
 function toggleZoneHighlight(zone, shouldHighlight) {

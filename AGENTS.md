@@ -10,6 +10,7 @@
 - Prefer IndexedDB (already used) over localStorage; avoid new storage backends unless justified.
 
 ## Coding Style
+- Always add a `data-test-skedpal` attribute to any DOM elements you create or modify, to make debugging and test selectors stable and explicit.
 - Favor small, single-purpose functions and composable helpers; keep shared utilities in `src/ui/utils.js` or nearby.
 - Be defensive with DOM access (null checks, stable selectors). Avoid brittle selectors tied to cosmetic changes on target sites.
 - Keep comments short and only where intent is non-obvious (especially around scheduling logic and Calendar API calls).

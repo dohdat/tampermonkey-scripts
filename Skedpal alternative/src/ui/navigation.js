@@ -17,6 +17,9 @@ export function pushNavigation(filter) {
 export function switchView(target) {
   const allowedViews = navButtons.map((btn) => btn.dataset.view);
   const resolvedTarget = allowedViews.includes(target) ? target : "tasks";
+  if (resolvedTarget !== "tasks" && state.zoomFilter) {
+    clearZoomFilter({ record: false });
+  }
   views.forEach((view) => {
     const active = view.id === resolvedTarget;
     view.classList.toggle("hidden", !active);

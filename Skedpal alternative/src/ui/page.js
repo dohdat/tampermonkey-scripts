@@ -38,7 +38,8 @@ import {
   initViewFromUrl,
   pushNavigation,
   setZoomFilter,
-  switchView
+  switchView,
+  goHome
 } from "./navigation.js";
 import { parseZoomFromUrl, parseViewFromUrl } from "./utils.js";
 import { closeTaskForm } from "./ui.js";
@@ -113,7 +114,13 @@ function registerEventListeners() {
   taskSectionSelect?.addEventListener("change", () => renderTaskSubsectionOptions());
 
   navButtons.forEach((btn) => {
-    btn.addEventListener("click", () => switchView(btn.dataset.view));
+    btn.addEventListener("click", () => {
+      if (btn.dataset.view === "tasks") {
+        goHome();
+        return;
+      }
+      switchView(btn.dataset.view);
+    });
   });
   settingsToggleBtn?.addEventListener("click", () => switchView("settings"));
 

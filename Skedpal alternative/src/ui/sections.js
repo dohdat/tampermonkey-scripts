@@ -1,6 +1,11 @@
 import { getAllTasks, saveSettings, saveTask } from "../data/db.js";
 import { domRefs } from "./constants.js";
-import { applyFavoriteOrder, buildFavoriteKey, getNextFavoriteOrder } from "./favorites.js";
+import {
+  applyFavoriteOrder,
+  buildFavoriteKey,
+  getNextFavoriteOrder,
+  toggleFavoriteById
+} from "./favorites.js";
 import { isStartAfterDeadline, uuid } from "./utils.js";
 import { state } from "./state/page-state.js";
 import { repeatStore, setRepeatFromSelection, syncSubsectionRepeatLabel } from "./repeat.js";
@@ -410,22 +415,8 @@ export async function handleRemoveSubsection(sectionId, subsectionId) {
 
 export async function handleToggleSectionFavorite(sectionId) {
   const sections = state.settingsCache.sections || [];
-  const hasFavorite = sections.some((s) => s.id === sectionId && s.favorite);
   const nextOrder = getNextFavoriteOrder(state.settingsCache);
-  const updatedSections = sections.map((s) => {
-    if (s.id === sectionId) {
-      const favorite = !s.favorite;
-      return {
-        ...s,
-        favorite,
-        favoriteOrder: favorite ? s.favoriteOrder || nextOrder : null
-      };
-    }
-    if (hasFavorite) {
-      return s;
-    }
-    return { ...s, favorite: false, favoriteOrder: null };
-  });
+  const updatedSections = toggleFavoriteById(sections, sectionId, nextOrder);
   state.settingsCache = { ...state.settingsCache, sections: updatedSections };
   await saveSettings(state.settingsCache);
   renderSections();
@@ -438,22 +429,8 @@ export async function handleToggleSubsectionFavorite(sectionId, subsectionId) {
   if (!sectionId || !subsectionId) return;
   const subsections = { ...(state.settingsCache.subsections || {}) };
   const list = subsections[sectionId] || [];
-  const hasFavorite = list.some((s) => s.id === subsectionId && s.favorite);
   const nextOrder = getNextFavoriteOrder(state.settingsCache);
-  const updatedList = list.map((s) => {
-    if (s.id === subsectionId) {
-      const favorite = !s.favorite;
-      return {
-        ...s,
-        favorite,
-        favoriteOrder: favorite ? s.favoriteOrder || nextOrder : null
-      };
-    }
-    if (hasFavorite) {
-      return s;
-    }
-    return { ...s, favorite: false, favoriteOrder: null };
-  });
+  const updatedList = toggleFavoriteById(list, subsectionId, nextOrder);
   subsections[sectionId] = updatedList;
   state.settingsCache = { ...state.settingsCache, subsections };
   await saveSettings(state.settingsCache);

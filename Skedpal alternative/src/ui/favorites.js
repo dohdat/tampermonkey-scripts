@@ -50,3 +50,15 @@ export function applyFavoriteOrder(settings, orderedKeys = []) {
 
   return { ...settings, sections: updatedSections, subsections: updatedSubsections };
 }
+
+export function toggleFavoriteById(list, targetId, nextOrder) {
+  return (list || []).map((item) => {
+    if (item.id !== targetId) return item;
+    const favorite = !item.favorite;
+    return {
+      ...item,
+      favorite,
+      favoriteOrder: favorite ? item.favoriteOrder || nextOrder : null
+    };
+  });
+}

@@ -1,0 +1,212 @@
+import {
+  caretDownIconSvg,
+  caretRightIconSvg,
+  checkboxCheckedIconSvg,
+  checkboxIconSvg,
+  editIconSvg,
+  favoriteIconSvg,
+  plusIconSvg,
+  removeIconSvg,
+  subtaskIconSvg,
+  zoomInIconSvg
+} from "./constants.js";
+import { formatDateTime, formatDurationShort } from "./utils.js";
+import { getRepeatSummary } from "./repeat.js";
+
+export function renderTaskCard(task, context) {
+  const {
+    tasks,
+    timeMapById,
+    collapsedTasks,
+    expandedTaskDetails,
+    computeTotalDuration,
+    getTaskDepthById,
+    getSectionName,
+    getSubsectionName
+  } = context;
+  const childTasks = tasks.filter((t) => t.subtaskParentId === task.id);
+  const hasChildren = childTasks.length > 0;
+  const isCollapsed = collapsedTasks.has(task.id);
+  const depth = getTaskDepthById(task.id);
+  const baseDurationMin = Number(task.durationMin) || 0;
+  const displayDurationMin = hasChildren ? computeTotalDuration(task) : baseDurationMin;
+  const statusValue = task.completed ? "completed" : task.scheduleStatus || "unscheduled";
+  const statusClass =
+    statusValue === "scheduled"
+      ? "text-lime-300 font-semibold"
+      : statusValue === "ignored"
+        ? "text-slate-400 font-semibold"
+        : statusValue === "completed"
+          ? "text-lime-300 font-semibold"
+          : "text-amber-300 font-semibold";
+  const timeMapNames = task.timeMapIds.map((id) => timeMapById.get(id)?.name || "Unknown");
+  const sectionName = task.section ? getSectionName(task.section) : "";
+  const subsectionName = task.subsection ? getSubsectionName(task.section, task.subsection) : "";
+  const repeatSummary = getRepeatSummary(task.repeat);
+  const taskCard = document.createElement("div");
+  const isSubtask = depth > 0;
+  taskCard.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow";
+  taskCard.setAttribute("data-test-skedpal", "task-card");
+  taskCard.dataset.taskId = task.id;
+  taskCard.dataset.sectionId = task.section || "";
+  taskCard.dataset.subsectionId = task.subsection || "";
+  taskCard.tabIndex = 0;
+  taskCard.style.minHeight = "fit-content";
+  taskCard.style.padding = "5px";
+  if (isSubtask) {
+    taskCard.style.marginLeft = `${depth * 10}px`;
+    taskCard.style.borderStyle = "dashed";
+  }
+  const color = timeMapById.get(task.timeMapIds[0])?.color;
+  if (color) {
+    taskCard.style.borderColor = color;
+    taskCard.style.backgroundColor = `${color}1a`;
+  }
+  const titleMarkup = task.link
+    ? `<a href="${task.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-lime-300 hover:text-lime-200 underline decoration-lime-400">
+          <span>${task.title}</span>
+          <span>dY"-</span>
+        </a>`
+    : task.title;
+  const isLongTitle = (task.title || "").length > 60;
+  const header = document.createElement("div");
+  header.className = `task-title-row title-hover-group${isLongTitle ? " task-title-row--stacked" : ""}`;
+  const titleWrap = document.createElement("h3");
+  titleWrap.className = "task-title-main text-base font-semibold";
+  if (hasChildren) {
+    const collapseTaskBtn = document.createElement("button");
+    collapseTaskBtn.type = "button";
+    collapseTaskBtn.dataset.toggleTaskCollapse = task.id;
+    collapseTaskBtn.className = "title-icon-btn";
+    collapseTaskBtn.title = "Expand/collapse subtasks";
+    collapseTaskBtn.setAttribute("data-test-skedpal", "task-collapse-btn");
+    collapseTaskBtn.innerHTML = isCollapsed ? caretRightIconSvg : caretDownIconSvg;
+    titleWrap.appendChild(collapseTaskBtn);
+  }
+  const completeBtn = document.createElement("button");
+  completeBtn.type = "button";
+  completeBtn.dataset.completeTask = task.id;
+  completeBtn.className = "title-icon-btn task-complete-btn";
+  completeBtn.setAttribute("data-test-skedpal", "task-complete-btn");
+  completeBtn.title = task.completed ? "Mark incomplete" : "Mark completed";
+  completeBtn.innerHTML = task.completed ? checkboxCheckedIconSvg : checkboxIconSvg;
+  if (task.completed) {
+    completeBtn.classList.add("task-complete-btn--checked");
+  }
+  titleWrap.appendChild(completeBtn);
+  const titleTextWrap = document.createElement("div");
+  titleTextWrap.className = "task-title-text";
+  titleTextWrap.setAttribute("data-test-skedpal", "task-title");
+  titleTextWrap.innerHTML = titleMarkup;
+  titleWrap.appendChild(titleTextWrap);
+  if (task.completed) {
+    titleTextWrap.style.opacity = "0.8";
+    titleTextWrap.style.textDecoration = "line-through";
+    titleTextWrap.style.textDecorationColor = "#4ade80";
+  }
+  const actionsWrap = document.createElement("div");
+  actionsWrap.className = "task-actions-wrap";
+  const durationPill = document.createElement("span");
+  durationPill.className = "pill pill-muted";
+  durationPill.setAttribute("data-test-skedpal", "task-duration");
+  durationPill.textContent = formatDurationShort(displayDurationMin);
+  const titleActions = document.createElement("div");
+  titleActions.className = "title-actions task-title-actions";
+  titleActions.setAttribute("data-test-skedpal", "task-title-actions");
+  titleActions.setAttribute("data-test-skedpal", "task-title-actions");
+  const zoomTaskBtn = document.createElement("button");
+  zoomTaskBtn.type = "button";
+  zoomTaskBtn.dataset.zoomTask = task.id;
+  zoomTaskBtn.dataset.zoomSection = task.section || "";
+  zoomTaskBtn.dataset.zoomSubsection = task.subsection || "";
+  zoomTaskBtn.className = "title-icon-btn";
+  zoomTaskBtn.title = "Zoom into task";
+  zoomTaskBtn.setAttribute("data-test-skedpal", "task-zoom-btn");
+  zoomTaskBtn.innerHTML = zoomInIconSvg;
+  const editTaskBtn = document.createElement("button");
+  editTaskBtn.type = "button";
+  editTaskBtn.dataset.edit = task.id;
+  editTaskBtn.className = "title-icon-btn";
+  editTaskBtn.title = "Edit task";
+  editTaskBtn.setAttribute("data-test-skedpal", "task-edit-btn");
+  editTaskBtn.innerHTML = editIconSvg;
+  editTaskBtn.style.borderColor = "#22c55e";
+  editTaskBtn.style.color = "#22c55e";
+  const deleteTaskBtn = document.createElement("button");
+  deleteTaskBtn.type = "button";
+  deleteTaskBtn.dataset.delete = task.id;
+  deleteTaskBtn.className = "title-icon-btn";
+  deleteTaskBtn.title = "Delete task";
+  deleteTaskBtn.setAttribute("data-test-skedpal", "task-delete-btn");
+  deleteTaskBtn.innerHTML = removeIconSvg;
+  deleteTaskBtn.style.borderColor = "#f97316";
+  deleteTaskBtn.style.color = "#f97316";
+  const addSubtaskBtn = document.createElement("button");
+  addSubtaskBtn.type = "button";
+  addSubtaskBtn.dataset.addSubtask = task.id;
+  addSubtaskBtn.className = "title-icon-btn";
+  addSubtaskBtn.title = "Add subtask";
+  addSubtaskBtn.setAttribute("aria-label", "Add subtask");
+  addSubtaskBtn.setAttribute("data-test-skedpal", "task-add-subtask-btn");
+  addSubtaskBtn.innerHTML = plusIconSvg;
+  const detailsToggleBtn = document.createElement("button");
+  detailsToggleBtn.type = "button";
+  detailsToggleBtn.dataset.toggleTaskDetails = task.id;
+  detailsToggleBtn.className = "title-icon-btn";
+  const detailsOpen = expandedTaskDetails.has(task.id);
+  detailsToggleBtn.title = detailsOpen ? "Hide details" : "Show details";
+  detailsToggleBtn.setAttribute("aria-label", detailsOpen ? "Hide details" : "Show details");
+  detailsToggleBtn.setAttribute("data-test-skedpal", "task-details-toggle");
+  detailsToggleBtn.innerHTML = detailsOpen ? caretDownIconSvg : caretRightIconSvg;
+  actionsWrap.appendChild(durationPill);
+  titleActions.appendChild(zoomTaskBtn);
+  titleActions.appendChild(editTaskBtn);
+  titleActions.appendChild(addSubtaskBtn);
+  titleActions.appendChild(detailsToggleBtn);
+  titleActions.appendChild(deleteTaskBtn);
+  actionsWrap.appendChild(titleActions);
+  header.appendChild(titleWrap);
+  header.appendChild(actionsWrap);
+  taskCard.appendChild(header);
+
+  const summaryRow = document.createElement("div");
+  summaryRow.className = `task-summary-row${isLongTitle ? " task-summary-row--stacked" : ""}`;
+  if (statusValue !== "unscheduled" && statusValue) {
+    const statusSpan = document.createElement("span");
+    statusSpan.className = statusClass;
+    statusSpan.textContent = statusValue;
+    summaryRow.appendChild(statusSpan);
+  }
+  if (task.scheduledStart) {
+    const schedSpan = document.createElement("span");
+    schedSpan.textContent = `Scheduled: ${formatDateTime(task.scheduledStart)}`;
+    summaryRow.appendChild(schedSpan);
+  }
+  taskCard.appendChild(summaryRow);
+
+  if (detailsOpen) {
+    const meta = document.createElement("div");
+    meta.className = "mt-2 flex flex-wrap gap-2 text-xs text-slate-400";
+    meta.innerHTML = `
+          <span>Deadline: ${formatDateTime(task.deadline)}</span>
+          ${task.minBlockMin ? `<span>Min block: ${task.minBlockMin}m</span>` : ""}
+          <span>Priority: ${task.priority}</span>
+          <span>TimeMaps: ${timeMapNames.join(", ")}</span>
+          <span>Repeat: ${repeatSummary}</span>
+          ${sectionName ? `<span>Section: ${sectionName}</span>` : ""}
+          ${subsectionName ? `<span>Subsection: ${subsectionName}</span>` : ""}
+          ${task.link ? `<span class="text-lime-300 underline">Link attached</span>` : ""}
+        `;
+    taskCard.appendChild(meta);
+
+    const statusRow = document.createElement("div");
+    statusRow.className = "mt-1 flex flex-wrap gap-3 text-xs text-slate-400";
+    statusRow.innerHTML = `
+          <span>Scheduled start: ${formatDateTime(task.scheduledStart)}</span>
+          <span>Scheduled end: ${formatDateTime(task.scheduledEnd)}</span>
+        `;
+    taskCard.appendChild(statusRow);
+  }
+
+  return taskCard;
+}

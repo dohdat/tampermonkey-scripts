@@ -26,6 +26,7 @@ const removeIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" he
 const favoriteIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path d="m10 2.5 2.1 4.25 4.65.68-3.37 3.28.79 4.61L10 13.8 5.83 15.3l.79-4.61L3.25 7.43l4.65-.68Z"/></svg>`;
 const zoomInIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 4h2m0 0v2m0-2V2m0 2h2m1 5a6 6 0 1 1-12 0 6 6 0 0 1 12 0Zm-2.5 3.5L17 17"></path></svg>`;
 const zoomOutIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 10h4m2 1a6 6 0 1 1-12 0 6 6 0 0 1 12 0Zm-2.5 3.5L17 17"></path></svg>`;
+const plusIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 4v12M4 10h12" stroke-linecap="round"></path></svg>`;
 const checkboxIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7" stroke="currentColor" fill="none"></circle></svg>`;
 const checkboxCheckedIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="7" stroke="currentColor" fill="none"></circle><path d="m6.5 10 2.2 2.2 4.8-4.9" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
 const bulletIconSvg = `<svg aria-hidden="true" viewBox="0 0 8 8" width="8" height="8" fill="currentColor"><circle cx="4" cy="4" r="3"></circle></svg>`;
@@ -1102,7 +1103,8 @@ function renderTasks(tasks, timeMaps) {
     taskCard.dataset.taskId = task.id;
     taskCard.dataset.sectionId = task.section || "";
     taskCard.dataset.subsectionId = task.subsection || "";
-    taskCard.style.minHeight = "96px";
+    taskCard.style.minHeight = "fit-content";
+    taskCard.style.padding = "5px";
     if (isSubtask) {
       taskCard.style.marginLeft = "12px";
       taskCard.style.borderStyle = "dashed";
@@ -1118,10 +1120,11 @@ function renderTasks(tasks, timeMaps) {
           <span>🔗</span>
         </a>`
       : task.title;
+    const isLongTitle = (task.title || "").length > 60;
     const header = document.createElement("div");
-    header.className = "flex items-start justify-between gap-2";
+    header.className = `task-title-row title-hover-group${isLongTitle ? " task-title-row--stacked" : ""}`;
     const titleWrap = document.createElement("h3");
-    titleWrap.className = "text-base font-semibold title-hover-group flex items-center gap-2";
+    titleWrap.className = "task-title-main text-base font-semibold";
     if (hasChildren) {
       const collapseTaskBtn = document.createElement("button");
       collapseTaskBtn.type = "button";
@@ -1134,7 +1137,7 @@ function renderTasks(tasks, timeMaps) {
     const completeBtn = document.createElement("button");
     completeBtn.type = "button";
     completeBtn.dataset.completeTask = task.id;
-    completeBtn.className = "title-icon-btn title-actions task-complete-btn";
+    completeBtn.className = "title-icon-btn task-complete-btn";
     completeBtn.title = task.completed ? "Mark incomplete" : "Mark completed";
     completeBtn.innerHTML = task.completed ? checkboxCheckedIconSvg : checkboxIconSvg;
     if (task.completed) {
@@ -1142,6 +1145,7 @@ function renderTasks(tasks, timeMaps) {
     }
     titleWrap.appendChild(completeBtn);
     const titleTextWrap = document.createElement("div");
+    titleTextWrap.className = "task-title-text";
     titleTextWrap.innerHTML = titleMarkup;
     titleWrap.appendChild(titleTextWrap);
     if (task.completed) {
@@ -1149,8 +1153,11 @@ function renderTasks(tasks, timeMaps) {
       titleTextWrap.style.textDecoration = "line-through";
       titleTextWrap.style.textDecorationColor = "#4ade80";
     }
+    const durationPill = document.createElement("span");
+    durationPill.className = "pill pill-muted";
+    durationPill.textContent = `${task.durationMin}m`;
     const titleActions = document.createElement("div");
-    titleActions.className = "title-actions";
+    titleActions.className = "title-actions task-title-actions";
     const zoomTaskBtn = document.createElement("button");
     zoomTaskBtn.type = "button";
     zoomTaskBtn.dataset.zoomTask = task.id;
@@ -1178,35 +1185,41 @@ function renderTasks(tasks, timeMaps) {
     const addSubtaskBtn = document.createElement("button");
     addSubtaskBtn.type = "button";
     addSubtaskBtn.dataset.addSubtask = task.id;
-    addSubtaskBtn.className =
-      "rounded-lg border border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-200 hover:border-lime-400 title-actions";
-    addSubtaskBtn.textContent = "Add subtask";
-    addSubtaskBtn.style.marginLeft = "12px";
+    addSubtaskBtn.className = "title-icon-btn";
+    addSubtaskBtn.title = "Add subtask";
+    addSubtaskBtn.setAttribute("aria-label", "Add subtask");
+    addSubtaskBtn.innerHTML = plusIconSvg;
     const detailsToggleBtn = document.createElement("button");
     detailsToggleBtn.type = "button";
     detailsToggleBtn.dataset.toggleTaskDetails = task.id;
-    detailsToggleBtn.className =
-      "rounded-lg border border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-200 hover:border-lime-400 title-actions";
+    detailsToggleBtn.className = "title-icon-btn";
     const detailsOpen = expandedTaskDetails.has(task.id);
-    detailsToggleBtn.innerHTML = `${
-      detailsOpen ? caretDownIconSvg : caretRightIconSvg
-    }<span class="ml-1">${detailsOpen ? "Hide details" : "Show details"}</span>`;
+    detailsToggleBtn.title = detailsOpen ? "Hide details" : "Show details";
+    detailsToggleBtn.setAttribute("aria-label", detailsOpen ? "Hide details" : "Show details");
+    detailsToggleBtn.innerHTML = detailsOpen ? caretDownIconSvg : caretRightIconSvg;
+    titleActions.appendChild(durationPill);
     titleActions.appendChild(zoomTaskBtn);
     titleActions.appendChild(editTaskBtn);
     titleActions.appendChild(addSubtaskBtn);
     titleActions.appendChild(detailsToggleBtn);
     titleActions.appendChild(deleteTaskBtn);
-    titleWrap.appendChild(titleActions);
     header.appendChild(titleWrap);
+    header.appendChild(titleActions);
     taskCard.appendChild(header);
 
     const summaryRow = document.createElement("div");
-    summaryRow.className = "mt-1 flex flex-wrap gap-3 text-xs text-slate-300";
-    summaryRow.innerHTML = `
-        <span class="${statusClass}">${statusValue}</span>
-        <span>Duration: ${task.durationMin}m</span>
-        <span>Scheduled: ${formatDateTime(task.scheduledStart)}</span>
-      `;
+    summaryRow.className = `task-summary-row${isLongTitle ? " task-summary-row--stacked" : ""}`;
+    if (statusValue !== "unscheduled" && statusValue) {
+      const statusSpan = document.createElement("span");
+      statusSpan.className = statusClass;
+      statusSpan.textContent = statusValue;
+      summaryRow.appendChild(statusSpan);
+    }
+    if (task.scheduledStart) {
+      const schedSpan = document.createElement("span");
+      schedSpan.textContent = `Scheduled: ${formatDateTime(task.scheduledStart)}`;
+      summaryRow.appendChild(schedSpan);
+    }
     taskCard.appendChild(summaryRow);
 
     if (detailsOpen) {

@@ -27,6 +27,7 @@ const favoriteIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" 
 const zoomInIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 4h2m0 0v2m0-2V2m0 2h2m1 5a6 6 0 1 1-12 0 6 6 0 0 1 12 0Zm-2.5 3.5L17 17"></path></svg>`;
 const zoomOutIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 10h4m2 1a6 6 0 1 1-12 0 6 6 0 0 1 12 0Zm-2.5 3.5L17 17"></path></svg>`;
 const plusIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 4v12M4 10h12" stroke-linecap="round"></path></svg>`;
+const subtaskIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 4v12"></path><path d="M9 8h6l-2.5-2.5M15 8l-2.5 2.5"></path></svg>`;
 const checkboxIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7" stroke="currentColor" fill="none"></circle></svg>`;
 const checkboxCheckedIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="7" stroke="currentColor" fill="none"></circle><path d="m6.5 10 2.2 2.2 4.8-4.9" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
 const bulletIconSvg = `<svg aria-hidden="true" viewBox="0 0 8 8" width="8" height="8" fill="currentColor"><circle cx="4" cy="4" r="3"></circle></svg>`;
@@ -1172,6 +1173,7 @@ function renderTasks(tasks, timeMaps) {
     taskCard.dataset.taskId = task.id;
     taskCard.dataset.sectionId = task.section || "";
     taskCard.dataset.subsectionId = task.subsection || "";
+    taskCard.tabIndex = 0;
     taskCard.style.minHeight = "fit-content";
     taskCard.style.padding = "5px";
     if (isSubtask) {
@@ -1500,7 +1502,9 @@ function renderTasks(tasks, timeMaps) {
       empty.textContent = "Drag tasks here or add new.";
       ungroupedZone.appendChild(empty);
     } else {
-      ungroupedTasks.forEach((task) => ungroupedZone.appendChild(renderTaskCard(task)));
+      ungroupedTasks.forEach((task) => {
+        ungroupedZone.appendChild(renderTaskCard(task));
+      });
     }
     sectionBody.appendChild(ungroupedZone);
 
@@ -1616,7 +1620,9 @@ function renderTasks(tasks, timeMaps) {
         empty.textContent = "Drag tasks here or add new.";
         subZone.appendChild(empty);
       } else {
-        subTasks.forEach((task) => subZone.appendChild(renderTaskCard(task)));
+        subTasks.forEach((task) => {
+          subZone.appendChild(renderTaskCard(task));
+        });
       }
       subBody.appendChild(subZone);
 
@@ -2004,6 +2010,17 @@ function getDropBeforeId(element) {
   return nextTask ? nextTask.dataset.taskId : null;
 }
 
+function findPreviousTaskId(card) {
+  if (!card) return "";
+  let prev = card.previousElementSibling;
+  while (prev) {
+    const prevId = prev.dataset?.taskId;
+    if (prevId) return prevId;
+    prev = prev.previousElementSibling;
+  }
+  return "";
+}
+
 async function handleTaskSortEnd(evt) {
   const movedTaskId = evt.item?.dataset?.taskId;
   const targetZone = evt.to?.closest?.("[data-drop-section]");
@@ -2106,6 +2123,102 @@ function computeTaskReorderUpdates(tasks, movedTaskId, targetSection, targetSubs
     assignOrders(destinationList, targetSection, targetSubsection);
   }
   return { updates, changed: updates.length > 0 };
+}
+
+async function indentTaskUnderPrevious(card) {
+  if (!card) return;
+  const childId = card.dataset.taskId;
+  const parentId = findPreviousTaskId(card);
+  if (!childId || !parentId) return;
+  const childTask = tasksCache.find((t) => t.id === childId);
+  const parentTask = tasksCache.find((t) => t.id === parentId);
+  if (!childTask || !parentTask) return;
+  const childDescendants = new Set(getTaskAndDescendants(childId, tasksCache).map((t) => t.id));
+  if (childDescendants.has(parentTask.id)) return;
+  const section = parentTask.section || "";
+  const subsection = parentTask.subsection || "";
+  const nextOrder = getNextSubtaskOrder(parentTask, section, subsection, tasksCache);
+  const updatedChild = {
+    ...childTask,
+    section,
+    subsection,
+    subtaskParentId: parentTask.id,
+    order: nextOrder
+  };
+  await saveTask(updatedChild);
+  await loadTasks();
+}
+
+async function outdentTask(card) {
+  if (!card) return;
+  const childId = card.dataset.taskId;
+  const childTask = tasksCache.find((t) => t.id === childId);
+  if (!childTask || !childTask.subtaskParentId) return;
+  const parentTask = tasksCache.find((t) => t.id === childTask.subtaskParentId);
+  if (!parentTask) return;
+  const oldSection = childTask.section || "";
+  const oldSubsection = childTask.subsection || "";
+  const oldParentId = childTask.subtaskParentId || "";
+  const newParentId = parentTask.subtaskParentId || null;
+  const section = parentTask.section || "";
+  const subsection = parentTask.subsection || "";
+  const updates = [];
+
+  const oldSiblings = sortTasksByOrder(
+    tasksCache.filter(
+      (t) =>
+        getContainerKey(t.section, t.subsection) === getContainerKey(oldSection, oldSubsection) &&
+        (t.subtaskParentId || "") === (oldParentId || "") &&
+        t.id !== childId
+    )
+  );
+  oldSiblings.forEach((sibling, idx) => {
+    const desiredOrder = idx + 1;
+    if (
+      sibling.order !== desiredOrder ||
+      sibling.section !== oldSection ||
+      (sibling.subsection || "") !== (oldSubsection || "")
+    ) {
+      updates.push({ ...sibling, order: desiredOrder, section: oldSection, subsection: oldSubsection });
+    }
+  });
+
+  const newSiblings = sortTasksByOrder(
+    tasksCache.filter(
+      (t) =>
+        getContainerKey(t.section, t.subsection) === getContainerKey(section, subsection) &&
+        (t.subtaskParentId || "") === (newParentId || "")
+    )
+  ).filter((t) => t.id !== childId);
+  const insertAfterIdx = newSiblings.findIndex((t) => t.id === parentTask.id);
+  const insertAt = insertAfterIdx >= 0 ? insertAfterIdx + 1 : newSiblings.length;
+  newSiblings.splice(insertAt, 0, {
+    ...childTask,
+    section,
+    subsection,
+    subtaskParentId: newParentId
+  });
+  newSiblings.forEach((task, idx) => {
+    const desiredOrder = idx + 1;
+    if (
+      task.order !== desiredOrder ||
+      task.section !== section ||
+      (task.subsection || "") !== (subsection || "") ||
+      (task.subtaskParentId || "") !== (newParentId || "") ||
+      task.id === childId
+    ) {
+      updates.push({
+        ...task,
+        section,
+        subsection,
+        subtaskParentId: newParentId,
+        order: desiredOrder
+      });
+    }
+  });
+  if (updates.length === 0) return;
+  await Promise.all(updates.map((t) => saveTask(t)));
+  await loadTasks();
 }
 
 async function ensureTaskIds(tasks) {
@@ -3131,6 +3244,20 @@ taskFormWrap.addEventListener("click", (event) => {
   }
 });
 taskModalCloseButtons.forEach((btn) => btn.addEventListener("click", closeTaskForm));
+taskList.addEventListener("keydown", async (event) => {
+  if (event.key !== "Tab") return;
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  const card = target.closest("[data-task-id]");
+  if (!card || card !== document.activeElement) return;
+  event.preventDefault();
+  event.stopPropagation();
+  if (event.shiftKey) {
+    await outdentTask(card);
+  } else {
+    await indentTaskUnderPrevious(card);
+  }
+});
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !taskFormWrap.classList.contains("hidden")) {
     closeTaskForm();

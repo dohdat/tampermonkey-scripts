@@ -410,6 +410,16 @@ function formatDate(value) {
   return date && !Number.isNaN(date) ? date.toLocaleDateString() : "";
 }
 
+function formatDurationShort(minutes) {
+  const mins = Number(minutes) || 0;
+  if (mins >= 60) {
+    const hours = mins / 60;
+    const rounded = Math.round(hours * 10) / 10;
+    return `${Number.isInteger(rounded) ? rounded : rounded}h`;
+  }
+  return `${Math.max(1, mins)}m`;
+}
+
 function renderTimeMaps(timeMaps) {
   timeMapList.innerHTML = "";
   if (timeMaps.length === 0) {
@@ -1155,7 +1165,7 @@ function renderTasks(tasks, timeMaps) {
     }
     const durationPill = document.createElement("span");
     durationPill.className = "pill pill-muted";
-    durationPill.textContent = `${task.durationMin}m`;
+    durationPill.textContent = formatDurationShort(task.durationMin);
     const titleActions = document.createElement("div");
     titleActions.className = "title-actions task-title-actions";
     const zoomTaskBtn = document.createElement("button");

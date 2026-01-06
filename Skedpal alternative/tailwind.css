@@ -40,7 +40,7 @@ body.modal-open{overflow:hidden}
 .task-complete-btn--checked:hover{border-color:#a3e635;color:#e9fac8}
 .task-title-row{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:.5rem}
 .task-title-main{display:flex;align-items:flex-start;gap:.5rem;flex:1 1 260px;min-width:0}
-.task-title-text{min-width:0;word-break:break-word;line-height:1.4}
+.task-title-text{min-width:0;word-break:break-word;line-height:1.35;font-size:.95rem}
 .task-title-actions{display:flex;flex-wrap:wrap;align-items:center;gap:.35rem;margin-left:auto;justify-content:flex-end}
 .task-title-row--stacked .task-title-main{flex:1 1 100%}
 .task-title-row--stacked .task-title-actions{flex-basis:100%;margin-left:0;justify-content:flex-start;padding-top:.15rem}

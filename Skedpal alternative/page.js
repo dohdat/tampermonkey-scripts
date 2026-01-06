@@ -2184,63 +2184,66 @@ async function outdentTask(card) {
   if (!childTask || !childTask.subtaskParentId) return;
   const parentTask = tasksCache.find((t) => t.id === childTask.subtaskParentId);
   if (!parentTask) return;
-  const movedSubtree = getTaskAndDescendants(childId, tasksCache);
-  const movedIds = new Set(movedSubtree.map((t) => t.id));
+  const subtree = getTaskAndDescendants(childId, tasksCache);
+  const descendantIds = new Set(subtree.filter((t) => t.id !== childId).map((t) => t.id));
   const oldSection = childTask.section || "";
   const oldSubsection = childTask.subsection || "";
   const newParentId = parentTask.subtaskParentId || null;
   const section = parentTask.section || "";
   const subsection = parentTask.subsection || "";
   const sourceKey = getContainerKey(oldSection, oldSubsection);
-  const targetKey = getContainerKey(section, subsection);
   const updates = [];
+  const originalById = new Map(tasksCache.map((t) => [t.id, t]));
 
-  const remainingSource = sortTasksByOrder(
-    tasksCache.filter((t) => getContainerKey(t.section, t.subsection) === sourceKey && !movedIds.has(t.id))
+  // Reparent all descendants to the old parent, keeping their relative positions.
+  const adjustedContainerTasks = sortTasksByOrder(
+    tasksCache
+      .filter((t) => getContainerKey(t.section, t.subsection) === sourceKey)
+      .filter((t) => t.id !== childId)
+      .map((t) => {
+        if (descendantIds.has(t.id)) {
+          return { ...t, subtaskParentId: parentTask.id, section, subsection };
+        }
+        return t;
+      })
   );
-  const destinationExisting =
-    sourceKey === targetKey
-      ? remainingSource
-      : sortTasksByOrder(
-          tasksCache.filter((t) => getContainerKey(t.section, t.subsection) === targetKey && !movedIds.has(t.id))
-        );
-  const destinationList = [...destinationExisting];
-  const insertAfterIdx = destinationList.findIndex((t) => t.id === parentTask.id);
-  const insertAt = insertAfterIdx >= 0 ? insertAfterIdx + 1 : destinationList.length;
-  // Keep the moved task and all its descendants together as a contiguous block.
-  const movedBlock = sortTasksByOrder(movedSubtree).map((task) => ({
-    ...task,
-    section,
-    subsection,
-    subtaskParentId: task.id === childId ? newParentId : task.subtaskParentId
-  }));
-  destinationList.splice(insertAt, 0, ...movedBlock);
 
-  const assignOrders = (list, targetSection, targetSubsection) => {
-    list.forEach((task, idx) => {
-      const desiredOrder = idx + 1;
-      if (
-        task.order !== desiredOrder ||
-        task.section !== targetSection ||
-        (task.subsection || "") !== (targetSubsection || "") ||
-        movedIds.has(task.id)
-      ) {
-        updates.push({
-          ...task,
-          section: targetSection,
-          subsection: targetSubsection,
-          order: desiredOrder
-        });
-      }
-    });
-  };
+  // Place the moved task at the end of the container as a sibling of the old parent.
+  const adoptedIds = new Set(adjustedContainerTasks.filter((t) => t.subtaskParentId === parentTask.id).map((t) => t.id));
+  const finalList = [
+    ...adjustedContainerTasks,
+    { ...childTask, section, subsection, subtaskParentId: newParentId }
+  ];
 
-  if (sourceKey === targetKey) {
-    assignOrders(destinationList, section, subsection);
-  } else {
-    assignOrders(remainingSource, oldSection, oldSubsection);
-    assignOrders(destinationList, section, subsection);
-  }
+  finalList.forEach((task, idx) => {
+    const desiredOrder = idx + 1;
+    const desiredSection = task.section || "";
+    const desiredSubsection = task.subsection || "";
+    const desiredParentId =
+      task.id === childId
+        ? newParentId
+        : descendantIds.has(task.id) || adoptedIds.has(task.id)
+          ? parentTask.id
+          : task.subtaskParentId;
+    const original = originalById.get(task.id);
+    const needsUpdate =
+      !original ||
+      original.order !== desiredOrder ||
+      (original.section || "") !== desiredSection ||
+      (original.subsection || "") !== desiredSubsection ||
+      (original.subtaskParentId || "") !== (desiredParentId || "");
+    if (
+      needsUpdate
+    ) {
+      updates.push({
+        ...task,
+        section: desiredSection,
+        subsection: desiredSubsection,
+        order: desiredOrder,
+        subtaskParentId: desiredParentId
+      });
+    }
+  });
   if (updates.length === 0) return;
   await Promise.all(updates.map((t) => saveTask(t)));
   await loadTasks();

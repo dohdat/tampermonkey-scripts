@@ -69,11 +69,7 @@ body.modal-open{overflow:hidden}
 .sidebar-icon{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;color:#94a3b8}
 .sidebar-link.is-active .sidebar-icon{color:#a3e635}
 .sidebar-label{flex:1}
-.sidebar-caret{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;transition:transform .15s ease}
 .sidebar-favorites{padding-left:.35rem;margin-top:.25rem;display:grid;gap:.4rem}
-.sidebar-fav-toggle{display:flex;align-items:center;gap:.6rem;width:100%;padding:.6rem .75rem;border-radius:12px;border:1px solid transparent;background:rgba(15,23,42,.35);color:#e2e8f0;font-weight:700;font-size:.95rem;text-align:left;transition:all .16s ease}
-.sidebar-fav-toggle:hover{background:rgba(30,41,59,.6);color:#f8fafc;border-color:#1f2937}
-.sidebar-fav-toggle.is-open .caret-icon{transform:rotate(180deg)}
 .sidebar-fav-header{text-transform:uppercase;letter-spacing:.08em;font-size:.7rem;color:#64748b;font-weight:800;padding-left:.35rem}
 .sidebar-fav-list{display:grid;gap:.35rem}
 .sidebar-fav-item{display:flex;align-items:center;gap:.5rem;width:100%;text-align:left;padding:.5rem .6rem;border-radius:12px;border:1px solid transparent;background:rgba(15,23,42,.3);color:#e2e8f0;font-weight:600;font-size:.9rem;transition:all .14s ease}

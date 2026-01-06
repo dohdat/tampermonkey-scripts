@@ -432,8 +432,8 @@ export async function handleToggleSubsectionFavorite(sectionId, subsectionId) {
 
 export function renderFavoriteShortcuts() {
   if (!sidebarFavorites) return;
-  const wasHidden = sidebarFavorites.classList.contains("hidden");
   sidebarFavorites.innerHTML = "";
+  sidebarFavorites.classList.remove("hidden");
   const sections = (state.settingsCache.sections || []).filter((s) => s.favorite);
   const subsectionMap = state.settingsCache.subsections || {};
   const subsectionEntries = Object.entries(subsectionMap).flatMap(([sectionId, list]) =>
@@ -481,10 +481,6 @@ export function renderFavoriteShortcuts() {
     li.appendChild(btn);
     sidebarFavorites.appendChild(li);
   });
-
-  if (!wasHidden && sidebarFavorites.classList.contains("hidden")) {
-    sidebarFavorites.classList.remove("hidden");
-  }
 }
 
 export function closeSubsectionModal() {

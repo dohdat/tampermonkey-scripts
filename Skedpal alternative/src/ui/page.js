@@ -33,7 +33,6 @@ import {
   handleAddSubsection
 } from "./sections.js";
 import {
-  toggleFavoritesAccordion,
   handleNavigationShortcuts,
   handleNavigationMouseButtons,
   initViewFromUrl,
@@ -60,7 +59,6 @@ const {
   taskSectionSelect,
   navButtons,
   settingsToggleBtn,
-  sidebarFavToggle,
   sidebarFavorites,
   horizonInput,
   subsectionForm,
@@ -131,18 +129,6 @@ function registerEventListeners() {
     } else {
       setZoomFilter({ type: "section", sectionId });
     }
-  });
-
-  sidebarFavToggle?.addEventListener("click", (event) => {
-    event.preventDefault();
-    toggleFavoritesAccordion();
-  });
-
-  document.addEventListener("click", (event) => {
-    const toggle = event.target.closest("[data-fav-toggle]");
-    if (!toggle) return;
-    event.preventDefault();
-    toggleFavoritesAccordion();
   });
 
   timeMapToggle?.addEventListener("click", () => {

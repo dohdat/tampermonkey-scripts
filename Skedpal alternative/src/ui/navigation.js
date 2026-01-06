@@ -5,7 +5,7 @@ import { renderTasks } from "./tasks/tasks-render.js";
 import { getSectionName, getSubsectionsFor } from "./sections.js";
 import { isTypingTarget } from "./notifications.js";
 
-const { views, navButtons, navBreadcrumb, sidebarFavorites, sidebarFavToggle } = domRefs;
+const { views, navButtons, navBreadcrumb } = domRefs;
 
 export function pushNavigation(filter) {
   state.navStack = state.navStack.slice(0, state.navIndex + 1);
@@ -227,18 +227,6 @@ export function handleNavigationMouseButtons(event) {
   } else if (event.button === 4) {
     if (goForwardInNavigation()) event.preventDefault();
   }
-}
-
-export function toggleFavoritesAccordion(forceOpen) {
-  if (!sidebarFavorites || !sidebarFavToggle) return;
-  const favContainer = sidebarFavToggle.closest("[data-fav-accordion]");
-  const shouldOpen =
-    typeof forceOpen === "boolean" ? forceOpen : sidebarFavorites.classList.contains("hidden");
-  sidebarFavorites.classList.toggle("hidden", !shouldOpen);
-  favContainer?.classList.toggle("hidden", false);
-  favContainer?.classList.toggle("is-open", shouldOpen);
-  sidebarFavToggle.classList.toggle("is-open", shouldOpen);
-  sidebarFavToggle.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
 }
 
 export function initViewFromUrl(parseViewFromUrl) {

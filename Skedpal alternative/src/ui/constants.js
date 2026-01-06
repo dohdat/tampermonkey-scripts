@@ -35,7 +35,6 @@ export const domRefs = {
   taskList: document.getElementById("task-list"),
   navBreadcrumb: document.getElementById("nav-breadcrumb"),
   sidebarFavorites: document.getElementById("sidebar-favorites"),
-  sidebarFavToggle: document.querySelector("[data-fav-toggle]"),
   settingsToggleBtn: document.getElementById("settings-toggle-btn"),
   timeMapList: document.getElementById("timemap-list"),
   timeMapDayRows: document.getElementById("timemap-day-rows"),

@@ -2050,19 +2050,29 @@ async function handleTaskSortEnd(evt) {
   const dropBeforeId = getDropBeforeId(evt.item);
   const prevTaskId = findPreviousTaskId(evt.item);
   const movedTask = tasksCache.find((t) => t.id === movedTaskId);
+  const dropBeforeTask = dropBeforeId ? tasksCache.find((t) => t.id === dropBeforeId) : null;
   const prevTask = prevTaskId ? tasksCache.find((t) => t.id === prevTaskId) : null;
-  const parentTask = movedTask?.subtaskParentId
-    ? tasksCache.find((t) => t.id === movedTask.subtaskParentId)
-    : null;
   const targetKey = getContainerKey(targetSection, targetSubsection);
-  const parentKey = parentTask ? getContainerKey(parentTask.section, parentTask.subsection) : "";
-  const sameContainerAsParent = Boolean(parentTask && targetKey === parentKey);
-  const keepParent =
-    sameContainerAsParent &&
-    prevTask &&
-    (prevTask.id === movedTask?.subtaskParentId ||
-      prevTask.subtaskParentId === movedTask?.subtaskParentId);
-  const desiredParentId = keepParent ? movedTask?.subtaskParentId || null : null;
+  const movedSubtreeIds = new Set(getTaskAndDescendants(movedTaskId, tasksCache).map((t) => t.id));
+  const resolveParent = (task) => {
+    if (!task) return { found: false, parentId: null };
+    let candidateId = task.subtaskParentId || null;
+    while (candidateId && movedSubtreeIds.has(candidateId)) {
+      const ancestor = tasksCache.find((t) => t.id === candidateId);
+      candidateId = ancestor?.subtaskParentId || null;
+    }
+    if (!candidateId) return { found: true, parentId: null };
+    const candidateTask = tasksCache.find((t) => t.id === candidateId);
+    if (!candidateTask) return { found: true, parentId: null };
+    const candidateKey = getContainerKey(candidateTask.section, candidateTask.subsection);
+    if (candidateKey !== targetKey) return { found: true, parentId: null };
+    return { found: true, parentId: candidateId };
+  };
+  const parentFromDropBefore = resolveParent(dropBeforeTask);
+  const parentFromPrev = resolveParent(prevTask);
+  const desiredParentId = parentFromDropBefore.found
+    ? parentFromDropBefore.parentId
+    : parentFromPrev.parentId;
   const reorderResult = computeTaskReorderUpdates(
     tasksCache,
     movedTaskId,

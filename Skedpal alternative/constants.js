@@ -34,6 +34,7 @@ export const domRefs = {
   navButtons: [...document.querySelectorAll(".nav-btn")],
   taskList: document.getElementById("task-list"),
   navBreadcrumb: document.getElementById("nav-breadcrumb"),
+  settingsToggleBtn: document.getElementById("settings-toggle-btn"),
   timeMapList: document.getElementById("timemap-list"),
   timeMapDayRows: document.getElementById("timemap-day-rows"),
   timeMapFormWrap: document.getElementById("timemap-form-wrap"),

@@ -121,7 +121,8 @@ const {
   notificationBanner,
   notificationMessage,
   notificationUndoButton,
-  navBreadcrumb
+  navBreadcrumb,
+  settingsToggleBtn
 } = domRefs;
 
 let settingsCache = { ...DEFAULT_SETTINGS };
@@ -2842,7 +2843,7 @@ function handleTimeMapListClick(event, timeMaps) {
       timeMapColorInput.value = tm.color || "#22c55e";
       renderDayRows(timeMapDayRows, tm.rules);
       openTimeMapForm();
-      switchView("timemaps");
+      switchView("settings");
     }
   } else if (deleteId) {
     deleteTimeMap(deleteId).then(() => {
@@ -2971,6 +2972,7 @@ taskSectionSelect.addEventListener("change", () => renderTaskSubsectionOptions()
 navButtons.forEach((btn) => {
   btn.addEventListener("click", () => switchView(btn.dataset.view));
 });
+settingsToggleBtn?.addEventListener("click", () => switchView("settings"));
 
 function openTimeMapForm() {
   timeMapFormWrap.classList.remove("hidden");

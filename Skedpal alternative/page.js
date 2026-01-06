@@ -29,7 +29,8 @@ import {
   zoomInIconSvg,
   zoomOutIconSvg,
   sortableHighlightClasses,
-  domRefs
+  domRefs,
+  homeIconSvg
 } from "./constants.js";
 import {
   updateUrlWithZoom,
@@ -120,7 +121,8 @@ const {
   horizonInput,
   notificationBanner,
   notificationMessage,
-  notificationUndoButton
+  notificationUndoButton,
+  navBreadcrumb
 } = domRefs;
 
 let settingsCache = { ...DEFAULT_SETTINGS };
@@ -1744,6 +1746,7 @@ function setZoomFilter(filter) {
   updateUrlWithZoom(filter);
   renderZoomBanner();
   renderTasks(tasksCache, tasksTimeMapsCache);
+  renderBreadcrumb();
 }
 
 function clearZoomFilter() {
@@ -1751,6 +1754,7 @@ function clearZoomFilter() {
   updateUrlWithZoom(null);
   renderZoomBanner();
   renderTasks(tasksCache, tasksTimeMapsCache);
+  renderBreadcrumb();
 }
 
 function goHome() {
@@ -1783,6 +1787,90 @@ function zoomOutOneLevel() {
   if (zoomFilter.type === "section") {
     clearZoomFilter();
   }
+}
+
+function renderBreadcrumb() {
+  if (!navBreadcrumb) return;
+  navBreadcrumb.innerHTML = "";
+  const crumbs = [];
+  const addSectionCrumb = (sectionId) => {
+    if (sectionId === undefined || sectionId === null) return;
+    const label = sectionId ? getSectionName(sectionId) || "Untitled section" : "No section";
+    crumbs.push({
+      label,
+      onClick: () => setZoomFilter({ type: "section", sectionId: sectionId || "" })
+    });
+  };
+  const addSubsectionCrumb = (sectionId, subsectionId) => {
+    if (!subsectionId) return;
+    const name = getSubsectionsFor(sectionId).find((s) => s.id === subsectionId)?.name || "Untitled subsection";
+    crumbs.push({
+      label: name,
+      onClick: () =>
+        setZoomFilter({
+          type: "subsection",
+          sectionId: sectionId || "",
+          subsectionId
+        })
+    });
+  };
+  const addTaskCrumb = (taskId, sectionId, subsectionId) => {
+    if (!taskId) return;
+    const task = tasksCache.find((t) => t.id === taskId);
+    if (!task) return;
+    crumbs.push({
+      label: task.title || "Task",
+      onClick: () =>
+        setZoomFilter({
+          type: "task",
+          taskId,
+          sectionId: sectionId || "",
+          subsectionId: subsectionId || ""
+        })
+    });
+  };
+
+  // Always start with Home.
+  crumbs.push({
+    label: "Home",
+    icon: homeIconSvg,
+    onClick: () => goHome()
+  });
+
+  if (zoomFilter) {
+    if (zoomFilter.type === "section") {
+      addSectionCrumb(zoomFilter.sectionId);
+    } else if (zoomFilter.type === "subsection") {
+      addSectionCrumb(zoomFilter.sectionId);
+      addSubsectionCrumb(zoomFilter.sectionId, zoomFilter.subsectionId);
+    } else if (zoomFilter.type === "task") {
+      addSectionCrumb(zoomFilter.sectionId);
+      addSubsectionCrumb(zoomFilter.sectionId, zoomFilter.subsectionId);
+      addTaskCrumb(zoomFilter.taskId, zoomFilter.sectionId, zoomFilter.subsectionId);
+    }
+  }
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "flex items-center gap-2 text-xs text-slate-300";
+  crumbs.forEach((crumb, idx) => {
+    if (idx > 0) {
+      const sep = document.createElement("span");
+      sep.className = "text-slate-500";
+      sep.textContent = ">";
+      wrapper.appendChild(sep);
+    }
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className =
+      "flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:text-lime-300";
+    btn.innerHTML = crumb.icon ? `${crumb.icon}<span>${crumb.label}</span>` : crumb.label;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      crumb.onClick?.();
+    });
+    wrapper.appendChild(btn);
+  });
+  navBreadcrumb.appendChild(wrapper);
 }
 
 let sortableInstances = [];
@@ -2805,6 +2893,7 @@ async function hydrate() {
   } else {
     renderTasks(tasksCache, timeMaps);
     renderZoomBanner();
+    renderBreadcrumb();
   }
   await updateScheduleSummary();
 }

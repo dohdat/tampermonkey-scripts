@@ -20,6 +20,7 @@ export const checkboxCheckedIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 2
 export const bulletIconSvg = `<svg aria-hidden="true" viewBox="0 0 8 8" width="8" height="8" fill="currentColor"><circle cx="4" cy="4" r="3"></circle></svg>`;
 export const caretDownIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m5 7 5 5 5-5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
 export const caretRightIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m8 5 5 5-5 5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
+export const homeIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 9.5 10 3l7 6.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M5.5 9.5V16a1 1 0 0 0 1 1H13a1 1 0 0 0 1-1V9.5" stroke-linecap="round"></path></svg>`;
 
 export const TASK_ZONE_CLASS = "task-drop-zone";
 export const TASK_PLACEHOLDER_CLASS = "task-drop-placeholder";
@@ -33,6 +34,7 @@ export const domRefs = {
   navButtons: [...document.querySelectorAll(".nav-btn")],
   taskList: document.getElementById("task-list"),
   zoomBanner: document.getElementById("zoom-banner"),
+  navBreadcrumb: document.getElementById("nav-breadcrumb"),
   timeMapList: document.getElementById("timemap-list"),
   timeMapDayRows: document.getElementById("timemap-day-rows"),
   timeMapFormWrap: document.getElementById("timemap-form-wrap"),

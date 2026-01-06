@@ -36,7 +36,7 @@
             <circle cx="7" cy="18" r="1.25" fill="currentColor" />
           </svg>
         </span>
-        <span class="sidebar-label">Tasks</span>
+        <span class="sidebar-label" data-test-skedpal="nav-tasks">Tasks</span>
       </button>
       <div class="sidebar-favorites">
         <p class="sidebar-fav-header">Favorites</p>
@@ -54,7 +54,7 @@
             <path d="M9.5 13.5 11 15l3.5-4" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
         </span>
-        <span class="sidebar-label">Today</span>
+        <span class="sidebar-label" data-test-skedpal="nav-today">Today</span>
       </button>
       <button class="nav-btn sidebar-link" data-view="calendar" type="button">
         <span class="sidebar-icon" aria-hidden="true">
@@ -65,7 +65,7 @@
             <rect x="12.5" y="12.5" width="3" height="3" rx="0.6" />
           </svg>
         </span>
-        <span class="sidebar-label">Calendar</span>
+        <span class="sidebar-label" data-test-skedpal="nav-calendar">Calendar</span>
       </button>
       <button class="nav-btn sidebar-link" data-view="settings" type="button">
         <span class="sidebar-icon" aria-hidden="true">
@@ -74,7 +74,7 @@
             <circle cx="10" cy="10" r="2.2"></circle>
           </svg>
         </span>
-        <span class="sidebar-label">Settings</span>
+        <span class="sidebar-label" data-test-skedpal="nav-settings">Settings</span>
       </button>
     </div>
   </aside>
@@ -82,7 +82,7 @@
     <header class="mx-auto w-full max-w-4xl px-6 pt-8 pb-4 space-y-4">
       <div id="nav-breadcrumb" class="flex items-center gap-2 text-xs text-slate-400"></div>
       <div>
-        <h1 class="text-2xl font-semibold tracking-wide">Personal SkedPal</h1>
+        <h1 class="text-2xl font-semibold tracking-wide" data-test-skedpal="app-title">Personal SkedPal</h1>
       </div>
     </header>
     <main class="mx-auto w-full max-w-4xl px-6 space-y-4 pb-8">
@@ -113,7 +113,7 @@
       <section id="today" class="view hidden space-y-3">
         <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg space-y-3">
           <div class="flex items-center justify-between gap-2">
-            <h3 class="text-base font-semibold">Today</h3>
+            <h3 class="text-base font-semibold" data-test-skedpal="nav-today">Today</h3>
             <span class="text-xs text-slate-400">Day snapshot</span>
           </div>
           <p class="text-sm text-slate-400">
@@ -126,7 +126,7 @@
       <section id="calendar" class="view hidden space-y-3">
         <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg space-y-3">
           <div class="flex items-center justify-between gap-2">
-            <h3 class="text-base font-semibold">Calendar</h3>
+            <h3 class="text-base font-semibold" data-test-skedpal="nav-calendar">Calendar</h3>
             <span class="text-xs text-slate-400">Schedule preview</span>
           </div>
           <p class="text-sm text-slate-400">
@@ -138,7 +138,7 @@
       <section id="settings" class="view hidden space-y-4">
         <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg space-y-3">
           <div class="flex flex-wrap items-center gap-3">
-            <h3 class="text-base font-semibold">Sections</h3>
+            <h3 class="text-base font-semibold" data-test-skedpal="nav-sections">Sections</h3>
             <div id="section-list" class="flex flex-wrap gap-2 text-xs" data-test-skedpal="section-list"></div>
             <button
               id="section-form-toggle"
@@ -169,8 +169,8 @@
         <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg space-y-3">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-xs uppercase tracking-wide text-slate-500">TimeMaps</p>
-              <h3 class="text-base font-semibold">Availability maps</h3>
+              <p class="text-xs uppercase tracking-wide text-slate-500" data-test-skedpal="nav-timemaps">TimeMaps</p>
+              <h3 class="text-base font-semibold" data-test-skedpal="nav-timemaps">Availability maps</h3>
               <p class="text-sm text-slate-400">Create and edit TimeMaps to control when tasks can be scheduled.</p>
             </div>
             <button
@@ -203,38 +203,38 @@
               </label>
               <label class="field">
                 <span class="field-label">Color</span>
-                <input id="timemap-color" type="color" value="#a3e635" class="field-input" />
+                <input id="timemap-color" type="color" value="#a3e635" class="field-input" data-test-skedpal="timemap-color" />
               </label>
               <div class="grid gap-2 md:grid-cols-[150px_1fr] md:items-start">
                 <div>
                   <span class="field-label block">Days</span>
                   <div class="grid grid-cols-3 gap-2">
                     <label class="inline-flex items-center gap-2 text-sm text-slate-200">
-                      <input type="checkbox" value="0" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" />
+                      <input type="checkbox" value="0" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" data-test-skedpal="timemap-day-sun" />
                       <span>Sun</span>
                     </label>
                     <label class="inline-flex items-center gap-2 text-sm text-slate-200">
-                      <input type="checkbox" value="1" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" />
+                      <input type="checkbox" value="1" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" data-test-skedpal="timemap-day-mon" />
                       <span>Mon</span>
                     </label>
                     <label class="inline-flex items-center gap-2 text-sm text-slate-200">
-                      <input type="checkbox" value="2" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" />
+                      <input type="checkbox" value="2" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" data-test-skedpal="timemap-day-tue" />
                       <span>Tue</span>
                     </label>
                     <label class="inline-flex items-center gap-2 text-sm text-slate-200">
-                      <input type="checkbox" value="3" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" />
+                      <input type="checkbox" value="3" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" data-test-skedpal="timemap-day-wed" />
                       <span>Wed</span>
                     </label>
                     <label class="inline-flex items-center gap-2 text-sm text-slate-200">
-                      <input type="checkbox" value="4" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" />
+                      <input type="checkbox" value="4" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" data-test-skedpal="timemap-day-thu" />
                       <span>Thu</span>
                     </label>
                     <label class="inline-flex items-center gap-2 text-sm text-slate-200">
-                      <input type="checkbox" value="5" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" />
+                      <input type="checkbox" value="5" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" data-test-skedpal="timemap-day-fri" />
                       <span>Fri</span>
                     </label>
                     <label class="inline-flex items-center gap-2 text-sm text-slate-200">
-                      <input type="checkbox" value="6" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" />
+                      <input type="checkbox" value="6" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" data-test-skedpal="timemap-day-sat" />
                       <span>Sat</span>
                     </label>
                   </div>

@@ -99,11 +99,11 @@ export function getSubsectionsFor(sectionId) {
     return {
       favorite: false,
       parentId: "",
+      ...s,
       template: {
         ...template,
         subtaskScheduleMode: normalizeSubtaskScheduleMode(template.subtaskScheduleMode)
-      },
-      ...s
+      }
     };
   });
 }

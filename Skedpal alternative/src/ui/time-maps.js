@@ -10,16 +10,14 @@ import { dayOptions, domRefs } from "./constants.js";
 import { normalizeTimeMap, resolveTimeMapIdsAfterDelete, uuid } from "./utils.js";
 import { state } from "./state/page-state.js";
 
-const {
-  timeMapList,
-  timeMapDayRows,
-  timeMapFormWrap,
-  timeMapToggle,
-  taskTimeMapOptions,
-  timeMapColorInput,
-  timeMapDaySelect,
-  timeMapDayAdd
-} = domRefs;
+const getTimeMapList = () => domRefs.timeMapList;
+const getTimeMapDayRows = () => domRefs.timeMapDayRows;
+const getTimeMapFormWrap = () => domRefs.timeMapFormWrap;
+const getTimeMapToggle = () => domRefs.timeMapToggle;
+const getTaskTimeMapOptions = () => domRefs.taskTimeMapOptions;
+const getTimeMapColorInput = () => domRefs.timeMapColorInput;
+const getTimeMapDaySelect = () => domRefs.timeMapDaySelect;
+const getTimeMapDayAdd = () => domRefs.timeMapDayAdd;
 
 function createDayRow(day, blocks = []) {
   const row = document.createElement("div");
@@ -131,6 +129,8 @@ export function renderDayRows(container, rules = []) {
 }
 
 export function renderTimeMaps(timeMaps) {
+  const timeMapList = getTimeMapList();
+  if (!timeMapList) return;
   timeMapList.innerHTML = "";
   if (timeMaps.length === 0) {
     timeMapList.innerHTML =
@@ -181,6 +181,8 @@ export function renderTaskTimeMapOptions(
   selected = [],
   defaultTimeMapId = state.settingsCache.defaultTimeMapId
 ) {
+  const taskTimeMapOptions = getTaskTimeMapOptions();
+  if (!taskTimeMapOptions) return;
   taskTimeMapOptions.innerHTML = "";
   if (timeMaps.length === 0) {
     taskTimeMapOptions.innerHTML = `<span class="text-xs text-slate-400">Create TimeMaps first.</span>`;
@@ -272,6 +274,9 @@ export function collectTimeMapRules(container) {
 export function getTimeMapFormData() {
   const id = document.getElementById("timemap-id").value || uuid();
   const name = document.getElementById("timemap-name").value.trim();
+  const timeMapColorInput = getTimeMapColorInput();
+  const timeMapDayRows = getTimeMapDayRows();
+  if (!timeMapColorInput || !timeMapDayRows) return null;
   const color = timeMapColorInput.value || "#22c55e";
   const rules = collectTimeMapRules(timeMapDayRows);
   if (rules.length === 0) {
@@ -287,6 +292,7 @@ export function getTimeMapFormData() {
 }
 
 export function addTimeMapDay(day) {
+  const timeMapDayRows = getTimeMapDayRows();
   if (!timeMapDayRows) return;
   const parsedDay = Number(day);
   if (!Number.isFinite(parsedDay)) return;
@@ -319,18 +325,36 @@ export async function handleSetDefaultTimeMap(event) {
 export function resetTimeMapForm() {
   document.getElementById("timemap-id").value = "";
   document.getElementById("timemap-name").value = "";
-  timeMapColorInput.value = "#22c55e";
-  renderDayRows(timeMapDayRows, []);
+  const timeMapColorInput = getTimeMapColorInput();
+  const timeMapDayRows = getTimeMapDayRows();
+  if (timeMapColorInput) {
+    timeMapColorInput.value = "#22c55e";
+  }
+  if (timeMapDayRows) {
+    renderDayRows(timeMapDayRows, []);
+  }
 }
 
 export function openTimeMapForm() {
-  timeMapFormWrap.classList.remove("hidden");
-  timeMapToggle.textContent = "Hide TimeMap form";
+  const timeMapFormWrap = getTimeMapFormWrap();
+  const timeMapToggle = getTimeMapToggle();
+  if (timeMapFormWrap) {
+    timeMapFormWrap.classList.remove("hidden");
+  }
+  if (timeMapToggle) {
+    timeMapToggle.textContent = "Hide TimeMap form";
+  }
 }
 
 export function closeTimeMapForm() {
-  timeMapFormWrap.classList.add("hidden");
-  timeMapToggle.textContent = "Show TimeMap form";
+  const timeMapFormWrap = getTimeMapFormWrap();
+  const timeMapToggle = getTimeMapToggle();
+  if (timeMapFormWrap) {
+    timeMapFormWrap.classList.add("hidden");
+  }
+  if (timeMapToggle) {
+    timeMapToggle.textContent = "Show TimeMap form";
+  }
 }
 
 export async function handleTimeMapListClick(event, timeMaps) {
@@ -343,8 +367,14 @@ export async function handleTimeMapListClick(event, timeMaps) {
     if (tm) {
       document.getElementById("timemap-id").value = tm.id;
       document.getElementById("timemap-name").value = tm.name;
-      timeMapColorInput.value = tm.color || "#22c55e";
-      renderDayRows(timeMapDayRows, tm.rules);
+      const timeMapColorInput = getTimeMapColorInput();
+      const timeMapDayRows = getTimeMapDayRows();
+      if (timeMapColorInput) {
+        timeMapColorInput.value = tm.color || "#22c55e";
+      }
+      if (timeMapDayRows) {
+        renderDayRows(timeMapDayRows, tm.rules);
+      }
       openTimeMapForm();
       const { switchView } = await import("./navigation.js");
       switchView("settings");
@@ -411,6 +441,8 @@ export async function handleTimeMapListClick(event, timeMaps) {
   }
 }
 
+const timeMapDayAdd = getTimeMapDayAdd();
+const timeMapDaySelect = getTimeMapDaySelect();
 if (timeMapDayAdd && timeMapDaySelect) {
   timeMapDayAdd.addEventListener("click", () => {
     addTimeMapDay(timeMapDaySelect.value);

@@ -12,7 +12,11 @@ global.crypto = {
   })()
 };
 
-const { computeTaskReorderUpdates, ensureTaskIds } = await import("../src/ui/tasks/tasks.js");
+const {
+  computeTaskReorderUpdates,
+  ensureTaskIds,
+  migrateSectionsAndTasks
+} = await import("../src/ui/tasks/tasks.js");
 
 describe("tasks ui helpers", () => {
   beforeEach(() => {
@@ -65,5 +69,26 @@ describe("tasks ui helpers", () => {
     assert.strictEqual(normalized[0].scheduleStatus, "unscheduled");
     assert.strictEqual(normalized[0].order, 1);
     assert.strictEqual(normalized[1].order, 2);
+  });
+
+  it("migrates section and subsection names to ids", async () => {
+    const tasks = [{ id: "t1", title: "Task", section: "Focus", subsection: "Deep" }];
+    const settings = {
+      sections: ["Focus"],
+      subsections: { Focus: ["Deep"] }
+    };
+    const result = await migrateSectionsAndTasks(tasks, settings);
+    const sectionId = result.settings.sections[0].id;
+    const subsectionId = result.settings.subsections[sectionId][0].id;
+    assert.strictEqual(result.tasks[0].section, sectionId);
+    assert.strictEqual(result.tasks[0].subsection, subsectionId);
+  });
+
+  it("adds missing sections when task references unknown section", async () => {
+    const tasks = [{ id: "t2", title: "Task", section: "NewSec", subsection: "" }];
+    const settings = { sections: [], subsections: {} };
+    const result = await migrateSectionsAndTasks(tasks, settings);
+    const names = result.settings.sections.map((s) => s.name);
+    assert.ok(names.includes("NewSec"));
   });
 });

@@ -1,6 +1,87 @@
 import assert from "assert";
 import { describe, it, beforeEach } from "mocha";
 
+class FakeElement {
+  constructor(tagName = "div") {
+    this.tagName = tagName.toUpperCase();
+    this.children = [];
+    this.dataset = {};
+    this.attributes = {};
+    this.className = "";
+    this.textContent = "";
+    this._innerHTML = "";
+    this.value = "";
+    this.checked = false;
+    this.disabled = false;
+    this.style = {};
+    this._handlers = {};
+    this._classSet = new Set();
+    this.classList = {
+      add: (...names) => names.forEach((n) => this._classSet.add(n)),
+      remove: (...names) => names.forEach((n) => this._classSet.delete(n)),
+      toggle: (name, force) => {
+        if (force === undefined) {
+          if (this._classSet.has(name)) this._classSet.delete(name);
+          else this._classSet.add(name);
+          return;
+        }
+        if (force) this._classSet.add(name);
+        else this._classSet.delete(name);
+      },
+      contains: (name) => this._classSet.has(name)
+    };
+  }
+
+  get innerHTML() {
+    return this._innerHTML;
+  }
+
+  set innerHTML(value) {
+    this._innerHTML = value;
+    this.children = [];
+  }
+
+  appendChild(child) {
+    this.children.push(child);
+    return child;
+  }
+
+  setAttribute(name, value) {
+    this.attributes[name] = value;
+  }
+
+  addEventListener(type, handler) {
+    this._handlers[type] = handler;
+  }
+
+  querySelectorAll(selector) {
+    const matches = [];
+    const walk = (node) => {
+      if (selector === "input" && node.tagName === "INPUT") {
+        matches.push(node);
+      }
+      if (selector === "input[type='checkbox']" && node.tagName === "INPUT") {
+        matches.push(node);
+      }
+      if (selector === "[data-block]" && node.dataset?.block !== undefined) {
+        matches.push(node);
+      }
+      (node.children || []).forEach(walk);
+    };
+    walk(this);
+    return matches;
+  }
+}
+
+function findFirst(root, predicate) {
+  if (predicate(root)) return root;
+  for (const child of root.children || []) {
+    const found = findFirst(child, predicate);
+    if (found) return found;
+  }
+  return null;
+}
+
 function createRow({
   day,
   checked,
@@ -34,15 +115,19 @@ function createRow({
 }
 
 const elements = new Map();
-elements.set("timemap-id", { value: "" });
-elements.set("timemap-name", { value: "" });
-elements.set("timemap-color", { value: "#22c55e" });
-elements.set("timemap-day-rows", {
-  querySelectorAll: () => []
-});
+elements.set("timemap-id", new FakeElement("input"));
+elements.set("timemap-name", new FakeElement("input"));
+elements.set("timemap-color", new FakeElement("input"));
+elements.set("timemap-day-rows", new FakeElement("div"));
+elements.set("timemap-list", new FakeElement("div"));
+elements.set("timemap-form-wrap", new FakeElement("div"));
+elements.set("timemap-toggle", new FakeElement("button"));
+elements.set("task-timemap-options", new FakeElement("div"));
 
 function installDomStubs() {
   global.document = {
+    createElement: (tag) => new FakeElement(tag),
+    createTextNode: (text) => ({ nodeType: 3, textContent: text }),
     querySelectorAll: () => [],
     getElementById: (id) => elements.get(id) || null
   };
@@ -56,14 +141,36 @@ installDomStubs();
 const { domRefs } = await import("../src/ui/constants.js");
 domRefs.timeMapColorInput = elements.get("timemap-color");
 domRefs.timeMapDayRows = elements.get("timemap-day-rows");
+domRefs.timeMapList = elements.get("timemap-list");
+domRefs.timeMapFormWrap = elements.get("timemap-form-wrap");
+domRefs.timeMapToggle = elements.get("timemap-toggle");
+domRefs.taskTimeMapOptions = elements.get("task-timemap-options");
 const timeMaps = await import("../src/ui/time-maps.js");
-const { collectSelectedValues, collectTimeMapRules, getTimeMapFormData } = timeMaps;
+const {
+  collectSelectedValues,
+  collectTimeMapRules,
+  getTimeMapFormData,
+  renderDayRows,
+  renderTimeMaps,
+  renderTaskTimeMapOptions,
+  renderTimeMapOptions,
+  openTimeMapForm,
+  closeTimeMapForm,
+  resetTimeMapForm
+} = timeMaps;
 
 describe("time maps", () => {
   beforeEach(() => {
     installDomStubs();
     domRefs.timeMapColorInput = elements.get("timemap-color");
     domRefs.timeMapDayRows = elements.get("timemap-day-rows");
+    domRefs.timeMapList = elements.get("timemap-list");
+    domRefs.timeMapFormWrap = elements.get("timemap-form-wrap");
+    domRefs.timeMapToggle = elements.get("timemap-toggle");
+    domRefs.taskTimeMapOptions = elements.get("task-timemap-options");
+    elements.get("timemap-day-rows").children = [];
+    elements.get("timemap-list").children = [];
+    elements.get("task-timemap-options").children = [];
   });
   it("collects selected checkbox values", () => {
     const container = {
@@ -126,5 +233,55 @@ describe("time maps", () => {
       rules: [{ day: 1, startTime: "09:00", endTime: "12:00" }],
       color: "#22c55e"
     });
+  });
+
+  it("renders day rows and toggles blocks", () => {
+    const container = elements.get("timemap-day-rows");
+    renderDayRows(container, [{ day: 1, startTime: "08:00", endTime: "10:00" }]);
+    const rows = container.children;
+    assert.ok(rows.length > 0);
+    const firstRow = rows[0];
+    const checkbox = findFirst(firstRow, (child) => child.tagName === "INPUT");
+    const blocksContainer = findFirst(firstRow, (child) => child.dataset?.blocksFor !== undefined);
+    const addBlockBtn = findFirst(firstRow, (child) => child.tagName === "BUTTON");
+    checkbox.checked = false;
+    checkbox._handlers.change();
+    assert.strictEqual(blocksContainer.children.length, 0);
+    assert.strictEqual(addBlockBtn.disabled, true);
+  });
+
+  it("renders time map lists and options", () => {
+    const list = elements.get("timemap-list");
+    renderTimeMaps([]);
+    assert.ok(list.innerHTML.includes("No TimeMaps yet"));
+
+    const timeMapsData = [{ id: "tm-1", name: "Work", days: [1], startTime: "09:00", endTime: "11:00" }];
+    renderTimeMaps(timeMapsData);
+    assert.strictEqual(list.children.length, 1);
+
+    renderTaskTimeMapOptions(timeMapsData, [], "tm-1");
+    assert.strictEqual(elements.get("task-timemap-options").children.length, 1);
+
+    const container = new FakeElement("div");
+    renderTimeMapOptions(container, ["tm-1"], timeMapsData);
+    assert.strictEqual(container.children.length, 1);
+  });
+
+  it("opens, closes, and resets the time map form", () => {
+    const formWrap = elements.get("timemap-form-wrap");
+    const toggle = elements.get("timemap-toggle");
+    formWrap.classList.add("hidden");
+    openTimeMapForm();
+    assert.strictEqual(formWrap.classList.contains("hidden"), false);
+    assert.strictEqual(toggle.textContent, "Hide TimeMap form");
+    closeTimeMapForm();
+    assert.strictEqual(formWrap.classList.contains("hidden"), true);
+    assert.strictEqual(toggle.textContent, "Show TimeMap form");
+
+    elements.get("timemap-id").value = "tm-1";
+    elements.get("timemap-name").value = "Work";
+    resetTimeMapForm();
+    assert.strictEqual(elements.get("timemap-id").value, "");
+    assert.strictEqual(elements.get("timemap-name").value, "");
   });
 });

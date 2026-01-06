@@ -1,42 +1,74 @@
 import assert from "assert";
 import { describe, it, beforeEach } from "mocha";
 
-function createClassList() {
-  const set = new Set();
-  return {
-    add: (...names) => names.forEach((n) => set.add(n)),
-    remove: (...names) => names.forEach((n) => set.delete(n)),
-    toggle: (name, force) => {
-      if (force === undefined) {
-        if (set.has(name)) set.delete(name);
-        else set.add(name);
-        return;
-      }
-      if (force) set.add(name);
-      else set.delete(name);
-    },
-    contains: (name) => set.has(name)
-  };
-}
+class FakeElement {
+  constructor(tagName = "div") {
+    this.tagName = tagName.toUpperCase();
+    this.children = [];
+    this.dataset = {};
+    this.attributes = {};
+    this.className = "";
+    this.textContent = "";
+    this.innerHTML = "";
+    this.value = "";
+    this.checked = false;
+    this.disabled = false;
+    this.style = {};
+    this.onclick = null;
+    this._handlers = {};
+    this._classSet = new Set();
+    this.classList = {
+      add: (...names) => names.forEach((n) => this._classSet.add(n)),
+      remove: (...names) => names.forEach((n) => this._classSet.delete(n)),
+      toggle: (name, force) => {
+        if (force === undefined) {
+          if (this._classSet.has(name)) this._classSet.delete(name);
+          else this._classSet.add(name);
+          return;
+        }
+        if (force) this._classSet.add(name);
+        else this._classSet.delete(name);
+      },
+      contains: (name) => this._classSet.has(name)
+    };
+  }
 
-function createStubElement() {
-  return {
-    classList: createClassList(),
-    textContent: "",
-    disabled: false,
-    onclick: null
-  };
+  appendChild(child) {
+    this.children.push(child);
+    return child;
+  }
+
+  setAttribute(name, value) {
+    this.attributes[name] = value;
+  }
+
+  addEventListener(type, handler) {
+    this._handlers[type] = handler;
+  }
+
+  querySelector() {
+    return null;
+  }
+
+  querySelectorAll() {
+    return [];
+  }
 }
 
 const elements = new Map();
-elements.set("notification-banner", createStubElement());
-elements.set("notification-message", createStubElement());
-elements.set("notification-undo", createStubElement());
+elements.set("notification-banner", new FakeElement("div"));
+elements.set("notification-message", new FakeElement("div"));
+elements.set("notification-undo", new FakeElement("button"));
 
 function installDomStubs() {
   global.document = {
     querySelectorAll: () => [],
-    getElementById: (id) => elements.get(id) || null
+    getElementById: (id) => {
+      if (!elements.has(id)) {
+        elements.set(id, new FakeElement("div"));
+      }
+      return elements.get(id);
+    }
   };
   global.window = {
     setTimeout: (fn) => {

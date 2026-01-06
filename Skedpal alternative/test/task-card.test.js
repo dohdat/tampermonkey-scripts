@@ -11,20 +11,20 @@ class FakeElement {
     this.textContent = "";
     this.innerHTML = "";
     this.style = {};
-    const classSet = new Set();
+    this._classSet = new Set();
     this.classList = {
-      add: (...names) => names.forEach((n) => classSet.add(n)),
-      remove: (...names) => names.forEach((n) => classSet.delete(n)),
+      add: (...names) => names.forEach((n) => this._classSet.add(n)),
+      remove: (...names) => names.forEach((n) => this._classSet.delete(n)),
       toggle: (name, force) => {
         if (force === undefined) {
-          if (classSet.has(name)) classSet.delete(name);
-          else classSet.add(name);
+          if (this._classSet.has(name)) this._classSet.delete(name);
+          else this._classSet.add(name);
           return;
         }
-        if (force) classSet.add(name);
-        else classSet.delete(name);
+        if (force) this._classSet.add(name);
+        else this._classSet.delete(name);
       },
-      contains: (name) => classSet.has(name)
+      contains: (name) => this._classSet.has(name)
     };
   }
 
@@ -43,6 +43,16 @@ function findByTestAttr(root, value) {
   if (root.attributes?.["data-test-skedpal"] === value) return root;
   for (const child of root.children || []) {
     const found = findByTestAttr(child, value);
+    if (found) return found;
+  }
+  return null;
+}
+
+function findByInnerHTML(root, text) {
+  if (!root) return null;
+  if ((root.innerHTML || "").includes(text)) return root;
+  for (const child of root.children || []) {
+    const found = findByInnerHTML(child, text);
     if (found) return found;
   }
   return null;
@@ -153,5 +163,39 @@ describe("task card", () => {
     assert.ok(findByTestAttr(card, "task-collapse-btn"));
     const duration = findByTestAttr(card, "task-duration");
     assert.strictEqual(duration.textContent, "1.5h");
+  });
+
+  it("renders expanded details and styles subtasks", () => {
+    const task = {
+      id: "t3",
+      title: "Details",
+      durationMin: 30,
+      minBlockMin: 15,
+      timeMapIds: ["tm-1"],
+      completed: false,
+      scheduledStart: new Date(2026, 0, 1, 9, 0).toISOString(),
+      scheduledEnd: new Date(2026, 0, 1, 10, 0).toISOString(),
+      deadline: new Date(2026, 0, 2, 12, 0).toISOString(),
+      priority: 2,
+      section: "s1",
+      subsection: "ss1",
+      link: "https://example.com"
+    };
+    const context = {
+      tasks: [task],
+      timeMapById: new Map([["tm-1", { id: "tm-1", name: "Focus", color: "#22c55e" }]]),
+      collapsedTasks: new Set(),
+      expandedTaskDetails: new Set(["t3"]),
+      computeTotalDuration: () => 0,
+      getTaskDepthById: () => 1,
+      getSectionName: () => "Section",
+      getSubsectionName: () => "Subsection"
+    };
+
+    const card = renderTaskCard(task, context);
+    assert.strictEqual(card.style.borderColor, "#22c55e");
+    assert.strictEqual(card.style.marginLeft, "10px");
+    assert.strictEqual(card.style.borderStyle, "dashed");
+    assert.ok(findByInnerHTML(card, "Scheduled start"));
   });
 });

@@ -2,4 +2,4 @@
 . "$(dirname -- "$0")/_/husky.sh"
 
 cd "Skedpal alternative"
-npm test
+npm run test:coverage -- --check-coverage --lines 80 --statements 80 --functions 80 --branches 80

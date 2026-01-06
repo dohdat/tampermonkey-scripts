@@ -31,6 +31,25 @@ import {
   sortableHighlightClasses,
   domRefs
 } from "./constants.js";
+import {
+  updateUrlWithZoom,
+  parseZoomFromUrl,
+  uuid,
+  normalizeTimeMap,
+  formatDateTime,
+  formatDate,
+  formatDurationShort,
+  getWeekdayShortLabel,
+  getNthWeekday,
+  formatOrdinal,
+  formatRRuleDate,
+  sortTasksByOrder,
+  getContainerKey,
+  getNextOrder,
+  getNextSubtaskOrder,
+  getTaskDepth,
+  getTaskAndDescendants
+} from "./utils.js";
 import Sortable from "./sortable.esm.js";
 
 const {
@@ -146,43 +165,6 @@ function showUndoBanner(message, undoHandler) {
   notificationHideTimeout = window.setTimeout(() => {
     hideNotificationBanner();
   }, 6500);
-}
-
-function updateUrlWithZoom(filter) {
-  const url = new URL(window.location.href);
-  if (!filter) {
-    url.searchParams.delete("zoom");
-  } else {
-    const parts =
-      filter.type === "section"
-        ? ["section", filter.sectionId || ""]
-        : filter.type === "subsection"
-          ? ["subsection", filter.sectionId || "", filter.subsectionId || ""]
-          : ["task", filter.taskId || "", filter.sectionId || "", filter.subsectionId || ""];
-    url.searchParams.set("zoom", parts.join(":"));
-  }
-  history.replaceState({}, "", url.toString());
-}
-
-function parseZoomFromUrl() {
-  const url = new URL(window.location.href);
-  const zoom = url.searchParams.get("zoom");
-  if (!zoom) return null;
-  const [type, a, b, c] = zoom.split(":");
-  if (type === "section") {
-    return { type, sectionId: a || "" };
-  }
-  if (type === "subsection") {
-    return { type, sectionId: a || "", subsectionId: b || "" };
-  }
-  if (type === "task") {
-    return { type, taskId: a || "", sectionId: b || "", subsectionId: c || "" };
-  }
-  return null;
-}
-
-function uuid() {
-  return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
 }
 
 function getSectionById(id) {
@@ -383,39 +365,6 @@ function renderDayRows(container, rules = []) {
   });
 }
 
-function normalizeTimeMap(timeMap) {
-  if (Array.isArray(timeMap.rules) && timeMap.rules.length > 0) {
-    return { ...timeMap, rules: timeMap.rules.map((r) => ({ ...r, day: Number(r.day) })) };
-  }
-  const days = timeMap.days || [];
-  const startTime = timeMap.startTime || "09:00";
-  const endTime = timeMap.endTime || "12:00";
-  return {
-    ...timeMap,
-    rules: days.map((day) => ({ day: Number(day), startTime, endTime }))
-  };
-}
-
-function formatDateTime(value) {
-  const date = value ? new Date(value) : null;
-  return date && !Number.isNaN(date) ? date.toLocaleString() : "No date";
-}
-
-function formatDate(value) {
-  const date = value ? new Date(value) : null;
-  return date && !Number.isNaN(date) ? date.toLocaleDateString() : "";
-}
-
-function formatDurationShort(minutes) {
-  const mins = Number(minutes) || 0;
-  if (mins >= 60) {
-    const hours = mins / 60;
-    const rounded = Math.round(hours * 10) / 10;
-    return `${Number.isInteger(rounded) ? rounded : rounded}h`;
-  }
-  return `${Math.max(1, mins)}m`;
-}
-
 function renderTimeMaps(timeMaps) {
   timeMapList.innerHTML = "";
   if (timeMaps.length === 0) {
@@ -602,18 +551,10 @@ function renderTaskSubsectionOptions(selected) {
   }
 }
 
-function getContainerKey(section, subsection) {
-  return `${section || ""}__${subsection || ""}`;
-}
-
 function getStartDate() {
   const raw = taskDeadlineInput?.value;
   const date = raw ? new Date(raw) : new Date();
   return Number.isNaN(date) ? new Date() : date;
-}
-
-function getWeekdayShortLabel(day) {
-  return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][day] || "Sun";
 }
 
 function renderTimeMapOptions(container, selectedIds = [], timeMaps = tasksTimeMapsCache || []) {
@@ -640,34 +581,6 @@ function renderTimeMapOptions(container, selectedIds = [], timeMaps = tasksTimeM
     container.appendChild(label);
   });
 }
-
-function getNthWeekday(date) {
-  const day = date.getDay();
-  const dayOfMonth = date.getDate();
-  const nth = Math.ceil(dayOfMonth / 7);
-  return { nth: nth > 4 ? -1 : nth, weekday: day };
-}
-
-function formatOrdinal(n) {
-  if (n === -1) return "last";
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return `${n}st`;
-  if (mod10 === 2 && mod100 !== 12) return `${n}nd`;
-  if (mod10 === 3 && mod100 !== 13) return `${n}rd`;
-  return `${n}th`;
-}
-
-function formatRRuleDate(dateStr) {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
-  if (Number.isNaN(d)) return "";
-  const y = d.getFullYear();
-  const m = `${d.getMonth() + 1}`.padStart(2, "0");
-  const day = `${d.getDate()}`.padStart(2, "0");
-  return `${y}${m}${day}`;
-}
-
 function defaultRepeatState(startDate = getStartDate()) {
   const monthDay = startDate.getDate();
   const { nth, weekday } = getNthWeekday(startDate);
@@ -949,85 +862,6 @@ function buildRepeatFromState() {
     end,
     rrule: rule
   };
-}
-
-function sortTasksByOrder(list = []) {
-  return [...list].sort((a, b) => {
-    const aOrder = Number.isFinite(a.order) ? a.order : Number.MAX_SAFE_INTEGER;
-    const bOrder = Number.isFinite(b.order) ? b.order : Number.MAX_SAFE_INTEGER;
-    if (aOrder === bOrder) {
-      return (a.title || "").localeCompare(b.title || "");
-    }
-    return aOrder - bOrder;
-  });
-}
-
-function getNextOrder(section, subsection, tasks = tasksCache) {
-  const key = getContainerKey(section, subsection);
-  const maxOrder = (tasks || []).reduce((max, task) => {
-    if (getContainerKey(task.section, task.subsection) !== key) return max;
-    const orderValue = Number(task.order);
-    if (!Number.isFinite(orderValue)) return max;
-    return Math.max(max, orderValue);
-  }, 0);
-  return maxOrder + 1;
-}
-
-function getNextSubtaskOrder(parentTask, section, subsection, tasks = tasksCache) {
-  if (!parentTask) return getNextOrder(section, subsection, tasks);
-  const targetKey = getContainerKey(section, subsection);
-  const siblings = sortTasksByOrder(
-    (tasks || []).filter(
-      (t) =>
-        getContainerKey(t.section, t.subsection) === targetKey &&
-        t.subtaskParentId === parentTask.id
-    )
-  );
-  const baseline = siblings.length > 0 ? siblings[siblings.length - 1] : parentTask;
-  const baseOrder = Number.isFinite(baseline.order) ? baseline.order : 0;
-  return baseOrder + SUBTASK_ORDER_OFFSET;
-}
-
-function getTaskDepth(taskId, tasks = tasksCache) {
-  if (!taskId) return 0;
-  const byId = new Map((tasks || []).map((t) => [t.id, t]));
-  const memo = new Map();
-  const compute = (id) => {
-    if (!id) return 0;
-    if (memo.has(id)) return memo.get(id);
-    const task = byId.get(id);
-    if (!task?.subtaskParentId) {
-      memo.set(id, 0);
-      return 0;
-    }
-    const depth = compute(task.subtaskParentId) + 1;
-    memo.set(id, depth);
-    return depth;
-  };
-  return compute(taskId);
-}
-
-function getTaskAndDescendants(taskId, tasks = tasksCache) {
-  if (!taskId) return [];
-  const byParent = tasks.reduce((map, task) => {
-    const pid = task.subtaskParentId || "";
-    if (!map.has(pid)) map.set(pid, []);
-    map.get(pid).push(task);
-    return map;
-  }, new Map());
-  const byId = new Map(tasks.map((t) => [t.id, t]));
-  const result = [];
-  const stack = [taskId];
-  while (stack.length) {
-    const current = stack.pop();
-    const children = byParent.get(current) || [];
-    children.forEach((child) => {
-      result.push(child);
-      stack.push(child.id);
-    });
-  }
-  const root = byId.get(taskId);
-  return root ? [root, ...result] : result;
 }
 
 function renderTasks(tasks, timeMaps) {
@@ -2576,7 +2410,7 @@ async function handleTaskSubmit(event) {
     ? existingTask.order
     : canUseParentOrdering
       ? getNextSubtaskOrder(parentTask, section, subsection, tasksCache)
-      : getNextOrder(section, subsection);
+      : getNextOrder(section, subsection, tasksCache);
 
   if (!title || !durationMin) {
     alert("Title and duration are required.");

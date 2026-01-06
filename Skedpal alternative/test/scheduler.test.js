@@ -1,0 +1,207 @@
+import assert from "assert";
+import { describe, it } from "mocha";
+import { scheduleTasks } from "../src/core/scheduler.js";
+
+function nextWeekday(base, weekday) {
+  const date = new Date(base);
+  date.setHours(8, 0, 0, 0);
+  while (date.getDay() !== weekday) {
+    date.setDate(date.getDate() + 1);
+  }
+  return date;
+}
+
+function shiftDate(base, days, hours, minutes) {
+  const date = new Date(base);
+  date.setDate(date.getDate() + days);
+  date.setHours(hours, minutes, 0, 0);
+  return date;
+}
+
+describe("scheduler", () => {
+  it("splits around busy blocks and respects min blocks", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 1);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "12:00" }] }
+    ];
+    const busy = [
+      { start: shiftDate(now, 0, 9, 30), end: shiftDate(now, 0, 10, 0) }
+    ];
+    const tasks = [
+      {
+        id: "t1",
+        title: "Split",
+        durationMin: 60,
+        minBlockMin: 30,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59)
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy,
+      schedulingHorizonDays: 1,
+      now
+    });
+
+    assert.strictEqual(result.scheduled.length, 2);
+    assert.strictEqual(result.scheduled[0].start.getHours(), 9);
+    assert.strictEqual(result.scheduled[0].start.getMinutes(), 0);
+    assert.strictEqual(result.scheduled[0].end.getHours(), 9);
+    assert.strictEqual(result.scheduled[0].end.getMinutes(), 30);
+    assert.strictEqual(result.scheduled[1].start.getHours(), 10);
+    assert.strictEqual(result.scheduled[1].start.getMinutes(), 0);
+  });
+
+  it("schedules daily and weekly repeats across days", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 1);
+    const timeMaps = [
+      {
+        id: "tm-all",
+        days: [0, 1, 2, 3, 4, 5, 6],
+        startTime: "09:00",
+        endTime: "11:00"
+      }
+    ];
+    const tasks = [
+      {
+        id: "daily",
+        title: "Daily",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-all"],
+        repeat: { type: "custom", unit: "day", interval: 1 }
+      },
+      {
+        id: "weekly",
+        title: "Weekly",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-all"],
+        repeat: {
+          type: "custom",
+          unit: "week",
+          interval: 1,
+          weeklyDays: [now.getDay(), (now.getDay() + 2) % 7]
+        }
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 2,
+      now
+    });
+
+    assert.strictEqual(result.scheduled.length, 5);
+    assert.strictEqual(
+      result.scheduled.filter((slot) => slot.taskId === "daily").length,
+      3
+    );
+    assert.strictEqual(
+      result.scheduled.filter((slot) => slot.taskId === "weekly").length,
+      2
+    );
+  });
+
+  it("schedules monthly and yearly repeats and honors startFrom", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 1);
+    const startFrom = shiftDate(now, 0, 10, 0);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "12:00" }] }
+    ];
+    const tasks = [
+      {
+        id: "monthly",
+        title: "Monthly",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-1"],
+        startFrom,
+        repeat: {
+          type: "custom",
+          unit: "month",
+          interval: 1,
+          monthlyMode: "nth",
+          monthlyNth: 1,
+          monthlyWeekday: now.getDay()
+        }
+      },
+      {
+        id: "yearly",
+        title: "Yearly",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-1"],
+        startFrom,
+        repeat: {
+          type: "custom",
+          unit: "year",
+          interval: 1,
+          yearlyMonth: now.getMonth() + 1,
+          yearlyDay: now.getDate()
+        }
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 1,
+      now
+    });
+
+    assert.strictEqual(result.scheduled.length, 2);
+    assert.ok(result.scheduled.every((slot) => slot.start >= startFrom));
+  });
+
+  it("marks unscheduled and ignored tasks", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 1);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "11:00" }] }
+    ];
+    const tasks = [
+      {
+        id: "past-deadline",
+        title: "Past",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, -1, 12, 0)
+      },
+      {
+        id: "ended-repeat",
+        title: "Ended",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-1"],
+        repeat: { type: "custom", unit: "day", interval: 1, end: { type: "on", date: shiftDate(now, -1, 12, 0).toISOString() } }
+      },
+      {
+        id: "no-map",
+        title: "No map",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-missing"],
+        deadline: shiftDate(now, 0, 23, 59)
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 1,
+      now
+    });
+
+    assert.ok(result.unscheduled.includes("past-deadline"));
+    assert.ok(result.unscheduled.includes("no-map"));
+    assert.ok(result.ignored.includes("ended-repeat"));
+  });
+});

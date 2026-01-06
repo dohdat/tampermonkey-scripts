@@ -3,12 +3,14 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prepare": "husky install .husky",
     "test": "mocha \"test/**/*.test.js\"",
     "test:coverage": "c8 --reporter=text --reporter=lcov mocha \"test/**/*.test.js\""
   },
   "devDependencies": {
     "c8": "^9.1.0",
     "fake-indexeddb": "^3.1.7",
+    "husky": "^8.0.3",
     "mocha": "^10.3.0"
   }
 }

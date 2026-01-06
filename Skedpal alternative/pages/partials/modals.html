@@ -90,6 +90,22 @@
           <span class="field-label">Subsection</span>
           <select id="task-subsection" class="field-input"></select>
         </label>
+        <label
+          class="field hidden"
+          id="task-subtask-schedule-wrap"
+          data-test-skedpal="task-subtask-schedule-wrap"
+        >
+          <span class="field-label">Subtask scheduling</span>
+          <select
+            id="task-subtask-schedule"
+            class="field-input"
+            data-test-skedpal="task-subtask-schedule"
+          >
+            <option value="parallel">Parallel</option>
+            <option value="sequential">Sequential</option>
+            <option value="sequential-single">Sequential (One at a time)</option>
+          </select>
+        </label>
       </div>
       <div class="field">
         <span class="field-label">Allowed TimeMaps</span>

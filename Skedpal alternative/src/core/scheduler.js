@@ -132,6 +132,46 @@ function normalizeTask(task, now, horizonEnd) {
   };
 }
 
+function normalizeSubtaskScheduleMode(value) {
+  return value === "sequential" || value === "sequential-single" ? value : "parallel";
+}
+
+function buildParentModeMap(tasks) {
+  const map = new Map();
+  tasks.forEach((task) => {
+    if (!task?.id) return;
+    map.set(task.id, normalizeSubtaskScheduleMode(task.subtaskScheduleMode));
+  });
+  return map;
+}
+
+function buildSubtaskOrderMap(tasks) {
+  const groups = new Map();
+  tasks.forEach((task, index) => {
+    const parentId = task.subtaskParentId;
+    if (!parentId) return;
+    if (!groups.has(parentId)) groups.set(parentId, []);
+    groups.get(parentId).push({
+      id: task.id,
+      order: Number(task.order),
+      index
+    });
+  });
+  const orderMap = new Map();
+  groups.forEach((items) => {
+    items.sort((a, b) => {
+      const aOrder = Number.isFinite(a.order) ? a.order : Number.MAX_SAFE_INTEGER;
+      const bOrder = Number.isFinite(b.order) ? b.order : Number.MAX_SAFE_INTEGER;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return a.index - b.index;
+    });
+    items.forEach((item, position) => {
+      orderMap.set(item.id, position);
+    });
+  });
+  return orderMap;
+}
+
 function nthWeekdayOfMonth(year, month, weekday, nth) {
   const first = new Date(year, month, 1);
   const firstDay = first.getDay();
@@ -257,10 +297,16 @@ function buildOccurrenceDates(task, now, horizonEnd) {
 function buildScheduleCandidates(tasks, now, horizonEnd) {
   const ignored = new Set();
   const immediatelyUnscheduled = new Set();
+  const parentIds = new Set(
+    tasks.filter((task) => task.subtaskParentId).map((task) => task.subtaskParentId)
+  );
   const candidates = [];
   tasks
     .filter((task) => !task.completed)
     .forEach((task) => {
+      if (parentIds.has(task.id)) {
+        return;
+      }
       const normalized = normalizeTask(task, now, horizonEnd);
       const occurrenceDates = buildOccurrenceDates(normalized, now, horizonEnd);
       if (!occurrenceDates || occurrenceDates.length === 0) {
@@ -295,12 +341,54 @@ function buildScheduleCandidates(tasks, now, horizonEnd) {
   return { sorted, ignored, immediatelyUnscheduled };
 }
 
-function placeTaskInSlots(task, freeSlots, now) {
+function placeTaskInSlots(task, freeSlots, now, options = {}) {
+  const requireSingleBlock = Boolean(options.requireSingleBlock);
   let remaining = task.durationMs;
   const placements = [];
   let slots = [...freeSlots];
   const deadlineMs = task.deadline.getTime();
   const minRequired = Math.min(task.minBlockMs, task.durationMs);
+
+  if (requireSingleBlock) {
+    for (let i = 0; i < slots.length; i += 1) {
+      const slot = slots[i];
+      if (!task.timeMapIds.includes(slot.timeMapId)) continue;
+      const slotStartMs = Math.max(slot.start.getTime(), now.getTime(), task.startFrom.getTime());
+      const slotEndLimitMs = Math.min(slot.end.getTime(), deadlineMs);
+      if (slotEndLimitMs - slotStartMs < remaining) continue;
+      const placement = {
+        taskId: task.id,
+        occurrenceId: task.occurrenceId,
+        timeMapId: slot.timeMapId,
+        start: new Date(slotStartMs),
+        end: new Date(slotStartMs + remaining)
+      };
+      placements.push(placement);
+      const before =
+        slot.start.getTime() < slotStartMs
+          ? [{ ...slot, end: new Date(slotStartMs) }]
+          : [];
+      const after =
+        slotStartMs + remaining < Math.min(slot.end.getTime(), deadlineMs)
+          ? [
+              {
+                ...slot,
+                start: new Date(slotStartMs + remaining),
+                end: new Date(Math.min(slot.end.getTime(), deadlineMs))
+              }
+            ]
+          : [];
+      const afterDeadline =
+        deadlineMs < slot.end.getTime()
+          ? [{ ...slot, start: new Date(deadlineMs), end: slot.end }]
+          : [];
+      slots = [...slots.slice(0, i), ...before, ...after, ...afterDeadline, ...slots.slice(i + 1)].sort(
+        (a, b) => a.start - b.start
+      );
+      return { success: true, placements, nextSlots: slots };
+    }
+    return { success: false, placements: [], nextSlots: freeSlots };
+  }
 
   for (let i = 0; i < slots.length && remaining > 0; i += 1) {
     const slot = slots[i];
@@ -365,17 +453,72 @@ export function scheduleTasks({
   const horizonEnd = endOfDay(addDays(now, schedulingHorizonDays));
   const windows = buildWindows(timeMaps, now, horizonEnd);
   const freeSlots = subtractBusy(windows, busy);
+  const parentModeById = buildParentModeMap(tasks);
+  const subtaskOrderById = buildSubtaskOrderMap(tasks);
   const { sorted: candidates, ignored, immediatelyUnscheduled } = buildScheduleCandidates(
     tasks,
     now,
     horizonEnd
   );
 
+  const sortedCandidates = [...candidates].sort((a, b) => {
+    const aParent = a.subtaskParentId || "";
+    const bParent = b.subtaskParentId || "";
+    if (aParent && aParent === bParent) {
+      const mode = parentModeById.get(aParent) || "parallel";
+      if (mode !== "parallel") {
+        const aOrder = subtaskOrderById.has(a.id)
+          ? subtaskOrderById.get(a.id)
+          : Number.MAX_SAFE_INTEGER;
+        const bOrder = subtaskOrderById.has(b.id)
+          ? subtaskOrderById.get(b.id)
+          : Number.MAX_SAFE_INTEGER;
+        if (aOrder !== bOrder) return aOrder - bOrder;
+      }
+    }
+    const deadlineDelta = a.deadline - b.deadline;
+    if (deadlineDelta !== 0) return deadlineDelta;
+    const priorityDelta = b.priority - a.priority;
+    if (priorityDelta !== 0) return priorityDelta;
+    return a.startFrom - b.startFrom;
+  });
+
   let slots = freeSlots;
   const scheduled = [];
   const unscheduled = new Set(immediatelyUnscheduled);
+  const parentState = new Map();
 
-  candidates.forEach((task) => {
+  sortedCandidates.forEach((task) => {
+    const parentId = task.subtaskParentId || "";
+    const mode = parentId ? parentModeById.get(parentId) || "parallel" : "parallel";
+    if (parentId && mode !== "parallel") {
+      const state = parentState.get(parentId) || { failed: false, lastEnd: null };
+      if (state.failed) {
+        unscheduled.add(task.id);
+        parentState.set(parentId, state);
+        return;
+      }
+      const startFrom = state.lastEnd
+        ? new Date(Math.max(task.startFrom.getTime(), state.lastEnd.getTime()))
+        : task.startFrom;
+      const candidate = { ...task, startFrom };
+      const { success, placements, nextSlots } = placeTaskInSlots(candidate, slots, now, {
+        requireSingleBlock: mode === "sequential-single"
+      });
+      if (success) {
+        scheduled.push(...placements);
+        slots = nextSlots;
+        const lastEnd = placements.reduce(
+          (latest, placement) => (placement.end > latest ? placement.end : latest),
+          placements[0].end
+        );
+        parentState.set(parentId, { failed: false, lastEnd });
+      } else {
+        unscheduled.add(task.id);
+        parentState.set(parentId, { failed: true, lastEnd: state.lastEnd });
+      }
+      return;
+    }
     const { success, placements, nextSlots } = placeTaskInSlots(task, slots, now);
     if (success) {
       scheduled.push(...placements);

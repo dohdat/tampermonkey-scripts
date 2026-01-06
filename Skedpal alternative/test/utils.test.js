@@ -5,6 +5,7 @@ const {
   getSectionColorMap,
   parseLocalDateInput,
   isStartAfterDeadline,
+  normalizeSubtaskScheduleMode,
   resolveTimeMapIdsAfterDelete
 } = await import("../src/ui/utils.js");
 
@@ -77,5 +78,18 @@ describe("utils timemap fallback", () => {
     const timeMaps = [{ id: "tm-4" }];
     const result = resolveTimeMapIdsAfterDelete(task, settings, timeMaps, "tm-1");
     assert.deepStrictEqual(result, ["tm-4"]);
+  });
+});
+
+describe("utils subtask scheduling mode", () => {
+  it("normalizes invalid schedule mode values", () => {
+    assert.strictEqual(normalizeSubtaskScheduleMode("parallel"), "parallel");
+    assert.strictEqual(normalizeSubtaskScheduleMode("sequential"), "sequential");
+    assert.strictEqual(
+      normalizeSubtaskScheduleMode("sequential-single"),
+      "sequential-single"
+    );
+    assert.strictEqual(normalizeSubtaskScheduleMode("invalid"), "parallel");
+    assert.strictEqual(normalizeSubtaskScheduleMode(null), "parallel");
   });
 });

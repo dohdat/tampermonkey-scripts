@@ -7,6 +7,7 @@ import {
   getTaskAndDescendants,
   isStartAfterDeadline,
   normalizeTimeMap,
+  normalizeSubtaskScheduleMode,
   uuid,
   parseLocalDateInput
 } from "../utils.js";
@@ -45,6 +46,8 @@ const {
   taskParentIdInput,
   taskSectionSelect,
   taskSubsectionSelect,
+  taskSubtaskScheduleSelect,
+  taskSubtaskScheduleWrap,
   taskRepeatSelect,
   subsectionTaskRepeatSelect,
   scheduleStatus,
@@ -94,6 +97,7 @@ export async function handleTaskSubmit(event) {
   const parentId = (taskParentIdInput.value || "").trim();
   const parentTask = parentId ? state.tasksCache.find((t) => t.id === parentId) : null;
   const existingTask = state.tasksCache.find((t) => t.id === id);
+  const isParentTask = state.tasksCache.some((t) => t.subtaskParentId === id);
   const targetKey = getContainerKey(section, subsection);
   const isEditingInPlace =
     existingTask && getContainerKey(existingTask.section, existingTask.subsection) === targetKey;
@@ -123,6 +127,9 @@ export async function handleTaskSubmit(event) {
   }
 
   const repeat = taskRepeatSelect.value === "custom" ? repeatStore.lastRepeatSelection : { type: "none" };
+  const subtaskScheduleMode = isParentTask
+    ? normalizeSubtaskScheduleMode(taskSubtaskScheduleSelect?.value)
+    : existingTask?.subtaskScheduleMode || null;
 
   await saveTask({
     id,
@@ -138,6 +145,7 @@ export async function handleTaskSubmit(event) {
     section,
     subsection,
     order,
+    subtaskScheduleMode,
     repeat,
     completed: existingTask?.completed || false,
     completedAt: existingTask?.completedAt || null,
@@ -163,6 +171,12 @@ export function resetTaskForm(shouldClose = false) {
   setRepeatFromSelection({ type: "none" }, "task");
   renderTaskSectionOptions();
   renderTaskTimeMapOptions(state.tasksTimeMapsCache || [], []);
+  if (taskSubtaskScheduleWrap) {
+    taskSubtaskScheduleWrap.classList.add("hidden");
+  }
+  if (taskSubtaskScheduleSelect) {
+    taskSubtaskScheduleSelect.value = "parallel";
+  }
   if (shouldClose) {
     closeTaskForm();
   }
@@ -185,6 +199,12 @@ export function startTaskInSection(sectionId = "", subsectionId = "") {
   renderTaskSectionOptions(sectionId);
   renderTaskSubsectionOptions(subsectionId);
   renderTaskTimeMapOptions(state.tasksTimeMapsCache || [], template?.timeMapIds || []);
+  if (taskSubtaskScheduleWrap) {
+    taskSubtaskScheduleWrap.classList.add("hidden");
+  }
+  if (taskSubtaskScheduleSelect) {
+    taskSubtaskScheduleSelect.value = "parallel";
+  }
   openTaskForm();
   switchView("tasks");
 }
@@ -206,6 +226,12 @@ export function startSubtaskFromTask(task) {
   taskSectionSelect.value = task.section || "";
   taskSubsectionSelect.value = task.subsection || "";
   renderTaskTimeMapOptions(state.tasksTimeMapsCache || [], task.timeMapIds || []);
+  if (taskSubtaskScheduleWrap) {
+    taskSubtaskScheduleWrap.classList.add("hidden");
+  }
+  if (taskSubtaskScheduleSelect) {
+    taskSubtaskScheduleSelect.value = "parallel";
+  }
   openTaskForm();
   switchView("tasks");
 }
@@ -336,6 +362,7 @@ export async function handleTaskListClick(event) {
   } else if (editId) {
     const task = state.tasksCache.find((t) => t.id === editId);
     if (task) {
+      const isParentTask = state.tasksCache.some((t) => t.subtaskParentId === task.id);
       document.getElementById("task-id").value = task.id;
       document.getElementById("task-title").value = task.title;
       taskLinkInput.value = task.link || "";
@@ -349,6 +376,13 @@ export async function handleTaskListClick(event) {
       renderTaskSectionOptions(task.section);
       renderTaskSubsectionOptions(task.subsection);
       renderTaskTimeMapOptions(state.tasksTimeMapsCache, task.timeMapIds);
+      if (taskSubtaskScheduleWrap) {
+        taskSubtaskScheduleWrap.classList.toggle("hidden", !isParentTask);
+      }
+      if (taskSubtaskScheduleSelect) {
+        const mode = normalizeSubtaskScheduleMode(task.subtaskScheduleMode);
+        taskSubtaskScheduleSelect.value = mode;
+      }
       openTaskForm();
       switchView("tasks");
     }

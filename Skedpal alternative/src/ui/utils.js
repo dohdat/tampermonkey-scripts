@@ -140,6 +140,11 @@ export function formatRRuleDate(dateStr) {
   return `${y}${m}${day}`;
 }
 
+export function normalizeSubtaskScheduleMode(value) {
+  const valid = new Set(["parallel", "sequential", "sequential-single"]);
+  return valid.has(value) ? value : "parallel";
+}
+
 export function sortTasksByOrder(list = []) {
   return [...list].sort((a, b) => {
     const aOrder = Number.isFinite(a.order) ? a.order : Number.MAX_SAFE_INTEGER;

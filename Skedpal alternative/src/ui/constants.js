@@ -54,6 +54,8 @@ export const domRefs = {
   taskParentIdInput: document.getElementById("task-parent-id"),
   taskSectionSelect: document.getElementById("task-section"),
   taskSubsectionSelect: document.getElementById("task-subsection"),
+  taskSubtaskScheduleWrap: document.getElementById("task-subtask-schedule-wrap"),
+  taskSubtaskScheduleSelect: document.getElementById("task-subtask-schedule"),
   taskRepeatSelect: document.getElementById("task-repeat"),
   taskRepeatCustom: document.getElementById("task-repeat-custom"),
   taskRepeatUnit: document.getElementById("task-repeat-unit"),

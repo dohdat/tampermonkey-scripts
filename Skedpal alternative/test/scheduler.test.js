@@ -274,4 +274,132 @@ describe("scheduler", () => {
     assert.strictEqual(result.scheduled[0].taskId, "high");
     assert.ok(result.unscheduled.includes("low"));
   });
+
+  it("enforces sequential subtask ordering", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 4);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "12:00" }] }
+    ];
+    const tasks = [
+      {
+        id: "parent",
+        title: "Parent",
+        completed: true,
+        subtaskScheduleMode: "sequential"
+      },
+      {
+        id: "child-1",
+        title: "First",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59),
+        subtaskParentId: "parent",
+        order: 1
+      },
+      {
+        id: "child-2",
+        title: "Second",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59),
+        subtaskParentId: "parent",
+        order: 2
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 1,
+      now
+    });
+
+    const placements = [...result.scheduled].sort((a, b) => a.start - b.start);
+    assert.strictEqual(placements.length, 2);
+    assert.strictEqual(placements[0].taskId, "child-1");
+    assert.strictEqual(placements[1].taskId, "child-2");
+    assert.strictEqual(placements[0].start.getHours(), 9);
+    assert.strictEqual(placements[1].start.getHours(), 10);
+  });
+
+  it("requires single blocks for sequential one-at-a-time subtasks", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 5);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "12:00" }] }
+    ];
+    const busy = [
+      { start: shiftDate(now, 0, 10, 0), end: shiftDate(now, 0, 11, 0) }
+    ];
+    const tasks = [
+      {
+        id: "parent",
+        title: "Parent",
+        completed: true,
+        subtaskScheduleMode: "sequential-single"
+      },
+      {
+        id: "child-1",
+        title: "Single",
+        durationMin: 90,
+        minBlockMin: 30,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59),
+        subtaskParentId: "parent",
+        order: 1
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy,
+      schedulingHorizonDays: 1,
+      now
+    });
+
+    assert.strictEqual(result.scheduled.length, 0);
+    assert.ok(result.unscheduled.includes("child-1"));
+  });
+
+  it("skips scheduling parent tasks that have subtasks", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 1);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "11:00" }] }
+    ];
+    const tasks = [
+      {
+        id: "parent",
+        title: "Parent",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59)
+      },
+      {
+        id: "child-1",
+        title: "Child",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59),
+        subtaskParentId: "parent",
+        order: 1
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 1,
+      now
+    });
+
+    assert.ok(!result.ignored.includes("parent"));
+    assert.strictEqual(result.scheduled.length, 1);
+    assert.strictEqual(result.scheduled[0].taskId, "child-1");
+  });
 });

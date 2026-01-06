@@ -120,6 +120,9 @@ async function createEvents(scheduled, tasksById, timeMapsById, token) {
 }
 
 async function persistSchedule(tasks, placements, unscheduled, ignored) {
+  const parentIds = new Set(
+    tasks.filter((task) => task.subtaskParentId).map((task) => task.subtaskParentId)
+  );
   const byTask = placements.reduce((map, placement) => {
     if (!map.has(placement.taskId)) map.set(placement.taskId, []);
     map.get(placement.taskId).push(placement);
@@ -140,11 +143,13 @@ async function persistSchedule(tasks, placements, unscheduled, ignored) {
     task.scheduledEnd = taskPlacements[taskPlacements.length - 1]?.end?.toISOString() || null;
     task.scheduledTimeMapId = taskPlacements[0]?.timeMapId || null;
     task.scheduleStatus =
-      ignored.includes(task.id) && taskPlacements.length === 0
-        ? "ignored"
-        : taskPlacements.length > 0
-          ? "scheduled"
-          : "unscheduled";
+      parentIds.has(task.id)
+        ? null
+        : ignored.includes(task.id) && taskPlacements.length === 0
+          ? "ignored"
+          : taskPlacements.length > 0
+            ? "scheduled"
+            : "unscheduled";
     task.lastScheduledRun = timestamp;
     await saveTask(task);
   }

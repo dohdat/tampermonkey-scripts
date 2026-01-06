@@ -30,7 +30,9 @@ export function renderTaskCard(task, context) {
   const depth = getTaskDepthById(task.id);
   const baseDurationMin = Number(task.durationMin) || 0;
   const displayDurationMin = hasChildren ? computeTotalDuration(task) : baseDurationMin;
-  const statusValue = task.completed ? "completed" : task.scheduleStatus || "unscheduled";
+  const statusValue = task.completed
+    ? "completed"
+    : task.scheduleStatus || (hasChildren ? "" : "unscheduled");
   const statusClass =
     statusValue === "scheduled"
       ? "text-lime-300 font-semibold"

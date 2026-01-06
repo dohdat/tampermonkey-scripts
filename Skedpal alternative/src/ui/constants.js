@@ -38,6 +38,8 @@ export const domRefs = {
   settingsToggleBtn: document.getElementById("settings-toggle-btn"),
   timeMapList: document.getElementById("timemap-list"),
   timeMapDayRows: document.getElementById("timemap-day-rows"),
+  timeMapDaySelect: document.getElementById("timemap-day-select"),
+  timeMapDayAdd: document.getElementById("timemap-day-add"),
   timeMapFormWrap: document.getElementById("timemap-form-wrap"),
   timeMapToggle: document.getElementById("timemap-toggle"),
   taskFormWrap: document.getElementById("task-form-wrap"),

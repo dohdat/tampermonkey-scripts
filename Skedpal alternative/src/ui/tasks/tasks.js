@@ -139,10 +139,15 @@ export async function migrateSectionsAndTasks(tasks, settings) {
   const sectionNameMap = new Map();
   const sections = [];
 
-  const addSection = (name, id, favorite = false) => {
+  const addSection = (name, id, favorite = false, favoriteOrder = null) => {
     const finalId = id || uuid();
     if (sectionIdMap.has(finalId)) return sectionIdMap.get(finalId);
-    const section = { id: finalId, name: name || "Untitled section", favorite: Boolean(favorite) };
+    const section = {
+      id: finalId,
+      name: name || "Untitled section",
+      favorite: Boolean(favorite),
+      favoriteOrder: Number.isFinite(Number(favoriteOrder)) ? Number(favoriteOrder) : null
+    };
     sectionIdMap.set(finalId, section);
     if (section.name) sectionNameMap.set(section.name.toLowerCase(), finalId);
     sections.push(section);
@@ -151,7 +156,7 @@ export async function migrateSectionsAndTasks(tasks, settings) {
 
   sectionsInput.forEach((entry) => {
     if (entry && typeof entry === "object" && entry.id) {
-      addSection(entry.name, entry.id, entry.favorite);
+      addSection(entry.name, entry.id, entry.favorite, entry.favoriteOrder);
     } else if (typeof entry === "string") {
       addSection(entry, undefined, false);
     }
@@ -194,10 +199,18 @@ export async function migrateSectionsAndTasks(tasks, settings) {
       const name = typeof item === "string" ? item : item?.name || "Untitled subsection";
       const id = isObj && item?.id ? item.id : uuid();
       const favorite = isObj && item?.favorite ? Boolean(item.favorite) : false;
+      const favoriteOrder = isObj && item?.favoriteOrder ? Number(item.favoriteOrder) : null;
       const parentId = isObj && item?.parentId ? item.parentId : "";
       const template = isObj && item?.template ? { ...item.template } : undefined;
       if (subsectionIdMaps[targetSectionId].has(id)) return;
-      const sub = { id, name, favorite, parentId, ...(template ? { template } : {}) };
+      const sub = {
+        id,
+        name,
+        favorite,
+        favoriteOrder: Number.isFinite(favoriteOrder) ? favoriteOrder : null,
+        parentId,
+        ...(template ? { template } : {})
+      };
       subsections[targetSectionId].push(sub);
       subsectionIdMaps[targetSectionId].set(id, sub);
       if (name) subsectionNameMaps[targetSectionId].set(name.toLowerCase(), id);

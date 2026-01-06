@@ -1,5 +1,6 @@
 import { getAllTasks, saveSettings, saveTask } from "../data/db.js";
 import { domRefs } from "./constants.js";
+import { applyFavoriteOrder, buildFavoriteKey, getNextFavoriteOrder } from "./favorites.js";
 import { isStartAfterDeadline, uuid } from "./utils.js";
 import { state } from "./state/page-state.js";
 import { repeatStore, setRepeatFromSelection, syncSubsectionRepeatLabel } from "./repeat.js";
@@ -409,9 +410,22 @@ export async function handleRemoveSubsection(sectionId, subsectionId) {
 
 export async function handleToggleSectionFavorite(sectionId) {
   const sections = state.settingsCache.sections || [];
-  const updatedSections = sections.map((s) =>
-    s.id === sectionId ? { ...s, favorite: !s.favorite } : { favorite: false, ...s }
-  );
+  const hasFavorite = sections.some((s) => s.id === sectionId && s.favorite);
+  const nextOrder = getNextFavoriteOrder(state.settingsCache);
+  const updatedSections = sections.map((s) => {
+    if (s.id === sectionId) {
+      const favorite = !s.favorite;
+      return {
+        ...s,
+        favorite,
+        favoriteOrder: favorite ? s.favoriteOrder || nextOrder : null
+      };
+    }
+    if (hasFavorite) {
+      return s;
+    }
+    return { ...s, favorite: false, favoriteOrder: null };
+  });
   state.settingsCache = { ...state.settingsCache, sections: updatedSections };
   await saveSettings(state.settingsCache);
   renderSections();
@@ -424,9 +438,22 @@ export async function handleToggleSubsectionFavorite(sectionId, subsectionId) {
   if (!sectionId || !subsectionId) return;
   const subsections = { ...(state.settingsCache.subsections || {}) };
   const list = subsections[sectionId] || [];
-  const updatedList = list.map((s) =>
-    s.id === subsectionId ? { ...s, favorite: !s.favorite } : { favorite: false, ...s }
-  );
+  const hasFavorite = list.some((s) => s.id === subsectionId && s.favorite);
+  const nextOrder = getNextFavoriteOrder(state.settingsCache);
+  const updatedList = list.map((s) => {
+    if (s.id === subsectionId) {
+      const favorite = !s.favorite;
+      return {
+        ...s,
+        favorite,
+        favoriteOrder: favorite ? s.favoriteOrder || nextOrder : null
+      };
+    }
+    if (hasFavorite) {
+      return s;
+    }
+    return { ...s, favorite: false, favoriteOrder: null };
+  });
   subsections[sectionId] = updatedList;
   state.settingsCache = { ...state.settingsCache, subsections };
   await saveSettings(state.settingsCache);
@@ -449,20 +476,28 @@ export function renderFavoriteShortcuts() {
     ...sections.map((s) => ({
       type: "section",
       label: s.name || "Untitled section",
-      sectionId: s.id
+      sectionId: s.id,
+      favoriteOrder: s.favoriteOrder
     })),
     ...subsectionEntries.map((sub) => ({
       type: "subsection",
       label: sub.name || "Untitled subsection",
       sectionId: sub.sectionId || "",
       subsectionId: sub.id,
-      detail: getSectionName(sub.sectionId) || "No section"
+      detail: getSectionName(sub.sectionId) || "No section",
+      favoriteOrder: sub.favoriteOrder
     }))
-  ].sort((a, b) => a.label.localeCompare(b.label));
+  ].sort((a, b) => {
+    const aOrder = Number.isFinite(a.favoriteOrder) ? a.favoriteOrder : Number.MAX_SAFE_INTEGER;
+    const bOrder = Number.isFinite(b.favoriteOrder) ? b.favoriteOrder : Number.MAX_SAFE_INTEGER;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    return a.label.localeCompare(b.label);
+  });
 
   if (!items.length) {
     const empty = document.createElement("li");
     empty.className = "sidebar-fav-empty";
+    empty.setAttribute("data-test-skedpal", "sidebar-fav-empty");
     empty.textContent = "No favorites yet";
     sidebarFavorites.appendChild(empty);
     return;
@@ -470,23 +505,41 @@ export function renderFavoriteShortcuts() {
 
   items.forEach((item) => {
     const li = document.createElement("li");
+    li.setAttribute("data-test-skedpal", "sidebar-fav-row");
+    li.setAttribute("data-fav-row", "true");
+    li.dataset.favKey = buildFavoriteKey(item);
+    li.draggable = true;
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "sidebar-fav-item";
+    btn.setAttribute("data-test-skedpal", "sidebar-fav-button");
+    btn.setAttribute("data-fav-button", "true");
+    btn.dataset.favKey = buildFavoriteKey(item);
     btn.dataset.favJump = "true";
     btn.dataset.favType = item.type;
     btn.dataset.sectionId = item.sectionId || "";
     if (item.subsectionId) btn.dataset.subsectionId = item.subsectionId;
     btn.innerHTML = `
-      <span class="sidebar-fav-dot" aria-hidden="true"></span>
+      <span class="sidebar-fav-dot" aria-hidden="true" data-test-skedpal="sidebar-fav-dot"></span>
       <span class="sidebar-fav-text">
-        <span class="sidebar-fav-label">${item.label}</span>
-        ${item.detail ? `<span class="sidebar-fav-detail">${item.detail}</span>` : ""}
+        <span class="sidebar-fav-label" data-test-skedpal="sidebar-fav-label">${item.label}</span>
+        ${
+          item.detail
+            ? `<span class="sidebar-fav-detail" data-test-skedpal="sidebar-fav-detail">${item.detail}</span>`
+            : ""
+        }
       </span>
     `;
     li.appendChild(btn);
     sidebarFavorites.appendChild(li);
   });
+}
+
+export async function updateFavoriteOrder(orderedKeys = []) {
+  const updatedSettings = applyFavoriteOrder(state.settingsCache, orderedKeys);
+  state.settingsCache = updatedSettings;
+  await saveSettings(state.settingsCache);
+  renderFavoriteShortcuts();
 }
 
 export function closeSubsectionModal() {

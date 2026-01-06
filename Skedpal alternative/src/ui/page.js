@@ -30,7 +30,8 @@ import {
   handleRemoveSection,
   closeSubsectionModal,
   handleSubsectionFormSubmit,
-  handleAddSubsection
+  handleAddSubsection,
+  updateFavoriteOrder
 } from "./sections.js";
 import {
   handleNavigationShortcuts,
@@ -136,6 +137,54 @@ function registerEventListeners() {
     } else {
       setZoomFilter({ type: "section", sectionId });
     }
+  });
+
+  sidebarFavorites?.addEventListener("dragstart", (event) => {
+    const item = event.target.closest("[data-fav-row]");
+    if (!item) return;
+    const favKey = item.dataset.favKey || "";
+    if (!favKey) return;
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", favKey);
+    item.classList.add("opacity-60");
+    sidebarFavorites.dataset.draggingKey = favKey;
+  });
+
+  sidebarFavorites?.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    const draggingKey = sidebarFavorites.dataset.draggingKey;
+    if (!draggingKey) return;
+    const target = event.target.closest("[data-fav-row]");
+    if (!target || target.dataset.favKey === draggingKey) return;
+    const rect = target.getBoundingClientRect();
+    const after = event.clientY > rect.top + rect.height / 2;
+    if (after) {
+      target.after(
+        sidebarFavorites.querySelector(`[data-fav-row][data-fav-key="${draggingKey}"]`)
+      );
+    } else {
+      target.before(
+        sidebarFavorites.querySelector(`[data-fav-row][data-fav-key="${draggingKey}"]`)
+      );
+    }
+  });
+
+  sidebarFavorites?.addEventListener("drop", async (event) => {
+    event.preventDefault();
+    const draggingKey = sidebarFavorites.dataset.draggingKey;
+    if (!draggingKey) return;
+    const orderedKeys = [...sidebarFavorites.querySelectorAll("[data-fav-row]")]
+      .map((node) => node.dataset.favKey || "")
+      .filter(Boolean);
+    await updateFavoriteOrder(orderedKeys);
+  });
+
+  sidebarFavorites?.addEventListener("dragend", (event) => {
+    const item = event.target.closest("[data-fav-row]");
+    if (item) {
+      item.classList.remove("opacity-60");
+    }
+    delete sidebarFavorites.dataset.draggingKey;
   });
 
   timeMapToggle?.addEventListener("click", () => {

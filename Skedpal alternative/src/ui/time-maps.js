@@ -9,23 +9,51 @@ const {
   timeMapFormWrap,
   timeMapToggle,
   taskTimeMapOptions,
-  timeMapColorInput
+  timeMapColorInput,
+  timeMapDaySelect,
+  timeMapDayAdd
 } = domRefs;
 
-export function renderDayRows(container, rules = []) {
-  container.innerHTML = "";
-  const rulesMap = new Map();
-  rules.forEach((r) => {
-    const day = Number(r.day);
-    if (!rulesMap.has(day)) rulesMap.set(day, []);
-    rulesMap.get(day).push({ ...r, day });
+function createDayRow(day, blocks = []) {
+  const row = document.createElement("div");
+  row.dataset.dayRow = String(day);
+  row.className = "rounded-xl border border-slate-700 bg-slate-900/60 p-3";
+  row.setAttribute("data-test-skedpal", "timemap-day-row");
+
+  const header = document.createElement("div");
+  header.className = "flex items-center justify-between gap-2";
+  header.setAttribute("data-test-skedpal", "timemap-day-header");
+
+  const label = document.createElement("span");
+  label.className = "text-sm font-semibold text-slate-100";
+  label.textContent = dayOptions.find((opt) => opt.value === Number(day))?.label || String(day);
+  label.setAttribute("data-test-skedpal", "timemap-day-label");
+
+  const removeDayBtn = document.createElement("button");
+  removeDayBtn.type = "button";
+  removeDayBtn.className =
+    "rounded-lg border border-slate-700 px-2 py-1 text-xs font-semibold text-slate-300 hover:border-orange-400 hover:text-orange-300";
+  removeDayBtn.textContent = "Remove";
+  removeDayBtn.setAttribute("data-test-skedpal", "timemap-day-remove");
+  removeDayBtn.addEventListener("click", () => {
+    row.remove();
   });
 
-  const createBlock = (day, block = { startTime: "09:00", endTime: "12:00" }) => {
+  header.appendChild(label);
+  header.appendChild(removeDayBtn);
+  row.appendChild(header);
+
+  const blocksContainer = document.createElement("div");
+  blocksContainer.className = "mt-2 flex flex-col gap-2";
+  blocksContainer.dataset.blocksFor = day;
+  blocksContainer.setAttribute("data-test-skedpal", "timemap-blocks");
+
+  const createBlock = (block = { startTime: "09:00", endTime: "12:00" }) => {
     const wrapper = document.createElement("div");
     wrapper.className =
-      "flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-xs text-slate-200";
+      "flex flex-wrap items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 text-xs text-slate-200";
     wrapper.dataset.block = day;
+    wrapper.setAttribute("data-test-skedpal", "timemap-block");
 
     const start = document.createElement("input");
     start.type = "time";
@@ -33,6 +61,7 @@ export function renderDayRows(container, rules = []) {
     start.className =
       "w-24 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100 focus:border-lime-400 focus:outline-none";
     start.dataset.startFor = day;
+    start.setAttribute("data-test-skedpal", "timemap-block-start");
 
     const end = document.createElement("input");
     end.type = "time";
@@ -40,6 +69,7 @@ export function renderDayRows(container, rules = []) {
     end.className =
       "w-24 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100 focus:border-lime-400 focus:outline-none";
     end.dataset.endFor = day;
+    end.setAttribute("data-test-skedpal", "timemap-block-end");
 
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
@@ -47,6 +77,7 @@ export function renderDayRows(container, rules = []) {
     removeBtn.title = "Remove block";
     removeBtn.className =
       "h-6 w-6 rounded-full border border-slate-700 text-xs font-semibold text-slate-200 hover:border-orange-400 hover:text-orange-300";
+    removeBtn.setAttribute("data-test-skedpal", "timemap-block-remove");
     removeBtn.addEventListener("click", () => {
       wrapper.remove();
     });
@@ -58,70 +89,37 @@ export function renderDayRows(container, rules = []) {
     return wrapper;
   };
 
-  dayOptions.forEach((day) => {
-    const dayBlocks = rulesMap.get(day.value) || [];
-    const row = document.createElement("div");
-    row.dataset.dayRow = String(day.value);
-    row.className =
-      "flex items-center gap-3 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-100";
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.value = day.value;
-    checkbox.checked = dayBlocks.length > 0;
-    checkbox.className = "h-4 w-4 rounded border-slate-600 bg-slate-900 text-lime-400";
-    checkbox.dataset.day = day.value;
-    const label = document.createElement("span");
-    label.textContent = day.label;
-    label.className = "w-8";
-    const blocksContainer = document.createElement("div");
-    blocksContainer.className = "flex flex-col gap-2 flex-1";
-    blocksContainer.dataset.blocksFor = day.value;
+  const addBlockBtn = document.createElement("button");
+  addBlockBtn.type = "button";
+  addBlockBtn.textContent = "Add time range";
+  addBlockBtn.className =
+    "mt-2 w-fit rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
+  addBlockBtn.setAttribute("data-test-skedpal", "timemap-block-add");
+  addBlockBtn.addEventListener("click", () => {
+    blocksContainer.appendChild(createBlock());
+  });
 
-    const addBlockBtn = document.createElement("button");
-    addBlockBtn.type = "button";
-    addBlockBtn.textContent = "Add block";
-    addBlockBtn.className =
-      "h-8 rounded-lg border border-slate-700 px-3 text-xs font-semibold text-slate-200 hover:border-lime-400";
-    addBlockBtn.addEventListener("click", () => {
-      blocksContainer.appendChild(createBlock(day.value));
-      checkbox.checked = true;
-    });
+  if (blocks.length > 0) {
+    blocks.forEach((block) => blocksContainer.appendChild(createBlock(block)));
+  } else {
+    blocksContainer.appendChild(createBlock());
+  }
 
-    if (dayBlocks.length > 0) {
-      dayBlocks.forEach((block) => blocksContainer.appendChild(createBlock(day.value, block)));
-    }
+  row.appendChild(blocksContainer);
+  row.appendChild(addBlockBtn);
+  return row;
+}
 
-    const controls = document.createElement("div");
-    controls.className = "flex items-center gap-2";
-    controls.appendChild(addBlockBtn);
-
-    const toggleBlocks = (enabled) => {
-      blocksContainer.querySelectorAll("input").forEach((input) => {
-        input.disabled = !enabled;
-      });
-      addBlockBtn.disabled = !enabled;
-      addBlockBtn.classList.toggle("opacity-60", !enabled);
-      addBlockBtn.classList.toggle("cursor-not-allowed", !enabled);
-    };
-
-    checkbox.addEventListener("change", () => {
-      if (!checkbox.checked) {
-        blocksContainer.innerHTML = "";
-      } else if (blocksContainer.children.length === 0) {
-        blocksContainer.appendChild(createBlock(day.value));
-      }
-      toggleBlocks(checkbox.checked);
-    });
-
-    if (!checkbox.checked) {
-      toggleBlocks(false);
-    }
-
-    row.appendChild(checkbox);
-    row.appendChild(label);
-    row.appendChild(blocksContainer);
-    row.appendChild(controls);
-    container.appendChild(row);
+export function renderDayRows(container, rules = []) {
+  container.innerHTML = "";
+  const rulesMap = new Map();
+  rules.forEach((r) => {
+    const day = Number(r.day);
+    if (!rulesMap.has(day)) rulesMap.set(day, []);
+    rulesMap.get(day).push({ ...r, day });
+  });
+  rulesMap.forEach((blocks, day) => {
+    container.appendChild(createDayRow(day, blocks));
   });
 }
 
@@ -251,8 +249,6 @@ export function collectTimeMapRules(container) {
   const rules = [];
   container.querySelectorAll("[data-day-row]").forEach((row) => {
     const day = Number(row.dataset.dayRow);
-    const checkbox = row.querySelector("input[type='checkbox']");
-    if (!checkbox?.checked) return;
     row.querySelectorAll("[data-block]").forEach((blockRow) => {
       const start = blockRow.querySelector("input[data-start-for]");
       const end = blockRow.querySelector("input[data-end-for]");
@@ -283,6 +279,15 @@ export function getTimeMapFormData() {
   return { id, name, rules, color };
 }
 
+export function addTimeMapDay(day) {
+  if (!timeMapDayRows) return;
+  const parsedDay = Number(day);
+  if (!Number.isFinite(parsedDay)) return;
+  const exists = timeMapDayRows.querySelector(`[data-day-row="${parsedDay}"]`);
+  if (exists) return;
+  timeMapDayRows.appendChild(createDayRow(parsedDay, []));
+}
+
 export async function handleTimeMapSubmit(event) {
   event.preventDefault();
   const timeMap = getTimeMapFormData();
@@ -308,7 +313,7 @@ export function resetTimeMapForm() {
   document.getElementById("timemap-id").value = "";
   document.getElementById("timemap-name").value = "";
   timeMapColorInput.value = "#22c55e";
-  renderDayRows(timeMapDayRows);
+  renderDayRows(timeMapDayRows, []);
 }
 
 export function openTimeMapForm() {
@@ -343,4 +348,10 @@ export async function handleTimeMapListClick(event, timeMaps) {
       await Promise.all([loadTimeMaps(), loadTasks()]);
     });
   }
+}
+
+if (timeMapDayAdd && timeMapDaySelect) {
+  timeMapDayAdd.addEventListener("click", () => {
+    addTimeMapDay(timeMapDaySelect.value);
+  });
 }

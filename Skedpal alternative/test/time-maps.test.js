@@ -194,8 +194,7 @@ describe("time maps", () => {
           day: 1,
           checked: true,
           blocks: [{ startTime: "10:00", endTime: "11:00" }]
-        }),
-        createRow({ day: 3, checked: false, blocks: [{ startTime: "09:00", endTime: "10:00" }] })
+        })
       ]
     };
     const rules = collectTimeMapRules(container);
@@ -241,13 +240,10 @@ describe("time maps", () => {
     const rows = container.children;
     assert.ok(rows.length > 0);
     const firstRow = rows[0];
-    const checkbox = findFirst(firstRow, (child) => child.tagName === "INPUT");
     const blocksContainer = findFirst(firstRow, (child) => child.dataset?.blocksFor !== undefined);
     const addBlockBtn = findFirst(firstRow, (child) => child.tagName === "BUTTON");
-    checkbox.checked = false;
-    checkbox._handlers.change();
-    assert.strictEqual(blocksContainer.children.length, 0);
-    assert.strictEqual(addBlockBtn.disabled, true);
+    assert.ok(blocksContainer.children.length > 0);
+    assert.ok(addBlockBtn);
   });
 
   it("renders time map lists and options", () => {

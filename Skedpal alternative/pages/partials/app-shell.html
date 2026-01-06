@@ -192,6 +192,7 @@
               <button id="timemap-reset" type="button" class="text-sm text-lime-300 hover:text-lime-200">Reset</button>
             </div>
             <form id="timemap-form" class="space-y-3">
+              <input id="timemap-id" type="hidden" data-test-skedpal="timemap-id" />
               <label class="field">
                 <span class="field-label">Name</span>
                 <input
@@ -202,56 +203,50 @@
                   data-test-skedpal="timemap-name"
                 />
               </label>
-              <label class="field">
-                <span class="field-label">Color</span>
-                <input id="timemap-color" type="color" value="#a3e635" class="field-input" data-test-skedpal="timemap-color" />
-              </label>
-              <div class="grid gap-2 md:grid-cols-[150px_1fr] md:items-start">
-                <div>
-                  <span class="field-label block">Days</span>
-                  <div class="grid grid-cols-3 gap-2">
-                    <label class="inline-flex items-center gap-2 text-sm text-slate-200">
-                      <input type="checkbox" value="0" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" data-test-skedpal="timemap-day-sun" />
-                      <span>Sun</span>
-                    </label>
-                    <label class="inline-flex items-center gap-2 text-sm text-slate-200">
-                      <input type="checkbox" value="1" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" data-test-skedpal="timemap-day-mon" />
-                      <span>Mon</span>
-                    </label>
-                    <label class="inline-flex items-center gap-2 text-sm text-slate-200">
-                      <input type="checkbox" value="2" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" data-test-skedpal="timemap-day-tue" />
-                      <span>Tue</span>
-                    </label>
-                    <label class="inline-flex items-center gap-2 text-sm text-slate-200">
-                      <input type="checkbox" value="3" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" data-test-skedpal="timemap-day-wed" />
-                      <span>Wed</span>
-                    </label>
-                    <label class="inline-flex items-center gap-2 text-sm text-slate-200">
-                      <input type="checkbox" value="4" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" data-test-skedpal="timemap-day-thu" />
-                      <span>Thu</span>
-                    </label>
-                    <label class="inline-flex items-center gap-2 text-sm text-slate-200">
-                      <input type="checkbox" value="5" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" data-test-skedpal="timemap-day-fri" />
-                      <span>Fri</span>
-                    </label>
-                    <label class="inline-flex items-center gap-2 text-sm text-slate-200">
-                      <input type="checkbox" value="6" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" data-test-skedpal="timemap-day-sat" />
-                      <span>Sat</span>
-                    </label>
+              <div class="grid gap-3 md:grid-cols-[160px_1fr] md:items-center">
+                <div class="field">
+                  <span class="field-label">Color</span>
+                  <div class="flex items-center gap-3">
+                    <input
+                      id="timemap-color"
+                      type="color"
+                      value="#a3e635"
+                      class="h-10 w-16 rounded-lg border border-slate-700 bg-slate-900 p-1"
+                      data-test-skedpal="timemap-color"
+                    />
+                    <span class="text-xs text-slate-400">Pick a tag color</span>
                   </div>
                 </div>
-                <div>
-                  <span class="field-label block">Time ranges</span>
-                  <div id="timemap-day-rows" class="grid gap-2"></div>
+                <div class="flex items-end gap-2">
+                  <div class="field w-full">
+                    <span class="field-label">Add day</span>
+                    <select
+                      id="timemap-day-select"
+                      class="field-input"
+                      data-test-skedpal="timemap-day-select"
+                    >
+                      <option value="0">Sunday</option>
+                      <option value="1">Monday</option>
+                      <option value="2">Tuesday</option>
+                      <option value="3">Wednesday</option>
+                      <option value="4">Thursday</option>
+                      <option value="5">Friday</option>
+                      <option value="6">Saturday</option>
+                    </select>
+                  </div>
                   <button
                     type="button"
-                    class="mt-2 rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
-                    id="timemap-add-row"
-                    data-test-skedpal="timemap-add-row"
+                    class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
+                    id="timemap-day-add"
+                    data-test-skedpal="timemap-day-add"
                   >
-                    Add time range
+                    +
                   </button>
                 </div>
+              </div>
+              <div>
+                <span class="field-label block">Time ranges</span>
+                <div id="timemap-day-rows" class="grid gap-2"></div>
               </div>
               <div class="flex flex-wrap items-center gap-2">
                 <button

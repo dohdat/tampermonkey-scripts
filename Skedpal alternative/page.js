@@ -1016,6 +1016,27 @@ function renderTasks(tasks, timeMaps) {
   destroyTaskSortables();
   taskList.innerHTML = "";
   const timeMapById = new Map(timeMaps.map((tm) => [tm.id, normalizeTimeMap(tm)]));
+  const childrenByParent = tasks.reduce((map, task) => {
+    const pid = task.subtaskParentId || "";
+    if (!pid) return map;
+    if (!map.has(pid)) map.set(pid, []);
+    map.get(pid).push(task);
+    return map;
+  }, new Map());
+  const durationMemo = new Map();
+  const computeTotalDuration = (task) => {
+    if (!task?.id) return 0;
+    if (durationMemo.has(task.id)) return durationMemo.get(task.id);
+    const children = childrenByParent.get(task.id) || [];
+    if (children.length === 0) {
+      const own = Number(task.durationMin) || 0;
+      durationMemo.set(task.id, own);
+      return own;
+    }
+    const total = children.reduce((sum, child) => sum + computeTotalDuration(child), 0);
+    durationMemo.set(task.id, total);
+    return total;
+  };
   const filteredTasks = (() => {
     const base = tasks.filter((t) => !t.completed);
     const zoomTaskIds =
@@ -1094,6 +1115,8 @@ function renderTasks(tasks, timeMaps) {
     const childTasks = tasks.filter((t) => t.subtaskParentId === task.id);
     const hasChildren = childTasks.length > 0;
     const isCollapsed = collapsedTasks.has(task.id);
+    const baseDurationMin = Number(task.durationMin) || 0;
+    const displayDurationMin = hasChildren ? computeTotalDuration(task) : baseDurationMin;
     const statusValue = task.completed ? "completed" : task.scheduleStatus || "unscheduled";
     const statusClass =
       statusValue === "scheduled"
@@ -1165,7 +1188,7 @@ function renderTasks(tasks, timeMaps) {
     }
     const durationPill = document.createElement("span");
     durationPill.className = "pill pill-muted";
-    durationPill.textContent = formatDurationShort(task.durationMin);
+    durationPill.textContent = formatDurationShort(displayDurationMin);
     const titleActions = document.createElement("div");
     titleActions.className = "title-actions task-title-actions";
     const zoomTaskBtn = document.createElement("button");

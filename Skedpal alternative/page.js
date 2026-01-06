@@ -262,18 +262,8 @@ function switchView(target) {
   });
   navButtons.forEach((btn) => {
     const active = btn.dataset.view === target;
-    btn.className = [
-      "nav-btn",
-      "rounded-xl",
-      "px-3",
-      "py-2",
-      "text-sm",
-      "font-semibold",
-      "shadow",
-      active
-        ? "border border-lime-400/60 bg-slate-900/70 text-slate-100 ring-1 ring-lime-400/50"
-        : "border border-slate-800 bg-slate-900/50 text-slate-200"
-    ].join(" ");
+    btn.classList.toggle("is-active", active);
+    btn.setAttribute("aria-current", active ? "page" : "false");
   });
 }
 

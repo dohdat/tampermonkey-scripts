@@ -6,7 +6,7 @@ import {
   getNextFavoriteOrder,
   toggleFavoriteById
 } from "./favorites.js";
-import { isStartAfterDeadline, uuid } from "./utils.js";
+import { getSectionColorMap, isStartAfterDeadline, uuid } from "./utils.js";
 import { state } from "./state/page-state.js";
 import { repeatStore, setRepeatFromSelection, syncSubsectionRepeatLabel } from "./repeat.js";
 import { renderTimeMapOptions, collectSelectedValues } from "./time-maps.js";
@@ -445,6 +445,8 @@ export function renderFavoriteShortcuts() {
   sidebarFavorites.innerHTML = "";
   sidebarFavorites.classList.remove("hidden");
   const sections = (state.settingsCache.sections || []).filter((s) => s.favorite);
+  const sectionColorMap = getSectionColorMap(state.settingsCache.sections || []);
+  const fallbackColor = { dot: "#a3e635", glow: "rgba(163, 230, 53, 0.18)" };
   const subsectionMap = state.settingsCache.subsections || {};
   const subsectionEntries = Object.entries(subsectionMap).flatMap(([sectionId, list]) =>
     (list || []).filter((s) => s.favorite).map((s) => ({ ...s, sectionId }))
@@ -454,7 +456,8 @@ export function renderFavoriteShortcuts() {
       type: "section",
       label: s.name || "Untitled section",
       sectionId: s.id,
-      favoriteOrder: s.favoriteOrder
+      favoriteOrder: s.favoriteOrder,
+      ...((sectionColorMap.get(s.id) || fallbackColor) ?? fallbackColor)
     })),
     ...subsectionEntries.map((sub) => ({
       type: "subsection",
@@ -462,7 +465,8 @@ export function renderFavoriteShortcuts() {
       sectionId: sub.sectionId || "",
       subsectionId: sub.id,
       detail: getSectionName(sub.sectionId) || "No section",
-      favoriteOrder: sub.favoriteOrder
+      favoriteOrder: sub.favoriteOrder,
+      ...((sectionColorMap.get(sub.sectionId) || fallbackColor) ?? fallbackColor)
     }))
   ].sort((a, b) => {
     const aOrder = Number.isFinite(a.favoriteOrder) ? a.favoriteOrder : Number.MAX_SAFE_INTEGER;
@@ -497,7 +501,7 @@ export function renderFavoriteShortcuts() {
     btn.dataset.sectionId = item.sectionId || "";
     if (item.subsectionId) btn.dataset.subsectionId = item.subsectionId;
     btn.innerHTML = `
-      <span class="sidebar-fav-dot" aria-hidden="true" data-test-skedpal="sidebar-fav-dot"></span>
+      <span class="sidebar-fav-dot" aria-hidden="true" data-test-skedpal="sidebar-fav-dot" style="background:${item.dot};box-shadow:0 0 0 2px ${item.glow};"></span>
       <span class="sidebar-fav-text">
         <span class="sidebar-fav-label" data-test-skedpal="sidebar-fav-label">${item.label}</span>
         ${

@@ -1,7 +1,9 @@
 import assert from "assert";
 import { describe, it } from "mocha";
 
-const { parseLocalDateInput, isStartAfterDeadline } = await import("../src/ui/utils.js");
+const { getSectionColorMap, parseLocalDateInput, isStartAfterDeadline } = await import(
+  "../src/ui/utils.js"
+);
 
 describe("utils date parsing", () => {
   it("parses date input as local midnight ISO", () => {
@@ -23,5 +25,21 @@ describe("utils date parsing", () => {
     assert.strictEqual(isStartAfterDeadline("2026-01-08", "2026-01-07"), true);
     assert.strictEqual(isStartAfterDeadline("2026-01-07", "2026-01-07"), false);
     assert.strictEqual(isStartAfterDeadline("", "2026-01-07"), false);
+  });
+});
+
+describe("utils section colors", () => {
+  it("assigns unique colors per section", () => {
+    const sections = [
+      { id: "s-1", name: "Work" },
+      { id: "s-2", name: "Personal" }
+    ];
+    const colorMap = getSectionColorMap(sections);
+    const first = colorMap.get("s-1");
+    const second = colorMap.get("s-2");
+    assert.ok(first);
+    assert.ok(second);
+    assert.notStrictEqual(first.dot, second.dot);
+    assert.notStrictEqual(first.glow, second.glow);
   });
 });

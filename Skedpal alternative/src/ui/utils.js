@@ -222,3 +222,31 @@ export function getTaskAndDescendants(taskId, tasks = []) {
   const root = byId.get(taskId);
   return root ? [root, ...result] : result;
 }
+
+function hashString(value) {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
+
+export function getSectionColorMap(sections = []) {
+  const map = new Map();
+  const usedHues = new Set();
+  sections.forEach((section, index) => {
+    const seed = String(section.id || section.name || index);
+    let hue = hashString(seed) % 360;
+    let attempts = 0;
+    while (usedHues.has(hue) && attempts < 360) {
+      hue = (hue + 29) % 360;
+      attempts += 1;
+    }
+    usedHues.add(hue);
+    map.set(section.id, {
+      dot: `hsl(${hue}, 75%, 55%)`,
+      glow: `hsla(${hue}, 75%, 55%, 0.18)`
+    });
+  });
+  return map;
+}

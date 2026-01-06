@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
+set -e
 . "$(dirname -- "$0")/_/husky.sh"
 
-cd "Skedpal alternative"
+[ -d "Skedpal alternative" ] && cd "Skedpal alternative"
 npm run test:coverage -- --check-coverage --lines 80 --statements 80 --functions 80 --branches 80

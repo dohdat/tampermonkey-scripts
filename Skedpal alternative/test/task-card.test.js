@@ -197,7 +197,7 @@ describe("task card", () => {
     assert.strictEqual(card.style.borderColor, "#22c55e");
     assert.strictEqual(card.style.marginLeft, "10px");
     assert.strictEqual(card.style.borderStyle, "dashed");
-    assert.ok(findByInnerHTML(card, "Scheduled start"));
+    assert.ok(findByInnerHTML(card, "Start"));
     assert.ok(findByInnerHTML(card, "Start from"));
   });
 });

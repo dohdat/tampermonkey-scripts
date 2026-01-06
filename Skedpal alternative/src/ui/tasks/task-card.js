@@ -210,12 +210,12 @@ export function renderTaskCard(task, context) {
     taskCard.appendChild(meta);
 
     const scheduledStartMarkup = task.scheduledStart
-      ? `<span data-test-skedpal="task-scheduled-start">Scheduled start: ${formatDateTime(
+      ? `<span data-test-skedpal="task-scheduled-start">Start: ${formatDateTime(
           task.scheduledStart
         )}</span>`
       : "";
     const scheduledEndMarkup = task.scheduledEnd
-      ? `<span data-test-skedpal="task-scheduled-end">Scheduled end: ${formatDateTime(
+      ? `<span data-test-skedpal="task-scheduled-end">End: ${formatDateTime(
           task.scheduledEnd
         )}</span>`
       : "";

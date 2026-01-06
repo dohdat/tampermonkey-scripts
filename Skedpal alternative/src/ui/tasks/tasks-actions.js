@@ -6,7 +6,8 @@ import {
   getContainerKey,
   getTaskAndDescendants,
   normalizeTimeMap,
-  uuid
+  uuid,
+  parseLocalDateInput
 } from "../utils.js";
 import { state } from "../state/page-state.js";
 import {
@@ -124,8 +125,8 @@ export async function handleTaskSubmit(event) {
     durationMin,
     minBlockMin,
     priority,
-    deadline: deadline ? new Date(deadline).toISOString() : null,
-    startFrom: startFrom ? new Date(startFrom).toISOString() : null,
+    deadline: parseLocalDateInput(deadline),
+    startFrom: parseLocalDateInput(startFrom),
     subtaskParentId: parentTask?.id || parentId || null,
     link: link || "",
     timeMapIds,

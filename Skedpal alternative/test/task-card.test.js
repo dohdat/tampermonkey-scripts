@@ -176,6 +176,7 @@ describe("task card", () => {
       scheduledStart: new Date(2026, 0, 1, 9, 0).toISOString(),
       scheduledEnd: new Date(2026, 0, 1, 10, 0).toISOString(),
       deadline: new Date(2026, 0, 2, 12, 0).toISOString(),
+      startFrom: new Date(2026, 0, 1, 0, 0).toISOString(),
       priority: 2,
       section: "s1",
       subsection: "ss1",
@@ -197,5 +198,6 @@ describe("task card", () => {
     assert.strictEqual(card.style.marginLeft, "10px");
     assert.strictEqual(card.style.borderStyle, "dashed");
     assert.ok(findByInnerHTML(card, "Scheduled start"));
+    assert.ok(findByInnerHTML(card, "Start from"));
   });
 });

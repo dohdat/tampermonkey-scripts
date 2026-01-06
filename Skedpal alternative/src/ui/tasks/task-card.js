@@ -187,25 +187,52 @@ export function renderTaskCard(task, context) {
   if (detailsOpen) {
     const meta = document.createElement("div");
     meta.className = "mt-2 flex flex-wrap gap-2 text-xs text-slate-400";
+    meta.setAttribute("data-test-skedpal", "task-meta");
+    const deadlineMarkup = task.deadline
+      ? `<span data-test-skedpal="task-deadline">Deadline: ${formatDateTime(task.deadline)}</span>`
+      : "";
+    const startFromMarkup = task.startFrom
+      ? `<span data-test-skedpal="task-start-from">Start from: ${formatDateTime(
+          task.startFrom
+        )}</span>`
+      : "";
+    const minBlockMarkup = task.minBlockMin
+      ? `<span data-test-skedpal="task-min-block">Min block: ${task.minBlockMin}m</span>`
+      : "";
+    const linkMarkup = task.link
+      ? `<span class="text-lime-300 underline" data-test-skedpal="task-link">Link attached</span>`
+      : "";
     meta.innerHTML = `
-          <span>Deadline: ${formatDateTime(task.deadline)}</span>
-          ${task.minBlockMin ? `<span>Min block: ${task.minBlockMin}m</span>` : ""}
-          <span>Priority: ${task.priority}</span>
-          <span>TimeMaps: ${timeMapNames.join(", ")}</span>
-          <span>Repeat: ${repeatSummary}</span>
-          ${sectionName ? `<span>Section: ${sectionName}</span>` : ""}
-          ${subsectionName ? `<span>Subsection: ${subsectionName}</span>` : ""}
-          ${task.link ? `<span class="text-lime-300 underline">Link attached</span>` : ""}
+          ${deadlineMarkup}
+          ${startFromMarkup}
+          ${minBlockMarkup}
+          <span data-test-skedpal="task-priority">Priority: ${task.priority}</span>
+          <span data-test-skedpal="task-timemaps">TimeMaps: ${timeMapNames.join(", ")}</span>
+          <span data-test-skedpal="task-repeat">Repeat: ${repeatSummary}</span>
+          ${linkMarkup}
         `;
     taskCard.appendChild(meta);
 
-    const statusRow = document.createElement("div");
-    statusRow.className = "mt-1 flex flex-wrap gap-3 text-xs text-slate-400";
-    statusRow.innerHTML = `
-          <span>Scheduled start: ${formatDateTime(task.scheduledStart)}</span>
-          <span>Scheduled end: ${formatDateTime(task.scheduledEnd)}</span>
+    const scheduledStartMarkup = task.scheduledStart
+      ? `<span data-test-skedpal="task-scheduled-start">Scheduled start: ${formatDateTime(
+          task.scheduledStart
+        )}</span>`
+      : "";
+    const scheduledEndMarkup = task.scheduledEnd
+      ? `<span data-test-skedpal="task-scheduled-end">Scheduled end: ${formatDateTime(
+          task.scheduledEnd
+        )}</span>`
+      : "";
+    if (scheduledStartMarkup || scheduledEndMarkup) {
+      const statusRow = document.createElement("div");
+      statusRow.className = "mt-1 flex flex-wrap gap-3 text-xs text-slate-400";
+      statusRow.innerHTML = `
+          ${scheduledStartMarkup}
+          ${scheduledEndMarkup}
         `;
-    taskCard.appendChild(statusRow);
+      statusRow.setAttribute("data-test-skedpal", "task-status-details");
+      taskCard.appendChild(statusRow);
+    }
   }
 
   return taskCard;

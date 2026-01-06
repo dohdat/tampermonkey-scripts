@@ -75,6 +75,23 @@ export function formatDate(value) {
   return date && !Number.isNaN(date) ? date.toLocaleDateString() : "";
 }
 
+export function parseLocalDateInput(value) {
+  if (!value) return null;
+  const parts = value.split("-").map((part) => Number(part));
+  if (parts.length !== 3 || parts.some((part) => !Number.isFinite(part))) return null;
+  const [year, month, day] = parts;
+  const localDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+  if (Number.isNaN(localDate.getTime())) return null;
+  if (
+    localDate.getFullYear() !== year ||
+    localDate.getMonth() !== month - 1 ||
+    localDate.getDate() !== day
+  ) {
+    return null;
+  }
+  return localDate.toISOString();
+}
+
 export function formatDurationShort(minutes) {
   const mins = Number(minutes) || 0;
   if (mins >= 60) {

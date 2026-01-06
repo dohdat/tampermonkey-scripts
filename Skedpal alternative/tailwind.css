@@ -41,6 +41,7 @@ body.modal-open{overflow:hidden}
 .task-title-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:.3rem}
 .task-title-main{display:flex;align-items:center;gap:.4rem;flex:0 1 auto;min-width:0}
 .task-title-text{min-width:0;word-break:break-word;line-height:1.35;font-size:.95rem}
+.task-actions-wrap{display:flex;align-items:center;gap:.3rem}
 .task-title-actions{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem;margin-left:.2rem;justify-content:flex-start}
 .task-title-row--stacked .task-title-main{flex:1 1 100%}
 .task-title-row--stacked .task-title-actions{flex-basis:100%;margin-left:0;justify-content:flex-start;padding-top:.15rem}

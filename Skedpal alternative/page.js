@@ -1225,6 +1225,8 @@ function renderTasks(tasks, timeMaps) {
       titleTextWrap.style.textDecoration = "line-through";
       titleTextWrap.style.textDecorationColor = "#4ade80";
     }
+    const actionsWrap = document.createElement("div");
+    actionsWrap.className = "task-actions-wrap";
     const durationPill = document.createElement("span");
     durationPill.className = "pill pill-muted";
     durationPill.setAttribute("data-test-skedpal", "task-duration");
@@ -1277,14 +1279,15 @@ function renderTasks(tasks, timeMaps) {
     detailsToggleBtn.setAttribute("aria-label", detailsOpen ? "Hide details" : "Show details");
     detailsToggleBtn.setAttribute("data-test-skedpal", "task-details-toggle");
     detailsToggleBtn.innerHTML = detailsOpen ? caretDownIconSvg : caretRightIconSvg;
-    titleActions.appendChild(durationPill);
+    actionsWrap.appendChild(durationPill);
     titleActions.appendChild(zoomTaskBtn);
     titleActions.appendChild(editTaskBtn);
     titleActions.appendChild(addSubtaskBtn);
     titleActions.appendChild(detailsToggleBtn);
     titleActions.appendChild(deleteTaskBtn);
+    actionsWrap.appendChild(titleActions);
     header.appendChild(titleWrap);
-    header.appendChild(titleActions);
+    header.appendChild(actionsWrap);
     taskCard.appendChild(header);
 
     const summaryRow = document.createElement("div");

@@ -2,9 +2,26 @@ import assert from "assert";
 import { describe, it } from "mocha";
 
 const {
+  updateUrlWithZoom,
+  parseZoomFromUrl,
+  updateUrlWithView,
+  parseViewFromUrl,
+  normalizeTimeMap,
+  formatDateTime,
+  formatDate,
+  formatRRuleDate,
+  formatDurationShort,
+  getWeekdayShortLabel,
+  getNthWeekday,
+  formatOrdinal,
   getSectionColorMap,
   parseLocalDateInput,
   isStartAfterDeadline,
+  sortTasksByOrder,
+  getNextOrder,
+  getNextSubtaskOrder,
+  getTaskDepth,
+  getTaskAndDescendants,
   normalizeSubtaskScheduleMode,
   resolveTimeMapIdsAfterDelete
 } = await import("../src/ui/utils.js");
@@ -29,6 +46,134 @@ describe("utils date parsing", () => {
     assert.strictEqual(isStartAfterDeadline("2026-01-08", "2026-01-07"), true);
     assert.strictEqual(isStartAfterDeadline("2026-01-07", "2026-01-07"), false);
     assert.strictEqual(isStartAfterDeadline("", "2026-01-07"), false);
+  });
+});
+
+describe("utils url helpers", () => {
+  it("round-trips zoom params", () => {
+    global.window = { location: { href: "https://example.com/app" } };
+    global.history = {
+      replaceState: (_state, _title, url) => {
+        global.window.location.href = url;
+      }
+    };
+
+    updateUrlWithZoom({ type: "section", sectionId: "s1" });
+    assert.deepStrictEqual(parseZoomFromUrl(), { type: "section", sectionId: "s1" });
+
+    updateUrlWithZoom({ type: "subsection", sectionId: "s2", subsectionId: "sub1" });
+    assert.deepStrictEqual(parseZoomFromUrl(), {
+      type: "subsection",
+      sectionId: "s2",
+      subsectionId: "sub1"
+    });
+
+    updateUrlWithZoom({ type: "task", taskId: "t1", sectionId: "s3", subsectionId: "sub2" });
+    assert.deepStrictEqual(parseZoomFromUrl(), {
+      type: "task",
+      taskId: "t1",
+      sectionId: "s3",
+      subsectionId: "sub2"
+    });
+
+    updateUrlWithZoom(null);
+    assert.strictEqual(parseZoomFromUrl(), null);
+
+    global.window.location.href = "https://example.com/app?zoom=weird:thing";
+    assert.strictEqual(parseZoomFromUrl(), null);
+  });
+
+  it("updates and reads view params", () => {
+    global.window = { location: { href: "https://example.com/app?view=tasks" } };
+    global.history = {
+      replaceState: (_state, _title, url) => {
+        global.window.location.href = url;
+      }
+    };
+
+    updateUrlWithView("schedule");
+    assert.strictEqual(parseViewFromUrl(), "schedule");
+
+    updateUrlWithView("");
+    assert.strictEqual(parseViewFromUrl("tasks"), "tasks");
+  });
+});
+
+describe("utils normalization helpers", () => {
+  it("normalizes time map rules and days", () => {
+    const withRules = normalizeTimeMap({ id: "tm-1", rules: [{ day: "2", startTime: "09:00" }] });
+    assert.strictEqual(withRules.rules[0].day, 2);
+
+    const withDays = normalizeTimeMap({ id: "tm-2", days: [1, "3"], startTime: "08:00", endTime: "10:00" });
+    assert.deepStrictEqual(withDays.rules, [
+      { day: 1, startTime: "08:00", endTime: "10:00" },
+      { day: 3, startTime: "08:00", endTime: "10:00" }
+    ]);
+  });
+});
+
+describe("utils formatting helpers", () => {
+  it("handles date formatting fallbacks", () => {
+    assert.strictEqual(formatDateTime(""), "No date");
+    assert.strictEqual(formatDateTime("bad"), "Invalid Date");
+    assert.strictEqual(formatDate("bad"), "Invalid Date");
+    assert.ok(formatRRuleDate("2026-01-07T00:00:00").startsWith("2026"));
+    assert.strictEqual(formatRRuleDate("bad"), "");
+  });
+
+  it("formats short durations and labels", () => {
+    assert.strictEqual(formatDurationShort(0), "1m");
+    assert.strictEqual(formatDurationShort(30), "30m");
+    assert.strictEqual(formatDurationShort(90), "1.5h");
+    assert.strictEqual(getWeekdayShortLabel(2), "Tue");
+    assert.strictEqual(getWeekdayShortLabel(9), "Sun");
+    const lastWeekday = getNthWeekday(new Date(2026, 4, 31));
+    assert.strictEqual(lastWeekday.nth, -1);
+    assert.strictEqual(formatOrdinal(-1), "last");
+    assert.strictEqual(formatOrdinal(1), "1st");
+    assert.strictEqual(formatOrdinal(2), "2nd");
+    assert.strictEqual(formatOrdinal(3), "3rd");
+    assert.strictEqual(formatOrdinal(4), "4th");
+  });
+});
+
+describe("utils task ordering helpers", () => {
+  it("sorts tasks by order and title", () => {
+    const sorted = sortTasksByOrder([
+      { id: "b", title: "B", order: 2 },
+      { id: "a", title: "A", order: 2 },
+      { id: "c", title: "C" }
+    ]);
+    assert.deepStrictEqual(sorted.map((t) => t.id), ["a", "b", "c"]);
+  });
+
+  it("gets next orders for containers and subtasks", () => {
+    const tasks = [
+      { id: "t1", section: "s1", subsection: "", order: 2 },
+      { id: "t2", section: "s1", subsection: "", order: 4 },
+      { id: "t3", section: "s2", subsection: "", order: 1 },
+      { id: "p1", section: "s1", subsection: "", order: 6 },
+      { id: "s1", section: "s1", subsection: "", subtaskParentId: "p1", order: 6.01 }
+    ];
+
+    assert.strictEqual(getNextOrder("s1", "", tasks), 7.01);
+    assert.strictEqual(getNextOrder("s2", "", tasks), 2);
+    assert.strictEqual(getNextSubtaskOrder(tasks[3], "s1", "", tasks), 6.02);
+    assert.strictEqual(getNextSubtaskOrder(null, "s1", "", tasks), 7.01);
+  });
+
+  it("computes task depth and descendants", () => {
+    const tasks = [
+      { id: "p1", title: "Parent" },
+      { id: "c1", title: "Child", subtaskParentId: "p1" },
+      { id: "c2", title: "Child2", subtaskParentId: "c1" }
+    ];
+    assert.strictEqual(getTaskDepth("c2", tasks), 2);
+    assert.strictEqual(getTaskDepth("", tasks), 0);
+    const result = getTaskAndDescendants("p1", tasks);
+    assert.deepStrictEqual(result.map((t) => t.id), ["p1", "c1", "c2"]);
+    assert.deepStrictEqual(getTaskAndDescendants("", tasks), []);
+    assert.deepStrictEqual(getTaskAndDescendants("missing", tasks), []);
   });
 });
 
@@ -78,6 +223,22 @@ describe("utils timemap fallback", () => {
     const timeMaps = [{ id: "tm-4" }];
     const result = resolveTimeMapIdsAfterDelete(task, settings, timeMaps, "tm-1");
     assert.deepStrictEqual(result, ["tm-4"]);
+  });
+
+  it("uses default timemap when available", () => {
+    const task = { timeMapIds: ["tm-1"], section: "s-1", subsection: "" };
+    const settings = { defaultTimeMapId: "tm-3", subsections: {} };
+    const timeMaps = [{ id: "tm-3" }];
+    const result = resolveTimeMapIdsAfterDelete(task, settings, timeMaps, "tm-1");
+    assert.deepStrictEqual(result, ["tm-3"]);
+  });
+
+  it("returns empty when no timemaps remain", () => {
+    const task = { timeMapIds: ["tm-1"], section: "s-1", subsection: "" };
+    const settings = { defaultTimeMapId: "", subsections: {} };
+    const timeMaps = [];
+    const result = resolveTimeMapIdsAfterDelete(task, settings, timeMaps, "tm-1");
+    assert.deepStrictEqual(result, []);
   });
 });
 

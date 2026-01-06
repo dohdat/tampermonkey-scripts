@@ -78,6 +78,35 @@ global.document = {
 };
 
 const { domRefs } = await import("../src/ui/constants.js");
+const initRef = (key, tag = "div") => {
+  domRefs[key] = new FakeElement(tag);
+};
+
+initRef("taskDeadlineInput", "input");
+initRef("taskStartFromInput", "input");
+initRef("taskRepeatSelect", "select");
+initRef("taskRepeatCustom", "div");
+initRef("taskRepeatUnit", "select");
+initRef("taskRepeatInterval", "input");
+initRef("taskRepeatWeekdays", "div");
+initRef("taskRepeatMonthlyMode", "select");
+initRef("taskRepeatMonthlyDay", "input");
+initRef("taskRepeatMonthlyNth", "select");
+initRef("taskRepeatMonthlyWeekday", "select");
+initRef("taskRepeatWeeklySection", "div");
+initRef("taskRepeatMonthlySection", "div");
+initRef("taskRepeatMonthlyDayWrap", "div");
+initRef("taskRepeatMonthlyNthWrap", "div");
+initRef("taskRepeatEndNever", "input");
+initRef("taskRepeatEndOn", "input");
+initRef("taskRepeatEndAfter", "input");
+initRef("taskRepeatEndDate", "input");
+initRef("taskRepeatEndCount", "input");
+initRef("repeatModal", "div");
+initRef("repeatModalSaveBtn", "button");
+initRef("subsectionTaskRepeatSelect", "select");
+domRefs.repeatModalCloseBtns = [new FakeElement("button"), new FakeElement("button")];
+
 const repeat = await import("../src/ui/repeat.js");
 const {
   getRepeatSummary,
@@ -151,6 +180,7 @@ describe("repeat utils", () => {
       "repeatModalSaveBtn",
       "subsectionTaskRepeatSelect"
     ].forEach((key) => reset(domRefs[key]));
+    domRefs.repeatModalCloseBtns.forEach((btn) => reset(btn));
 
     selectSetup(domRefs.taskRepeatSelect, [
       { value: "none", label: "" },
@@ -208,6 +238,30 @@ describe("repeat utils", () => {
     assert.ok(monthlySummary.includes("on the 2nd Thu"));
   });
 
+  it("summarizes yearly and day-based repeats", () => {
+    assert.strictEqual(getRepeatSummary(null), "Does not repeat");
+    const monthlyDay = {
+      type: "custom",
+      unit: "month",
+      interval: 1,
+      monthlyMode: "day",
+      monthlyDay: 5
+    };
+    const yearly = {
+      type: "custom",
+      unit: "year",
+      interval: 1,
+      yearlyMonth: 12,
+      yearlyDay: 31,
+      end: { type: "on", date: "2026-12-31T00:00:00" }
+    };
+    const monthlySummary = getRepeatSummary(monthlyDay);
+    const yearlySummary = getRepeatSummary(yearly);
+    assert.ok(monthlySummary.includes("on day 5"));
+    assert.ok(yearlySummary.includes("on 12/31"));
+    assert.ok(yearlySummary.includes("until"));
+  });
+
   it("builds rrule strings from state", () => {
     repeatStore.repeatState = {
       unit: "week",
@@ -230,6 +284,29 @@ describe("repeat utils", () => {
     assert.strictEqual(
       built.rrule,
       "FREQ=MONTHLY;INTERVAL=1;BYDAY=TH;BYSETPOS=2;UNTIL=20260210"
+    );
+  });
+
+  it("builds daily and yearly rrule strings", () => {
+    repeatStore.repeatState = {
+      unit: "day",
+      interval: 3,
+      end: { type: "never" }
+    };
+    let built = buildRepeatFromState();
+    assert.strictEqual(built.rrule, "FREQ=DAILY;INTERVAL=3");
+
+    repeatStore.repeatState = {
+      unit: "year",
+      interval: 2,
+      yearlyMonth: 12,
+      yearlyDay: 31,
+      end: { type: "on", date: "2026-12-31T00:00:00" }
+    };
+    built = buildRepeatFromState();
+    assert.strictEqual(
+      built.rrule,
+      "FREQ=YEARLY;INTERVAL=2;BYMONTH=12;BYMONTHDAY=31;UNTIL=20261231"
     );
   });
 
@@ -276,5 +353,63 @@ describe("repeat utils", () => {
     repeatSelect.value = "custom";
     repeatSelect._handlers.change();
     assert.strictEqual(repeatModal.classList.contains("hidden"), false);
+  });
+
+  it("handles repeat select and end conditions", () => {
+    domRefs.taskDeadlineInput.value = "2026-01-07";
+    registerRepeatEventHandlers();
+
+    domRefs.taskRepeatSelect.value = "none";
+    domRefs.taskRepeatSelect._handlers.change();
+    assert.strictEqual(repeatStore.lastRepeatSelection.type, "none");
+
+    domRefs.taskRepeatSelect.value = "custom-new";
+    domRefs.taskRepeatSelect._handlers.change();
+    assert.strictEqual(domRefs.repeatModal.classList.contains("hidden"), false);
+
+    domRefs.taskRepeatEndAfter.checked = true;
+    domRefs.taskRepeatEndCount.value = 2;
+    domRefs.taskRepeatEndAfter._handlers.change();
+    assert.strictEqual(repeatStore.repeatState.end.type, "after");
+
+    domRefs.taskRepeatEndAfter.checked = false;
+    domRefs.taskRepeatEndOn.checked = true;
+    domRefs.taskRepeatEndDate.value = "2026-01-01";
+    domRefs.taskRepeatEndOn._handlers.change();
+    assert.strictEqual(repeatStore.repeatState.end.type, "on");
+
+    domRefs.taskRepeatEndOn.checked = false;
+    domRefs.taskRepeatEndNever.checked = true;
+    domRefs.taskRepeatEndNever._handlers.change();
+    assert.strictEqual(repeatStore.repeatState.end.type, "never");
+  });
+
+  it("handles subsection repeat selections and modal actions", () => {
+    registerRepeatEventHandlers();
+    repeatStore.repeatTarget = "subsection";
+    repeatStore.subsectionRepeatBeforeModal = { type: "none" };
+    domRefs.repeatModalCloseBtns[0]._handlers.click();
+    assert.strictEqual(repeatStore.repeatTarget, "task");
+
+    repeatStore.repeatTarget = "subsection";
+    domRefs.repeatModalSaveBtn._handlers.click();
+    assert.strictEqual(repeatStore.repeatTarget, "task");
+  });
+
+  it("updates repeat state from unit and weekday changes", () => {
+    domRefs.taskDeadlineInput.value = "2026-01-07";
+    registerRepeatEventHandlers();
+
+    domRefs.taskRepeatUnit.value = "year";
+    domRefs.taskRepeatUnit._handlers.change();
+    assert.strictEqual(repeatStore.repeatState.yearlyMonth, 1);
+
+    repeatStore.repeatState.weeklyDays = [1];
+    domRefs.taskRepeatWeekdays._handlers.click({
+      target: {
+        closest: () => ({ dataset: { dayValue: "1" } })
+      }
+    });
+    assert.ok(repeatStore.repeatState.weeklyDays.length > 0);
   });
 });

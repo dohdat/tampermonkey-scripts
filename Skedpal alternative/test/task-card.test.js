@@ -69,6 +69,7 @@ function installDomStubs() {
 installDomStubs();
 
 const { renderTaskCard } = await import("../src/ui/tasks/task-card.js");
+const { caretRightIconSvg } = await import("../src/ui/constants.js");
 
 describe("task card", () => {
   beforeEach(() => {
@@ -199,5 +200,86 @@ describe("task card", () => {
     assert.strictEqual(card.style.borderStyle, "dashed");
     assert.ok(findByInnerHTML(card, "Start"));
     assert.ok(findByInnerHTML(card, "Start from"));
+  });
+
+  it("renders link markup, repeat summary, and unknown timemap names", () => {
+    const task = {
+      id: "t4",
+      title: "Link task",
+      durationMin: 45,
+      timeMapIds: ["missing"],
+      completed: false,
+      link: "https://example.com",
+      repeat: { type: "custom", unit: "week", interval: 2, weeklyDays: [1, 3] }
+    };
+    const context = {
+      tasks: [task],
+      timeMapById: new Map(),
+      collapsedTasks: new Set(),
+      expandedTaskDetails: new Set(["t4"]),
+      computeTotalDuration: () => 0,
+      getTaskDepthById: () => 0,
+      getSectionName: () => "",
+      getSubsectionName: () => ""
+    };
+
+    const card = renderTaskCard(task, context);
+    const title = findByTestAttr(card, "task-title");
+    assert.ok(title.innerHTML.includes('href="https://example.com"'));
+    assert.ok(findByInnerHTML(card, "Repeat: Every 2 weeks"));
+    assert.ok(findByInnerHTML(card, "TimeMaps: Unknown"));
+    assert.ok(findByInnerHTML(card, "Link attached"));
+  });
+
+  it("shows scheduled summary row and collapsed caret when configured", () => {
+    const task = {
+      id: "t5",
+      title: "Scheduled",
+      durationMin: 30,
+      timeMapIds: ["tm-1"],
+      completed: false,
+      scheduledStart: new Date(2026, 0, 1, 9, 15).toISOString()
+    };
+    const context = {
+      tasks: [task, { id: "child", title: "Child", timeMapIds: ["tm-1"], subtaskParentId: "t5" }],
+      timeMapById: new Map([["tm-1", { id: "tm-1", name: "Focus" }]]),
+      collapsedTasks: new Set(["t5"]),
+      expandedTaskDetails: new Set(),
+      computeTotalDuration: () => 30,
+      getTaskDepthById: () => 0,
+      getSectionName: () => "",
+      getSubsectionName: () => ""
+    };
+
+    const card = renderTaskCard(task, context);
+    const summary = findByTestAttr(card, "task-summary-row");
+    const collapseBtn = findByTestAttr(card, "task-collapse-btn");
+    assert.ok(summary);
+    assert.ok(summary.textContent.length > 0);
+    assert.strictEqual(collapseBtn.innerHTML, caretRightIconSvg);
+  });
+
+  it("skips details when not expanded", () => {
+    const task = {
+      id: "t6",
+      title: "No details",
+      durationMin: 15,
+      timeMapIds: ["tm-1"],
+      completed: false
+    };
+    const context = {
+      tasks: [task],
+      timeMapById: new Map([["tm-1", { id: "tm-1", name: "Focus" }]]),
+      collapsedTasks: new Set(),
+      expandedTaskDetails: new Set(),
+      computeTotalDuration: () => 0,
+      getTaskDepthById: () => 0,
+      getSectionName: () => "",
+      getSubsectionName: () => ""
+    };
+
+    const card = renderTaskCard(task, context);
+    assert.strictEqual(findByTestAttr(card, "task-meta"), null);
+    assert.strictEqual(findByTestAttr(card, "task-status-details"), null);
   });
 });

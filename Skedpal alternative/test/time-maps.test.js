@@ -71,6 +71,14 @@ class FakeElement {
     walk(this);
     return matches;
   }
+
+  querySelector(selector) {
+    if (selector?.startsWith("[data-day-row=")) {
+      const value = selector.split('"')[1];
+      return findFirst(this, (node) => node.dataset?.dayRow === value);
+    }
+    return null;
+  }
 }
 
 function findFirst(root, predicate) {
@@ -139,6 +147,7 @@ function installDomStubs() {
 
 installDomStubs();
 const { domRefs } = await import("../src/ui/constants.js");
+const { state } = await import("../src/ui/state/page-state.js");
 domRefs.timeMapColorInput = elements.get("timemap-color");
 domRefs.timeMapDayRows = elements.get("timemap-day-rows");
 domRefs.timeMapList = elements.get("timemap-list");
@@ -150,6 +159,7 @@ const {
   collectSelectedValues,
   collectTimeMapRules,
   getTimeMapFormData,
+  addTimeMapDay,
   renderDayRows,
   renderTimeMaps,
   renderTaskTimeMapOptions,
@@ -232,6 +242,18 @@ describe("time maps", () => {
       rules: [{ day: 1, startTime: "09:00", endTime: "12:00" }],
       color: "#22c55e"
     });
+
+    alertMessage = "";
+    elements.get("timemap-name").value = "";
+    elements.get("timemap-day-rows").querySelectorAll = () => [
+      createRow({
+        day: 1,
+        checked: true,
+        blocks: [{ startTime: "09:00", endTime: "12:00" }]
+      })
+    ];
+    assert.strictEqual(getTimeMapFormData(), null);
+    assert.strictEqual(alertMessage, "Name is required.");
   });
 
   it("renders day rows and toggles blocks", () => {
@@ -251,12 +273,19 @@ describe("time maps", () => {
     renderTimeMaps([]);
     assert.ok(list.innerHTML.includes("No TimeMaps yet"));
 
-    const timeMapsData = [{ id: "tm-1", name: "Work", days: [1], startTime: "09:00", endTime: "11:00" }];
+    const timeMapsData = [
+      { id: "tm-1", name: "Work", days: [1], startTime: "09:00", endTime: "11:00", color: "#22c55e" }
+    ];
+    state.settingsCache = { ...state.settingsCache, defaultTimeMapId: "tm-1" };
     renderTimeMaps(timeMapsData);
     assert.strictEqual(list.children.length, 1);
+    assert.ok(list.children[0].innerHTML.includes("Default"));
 
     renderTaskTimeMapOptions(timeMapsData, [], "tm-1");
     assert.strictEqual(elements.get("task-timemap-options").children.length, 1);
+
+    renderTaskTimeMapOptions([], [], "tm-1");
+    assert.ok(elements.get("task-timemap-options").innerHTML.includes("Create TimeMaps first."));
 
     const container = new FakeElement("div");
     renderTimeMapOptions(container, ["tm-1"], timeMapsData);
@@ -279,5 +308,15 @@ describe("time maps", () => {
     resetTimeMapForm();
     assert.strictEqual(elements.get("timemap-id").value, "");
     assert.strictEqual(elements.get("timemap-name").value, "");
+  });
+
+  it("adds day rows defensively", () => {
+    const container = elements.get("timemap-day-rows");
+    addTimeMapDay("bad");
+    assert.strictEqual(container.children.length, 0);
+    addTimeMapDay(1);
+    assert.strictEqual(container.children.length, 1);
+    addTimeMapDay(1);
+    assert.strictEqual(container.children.length, 1);
   });
 });

@@ -44,9 +44,11 @@ export function getSectionById(id) {
 
 export function getSectionName(id) {
   if (!id) return "";
+  const section = getSectionById(id);
+  if (section?.name) return section.name;
   if (id === "section-work-default") return "Work";
   if (id === "section-personal-default") return "Personal";
-  return getSectionById(id)?.name || "";
+  return "";
 }
 
 export async function ensureDefaultSectionsPresent() {
@@ -61,7 +63,7 @@ export async function ensureDefaultSectionsPresent() {
     const idx = sections.findIndex((s) => s.id === def.id);
     if (idx >= 0) {
       const current = sections[idx];
-      if (current.name !== def.name) {
+      if (!current.name) {
         sections[idx] = { ...current, name: def.name };
         changed = true;
       }

@@ -20,6 +20,7 @@ import {
   getSubsectionTemplate,
   openSubsectionModal,
   handleAddSubsection,
+  handleRenameSection,
   handleRemoveSection,
   handleRemoveSubsection,
   handleToggleSectionFavorite,
@@ -332,7 +333,7 @@ export async function handleTaskListClick(event) {
   } else if (favoriteSubsectionId !== undefined) {
     await handleToggleSubsectionFavorite(parentSectionId, favoriteSubsectionId);
   } else if (editSectionId !== undefined) {
-    openSubsectionModal(editSectionId, "");
+    await handleRenameSection(editSectionId);
   } else if (removeSectionId !== undefined) {
     await handleRemoveSection(removeSectionId);
   } else if (editSubsectionId !== undefined) {

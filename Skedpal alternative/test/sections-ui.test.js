@@ -357,4 +357,23 @@ describe("sections ui", () => {
     assert.strictEqual(domRefs.subsectionFormWrap.classList.contains("hidden"), true);
     assert.strictEqual(repeatStore.subsectionRepeatSelection.type, "none");
   });
+
+  it("keeps renamed default section names", async () => {
+    state.settingsCache = {
+      ...state.settingsCache,
+      sections: [
+        { id: "section-work-default", name: "My Work" },
+        { id: "section-personal-default", name: "My Personal" }
+      ],
+      subsections: {
+        "section-work-default": [],
+        "section-personal-default": []
+      }
+    };
+
+    const sections = await sectionsModule.ensureDefaultSectionsPresent();
+    const nameById = new Map(sections.map((s) => [s.id, s.name]));
+    assert.strictEqual(nameById.get("section-work-default"), "My Work");
+    assert.strictEqual(nameById.get("section-personal-default"), "My Personal");
+  });
 });

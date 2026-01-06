@@ -49,7 +49,9 @@ import {
   getNextOrder,
   getNextSubtaskOrder,
   getTaskDepth,
-  getTaskAndDescendants
+  getTaskAndDescendants,
+  updateUrlWithView,
+  parseViewFromUrl
 } from "./utils.js";
 import Sortable from "./sortable.esm.js";
 
@@ -256,15 +258,18 @@ function getSubsectionsFor(sectionId) {
 }
 
 function switchView(target) {
+  const allowedViews = navButtons.map((btn) => btn.dataset.view);
+  const resolvedTarget = allowedViews.includes(target) ? target : "tasks";
   views.forEach((view) => {
-    const active = view.id === target;
+    const active = view.id === resolvedTarget;
     view.classList.toggle("hidden", !active);
   });
   navButtons.forEach((btn) => {
-    const active = btn.dataset.view === target;
+    const active = btn.dataset.view === resolvedTarget;
     btn.classList.toggle("is-active", active);
     btn.setAttribute("aria-current", active ? "page" : "false");
   });
+  updateUrlWithView(resolvedTarget);
 }
 
 function renderDayRows(container, rules = []) {
@@ -2966,6 +2971,11 @@ navButtons.forEach((btn) => {
 });
 settingsToggleBtn?.addEventListener("click", () => switchView("settings"));
 
+function initViewFromUrl() {
+  const initialView = parseViewFromUrl("tasks");
+  switchView(initialView);
+}
+
 function openTimeMapForm() {
   timeMapFormWrap.classList.remove("hidden");
   timeMapToggle.textContent = "Hide TimeMap form";
@@ -3291,5 +3301,6 @@ document.addEventListener("keydown", (event) => {
 window.addEventListener("keydown", handleNavigationShortcuts);
 window.addEventListener("auxclick", handleNavigationMouseButtons);
 
+initViewFromUrl();
 hydrate();
 enableDeadlinePicker();

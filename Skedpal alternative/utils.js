@@ -33,6 +33,21 @@ export function parseZoomFromUrl() {
   return null;
 }
 
+export function updateUrlWithView(view) {
+  const url = new URL(window.location.href);
+  if (view) {
+    url.searchParams.set("view", view);
+  } else {
+    url.searchParams.delete("view");
+  }
+  history.replaceState({}, "", url.toString());
+}
+
+export function parseViewFromUrl(defaultView = "tasks") {
+  const url = new URL(window.location.href);
+  return url.searchParams.get("view") || defaultView;
+}
+
 export function uuid() {
   return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
 }

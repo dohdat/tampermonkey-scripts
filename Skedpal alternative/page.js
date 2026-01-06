@@ -57,7 +57,6 @@ const {
   views,
   navButtons,
   taskList,
-  zoomBanner,
   timeMapList,
   timeMapDayRows,
   timeMapFormWrap,
@@ -1516,7 +1515,7 @@ async function loadTasks() {
   await ensureDefaultSectionsPresent();
   tasksCache = tasks;
   renderTasks(tasksCache, timeMaps);
-  renderZoomBanner();
+  renderBreadcrumb();
 }
 
 async function handleAddSection() {
@@ -1713,38 +1712,9 @@ function getZoomLabel() {
   return "";
 }
 
-function renderZoomBanner() {
-  if (!zoomBanner) return;
-  if (!zoomFilter) {
-    zoomBanner.classList.add("hidden");
-    zoomBanner.innerHTML = "";
-    return;
-  }
-  const label = getZoomLabel();
-  zoomBanner.classList.remove("hidden");
-  zoomBanner.innerHTML = `
-    <div class="flex items-center justify-between gap-3">
-      <div class="flex items-center gap-2 text-sm text-slate-200">
-        <span>Zoomed into ${label}</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <button id="zoom-home-btn" class="rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400" data-test-skedpal="zoom-home-btn">Home</button>
-        <button id="zoom-out-btn" class="rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400" data-test-skedpal="zoom-out-btn">Zoom out</button>
-      </div>
-    </div>
-  `;
-  zoomBanner.querySelector("#zoom-out-btn")?.addEventListener("click", () => {
-    zoomOutOneLevel();
-  });
-  zoomBanner.querySelector("#zoom-home-btn")?.addEventListener("click", () => {
-    goHome();
-  });
-}
-
 function setZoomFilter(filter) {
   zoomFilter = filter;
   updateUrlWithZoom(filter);
-  renderZoomBanner();
   renderTasks(tasksCache, tasksTimeMapsCache);
   renderBreadcrumb();
 }
@@ -1752,7 +1722,6 @@ function setZoomFilter(filter) {
 function clearZoomFilter() {
   zoomFilter = null;
   updateUrlWithZoom(null);
-  renderZoomBanner();
   renderTasks(tasksCache, tasksTimeMapsCache);
   renderBreadcrumb();
 }
@@ -2892,7 +2861,6 @@ async function hydrate() {
     setZoomFilter(initialZoom);
   } else {
     renderTasks(tasksCache, timeMaps);
-    renderZoomBanner();
     renderBreadcrumb();
   }
   await updateScheduleSummary();

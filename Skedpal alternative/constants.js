@@ -33,7 +33,6 @@ export const domRefs = {
   views: [...document.querySelectorAll(".view")],
   navButtons: [...document.querySelectorAll(".nav-btn")],
   taskList: document.getElementById("task-list"),
-  zoomBanner: document.getElementById("zoom-banner"),
   navBreadcrumb: document.getElementById("nav-breadcrumb"),
   timeMapList: document.getElementById("timemap-list"),
   timeMapDayRows: document.getElementById("timemap-day-rows"),

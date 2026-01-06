@@ -250,3 +250,26 @@ export function getSectionColorMap(sections = []) {
   });
   return map;
 }
+
+export function resolveTimeMapIdsAfterDelete(task, settings, timeMaps, deletedId) {
+  const remainingIds = new Set((timeMaps || []).map((tm) => tm.id));
+  const initialIds = Array.isArray(task?.timeMapIds) ? task.timeMapIds : [];
+  const filtered = initialIds.filter((id) => id !== deletedId && remainingIds.has(id));
+  if (filtered.length) return [...new Set(filtered)];
+
+  const sectionId = task?.section || "";
+  const subsectionId = task?.subsection || "";
+  const subsectionList = settings?.subsections?.[sectionId] || [];
+  const subsection = subsectionList.find((sub) => sub.id === subsectionId);
+  const templateIds = Array.isArray(subsection?.template?.timeMapIds)
+    ? subsection.template.timeMapIds
+    : [];
+  const templateFiltered = templateIds.filter((id) => remainingIds.has(id));
+  if (templateFiltered.length) return [...new Set(templateFiltered)];
+
+  const defaultId = settings?.defaultTimeMapId;
+  if (defaultId && remainingIds.has(defaultId)) return [defaultId];
+
+  const firstAvailable = remainingIds.values().next().value;
+  return firstAvailable ? [firstAvailable] : [];
+}

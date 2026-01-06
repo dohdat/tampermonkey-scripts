@@ -1,6 +1,13 @@
-import { getAllTimeMaps, saveSettings, saveTimeMap, deleteTimeMap } from "../data/db.js";
+import {
+  getAllTasks,
+  getAllTimeMaps,
+  saveSettings,
+  saveTask,
+  saveTimeMap,
+  deleteTimeMap
+} from "../data/db.js";
 import { dayOptions, domRefs } from "./constants.js";
-import { normalizeTimeMap, uuid } from "./utils.js";
+import { normalizeTimeMap, resolveTimeMapIdsAfterDelete, uuid } from "./utils.js";
 import { state } from "./state/page-state.js";
 
 const {
@@ -343,10 +350,62 @@ export async function handleTimeMapListClick(event, timeMaps) {
       switchView("settings");
     }
   } else if (deleteId) {
-    deleteTimeMap(deleteId).then(async () => {
-      const { loadTasks } = await import("./tasks/tasks-actions.js");
-      await Promise.all([loadTimeMaps(), loadTasks()]);
+    await deleteTimeMap(deleteId);
+    const timeMapsRaw = await getAllTimeMaps();
+    const remainingTimeMaps = timeMapsRaw.map(normalizeTimeMap);
+    const remainingIds = new Set(remainingTimeMaps.map((tm) => tm.id));
+    let nextSettings = { ...state.settingsCache };
+    let settingsChanged = false;
+    if (nextSettings.defaultTimeMapId === deleteId) {
+      nextSettings = {
+        ...nextSettings,
+        defaultTimeMapId: remainingTimeMaps[0]?.id || null
+      };
+      settingsChanged = true;
+    }
+    const subsections = { ...(nextSettings.subsections || {}) };
+    Object.entries(subsections).forEach(([sectionId, list]) => {
+      const updatedList = (list || []).map((sub) => {
+        if (!Array.isArray(sub?.template?.timeMapIds)) return sub;
+        const filtered = sub.template.timeMapIds.filter((id) => remainingIds.has(id));
+        if (filtered.length === sub.template.timeMapIds.length) return sub;
+        settingsChanged = true;
+        return {
+          ...sub,
+          template: {
+            ...sub.template,
+            timeMapIds: filtered
+          }
+        };
+      });
+      subsections[sectionId] = updatedList;
     });
+    if (settingsChanged) {
+      nextSettings = { ...nextSettings, subsections };
+      state.settingsCache = nextSettings;
+      await saveSettings(nextSettings);
+    }
+    const tasks = await getAllTasks();
+    const updates = tasks
+      .filter((task) => Array.isArray(task.timeMapIds) && task.timeMapIds.includes(deleteId))
+      .map((task) => {
+        const timeMapIds = resolveTimeMapIdsAfterDelete(
+          task,
+          nextSettings,
+          remainingTimeMaps,
+          deleteId
+        );
+        if (timeMapIds.length === task.timeMapIds.length && timeMapIds.every((id) => task.timeMapIds.includes(id))) {
+          return null;
+        }
+        return saveTask({ ...task, timeMapIds });
+      })
+      .filter(Boolean);
+    if (updates.length) {
+      await Promise.all(updates);
+    }
+    const { loadTasks } = await import("./tasks/tasks-actions.js");
+    await Promise.all([loadTimeMaps(), loadTasks()]);
   }
 }
 

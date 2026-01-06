@@ -1,9 +1,12 @@
 import assert from "assert";
 import { describe, it } from "mocha";
 
-const { getSectionColorMap, parseLocalDateInput, isStartAfterDeadline } = await import(
-  "../src/ui/utils.js"
-);
+const {
+  getSectionColorMap,
+  parseLocalDateInput,
+  isStartAfterDeadline,
+  resolveTimeMapIdsAfterDelete
+} = await import("../src/ui/utils.js");
 
 describe("utils date parsing", () => {
   it("parses date input as local midnight ISO", () => {
@@ -41,5 +44,38 @@ describe("utils section colors", () => {
     assert.ok(second);
     assert.notStrictEqual(first.dot, second.dot);
     assert.notStrictEqual(first.glow, second.glow);
+  });
+});
+
+describe("utils timemap fallback", () => {
+  it("keeps remaining timemaps when deleting one", () => {
+    const task = { timeMapIds: ["tm-1", "tm-2"], section: "s-1", subsection: "" };
+    const settings = { defaultTimeMapId: "tm-3", subsections: {} };
+    const timeMaps = [{ id: "tm-2" }, { id: "tm-3" }];
+    const result = resolveTimeMapIdsAfterDelete(task, settings, timeMaps, "tm-1");
+    assert.deepStrictEqual(result, ["tm-2"]);
+  });
+
+  it("falls back to subsection template before default", () => {
+    const task = { timeMapIds: ["tm-1"], section: "s-1", subsection: "sub-1" };
+    const settings = {
+      defaultTimeMapId: "tm-3",
+      subsections: {
+        "s-1": [
+          { id: "sub-1", template: { timeMapIds: ["tm-2"] } }
+        ]
+      }
+    };
+    const timeMaps = [{ id: "tm-2" }, { id: "tm-3" }];
+    const result = resolveTimeMapIdsAfterDelete(task, settings, timeMaps, "tm-1");
+    assert.deepStrictEqual(result, ["tm-2"]);
+  });
+
+  it("falls back to default or first available", () => {
+    const task = { timeMapIds: ["tm-1"], section: "s-1", subsection: "" };
+    const settings = { defaultTimeMapId: "tm-3", subsections: {} };
+    const timeMaps = [{ id: "tm-4" }];
+    const result = resolveTimeMapIdsAfterDelete(task, settings, timeMaps, "tm-1");
+    assert.deepStrictEqual(result, ["tm-4"]);
   });
 });

@@ -275,6 +275,65 @@ describe("scheduler", () => {
     assert.ok(result.unscheduled.includes("low"));
   });
 
+  it("orders by section, subsection, and order when priorities match", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 3);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "10:00" }] }
+    ];
+    const deadline = shiftDate(now, 0, 23, 59);
+    const tasks = [
+      {
+        id: "b",
+        title: "B",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        priority: 3,
+        deadline,
+        section: "s1",
+        subsection: "sub2",
+        order: 2
+      },
+      {
+        id: "a",
+        title: "A",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        priority: 3,
+        deadline,
+        section: "s1",
+        subsection: "sub1",
+        order: 1
+      },
+      {
+        id: "c",
+        title: "C",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        priority: 3,
+        deadline,
+        section: "s2",
+        subsection: "sub1",
+        order: 1
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 1,
+      now
+    });
+
+    assert.strictEqual(result.scheduled.length, 1);
+    assert.strictEqual(result.scheduled[0].taskId, "a");
+    assert.ok(result.unscheduled.includes("b"));
+    assert.ok(result.unscheduled.includes("c"));
+  });
+
   it("enforces sequential subtask ordering", () => {
     const now = nextWeekday(new Date(2026, 0, 1), 4);
     const timeMaps = [

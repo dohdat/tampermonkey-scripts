@@ -335,7 +335,15 @@ function buildScheduleCandidates(tasks, now, horizonEnd) {
     if (deadlineDelta !== 0) return deadlineDelta;
     const priorityDelta = b.priority - a.priority;
     if (priorityDelta !== 0) return priorityDelta;
-    return a.startFrom - b.startFrom;
+    const startDelta = a.startFrom - b.startFrom;
+    if (startDelta !== 0) return startDelta;
+    const sectionDelta = (a.section || "").localeCompare(b.section || "");
+    if (sectionDelta !== 0) return sectionDelta;
+    const subsectionDelta = (a.subsection || "").localeCompare(b.subsection || "");
+    if (subsectionDelta !== 0) return subsectionDelta;
+    const orderDelta = (Number(a.order) || 0) - (Number(b.order) || 0);
+    if (orderDelta !== 0) return orderDelta;
+    return (a.title || "").localeCompare(b.title || "");
   });
 
   return { sorted, ignored, immediatelyUnscheduled };
@@ -480,7 +488,15 @@ export function scheduleTasks({
     if (deadlineDelta !== 0) return deadlineDelta;
     const priorityDelta = b.priority - a.priority;
     if (priorityDelta !== 0) return priorityDelta;
-    return a.startFrom - b.startFrom;
+    const startDelta = a.startFrom - b.startFrom;
+    if (startDelta !== 0) return startDelta;
+    const sectionDelta = (a.section || "").localeCompare(b.section || "");
+    if (sectionDelta !== 0) return sectionDelta;
+    const subsectionDelta = (a.subsection || "").localeCompare(b.subsection || "");
+    if (subsectionDelta !== 0) return subsectionDelta;
+    const orderDelta = (Number(a.order) || 0) - (Number(b.order) || 0);
+    if (orderDelta !== 0) return orderDelta;
+    return (a.title || "").localeCompare(b.title || "");
   });
 
   let slots = freeSlots;

@@ -1,21 +1,25 @@
 import assert from "assert";
-import { describe, it } from "mocha";
+import { describe, it, beforeEach } from "mocha";
 
-global.document = {
-  querySelectorAll: () => [],
-  getElementById: () => null
-};
-global.window = {
-  location: { href: "http://localhost/" }
-};
-global.history = {
-  replaceState: (_state, _title, url) => {
-    global.window.location.href = url;
-  }
-};
-global.crypto = {
-  randomUUID: () => "test-uuid"
-};
+function installDomStubs() {
+  global.document = {
+    querySelectorAll: () => [],
+    getElementById: () => null
+  };
+  global.window = {
+    location: { href: "http://localhost/" }
+  };
+  global.history = {
+    replaceState: (_state, _title, url) => {
+      global.window.location.href = url;
+    }
+  };
+  global.crypto = {
+    randomUUID: () => "test-uuid"
+  };
+}
+
+installDomStubs();
 
 const utils = await import("../src/ui/utils.js");
 const { SUBTASK_ORDER_OFFSET } = await import("../src/ui/constants.js");
@@ -40,6 +44,9 @@ const {
 } = utils;
 
 describe("ui utils", () => {
+  beforeEach(() => {
+    installDomStubs();
+  });
   it("updates and parses zoom/view params", () => {
     updateUrlWithZoom({ type: "section", sectionId: "work" });
     assert.deepStrictEqual(parseZoomFromUrl(), { type: "section", sectionId: "work" });

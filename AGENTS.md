@@ -18,7 +18,8 @@
   `npx tailwindcss@latest -i styles/tailwind.input.css -o styles/tailwind.css --content pages/index.html,src/ui/page.js --minify`.
 
 ## Testing & Validation
-- User scripts: manual checks on target sites (e.g., LeetCode). Ensure single injection guard, external libs load with fallbacks, and UI still usable with slow networks.
+- Add unit tests for any new features or logic changes to prevent regressions.
+- Ensure single injection guard, external libs load with fallbacks, and UI still usable with slow networks.
 - Scheduler extension: load unpacked, exercise Tasks/TimeMaps/Schedule tabs, run **Reschedule Now**, and confirm events respect deadlines, priorities, and allowed TimeMaps within the 14-day horizon.
 - Storage changes: verify IndexedDB migrations keep existing user data; avoid destructive schema tweaks without migration steps.
 - Networked features: handle auth failures and rate limits gracefully; log errors to console, not alerts.

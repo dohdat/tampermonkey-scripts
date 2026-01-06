@@ -1232,6 +1232,7 @@ function renderTasks(tasks, timeMaps) {
     const titleActions = document.createElement("div");
     titleActions.className = "title-actions task-title-actions";
     titleActions.setAttribute("data-test-skedpal", "task-title-actions");
+    titleActions.setAttribute("data-test-skedpal", "task-title-actions");
     const zoomTaskBtn = document.createElement("button");
     zoomTaskBtn.type = "button";
     zoomTaskBtn.dataset.zoomTask = task.id;

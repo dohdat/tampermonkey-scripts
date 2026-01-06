@@ -38,10 +38,10 @@ body.modal-open{overflow:hidden}
 .task-complete-btn:hover{border-color:#86efac;color:#d9f99d}
 .task-complete-btn--checked{border-color:#86efac;background:#0a2415;color:#c5f6c7;box-shadow:0 10px 24px rgba(0,0,0,.28),0 0 0 1px rgba(134,239,172,.35)}
 .task-complete-btn--checked:hover{border-color:#a3e635;color:#e9fac8}
-.task-title-row{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:.5rem}
-.task-title-main{display:flex;align-items:flex-start;gap:.5rem;flex:1 1 260px;min-width:0}
+.task-title-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:.3rem}
+.task-title-main{display:flex;align-items:center;gap:.4rem;flex:0 1 auto;min-width:0}
 .task-title-text{min-width:0;word-break:break-word;line-height:1.35;font-size:.95rem}
-.task-title-actions{display:flex;flex-wrap:wrap;align-items:center;gap:.35rem;margin-left:auto;justify-content:flex-end}
+.task-title-actions{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem;margin-left:.2rem;justify-content:flex-start}
 .task-title-row--stacked .task-title-main{flex:1 1 100%}
 .task-title-row--stacked .task-title-actions{flex-basis:100%;margin-left:0;justify-content:flex-start;padding-top:.15rem}
 .task-summary-row{margin-top:.25rem;display:flex;flex-wrap:wrap;gap:.6rem;font-size:.75rem;line-height:1.4;color:#cbd5e1}

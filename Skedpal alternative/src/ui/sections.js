@@ -1,6 +1,6 @@
 import { getAllTasks, saveSettings, saveTask } from "../data/db.js";
 import { domRefs } from "./constants.js";
-import { uuid } from "./utils.js";
+import { isStartAfterDeadline, uuid } from "./utils.js";
 import { state } from "./state/page-state.js";
 import { repeatStore, setRepeatFromSelection, syncSubsectionRepeatLabel } from "./repeat.js";
 import { renderTimeMapOptions, collectSelectedValues } from "./time-maps.js";
@@ -295,6 +295,12 @@ export async function handleRemoveSection(id) {
 export async function handleAddSubsection(sectionId, value, parentSubsectionId = "") {
   const name = value.trim();
   if (!sectionId || !name) return;
+  if (
+    isStartAfterDeadline(subsectionTaskStartFromInput?.value || "", subsectionTaskDeadlineInput?.value || "")
+  ) {
+    alert("Start from cannot be after deadline.");
+    return;
+  }
   const subsections = { ...(state.settingsCache.subsections || {}) };
   const list = subsections[sectionId] || [];
   const parentId = parentSubsectionId || "";
@@ -504,6 +510,12 @@ export async function handleSubsectionFormSubmit() {
   const parentId = subsectionParentIdInput.value || "";
   const name = subsectionNameInput.value || "";
   if (!sectionId || !name) return;
+  if (
+    isStartAfterDeadline(subsectionTaskStartFromInput?.value || "", subsectionTaskDeadlineInput?.value || "")
+  ) {
+    alert("Start from cannot be after deadline.");
+    return;
+  }
   if (editingSubsectionId) {
     const subsections = { ...(state.settingsCache.subsections || {}) };
     const list = subsections[sectionId] || [];

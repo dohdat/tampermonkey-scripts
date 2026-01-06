@@ -92,6 +92,13 @@ export function parseLocalDateInput(value) {
   return localDate.toISOString();
 }
 
+export function isStartAfterDeadline(startFrom, deadline) {
+  const startIso = parseLocalDateInput(startFrom);
+  const deadlineIso = parseLocalDateInput(deadline);
+  if (!startIso || !deadlineIso) return false;
+  return new Date(startIso) > new Date(deadlineIso);
+}
+
 export function formatDurationShort(minutes) {
   const mins = Number(minutes) || 0;
   if (mins >= 60) {

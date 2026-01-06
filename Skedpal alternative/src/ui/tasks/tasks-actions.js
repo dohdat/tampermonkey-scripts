@@ -5,6 +5,7 @@ import {
   getNextSubtaskOrder,
   getContainerKey,
   getTaskAndDescendants,
+  isStartAfterDeadline,
   normalizeTimeMap,
   uuid,
   parseLocalDateInput
@@ -114,6 +115,10 @@ export async function handleTaskSubmit(event) {
   }
   if (timeMapIds.length === 0) {
     alert("Select at least one TimeMap.");
+    return;
+  }
+  if (isStartAfterDeadline(startFrom, deadline)) {
+    alert("Start from cannot be after deadline.");
     return;
   }
 

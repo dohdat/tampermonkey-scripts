@@ -42,6 +42,7 @@ export const domRefs = {
   timeMapDayAdd: document.getElementById("timemap-day-add"),
   timeMapFormWrap: document.getElementById("timemap-form-wrap"),
   timeMapToggle: document.getElementById("timemap-toggle"),
+  timeMapCancel: document.getElementById("timemap-cancel"),
   taskFormWrap: document.getElementById("task-form-wrap"),
   taskToggle: document.getElementById("task-toggle"),
   taskModalCloseButtons: [...document.querySelectorAll("[data-task-modal-close]")],

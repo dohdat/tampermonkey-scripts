@@ -161,7 +161,7 @@ export function renderTimeMaps(timeMaps) {
       <div class="mt-1 flex flex-wrap gap-2 text-xs text-slate-400">${rulesText}</div>
       <div class="mt-3 flex gap-2">
         <button style="background:${tm.color || "transparent"};border-color:${tm.color || "#334155"};color:${tm.color ? "#0f172a" : "#e2e8f0"}" class="rounded-lg border px-3 py-1 text-xs font-semibold" data-edit="${tm.id}">Edit</button>
-        <button class="rounded-lg bg-orange-500/90 px-3 py-1 text-xs font-semibold text-slate-900 hover:bg-orange-400" data-delete="${tm.id}">Delete</button>
+        <button class="rounded-lg bg-orange-500/90 px-3 py-1 text-xs font-semibold text-slate-900 hover:bg-orange-400" data-delete="${tm.id}" data-test-skedpal="timemap-delete">Delete</button>
       </div>
     `;
     timeMapList.appendChild(card);
@@ -350,6 +350,8 @@ export async function handleTimeMapListClick(event, timeMaps) {
       switchView("settings");
     }
   } else if (deleteId) {
+    const confirmRemove = confirm("Delete this TimeMap? Tasks using it will be updated.");
+    if (!confirmRemove) return;
     await deleteTimeMap(deleteId);
     const timeMapsRaw = await getAllTimeMaps();
     const remainingTimeMaps = timeMapsRaw.map(normalizeTimeMap);

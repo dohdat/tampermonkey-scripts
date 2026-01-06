@@ -51,6 +51,7 @@ const {
   timeMapDayRows,
   timeMapFormWrap,
   timeMapToggle,
+  timeMapCancel,
   taskFormWrap,
   taskToggle,
   taskModalCloseButtons,
@@ -89,6 +90,10 @@ function registerEventListeners() {
   document.getElementById("timemap-set-default")?.addEventListener("click", handleSetDefaultTimeMap);
   document.getElementById("task-form")?.addEventListener("submit", handleTaskSubmit);
   document.getElementById("timemap-reset")?.addEventListener("click", resetTimeMapForm);
+  timeMapCancel?.addEventListener("click", () => {
+    resetTimeMapForm();
+    closeTimeMapForm();
+  });
 
   rescheduleButtons.forEach((btn) => btn.addEventListener("click", handleReschedule));
 

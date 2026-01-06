@@ -1016,6 +1016,25 @@ function renderTasks(tasks, timeMaps) {
   destroyTaskSortables();
   taskList.innerHTML = "";
   const timeMapById = new Map(timeMaps.map((tm) => [tm.id, normalizeTimeMap(tm)]));
+  const parentById = tasks.reduce((map, task) => {
+    if (task.subtaskParentId) {
+      map.set(task.id, task.subtaskParentId);
+    }
+    return map;
+  }, new Map());
+  const depthMemo = new Map();
+  const getTaskDepthById = (taskId) => {
+    if (!taskId) return 0;
+    if (depthMemo.has(taskId)) return depthMemo.get(taskId);
+    const parentId = parentById.get(taskId);
+    if (!parentId) {
+      depthMemo.set(taskId, 0);
+      return 0;
+    }
+    const depth = getTaskDepthById(parentId) + 1;
+    depthMemo.set(taskId, depth);
+    return depth;
+  };
   const childrenByParent = tasks.reduce((map, task) => {
     const pid = task.subtaskParentId || "";
     if (!pid) return map;
@@ -1115,6 +1134,7 @@ function renderTasks(tasks, timeMaps) {
     const childTasks = tasks.filter((t) => t.subtaskParentId === task.id);
     const hasChildren = childTasks.length > 0;
     const isCollapsed = collapsedTasks.has(task.id);
+    const depth = getTaskDepthById(task.id);
     const baseDurationMin = Number(task.durationMin) || 0;
     const displayDurationMin = hasChildren ? computeTotalDuration(task) : baseDurationMin;
     const statusValue = task.completed ? "completed" : task.scheduleStatus || "unscheduled";
@@ -1131,7 +1151,7 @@ function renderTasks(tasks, timeMaps) {
     const subsectionName = task.subsection ? getSubsectionName(task.section, task.subsection) : "";
     const repeatSummary = getRepeatSummary(task.repeat);
     const taskCard = document.createElement("div");
-    const isSubtask = Boolean(task.subtaskParentId);
+    const isSubtask = depth > 0;
     taskCard.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow";
     taskCard.dataset.taskId = task.id;
     taskCard.dataset.sectionId = task.section || "";
@@ -1139,7 +1159,7 @@ function renderTasks(tasks, timeMaps) {
     taskCard.style.minHeight = "fit-content";
     taskCard.style.padding = "5px";
     if (isSubtask) {
-      taskCard.style.marginLeft = "12px";
+      taskCard.style.marginLeft = `${depth * 10}px`;
       taskCard.style.borderStyle = "dashed";
     }
     const color = timeMapById.get(task.timeMapIds[0])?.color;

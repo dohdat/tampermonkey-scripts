@@ -12,6 +12,7 @@ export function computeTaskReorderUpdates(
   if (!movedTask) return { updates: [], changed: false };
   const movedSubtree = getTaskAndDescendants(movedTaskId, tasks);
   const movedIds = new Set(movedSubtree.map((t) => t.id));
+  const originalById = new Map(tasks.map((task) => [task.id, task]));
   const sourceKey = getContainerKey(movedTask.section, movedTask.subsection);
   const targetKey = getContainerKey(targetSection, targetSubsection);
   const remainingSource = sortTasksByOrder(
@@ -46,10 +47,12 @@ export function computeTaskReorderUpdates(
   const assignOrders = (list, section, subsection) => {
     list.forEach((task, index) => {
       const desiredOrder = index + 1;
+      const original = originalById.get(task.id);
       if (
-        task.section !== section ||
-        (task.subsection || "") !== (subsection || "") ||
-        task.order !== desiredOrder
+        !original ||
+        (original.section || "") !== (section || "") ||
+        (original.subsection || "") !== (subsection || "") ||
+        original.order !== desiredOrder
       ) {
         updates.push({ ...task, section, subsection, order: desiredOrder });
       }

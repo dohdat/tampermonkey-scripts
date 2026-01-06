@@ -510,13 +510,16 @@ function renderSections() {
     const chip = document.createElement("div");
     chip.className =
       "flex items-center gap-1 rounded-full border border-slate-700 bg-slate-800/70 px-3 py-1 text-xs font-semibold text-slate-200";
+    chip.setAttribute("data-test-skedpal", "section-chip");
     const label = document.createElement("span");
     label.textContent = getSectionName(section.id) || section.name;
+    label.setAttribute("data-test-skedpal", "section-chip-name");
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
     removeBtn.dataset.removeSection = section.id;
     removeBtn.className =
       "h-5 w-5 rounded-full border border-slate-700 text-[10px] font-bold text-slate-300 hover:border-orange-400 hover:text-orange-300";
+    removeBtn.setAttribute("data-test-skedpal", "section-remove-btn");
     removeBtn.textContent = "×";
     if (isDefault) {
       removeBtn.classList.add("hidden");
@@ -1165,6 +1168,7 @@ function renderTasks(tasks, timeMaps) {
     const taskCard = document.createElement("div");
     const isSubtask = depth > 0;
     taskCard.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow";
+    taskCard.setAttribute("data-test-skedpal", "task-card");
     taskCard.dataset.taskId = task.id;
     taskCard.dataset.sectionId = task.section || "";
     taskCard.dataset.subsectionId = task.subsection || "";
@@ -1196,6 +1200,7 @@ function renderTasks(tasks, timeMaps) {
       collapseTaskBtn.dataset.toggleTaskCollapse = task.id;
       collapseTaskBtn.className = "title-icon-btn";
       collapseTaskBtn.title = "Expand/collapse subtasks";
+      collapseTaskBtn.setAttribute("data-test-skedpal", "task-collapse-btn");
       collapseTaskBtn.innerHTML = isCollapsed ? caretRightIconSvg : caretDownIconSvg;
       titleWrap.appendChild(collapseTaskBtn);
     }
@@ -1203,6 +1208,7 @@ function renderTasks(tasks, timeMaps) {
     completeBtn.type = "button";
     completeBtn.dataset.completeTask = task.id;
     completeBtn.className = "title-icon-btn task-complete-btn";
+    completeBtn.setAttribute("data-test-skedpal", "task-complete-btn");
     completeBtn.title = task.completed ? "Mark incomplete" : "Mark completed";
     completeBtn.innerHTML = task.completed ? checkboxCheckedIconSvg : checkboxIconSvg;
     if (task.completed) {
@@ -1211,6 +1217,7 @@ function renderTasks(tasks, timeMaps) {
     titleWrap.appendChild(completeBtn);
     const titleTextWrap = document.createElement("div");
     titleTextWrap.className = "task-title-text";
+    titleTextWrap.setAttribute("data-test-skedpal", "task-title");
     titleTextWrap.innerHTML = titleMarkup;
     titleWrap.appendChild(titleTextWrap);
     if (task.completed) {
@@ -1220,9 +1227,11 @@ function renderTasks(tasks, timeMaps) {
     }
     const durationPill = document.createElement("span");
     durationPill.className = "pill pill-muted";
+    durationPill.setAttribute("data-test-skedpal", "task-duration");
     durationPill.textContent = formatDurationShort(displayDurationMin);
     const titleActions = document.createElement("div");
     titleActions.className = "title-actions task-title-actions";
+    titleActions.setAttribute("data-test-skedpal", "task-title-actions");
     const zoomTaskBtn = document.createElement("button");
     zoomTaskBtn.type = "button";
     zoomTaskBtn.dataset.zoomTask = task.id;
@@ -1230,12 +1239,14 @@ function renderTasks(tasks, timeMaps) {
     zoomTaskBtn.dataset.zoomSubsection = task.subsection || "";
     zoomTaskBtn.className = "title-icon-btn";
     zoomTaskBtn.title = "Zoom into task";
+    zoomTaskBtn.setAttribute("data-test-skedpal", "task-zoom-btn");
     zoomTaskBtn.innerHTML = zoomInIconSvg;
     const editTaskBtn = document.createElement("button");
     editTaskBtn.type = "button";
     editTaskBtn.dataset.edit = task.id;
     editTaskBtn.className = "title-icon-btn";
     editTaskBtn.title = "Edit task";
+    editTaskBtn.setAttribute("data-test-skedpal", "task-edit-btn");
     editTaskBtn.innerHTML = editIconSvg;
     editTaskBtn.style.borderColor = "#22c55e";
     editTaskBtn.style.color = "#22c55e";
@@ -1244,6 +1255,7 @@ function renderTasks(tasks, timeMaps) {
     deleteTaskBtn.dataset.delete = task.id;
     deleteTaskBtn.className = "title-icon-btn";
     deleteTaskBtn.title = "Delete task";
+    deleteTaskBtn.setAttribute("data-test-skedpal", "task-delete-btn");
     deleteTaskBtn.innerHTML = removeIconSvg;
     deleteTaskBtn.style.borderColor = "#f97316";
     deleteTaskBtn.style.color = "#f97316";
@@ -1253,6 +1265,7 @@ function renderTasks(tasks, timeMaps) {
     addSubtaskBtn.className = "title-icon-btn";
     addSubtaskBtn.title = "Add subtask";
     addSubtaskBtn.setAttribute("aria-label", "Add subtask");
+    addSubtaskBtn.setAttribute("data-test-skedpal", "task-add-subtask-btn");
     addSubtaskBtn.innerHTML = plusIconSvg;
     const detailsToggleBtn = document.createElement("button");
     detailsToggleBtn.type = "button";
@@ -1261,6 +1274,7 @@ function renderTasks(tasks, timeMaps) {
     const detailsOpen = expandedTaskDetails.has(task.id);
     detailsToggleBtn.title = detailsOpen ? "Hide details" : "Show details";
     detailsToggleBtn.setAttribute("aria-label", detailsOpen ? "Hide details" : "Show details");
+    detailsToggleBtn.setAttribute("data-test-skedpal", "task-details-toggle");
     detailsToggleBtn.innerHTML = detailsOpen ? caretDownIconSvg : caretRightIconSvg;
     titleActions.appendChild(durationPill);
     titleActions.appendChild(zoomTaskBtn);
@@ -1854,8 +1868,8 @@ function renderZoomBanner() {
         <span>Zoomed into ${label}</span>
       </div>
       <div class="flex items-center gap-2">
-        <button id="zoom-home-btn" class="rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400">Home</button>
-        <button id="zoom-out-btn" class="rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400">Zoom out</button>
+        <button id="zoom-home-btn" class="rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400" data-test-skedpal="zoom-home-btn">Home</button>
+        <button id="zoom-out-btn" class="rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400" data-test-skedpal="zoom-out-btn">Zoom out</button>
       </div>
     </div>
   `;

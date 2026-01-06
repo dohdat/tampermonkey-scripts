@@ -2891,7 +2891,9 @@ async function handleReschedule() {
     if (!response?.ok) {
       throw new Error(response?.error || "Scheduling failed");
     }
-    scheduleStatus.textContent = `Scheduled ${response.scheduled}, unscheduled ${response.unscheduled}, ignored ${response.ignored}.`;
+    const blockInfo =
+      typeof response.placements === "number" ? ` (${response.placements} blocks)` : "";
+    scheduleStatus.textContent = `Scheduled ${response.scheduled}${blockInfo}, unscheduled ${response.unscheduled}, ignored ${response.ignored}.`;
   } catch (error) {
     scheduleStatus.textContent = `Error: ${error.message}`;
   } finally {

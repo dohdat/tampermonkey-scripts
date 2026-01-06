@@ -120,23 +120,31 @@ async function createEvents(scheduled, tasksById, timeMapsById, token) {
 }
 
 async function persistSchedule(tasks, placements, unscheduled, ignored) {
-  const placementMap = new Map();
-  placements.forEach((p) => placementMap.set(p.taskId, p));
-  const unscheduledSet = new Set([...unscheduled, ...ignored]);
+  const byTask = placements.reduce((map, placement) => {
+    if (!map.has(placement.taskId)) map.set(placement.taskId, []);
+    map.get(placement.taskId).push(placement);
+    return map;
+  }, new Map());
   const timestamp = new Date().toISOString();
   for (const task of tasks) {
-    const placement = placementMap.get(task.id);
-    if (placement) {
-      task.scheduledStart = placement.start.toISOString();
-      task.scheduledEnd = placement.end.toISOString();
-      task.scheduledTimeMapId = placement.timeMapId;
-      task.scheduleStatus = "scheduled";
-    } else {
-      task.scheduledStart = null;
-      task.scheduledEnd = null;
-      task.scheduledTimeMapId = null;
-      task.scheduleStatus = ignored.includes(task.id) ? "ignored" : "unscheduled";
-    }
+    const taskPlacements = (byTask.get(task.id) || []).sort(
+      (a, b) => a.start.getTime() - b.start.getTime()
+    );
+    task.scheduledInstances = taskPlacements.map((p) => ({
+      start: p.start.toISOString(),
+      end: p.end.toISOString(),
+      timeMapId: p.timeMapId,
+      occurrenceId: p.occurrenceId || null
+    }));
+    task.scheduledStart = taskPlacements[0]?.start?.toISOString() || null;
+    task.scheduledEnd = taskPlacements[taskPlacements.length - 1]?.end?.toISOString() || null;
+    task.scheduledTimeMapId = taskPlacements[0]?.timeMapId || null;
+    task.scheduleStatus =
+      ignored.includes(task.id) && taskPlacements.length === 0
+        ? "ignored"
+        : taskPlacements.length > 0
+          ? "scheduled"
+          : "unscheduled";
     task.lastScheduledRun = timestamp;
     await saveTask(task);
   }
@@ -176,7 +184,14 @@ async function runReschedule() {
 
   await persistSchedule(tasks, scheduled, unscheduled, ignored);
 
-  return { scheduled: scheduled.length, unscheduled: unscheduled.length, ignored: ignored.length };
+  const scheduledTaskCount = new Set(scheduled.map((p) => p.taskId)).size;
+
+  return {
+    scheduled: scheduledTaskCount,
+    unscheduled: unscheduled.length,
+    ignored: ignored.length,
+    placements: scheduled.length
+  };
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {

@@ -30,17 +30,6 @@ export function renderTaskCard(task, context) {
   const depth = getTaskDepthById(task.id);
   const baseDurationMin = Number(task.durationMin) || 0;
   const displayDurationMin = hasChildren ? computeTotalDuration(task) : baseDurationMin;
-  const statusValue = task.completed
-    ? "completed"
-    : task.scheduleStatus || (hasChildren ? "" : "unscheduled");
-  const statusClass =
-    statusValue === "scheduled"
-      ? "text-lime-300 font-semibold"
-      : statusValue === "ignored"
-        ? "text-slate-400 font-semibold"
-        : statusValue === "completed"
-          ? "text-lime-300 font-semibold"
-          : "text-amber-300 font-semibold";
   const timeMapNames = task.timeMapIds.map((id) => timeMapById.get(id)?.name || "Unknown");
   const sectionName = task.section ? getSectionName(task.section) : "";
   const subsectionName = task.subsection ? getSubsectionName(task.section, task.subsection) : "";
@@ -108,6 +97,9 @@ export function renderTaskCard(task, context) {
   }
   const actionsWrap = document.createElement("div");
   actionsWrap.className = "task-actions-wrap";
+  actionsWrap.style.flex = "1";
+  actionsWrap.style.flexWrap = "wrap";
+  actionsWrap.style.justifyContent = "flex-start";
   const durationPill = document.createElement("span");
   durationPill.className = "pill pill-muted";
   durationPill.setAttribute("data-test-skedpal", "task-duration");
@@ -160,31 +152,33 @@ export function renderTaskCard(task, context) {
   detailsToggleBtn.setAttribute("aria-label", detailsOpen ? "Hide details" : "Show details");
   detailsToggleBtn.setAttribute("data-test-skedpal", "task-details-toggle");
   detailsToggleBtn.innerHTML = detailsOpen ? caretDownIconSvg : caretRightIconSvg;
-  actionsWrap.appendChild(durationPill);
   titleActions.appendChild(zoomTaskBtn);
   titleActions.appendChild(editTaskBtn);
   titleActions.appendChild(addSubtaskBtn);
   titleActions.appendChild(detailsToggleBtn);
   titleActions.appendChild(deleteTaskBtn);
+  const summaryRow = document.createElement("div");
+  summaryRow.className = `task-summary-row${isLongTitle ? " task-summary-row--stacked" : ""}`;
+  summaryRow.setAttribute("data-test-skedpal", "task-summary-row");
+  summaryRow.style.marginTop = "0";
+  summaryRow.style.marginLeft = "auto";
+  if (task.scheduledStart) {
+    const scheduledDate = new Date(task.scheduledStart);
+    if (!Number.isNaN(scheduledDate)) {
+      summaryRow.textContent = scheduledDate.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit"
+      });
+    }
+  }
+  actionsWrap.appendChild(durationPill);
   actionsWrap.appendChild(titleActions);
+  if (summaryRow.textContent) {
+    actionsWrap.appendChild(summaryRow);
+  }
   header.appendChild(titleWrap);
   header.appendChild(actionsWrap);
   taskCard.appendChild(header);
-
-  const summaryRow = document.createElement("div");
-  summaryRow.className = `task-summary-row${isLongTitle ? " task-summary-row--stacked" : ""}`;
-  if (statusValue !== "unscheduled" && statusValue) {
-    const statusSpan = document.createElement("span");
-    statusSpan.className = statusClass;
-    statusSpan.textContent = statusValue;
-    summaryRow.appendChild(statusSpan);
-  }
-  if (task.scheduledStart) {
-    const schedSpan = document.createElement("span");
-    schedSpan.textContent = `Scheduled: ${formatDateTime(task.scheduledStart)}`;
-    summaryRow.appendChild(schedSpan);
-  }
-  taskCard.appendChild(summaryRow);
 
   if (detailsOpen) {
     const meta = document.createElement("div");

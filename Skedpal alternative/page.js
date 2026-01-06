@@ -95,6 +95,8 @@ const {
   repeatModal,
   repeatModalCloseBtns,
   repeatModalSaveBtn,
+  sidebarFavToggle,
+  sidebarFavorites,
   subsectionFormWrap,
   subsectionForm,
   subsectionSectionIdInput,
@@ -1551,6 +1553,7 @@ async function handleAddSection() {
   settingsCache = { ...settingsCache, sections: updated, subsections };
   await saveSettings(settingsCache);
   renderSections();
+  renderFavoriteShortcuts();
   renderTaskSectionOptions(newSection.id);
   sectionInput.value = "";
   closeSectionForm();
@@ -1579,6 +1582,7 @@ async function handleRemoveSection(id) {
     await Promise.all(updates);
   }
   renderSections();
+  renderFavoriteShortcuts();
   renderTaskSectionOptions();
   await loadTasks();
 }
@@ -1684,6 +1688,7 @@ async function handleRemoveSubsection(sectionId, subsectionId) {
     await Promise.all(updates);
   }
   renderTaskSectionOptions(sectionId);
+  renderFavoriteShortcuts();
   await loadTasks();
 }
 
@@ -1695,6 +1700,7 @@ async function handleToggleSectionFavorite(sectionId) {
   settingsCache = { ...settingsCache, sections: updatedSections };
   await saveSettings(settingsCache);
   renderSections();
+  renderFavoriteShortcuts();
   await loadTasks();
 }
 
@@ -1709,6 +1715,7 @@ async function handleToggleSubsectionFavorite(sectionId, subsectionId) {
   settingsCache = { ...settingsCache, subsections };
   await saveSettings(settingsCache);
   renderTaskSectionOptions(sectionId);
+  renderFavoriteShortcuts();
   await loadTasks();
 }
 
@@ -1888,6 +1895,63 @@ function renderBreadcrumb() {
     wrapper.appendChild(btn);
   });
   navBreadcrumb.appendChild(wrapper);
+}
+
+function renderFavoriteShortcuts() {
+  if (!sidebarFavorites) return;
+  const wasHidden = sidebarFavorites.classList.contains("hidden");
+  sidebarFavorites.innerHTML = "";
+  const sections = (settingsCache.sections || []).filter((s) => s.favorite);
+  const subsectionMap = settingsCache.subsections || {};
+  const subsectionEntries = Object.entries(subsectionMap).flatMap(([sectionId, list]) =>
+    (list || []).filter((s) => s.favorite).map((s) => ({ ...s, sectionId }))
+  );
+  const items = [
+    ...sections.map((s) => ({
+      type: "section",
+      label: s.name || "Untitled section",
+      sectionId: s.id
+    })),
+    ...subsectionEntries.map((sub) => ({
+      type: "subsection",
+      label: sub.name || "Untitled subsection",
+      sectionId: sub.sectionId || "",
+      subsectionId: sub.id,
+      detail: getSectionName(sub.sectionId) || "No section"
+    }))
+  ].sort((a, b) => a.label.localeCompare(b.label));
+
+  if (!items.length) {
+    const empty = document.createElement("li");
+    empty.className = "sidebar-fav-empty";
+    empty.textContent = "No favorites yet";
+    sidebarFavorites.appendChild(empty);
+    return;
+  }
+
+  items.forEach((item) => {
+    const li = document.createElement("li");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "sidebar-fav-item";
+    btn.dataset.favJump = "true";
+    btn.dataset.favType = item.type;
+    btn.dataset.sectionId = item.sectionId || "";
+    if (item.subsectionId) btn.dataset.subsectionId = item.subsectionId;
+    btn.innerHTML = `
+      <span class="sidebar-fav-dot" aria-hidden="true"></span>
+      <span class="sidebar-fav-text">
+        <span class="sidebar-fav-label">${item.label}</span>
+        ${item.detail ? `<span class="sidebar-fav-detail">${item.detail}</span>` : ""}
+      </span>
+    `;
+    li.appendChild(btn);
+    sidebarFavorites.appendChild(li);
+  });
+
+  if (!wasHidden && sidebarFavorites.classList.contains("hidden")) {
+    sidebarFavorites.classList.remove("hidden");
+  }
 }
 
 function handleNavigationShortcuts(event) {
@@ -2923,6 +2987,7 @@ async function hydrate() {
   await initSettings(normalizedSettings);
   await ensureDefaultSectionsPresent();
   renderSections();
+  renderFavoriteShortcuts();
   const timeMaps = timeMapsRaw.map(normalizeTimeMap);
   tasksTimeMapsCache = timeMaps;
   tasksCache = tasks;
@@ -2970,6 +3035,44 @@ navButtons.forEach((btn) => {
   btn.addEventListener("click", () => switchView(btn.dataset.view));
 });
 settingsToggleBtn?.addEventListener("click", () => switchView("settings"));
+
+sidebarFavorites?.addEventListener("click", (event) => {
+  const btn = event.target.closest("[data-fav-jump]");
+  if (!btn) return;
+  const type = btn.dataset.favType;
+  const sectionId = btn.dataset.sectionId || "";
+  const subsectionId = btn.dataset.subsectionId || "";
+  switchView("tasks");
+  if (type === "subsection") {
+    setZoomFilter({ type: "subsection", sectionId, subsectionId });
+  } else {
+    setZoomFilter({ type: "section", sectionId });
+  }
+});
+
+function toggleFavoritesAccordion(forceOpen) {
+  if (!sidebarFavorites || !sidebarFavToggle) return;
+  const favContainer = sidebarFavToggle.closest("[data-fav-accordion]");
+  const shouldOpen =
+    typeof forceOpen === "boolean" ? forceOpen : sidebarFavorites.classList.contains("hidden");
+  sidebarFavorites.classList.toggle("hidden", !shouldOpen);
+  favContainer?.classList.toggle("hidden", false);
+  favContainer?.classList.toggle("is-open", shouldOpen);
+  sidebarFavToggle.classList.toggle("is-open", shouldOpen);
+  sidebarFavToggle.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+}
+
+sidebarFavToggle?.addEventListener("click", (event) => {
+  event.preventDefault();
+  toggleFavoritesAccordion();
+});
+
+document.addEventListener("click", (event) => {
+  const toggle = event.target.closest("[data-fav-toggle]");
+  if (!toggle) return;
+  event.preventDefault();
+  toggleFavoritesAccordion();
+});
 
 function initViewFromUrl() {
   const initialView = parseViewFromUrl("tasks");
@@ -3302,5 +3405,6 @@ window.addEventListener("keydown", handleNavigationShortcuts);
 window.addEventListener("auxclick", handleNavigationMouseButtons);
 
 initViewFromUrl();
+toggleFavoritesAccordion(false);
 hydrate();
 enableDeadlinePicker();

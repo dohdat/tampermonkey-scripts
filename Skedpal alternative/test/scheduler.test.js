@@ -204,4 +204,74 @@ describe("scheduler", () => {
     assert.ok(result.unscheduled.includes("no-map"));
     assert.ok(result.ignored.includes("ended-repeat"));
   });
+
+  it("normalizes duration/min block and uses full window", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 2);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "09:30" }] }
+    ];
+    const tasks = [
+      {
+        id: "t-short",
+        title: "Short",
+        durationMin: 0,
+        minBlockMin: 5,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59)
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 1,
+      now
+    });
+
+    assert.strictEqual(result.scheduled.length, 1);
+    const slot = result.scheduled[0];
+    const durationMin = (slot.end - slot.start) / (60 * 1000);
+    assert.strictEqual(durationMin, 15);
+  });
+
+  it("orders by priority when deadlines match", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 3);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "10:00" }] }
+    ];
+    const deadline = shiftDate(now, 0, 23, 59);
+    const tasks = [
+      {
+        id: "low",
+        title: "Low",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        priority: 1,
+        deadline
+      },
+      {
+        id: "high",
+        title: "High",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        priority: 5,
+        deadline
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 1,
+      now
+    });
+
+    assert.strictEqual(result.scheduled.length, 1);
+    assert.strictEqual(result.scheduled[0].taskId, "high");
+    assert.ok(result.unscheduled.includes("low"));
+  });
 });

@@ -134,6 +134,29 @@ const collapsedTasks = new Set();
 const expandedTaskDetails = new Set();
 let notificationHideTimeout = null;
 let notificationUndoHandler = null;
+let navStack = [];
+let navIndex = -1;
+
+function isTypingTarget(target) {
+  if (!target) return false;
+  const tag = target.tagName;
+  if (!tag) return false;
+  const name = tag.toLowerCase();
+  return (
+    target.isContentEditable ||
+    name === "input" ||
+    name === "textarea" ||
+    name === "select" ||
+    name === "option"
+  );
+}
+
+function pushNavigation(filter) {
+  navStack = navStack.slice(0, navIndex + 1);
+  const snapshot = filter ? { ...filter } : null;
+  navStack.push(snapshot);
+  navIndex = navStack.length - 1;
+}
 
 function hideNotificationBanner() {
   if (notificationHideTimeout) {
@@ -1712,18 +1735,22 @@ function getZoomLabel() {
   return "";
 }
 
-function setZoomFilter(filter) {
+function setZoomFilter(filter, options = {}) {
+  const { record = true } = options;
   zoomFilter = filter;
   updateUrlWithZoom(filter);
   renderTasks(tasksCache, tasksTimeMapsCache);
   renderBreadcrumb();
+  if (record) pushNavigation(filter);
 }
 
-function clearZoomFilter() {
+function clearZoomFilter(options = {}) {
+  const { record = true } = options;
   zoomFilter = null;
   updateUrlWithZoom(null);
   renderTasks(tasksCache, tasksTimeMapsCache);
   renderBreadcrumb();
+  if (record) pushNavigation(null);
 }
 
 function goHome() {
@@ -1731,26 +1758,51 @@ function goHome() {
   switchView("tasks");
 }
 
+function applyNavEntry(entry) {
+  if (!entry) {
+    clearZoomFilter({ record: false });
+    return;
+  }
+  setZoomFilter(entry, { record: false });
+}
+
+function goBackInNavigation() {
+  if (navIndex <= 0) return false;
+  navIndex -= 1;
+  applyNavEntry(navStack[navIndex]);
+  return true;
+}
+
+function goForwardInNavigation() {
+  if (navIndex < 0 || navIndex >= navStack.length - 1) return false;
+  navIndex += 1;
+  applyNavEntry(navStack[navIndex]);
+  return true;
+}
+
 function zoomOutOneLevel() {
   if (!zoomFilter) return;
   if (zoomFilter.type === "task") {
     if (zoomFilter.subsectionId) {
-      setZoomFilter({
-        type: "subsection",
-        sectionId: zoomFilter.sectionId || "",
-        subsectionId: zoomFilter.subsectionId
-      });
+      setZoomFilter(
+        {
+          type: "subsection",
+          sectionId: zoomFilter.sectionId || "",
+          subsectionId: zoomFilter.subsectionId
+        },
+        { record: true }
+      );
       return;
     }
     if (zoomFilter.sectionId !== undefined) {
-      setZoomFilter({ type: "section", sectionId: zoomFilter.sectionId || "" });
+      setZoomFilter({ type: "section", sectionId: zoomFilter.sectionId || "" }, { record: true });
       return;
     }
     clearZoomFilter();
     return;
   }
   if (zoomFilter.type === "subsection") {
-    setZoomFilter({ type: "section", sectionId: zoomFilter.sectionId || "" });
+    setZoomFilter({ type: "section", sectionId: zoomFilter.sectionId || "" }, { record: true });
     return;
   }
   if (zoomFilter.type === "section") {
@@ -1840,6 +1892,29 @@ function renderBreadcrumb() {
     wrapper.appendChild(btn);
   });
   navBreadcrumb.appendChild(wrapper);
+}
+
+function handleNavigationShortcuts(event) {
+  if (isTypingTarget(event.target)) return;
+  const key = event.key;
+  const isBack = key === "BrowserBack";
+  const isForward = key === "BrowserForward";
+  if (!isBack && !isForward) return;
+  if (isBack) {
+    if (goBackInNavigation()) event.preventDefault();
+  } else if (isForward) {
+    if (goForwardInNavigation()) event.preventDefault();
+  }
+}
+
+function handleNavigationMouseButtons(event) {
+  if (isTypingTarget(event.target)) return;
+  // 3: Back button, 4: Forward button (common for mouse side buttons)
+  if (event.button === 3) {
+    if (goBackInNavigation()) event.preventDefault();
+  } else if (event.button === 4) {
+    if (goForwardInNavigation()) event.preventDefault();
+  }
 }
 
 let sortableInstances = [];
@@ -2862,6 +2937,7 @@ async function hydrate() {
   } else {
     renderTasks(tasksCache, timeMaps);
     renderBreadcrumb();
+    pushNavigation(null);
   }
   await updateScheduleSummary();
 }
@@ -3218,6 +3294,8 @@ document.addEventListener("keydown", (event) => {
     closeTaskForm();
   }
 });
+window.addEventListener("keydown", handleNavigationShortcuts);
+window.addEventListener("auxclick", handleNavigationMouseButtons);
 
 hydrate();
 enableDeadlinePicker();

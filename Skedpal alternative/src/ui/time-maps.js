@@ -1,7 +1,7 @@
-import { getAllTimeMaps, saveSettings, saveTimeMap, deleteTimeMap } from "./db.js";
+import { getAllTimeMaps, saveSettings, saveTimeMap, deleteTimeMap } from "../data/db.js";
 import { dayOptions, domRefs } from "./constants.js";
 import { normalizeTimeMap, uuid } from "./utils.js";
-import { state } from "./page-state.js";
+import { state } from "./state/page-state.js";
 
 const {
   timeMapList,
@@ -300,7 +300,7 @@ export async function handleSetDefaultTimeMap(event) {
   await saveTimeMap(timeMap);
   state.settingsCache = { ...state.settingsCache, defaultTimeMapId: timeMap.id };
   await saveSettings(state.settingsCache);
-  const { loadTasks } = await import("./tasks-actions.js");
+  const { loadTasks } = await import("./tasks/tasks-actions.js");
   await Promise.all([loadTimeMaps(), loadTasks()]);
 }
 
@@ -339,7 +339,7 @@ export async function handleTimeMapListClick(event, timeMaps) {
     }
   } else if (deleteId) {
     deleteTimeMap(deleteId).then(async () => {
-      const { loadTasks } = await import("./tasks-actions.js");
+      const { loadTasks } = await import("./tasks/tasks-actions.js");
       await Promise.all([loadTimeMaps(), loadTasks()]);
     });
   }

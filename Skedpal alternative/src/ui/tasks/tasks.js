@@ -1,5 +1,5 @@
-import { DEFAULT_SETTINGS, saveTask } from "./db.js";
-import { getContainerKey, getTaskAndDescendants, sortTasksByOrder, uuid } from "./utils.js";
+import { DEFAULT_SETTINGS, saveTask } from "../../data/db.js";
+import { getContainerKey, getTaskAndDescendants, sortTasksByOrder, uuid } from "../utils.js";
 
 export function computeTaskReorderUpdates(
   tasks,
@@ -272,6 +272,6 @@ export async function migrateSectionsAndTasks(tasks, settings) {
 }
 
 async function saveTaskSettings(settings) {
-  const { saveSettings } = await import("./db.js");
+  const { saveSettings } = await import("../../data/db.js");
   await saveSettings(settings);
 }

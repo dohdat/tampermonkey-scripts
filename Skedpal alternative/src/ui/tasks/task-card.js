@@ -9,9 +9,9 @@ import {
   removeIconSvg,
   subtaskIconSvg,
   zoomInIconSvg
-} from "./constants.js";
-import { formatDateTime, formatDurationShort } from "./utils.js";
-import { getRepeatSummary } from "./repeat.js";
+} from "../constants.js";
+import { formatDateTime, formatDurationShort } from "../utils.js";
+import { getRepeatSummary } from "../repeat.js";
 
 export function renderTaskCard(task, context) {
   const {

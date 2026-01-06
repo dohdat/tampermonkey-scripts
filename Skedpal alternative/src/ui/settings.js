@@ -1,6 +1,6 @@
-import { getSettings, saveSettings, DEFAULT_SETTINGS } from "./db.js";
+import { getSettings, saveSettings, DEFAULT_SETTINGS } from "../data/db.js";
 import { domRefs } from "./constants.js";
-import { state } from "./page-state.js";
+import { state } from "./state/page-state.js";
 
 const { horizonInput } = domRefs;
 

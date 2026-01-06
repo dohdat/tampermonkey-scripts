@@ -1,21 +1,21 @@
-import Sortable from "./sortable.esm.js";
-import { domRefs } from "./constants.js";
+import Sortable from "../../../vendor/sortable.esm.js";
+import { domRefs } from "../constants.js";
 import {
   TASK_PLACEHOLDER_CLASS,
   TASK_SORTABLE_STYLE_ID,
   TASK_SORT_GROUP,
   TASK_ZONE_CLASS,
   sortableHighlightClasses
-} from "./constants.js";
+} from "../constants.js";
 import {
   getContainerKey,
   getNextSubtaskOrder,
   getTaskAndDescendants,
   getTaskDepth,
   sortTasksByOrder
-} from "./utils.js";
-import { state } from "./page-state.js";
-import { saveTask } from "./db.js";
+} from "../utils.js";
+import { state } from "../state/page-state.js";
+import { saveTask } from "../../data/db.js";
 import { computeTaskReorderUpdates } from "./tasks.js";
 const { taskList } = domRefs;
 

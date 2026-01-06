@@ -3,8 +3,8 @@ import {
   getAllTimeMaps,
   getSettings,
   saveTask
-} from "./db.js";
-import { scheduleTasks } from "./scheduler.js";
+} from "../data/db.js";
+import { scheduleTasks } from "../core/scheduler.js";
 
 const SOURCE_KEY = "personal-skedpal";
 

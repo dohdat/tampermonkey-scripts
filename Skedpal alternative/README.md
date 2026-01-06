@@ -8,7 +8,7 @@ Manual, deterministic task scheduler that mirrors SkedPal rules and writes to Go
 - Scheduler horizon defaults to 14 days; tasks beyond the horizon are ignored.
 - Runs on demand: deletes previously scheduled task events, pulls FreeBusy, and fills the earliest valid free blocks (deadline asc, priority desc).
 - IndexedDB persistence (tasks, timemaps, settings); dark-mode UI with Tasks, TimeMaps, Schedule pages.
-- Tailwind styling compiled locally to `tailwind.css` (no CDN at runtime).
+- Tailwind styling compiled locally to `styles/tailwind.css` (no CDN at runtime).
 
 ### Setup
 1) In `manifest.json`, replace `REPLACE_WITH_OAUTH_CLIENT_ID.apps.googleusercontent.com` with a real OAuth client ID configured for Chrome extensions.
@@ -18,7 +18,7 @@ Manual, deterministic task scheduler that mirrors SkedPal rules and writes to Go
 3) Load the extension unpacked in Chrome:
    - `chrome://extensions` -> enable Developer Mode -> Load unpacked -> select the `Skedpal alternative` folder.
 4) If you change the UI markup and need to rebuild Tailwind, run inside the folder:
-   - `npx tailwindcss@latest -i tailwind.input.css -o tailwind.css --content index.html,page.js --minify`
+   - `npx tailwindcss@latest -i styles/tailwind.input.css -o styles/tailwind.css --content pages/index.html,src/ui/page.js --minify`
 
 ### Usage
 - Click the extension icon to open the scheduling UI (options page) in a tab, or open it via the extension’s Options.

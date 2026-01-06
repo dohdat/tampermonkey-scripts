@@ -1,7 +1,7 @@
 import { domRefs, homeIconSvg } from "./constants.js";
-import { state } from "./page-state.js";
+import { state } from "./state/page-state.js";
 import { updateUrlWithView, updateUrlWithZoom } from "./utils.js";
-import { renderTasks } from "./tasks-render.js";
+import { renderTasks } from "./tasks/tasks-render.js";
 import { getSectionName, getSubsectionsFor } from "./sections.js";
 import { isTypingTarget } from "./notifications.js";
 

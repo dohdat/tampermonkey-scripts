@@ -1,5 +1,5 @@
 import { domRefs } from "./constants.js";
-import { state } from "./page-state.js";
+import { state } from "./state/page-state.js";
 
 const { notificationBanner, notificationMessage, notificationUndoButton } = domRefs;
 

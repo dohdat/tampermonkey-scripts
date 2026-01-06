@@ -1,7 +1,7 @@
-import { getAllTasks, saveSettings, saveTask } from "./db.js";
+import { getAllTasks, saveSettings, saveTask } from "../data/db.js";
 import { domRefs } from "./constants.js";
 import { uuid } from "./utils.js";
-import { state } from "./page-state.js";
+import { state } from "./state/page-state.js";
 import { repeatStore, setRepeatFromSelection, syncSubsectionRepeatLabel } from "./repeat.js";
 import { renderTimeMapOptions, collectSelectedValues } from "./time-maps.js";
 
@@ -260,7 +260,7 @@ export async function handleAddSection() {
   renderTaskSectionOptions(newSection.id);
   sectionInput.value = "";
   closeSectionForm();
-  const { loadTasks } = await import("./tasks-actions.js");
+  const { loadTasks } = await import("./tasks/tasks-actions.js");
   await loadTasks();
 }
 
@@ -288,7 +288,7 @@ export async function handleRemoveSection(id) {
   renderSections();
   renderFavoriteShortcuts();
   renderTaskSectionOptions();
-  const { loadTasks } = await import("./tasks-actions.js");
+  const { loadTasks } = await import("./tasks/tasks-actions.js");
   await loadTasks();
 }
 
@@ -331,7 +331,7 @@ export async function handleAddSubsection(sectionId, value, parentSubsectionId =
   state.settingsCache = { ...state.settingsCache, subsections };
   await saveSettings(state.settingsCache);
   renderTaskSectionOptions(sectionId);
-  const { loadTasks } = await import("./tasks-actions.js");
+  const { loadTasks } = await import("./tasks/tasks-actions.js");
   await loadTasks();
   return entry;
 }
@@ -350,7 +350,7 @@ export async function handleRenameSection(sectionId) {
   await saveSettings(state.settingsCache);
   renderSections();
   renderTaskSectionOptions(sectionId);
-  const { loadTasks } = await import("./tasks-actions.js");
+  const { loadTasks } = await import("./tasks/tasks-actions.js");
   await loadTasks();
 }
 
@@ -370,7 +370,7 @@ export async function handleRenameSubsection(sectionId, subsectionId) {
   state.settingsCache = { ...state.settingsCache, subsections };
   await saveSettings(state.settingsCache);
   renderTaskSectionOptions(sectionId);
-  const { loadTasks } = await import("./tasks-actions.js");
+  const { loadTasks } = await import("./tasks/tasks-actions.js");
   await loadTasks();
 }
 
@@ -397,7 +397,7 @@ export async function handleRemoveSubsection(sectionId, subsectionId) {
   }
   renderTaskSectionOptions(sectionId);
   renderFavoriteShortcuts();
-  const { loadTasks } = await import("./tasks-actions.js");
+  const { loadTasks } = await import("./tasks/tasks-actions.js");
   await loadTasks();
 }
 
@@ -410,7 +410,7 @@ export async function handleToggleSectionFavorite(sectionId) {
   await saveSettings(state.settingsCache);
   renderSections();
   renderFavoriteShortcuts();
-  const { loadTasks } = await import("./tasks-actions.js");
+  const { loadTasks } = await import("./tasks/tasks-actions.js");
   await loadTasks();
 }
 
@@ -426,7 +426,7 @@ export async function handleToggleSubsectionFavorite(sectionId, subsectionId) {
   await saveSettings(state.settingsCache);
   renderTaskSectionOptions(sectionId);
   renderFavoriteShortcuts();
-  const { loadTasks } = await import("./tasks-actions.js");
+  const { loadTasks } = await import("./tasks/tasks-actions.js");
   await loadTasks();
 }
 
@@ -538,7 +538,7 @@ export async function handleSubsectionFormSubmit() {
       await saveSettings(state.settingsCache);
       renderTaskSectionOptions(sectionId);
       renderFavoriteShortcuts();
-      const { loadTasks } = await import("./tasks-actions.js");
+      const { loadTasks } = await import("./tasks/tasks-actions.js");
       await loadTasks();
     }
   } else {
@@ -546,3 +546,4 @@ export async function handleSubsectionFormSubmit() {
   }
   closeSubsectionModal();
 }
+

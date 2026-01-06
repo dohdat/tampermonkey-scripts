@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS } from "./db.js";
+import { DEFAULT_SETTINGS } from "../../data/db.js";
 
 export const state = {
   settingsCache: { ...DEFAULT_SETTINGS },

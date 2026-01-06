@@ -21,7 +21,7 @@ import {
   handleReschedule,
   updateScheduleSummary,
   startTaskInSection
-} from "./tasks-actions.js";
+} from "./tasks/tasks-actions.js";
 import {
   renderTaskSubsectionOptions,
   openSectionForm,
@@ -43,8 +43,8 @@ import {
 } from "./navigation.js";
 import { parseZoomFromUrl, parseViewFromUrl } from "./utils.js";
 import { closeTaskForm } from "./ui.js";
-import { indentTaskUnderPrevious, outdentTask } from "./tasks-sortable.js";
-import { state } from "./page-state.js";
+import { indentTaskUnderPrevious, outdentTask } from "./tasks/tasks-sortable.js";
+import { state } from "./state/page-state.js";
 
 const {
   timeMapDayRows,

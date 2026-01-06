@@ -8,11 +8,11 @@ import {
   zoomInIconSvg,
   removeIconSvg,
   domRefs
-} from "./constants.js";
+} from "../constants.js";
 import { renderTaskCard } from "./task-card.js";
-import { sortTasksByOrder, normalizeTimeMap } from "./utils.js";
-import { state } from "./page-state.js";
-import { getSubsectionsFor, getSectionName } from "./sections.js";
+import { sortTasksByOrder, normalizeTimeMap } from "../utils.js";
+import { state } from "../state/page-state.js";
+import { getSubsectionsFor, getSectionName } from "../sections.js";
 import { destroyTaskSortables, setupTaskSortables } from "./tasks-sortable.js";
 const { taskList } = domRefs;
 

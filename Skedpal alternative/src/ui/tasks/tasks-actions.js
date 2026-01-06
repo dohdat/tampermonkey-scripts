@@ -1,5 +1,5 @@
-import { getAllTasks, getAllTimeMaps, saveTask, deleteTask } from "./db.js";
-import { domRefs } from "./constants.js";
+import { getAllTasks, getAllTimeMaps, saveTask, deleteTask } from "../../data/db.js";
+import { domRefs } from "../constants.js";
 import {
   getNextOrder,
   getNextSubtaskOrder,
@@ -7,8 +7,8 @@ import {
   getTaskAndDescendants,
   normalizeTimeMap,
   uuid
-} from "./utils.js";
-import { state } from "./page-state.js";
+} from "../utils.js";
+import { state } from "../state/page-state.js";
 import {
   ensureDefaultSectionsPresent,
   renderSections,
@@ -22,17 +22,17 @@ import {
   handleToggleSectionFavorite,
   handleToggleSubsectionFavorite,
   renderFavoriteShortcuts
-} from "./sections.js";
-import { renderTaskTimeMapOptions, collectSelectedValues } from "./time-maps.js";
+} from "../sections.js";
+import { renderTaskTimeMapOptions, collectSelectedValues } from "../time-maps.js";
 import { renderTasks } from "./tasks-render.js";
 import { ensureTaskIds, migrateSectionsAndTasks } from "./tasks.js";
-import { renderBreadcrumb, setZoomFilter, switchView } from "./navigation.js";
-import { showUndoBanner } from "./notifications.js";
+import { renderBreadcrumb, setZoomFilter, switchView } from "../navigation.js";
+import { showUndoBanner } from "../notifications.js";
 import {
   repeatStore,
   setRepeatFromSelection,
   buildRepeatFromState
-} from "./repeat.js";
+} from "../repeat.js";
 
 const {
   taskTimeMapOptions,
@@ -49,7 +49,7 @@ const {
   rescheduleButtons,
   scheduleSummary
 } = domRefs;
-import { openTaskForm, closeTaskForm } from "./ui.js";
+import { openTaskForm, closeTaskForm } from "../ui.js";
 
 export async function loadTasks() {
   const [tasksRaw, timeMapsRaw] = await Promise.all([getAllTasks(), getAllTimeMaps()]);

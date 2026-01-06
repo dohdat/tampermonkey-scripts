@@ -993,6 +993,25 @@ function getNextSubtaskOrder(parentTask, section, subsection, tasks = tasksCache
   return baseOrder + SUBTASK_ORDER_OFFSET;
 }
 
+function getTaskDepth(taskId, tasks = tasksCache) {
+  if (!taskId) return 0;
+  const byId = new Map((tasks || []).map((t) => [t.id, t]));
+  const memo = new Map();
+  const compute = (id) => {
+    if (!id) return 0;
+    if (memo.has(id)) return memo.get(id);
+    const task = byId.get(id);
+    if (!task?.subtaskParentId) {
+      memo.set(id, 0);
+      return 0;
+    }
+    const depth = compute(task.subtaskParentId) + 1;
+    memo.set(id, depth);
+    return depth;
+  };
+  return compute(taskId);
+}
+
 function getTaskAndDescendants(taskId, tasks = tasksCache) {
   if (!taskId) return [];
   const byParent = tasks.reduce((map, task) => {
@@ -2156,7 +2175,20 @@ function computeTaskReorderUpdates(tasks, movedTaskId, targetSection, targetSubs
 async function indentTaskUnderPrevious(card) {
   if (!card) return;
   const childId = card.dataset.taskId;
-  const parentId = findPreviousTaskId(card);
+  const childDepth = getTaskDepth(childId, tasksCache);
+  let parentId = "";
+  let prev = card.previousElementSibling;
+  while (prev) {
+    const pid = prev.dataset?.taskId;
+    if (pid) {
+      const prevDepth = getTaskDepth(pid, tasksCache);
+      if (prevDepth <= childDepth) {
+        parentId = pid;
+        break;
+      }
+    }
+    prev = prev.previousElementSibling;
+  }
   if (!childId || !parentId) return;
   const childTask = tasksCache.find((t) => t.id === childId);
   const parentTask = tasksCache.find((t) => t.id === parentId);

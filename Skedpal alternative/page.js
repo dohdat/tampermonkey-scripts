@@ -2029,17 +2029,40 @@ async function handleTaskSortEnd(evt) {
   const targetSection = (targetZone.dataset.dropSection || "").trim();
   const targetSubsection = (targetZone.dataset.dropSubsection || "").trim();
   const dropBeforeId = getDropBeforeId(evt.item);
-  const { updates, changed } = computeTaskReorderUpdates(
+  const prevTaskId = findPreviousTaskId(evt.item);
+  const movedTask = tasksCache.find((t) => t.id === movedTaskId);
+  const prevTask = prevTaskId ? tasksCache.find((t) => t.id === prevTaskId) : null;
+  const parentTask = movedTask?.subtaskParentId
+    ? tasksCache.find((t) => t.id === movedTask.subtaskParentId)
+    : null;
+  const targetKey = getContainerKey(targetSection, targetSubsection);
+  const parentKey = parentTask ? getContainerKey(parentTask.section, parentTask.subsection) : "";
+  const sameContainerAsParent = Boolean(parentTask && targetKey === parentKey);
+  const keepParent =
+    sameContainerAsParent &&
+    prevTask &&
+    (prevTask.id === movedTask?.subtaskParentId ||
+      prevTask.subtaskParentId === movedTask?.subtaskParentId);
+  const desiredParentId = keepParent ? movedTask?.subtaskParentId || null : null;
+  const reorderResult = computeTaskReorderUpdates(
     tasksCache,
     movedTaskId,
     targetSection,
     targetSubsection,
     dropBeforeId
   );
-  if (!changed) {
-    await loadTasks();
-    return;
+  const updates = reorderResult.updates || [];
+  const existingIndex = updates.findIndex((u) => u.id === movedTaskId);
+  if (movedTask && desiredParentId !== movedTask.subtaskParentId) {
+    const base = existingIndex >= 0 ? updates[existingIndex] : movedTask;
+    const updated = { ...base, subtaskParentId: desiredParentId };
+    if (existingIndex >= 0) {
+      updates[existingIndex] = updated;
+    } else {
+      updates.push(updated);
+    }
   }
+  const changed = updates.length > 0 || reorderResult.changed;
   await Promise.all(updates.map((t) => saveTask(t)));
   await loadTasks();
 }

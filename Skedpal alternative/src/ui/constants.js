@@ -33,6 +33,7 @@ export const domRefs = {
   views: [...document.querySelectorAll(".view")],
   navButtons: [...document.querySelectorAll(".nav-btn")],
   taskList: document.getElementById("task-list"),
+  todayList: document.getElementById("today-list"),
   navBreadcrumb: document.getElementById("nav-breadcrumb"),
   sidebarFavorites: document.getElementById("sidebar-favorites"),
   settingsToggleBtn: document.getElementById("settings-toggle-btn"),

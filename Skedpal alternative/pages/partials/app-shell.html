@@ -111,17 +111,12 @@
         <div id="task-list" class="grid gap-3" data-test-skedpal="task-list"></div>
       </section>
 
-      <section id="today" class="view hidden space-y-3">
-        <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg space-y-3">
-          <div class="flex items-center justify-between gap-2">
-            <h3 class="text-base font-semibold" data-test-skedpal="nav-today">Today</h3>
-            <span class="text-xs text-slate-400">Day snapshot</span>
-          </div>
-          <p class="text-sm text-slate-400">
-            Quick day overview goes here. Use Tasks to add and prioritize items, then come back for a focused view of
-            your current day.
-          </p>
+      <section id="today" class="view hidden space-y-3" data-test-skedpal="today-view">
+        <div class="flex items-center justify-between gap-2">
+          <h3 class="text-base font-semibold" data-test-skedpal="today-title">Today</h3>
+          <span class="text-xs text-slate-400" data-test-skedpal="today-subtitle">Day snapshot</span>
         </div>
+        <div id="today-list" class="grid gap-3" data-test-skedpal="today-list"></div>
       </section>
 
       <section id="calendar" class="view hidden space-y-3">

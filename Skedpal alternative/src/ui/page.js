@@ -67,6 +67,7 @@ const {
   subsectionForm,
   subsectionModalCloseBtns,
   taskList,
+  todayList,
   timeMapList,
   rescheduleButtons
 } = domRefs;
@@ -209,6 +210,10 @@ function registerEventListeners() {
   });
 
   taskList?.addEventListener("click", async (event) => {
+    await handleTaskListClick(event);
+  });
+
+  todayList?.addEventListener("click", async (event) => {
     await handleTaskListClick(event);
   });
 

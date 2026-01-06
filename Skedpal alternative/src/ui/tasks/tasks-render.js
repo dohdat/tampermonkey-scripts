@@ -20,6 +20,7 @@ export function renderTasks(tasks, timeMaps) {
   destroyTaskSortables();
   taskList.innerHTML = "";
   const timeMapById = new Map(timeMaps.map((tm) => [tm.id, normalizeTimeMap(tm)]));
+  const baseTasks = tasks.filter((t) => !t.completed);
   const parentById = tasks.reduce((map, task) => {
     if (task.subtaskParentId) {
       map.set(task.id, task.subtaskParentId);
@@ -78,13 +79,12 @@ export function renderTasks(tasks, timeMaps) {
     return total;
   };
   const filteredTasks = (() => {
-    const base = tasks.filter((t) => !t.completed);
     const zoomTaskIds =
       state.zoomFilter?.type === "task"
         ? (() => {
             const ids = new Set([state.zoomFilter.taskId]);
             const stack = [state.zoomFilter.taskId];
-            const childrenByParent = base.reduce((map, task) => {
+            const childrenByParent = baseTasks.reduce((map, task) => {
               if (!task.subtaskParentId) return map;
               if (!map.has(task.subtaskParentId)) map.set(task.subtaskParentId, []);
               map.get(task.subtaskParentId).push(task.id);
@@ -102,7 +102,7 @@ export function renderTasks(tasks, timeMaps) {
             return ids;
           })()
         : null;
-    const visible = base.filter((t) => !hasCollapsedAncestor(t.id));
+    const visible = baseTasks.filter((t) => !hasCollapsedAncestor(t.id));
     if (state.zoomFilter?.type === "section") {
       return visible.filter((t) => (t.section || "") === (state.zoomFilter.sectionId || ""));
     }
@@ -317,7 +317,7 @@ export function renderTasks(tasks, timeMaps) {
       ungroupedTasks.forEach((task) => {
         ungroupedZone.appendChild(
           renderTaskCard(task, {
-            tasks,
+            tasks: baseTasks,
             timeMapById,
             collapsedTasks: state.collapsedTasks,
             expandedTaskDetails: state.expandedTaskDetails,
@@ -446,7 +446,7 @@ export function renderTasks(tasks, timeMaps) {
         subTasks.forEach((task) => {
           subZone.appendChild(
             renderTaskCard(task, {
-              tasks,
+              tasks: baseTasks,
               timeMapById,
               collapsedTasks: state.collapsedTasks,
               expandedTaskDetails: state.expandedTaskDetails,

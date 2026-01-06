@@ -29,6 +29,7 @@ import {
 } from "../sections.js";
 import { renderTaskTimeMapOptions, collectSelectedValues } from "../time-maps.js";
 import { renderTasks } from "./tasks-render.js";
+import { renderTodayView } from "./today-view.js";
 import { ensureTaskIds, migrateSectionsAndTasks } from "./tasks.js";
 import { renderBreadcrumb, setZoomFilter, switchView } from "../navigation.js";
 import { showUndoBanner } from "../notifications.js";
@@ -79,6 +80,10 @@ export async function loadTasks() {
 function renderTimeMapsAndTasks(timeMaps) {
   renderTasks(state.tasksCache, timeMaps);
   renderBreadcrumb();
+  renderTodayView(state.tasksCache, timeMaps, {
+    collapsedTasks: state.collapsedTasks,
+    expandedTaskDetails: state.expandedTaskDetails
+  });
 }
 
 export async function handleTaskSubmit(event) {
@@ -347,7 +352,7 @@ export async function handleTaskListClick(event) {
     } else {
       state.collapsedSections.add(sectionId);
     }
-    renderTasks(state.tasksCache, state.tasksTimeMapsCache);
+    renderTimeMapsAndTasks(state.tasksTimeMapsCache);
   } else if (btn.dataset.toggleSubsectionCollapse !== undefined) {
     const subId = btn.dataset.toggleSubsectionCollapse || "";
     if (state.collapsedSubsections.has(subId)) {
@@ -355,7 +360,7 @@ export async function handleTaskListClick(event) {
     } else {
       state.collapsedSubsections.add(subId);
     }
-    renderTasks(state.tasksCache, state.tasksTimeMapsCache);
+    renderTimeMapsAndTasks(state.tasksTimeMapsCache);
   } else if (toggleSubsectionFor !== undefined) {
     openSubsectionModal(toggleSubsectionFor, "");
   } else if (addSubsectionFor !== undefined) {
@@ -400,14 +405,14 @@ export async function handleTaskListClick(event) {
     } else {
       state.expandedTaskDetails.add(toggleTaskDetailsId);
     }
-    renderTasks(state.tasksCache, state.tasksTimeMapsCache);
+    renderTimeMapsAndTasks(state.tasksTimeMapsCache);
   } else if (toggleTaskCollapseId !== undefined) {
     if (state.collapsedTasks.has(toggleTaskCollapseId)) {
       state.collapsedTasks.delete(toggleTaskCollapseId);
     } else {
       state.collapsedTasks.add(toggleTaskCollapseId);
     }
-    renderTasks(state.tasksCache, state.tasksTimeMapsCache);
+    renderTimeMapsAndTasks(state.tasksTimeMapsCache);
   } else if (deleteId) {
     const affected = getTaskAndDescendants(deleteId, state.tasksCache);
     const snapshot = affected.map((t) => JSON.parse(JSON.stringify(t)));

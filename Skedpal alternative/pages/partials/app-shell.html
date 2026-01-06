@@ -1,0 +1,317 @@
+<div class="app-shell min-h-screen bg-[radial-gradient(circle_at_10%_10%,rgba(34,197,94,0.08),transparent_32%),radial-gradient(circle_at_80%_0%,rgba(59,130,246,0.08),transparent_35%)]">
+  <aside class="sidebar" aria-label="Primary navigation">
+    <div class="sidebar-brand">
+      <span class="sidebar-mark" aria-hidden="true">
+        <svg viewBox="0 0 64 64" width="26" height="26" fill="none">
+          <defs>
+            <linearGradient id="sidebar-swoosh" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#22d3ee" />
+              <stop offset="100%" stop-color="#a855f7" />
+            </linearGradient>
+          </defs>
+          <path
+            d="M10 26c6-6.5 13.2-9.8 21.5-9.8 8.3 0 16 3.4 22.5 9.8-6 6.5-13.5 9.8-22.5 9.8C23.5 35.8 16 32.5 10 26Z"
+            fill="url(#sidebar-swoosh)"
+            opacity="0.85"
+          />
+          <path
+            d="M17 38c5-4.8 10.7-7.3 17.5-7.3S47 33.2 53 38c-5.2 5.1-11.8 7.7-18.5 7.7S22.3 43.1 17 38Z"
+            fill="url(#sidebar-swoosh)"
+            opacity="0.7"
+          />
+        </svg>
+      </span>
+      <div>
+        <p class="text-xs text-slate-400">SkedPal</p>
+        <p class="text-sm font-semibold text-slate-100">Dashboard</p>
+      </div>
+    </div>
+    <div class="sidebar-nav" role="navigation" aria-label="Main">
+      <button class="nav-btn sidebar-link" data-view="tasks" type="button" aria-current="page">
+        <span class="sidebar-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M5 6h14M5 12h14M5 18h14" stroke-linecap="round" />
+            <circle cx="7" cy="6" r="1.25" fill="currentColor" />
+            <circle cx="7" cy="12" r="1.25" fill="currentColor" />
+            <circle cx="7" cy="18" r="1.25" fill="currentColor" />
+          </svg>
+        </span>
+        <span class="sidebar-label">Tasks</span>
+      </button>
+      <div class="sidebar-favorites">
+        <p class="sidebar-fav-header">Favorites</p>
+        <ul
+          id="sidebar-favorites"
+          class="sidebar-fav-list"
+          aria-label="Favorite sections and subsections"
+        ></ul>
+      </div>
+      <button class="nav-btn sidebar-link" data-view="today" type="button">
+        <span class="sidebar-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M5 4h14M5 20h14M5 8h14M8 3v2M16 3v2" stroke-linecap="round" />
+            <rect x="5" y="7" width="14" height="13" rx="2" ry="2" />
+            <path d="M9.5 13.5 11 15l3.5-4" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </span>
+        <span class="sidebar-label">Today</span>
+      </button>
+      <button class="nav-btn sidebar-link" data-view="calendar" type="button">
+        <span class="sidebar-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
+            <rect x="4" y="5" width="16" height="15" rx="2" ry="2" />
+            <path d="M8 3v4M16 3v4M4 10h16" stroke-linecap="round" />
+            <rect x="7" y="12.5" width="3" height="3" rx="0.6" />
+            <rect x="12.5" y="12.5" width="3" height="3" rx="0.6" />
+          </svg>
+        </span>
+        <span class="sidebar-label">Calendar</span>
+      </button>
+      <button class="nav-btn sidebar-link" data-view="settings" type="button">
+        <span class="sidebar-icon" aria-hidden="true">
+          <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M8.5 2.5h3l.5 2.2a5.5 5.5 0 0 1 1.8 1.1l2.1-.8 1.5 2.6-1.6 1.4c.1.35.2.73.2 1.1s-.07.75-.2 1.1l1.6 1.4-1.5 2.6-2.1-.8a5.5 5.5 0 0 1-1.8 1.1l-.5 2.2h-3l-.5-2.2a5.5 5.5 0 0 1-1.8-1.1l-2.1.8-1.5-2.6 1.6-1.4a5 5 0 0 1-.2-1.1c0-.37.07-.75.2-1.1L2.6 7.6l1.5-2.6 2.1.8a5.5 5.5 0 0 1 1.8-1.1Z" stroke-linejoin="round"></path>
+            <circle cx="10" cy="10" r="2.2"></circle>
+          </svg>
+        </span>
+        <span class="sidebar-label">Settings</span>
+      </button>
+    </div>
+  </aside>
+  <div class="app-main flex-1 pb-10">
+    <header class="mx-auto w-full max-w-4xl px-6 pt-8 pb-4 space-y-4">
+      <div id="nav-breadcrumb" class="flex items-center gap-2 text-xs text-slate-400"></div>
+      <div>
+        <h1 class="text-2xl font-semibold tracking-wide">Personal SkedPal</h1>
+      </div>
+    </header>
+    <main class="mx-auto w-full max-w-4xl px-6 space-y-4 pb-8">
+      <div
+        id="notification-banner"
+        class="notification-banner hidden"
+        role="status"
+        aria-live="polite"
+      >
+        <span id="notification-message" class="notification-banner__message"></span>
+        <button id="notification-undo" type="button" class="notification-banner__undo">Undo</button>
+      </div>
+      <section id="tasks" class="view space-y-3">
+        <div class="flex items-center justify-between gap-2">
+          <div class="text-sm text-slate-300">Add tasks to schedule automatically.</div>
+          <button
+            id="task-toggle"
+            class="rounded-xl bg-lime-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow hover:bg-lime-300"
+            type="button"
+            data-test-skedpal="task-toggle"
+          >
+            Add task
+          </button>
+        </div>
+        <div id="task-list" class="grid gap-3" data-test-skedpal="task-list"></div>
+      </section>
+
+      <section id="today" class="view hidden space-y-3">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <h3 class="text-base font-semibold">Today</h3>
+            <span class="text-xs text-slate-400">Day snapshot</span>
+          </div>
+          <p class="text-sm text-slate-400">
+            Quick day overview goes here. Use Tasks to add and prioritize items, then come back for a focused view of
+            your current day.
+          </p>
+        </div>
+      </section>
+
+      <section id="calendar" class="view hidden space-y-3">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <h3 class="text-base font-semibold">Calendar</h3>
+            <span class="text-xs text-slate-400">Schedule preview</span>
+          </div>
+          <p class="text-sm text-slate-400">
+            Calendar details will live here. For now, manage scheduling from Tasks and Settings while this view is wired up.
+          </p>
+        </div>
+      </section>
+
+      <section id="settings" class="view hidden space-y-4">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg space-y-3">
+          <div class="flex flex-wrap items-center gap-3">
+            <h3 class="text-base font-semibold">Sections</h3>
+            <div id="section-list" class="flex flex-wrap gap-2 text-xs" data-test-skedpal="section-list"></div>
+            <button
+              id="section-form-toggle"
+              type="button"
+              class="rounded-xl border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400"
+              data-test-skedpal="section-form-toggle"
+            >
+              Add section
+            </button>
+          </div>
+          <div id="section-form-row" class="hidden flex flex-col gap-2 md:flex-row md:items-center" data-test-skedpal="section-form-row">
+            <input
+              id="section-new-name"
+              placeholder="Add new section"
+              class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none"
+              data-test-skedpal="section-new-name"
+            />
+            <button
+              id="section-add"
+              type="button"
+              class="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
+              data-test-skedpal="section-add"
+            >
+              Add section
+            </button>
+          </div>
+        </div>
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-xs uppercase tracking-wide text-slate-500">TimeMaps</p>
+              <h3 class="text-base font-semibold">Availability maps</h3>
+              <p class="text-sm text-slate-400">Create and edit TimeMaps to control when tasks can be scheduled.</p>
+            </div>
+            <button
+              id="timemap-toggle"
+              class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
+              type="button"
+              data-test-skedpal="timemap-toggle"
+            >
+              New TimeMap
+            </button>
+          </div>
+          <div id="timemap-form-wrap" class="hidden rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="text-xs uppercase tracking-wide text-slate-500">New TimeMap</p>
+                <h4 class="text-base font-semibold">Define available windows</h4>
+              </div>
+              <button id="timemap-reset" type="button" class="text-sm text-lime-300 hover:text-lime-200">Reset</button>
+            </div>
+            <form id="timemap-form" class="space-y-3">
+              <label class="field">
+                <span class="field-label">Name</span>
+                <input
+                  id="timemap-name"
+                  required
+                  placeholder="Morning focus"
+                  class="field-input"
+                  data-test-skedpal="timemap-name"
+                />
+              </label>
+              <label class="field">
+                <span class="field-label">Color</span>
+                <input id="timemap-color" type="color" value="#a3e635" class="field-input" />
+              </label>
+              <div class="grid gap-2 md:grid-cols-[150px_1fr] md:items-start">
+                <div>
+                  <span class="field-label block">Days</span>
+                  <div class="grid grid-cols-3 gap-2">
+                    <label class="inline-flex items-center gap-2 text-sm text-slate-200">
+                      <input type="checkbox" value="0" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" />
+                      <span>Sun</span>
+                    </label>
+                    <label class="inline-flex items-center gap-2 text-sm text-slate-200">
+                      <input type="checkbox" value="1" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" />
+                      <span>Mon</span>
+                    </label>
+                    <label class="inline-flex items-center gap-2 text-sm text-slate-200">
+                      <input type="checkbox" value="2" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" />
+                      <span>Tue</span>
+                    </label>
+                    <label class="inline-flex items-center gap-2 text-sm text-slate-200">
+                      <input type="checkbox" value="3" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" />
+                      <span>Wed</span>
+                    </label>
+                    <label class="inline-flex items-center gap-2 text-sm text-slate-200">
+                      <input type="checkbox" value="4" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" />
+                      <span>Thu</span>
+                    </label>
+                    <label class="inline-flex items-center gap-2 text-sm text-slate-200">
+                      <input type="checkbox" value="5" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" />
+                      <span>Fri</span>
+                    </label>
+                    <label class="inline-flex items-center gap-2 text-sm text-slate-200">
+                      <input type="checkbox" value="6" name="days" class="h-4 w-4 rounded border-slate-700 bg-slate-900" />
+                      <span>Sat</span>
+                    </label>
+                  </div>
+                </div>
+                <div>
+                  <span class="field-label block">Time ranges</span>
+                  <div id="timemap-day-rows" class="grid gap-2"></div>
+                  <button
+                    type="button"
+                    class="mt-2 rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
+                    id="timemap-add-row"
+                    data-test-skedpal="timemap-add-row"
+                  >
+                    Add time range
+                  </button>
+                </div>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <button
+                  class="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
+                  type="button"
+                  id="timemap-cancel"
+                >
+                  Cancel
+                </button>
+                <button
+                  class="rounded-xl border border-lime-400/60 px-4 py-2 text-sm font-semibold text-lime-300 hover:border-lime-400"
+                  type="button"
+                  id="timemap-set-default"
+                >
+                  Set as default
+                </button>
+                <button
+                  class="rounded-xl bg-lime-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow hover:bg-lime-300"
+                  type="submit"
+                >
+                  Save TimeMap
+                </button>
+              </div>
+            </form>
+          </div>
+          <div id="timemap-list" class="grid gap-3"></div>
+        </div>
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg space-y-3">
+          <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p class="text-xs uppercase tracking-wide text-slate-500">Schedule</p>
+              <h3 class="text-base font-semibold">Reschedule</h3>
+              <p class="text-sm text-slate-400">
+                Deletes previous scheduled task events (source=personal-skedpal), fetches FreeBusy, and fills the earliest valid slots.
+              </p>
+            </div>
+            <button
+              data-reschedule-btn
+              class="rounded-xl bg-lime-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow hover:bg-lime-300"
+              type="button"
+            >
+              Reschedule Now
+            </button>
+          </div>
+          <div class="grid gap-3 md:grid-cols-[200px_1fr]">
+            <label class="grid gap-2 text-sm text-slate-300">
+              Horizon (days)
+              <input
+                id="horizon"
+                type="number"
+                min="1"
+                max="60"
+                class="w-full rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-100 focus:border-lime-400 focus:outline-none"
+              />
+            </label>
+            <div class="text-sm text-slate-400" id="schedule-status">Idle</div>
+          </div>
+        </div>
+        <div id="scheduled-summary" class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg"></div>
+      </section>
+    </main>
+  </div>
+</div>

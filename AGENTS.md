@@ -19,11 +19,11 @@
 
 ## Testing & Validation
 - Add unit tests for any new features or logic changes to prevent regressions.
+- After any code changes, always run `npm run test:coverage` to confirm functionality and prevent regressions.
 - Ensure single injection guard, external libs load with fallbacks, and UI still usable with slow networks.
 - Scheduler extension: load unpacked, exercise Tasks/TimeMaps/Schedule tabs, run **Reschedule Now**, and confirm events respect deadlines, priorities, and allowed TimeMaps within the 14-day horizon.
 - Storage changes: verify IndexedDB migrations keep existing user data; avoid destructive schema tweaks without migration steps.
 - Networked features: handle auth failures and rate limits gracefully; log errors to console, not alerts.
-- After making changes, run `npm run test:coverage` to verify all tests pass and coverage remains acceptable.
 
 
 ## File Organization

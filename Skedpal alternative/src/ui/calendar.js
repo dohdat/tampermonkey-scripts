@@ -22,6 +22,15 @@ function formatEventTimeRange(start, end) {
   return `${startLabel} - ${endLabel}`;
 }
 
+export function getCalendarEventStyles(event, timeMapColorById) {
+  const color = timeMapColorById?.get?.(event?.timeMapId || "");
+  if (!color) return null;
+  return {
+    backgroundColor: `${color}1a`,
+    borderColor: color
+  };
+}
+
 function getScheduledEvents(tasks) {
   const events = [];
   (tasks || []).forEach((task) => {
@@ -91,7 +100,7 @@ function updateNowIndicator() {
   todayCol.appendChild(indicator);
 }
 
-function renderCalendarGrid(range, events) {
+function renderCalendarGrid(range, events, timeMapColorById) {
   const { calendarGrid } = domRefs;
   if (!calendarGrid) return;
   calendarGrid.innerHTML = "";
@@ -171,6 +180,11 @@ function renderCalendarGrid(range, events) {
       block.className = "calendar-event";
       block.style.top = `${top}px`;
       block.style.height = `${height}px`;
+      const styles = getCalendarEventStyles(event, timeMapColorById);
+      if (styles) {
+        block.style.backgroundColor = styles.backgroundColor;
+        block.style.borderColor = styles.borderColor;
+      }
       block.setAttribute("data-test-skedpal", "calendar-event");
       const title = document.createElement("div");
       title.className = "calendar-event-title";
@@ -211,7 +225,7 @@ function updateViewToggle(viewMode) {
 
 export function focusCalendarNow(options = {}) {
   const { behavior = "auto" } = options;
-  const { calendarGrid } = domRefs;
+  const calendarGrid = domRefs.calendarGrid || document.getElementById("calendar-grid");
   if (!calendarGrid) return false;
   const indicator = calendarGrid.querySelector(
     '[data-test-skedpal="calendar-now-indicator"]'
@@ -227,9 +241,14 @@ export function renderCalendar(tasks = state.tasksCache) {
   const events = getScheduledEvents(tasks).filter(
     (event) => event.end > range.start && event.start < range.end
   );
+  const timeMapColorById = new Map(
+    (state.tasksTimeMapsCache || [])
+      .filter((timeMap) => timeMap?.id && timeMap?.color)
+      .map((timeMap) => [timeMap.id, timeMap.color])
+  );
   updateCalendarTitle(viewMode);
   updateViewToggle(viewMode);
-  renderCalendarGrid(range, events);
+  renderCalendarGrid(range, events, timeMapColorById);
   updateNowIndicator();
   if (!events.length) {
     domRefs.calendarGrid?.appendChild(buildEmptyState());

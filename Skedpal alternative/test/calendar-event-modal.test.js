@@ -15,6 +15,7 @@ class FakeElement {
     this.href = "";
     this.target = "";
     this.rel = "";
+    this.style = { cssText: "" };
     this.listeners = {};
     this.classList = {
       add: (...names) => {
@@ -42,6 +43,10 @@ class FakeElement {
 
   addEventListener(type, handler) {
     this.listeners[type] = handler;
+  }
+
+  querySelectorAll() {
+    return [];
   }
 }
 
@@ -85,6 +90,8 @@ describe("calendar event modal", () => {
     global.document = {
       createElement: (tagName) => new FakeElement(tagName),
       querySelectorAll: () => [],
+      addEventListener: () => {},
+      removeEventListener: () => {},
       getElementById: (id) => {
         if (id === "calendar-event-modal") {return refs.modal;}
         if (id === "calendar-event-modal-title") {return refs.title;}
@@ -92,11 +99,14 @@ describe("calendar event modal", () => {
         if (id === "calendar-event-modal-details") {return refs.details;}
         if (id === "calendar-event-modal-complete-checkbox") {return refs.complete;}
         if (id === "calendar-event-modal-defer-date") {return refs.defer;}
+        if (id === "task-list") {return new FakeElement("div");}
         return null;
       }
     };
     global.document.body = new FakeElement("body");
-    global.window = { dispatchEvent: () => {} };
+    global.document.head = new FakeElement("head");
+    global.window = { dispatchEvent: () => {}, location: { href: "https://example.com" } };
+    global.history = { replaceState: () => {} };
     global.CustomEvent = class CustomEvent {
       constructor(type, init) {
         this.type = type;
@@ -117,6 +127,10 @@ describe("calendar event modal", () => {
     domRefs.calendarEventModalDeferInput = refs.defer;
     domRefs.calendarEventModalCloseButtons = [refs.close];
     domRefs.calendarEventModalActionButtons = refs.actions;
+    domRefs.taskList = new FakeElement("div");
+    window.__skedpalZoomFromModal = ({ type, sectionId, subsectionId }) => {
+      state.zoomFilter = { type, sectionId, subsectionId };
+    };
 
     state.tasksCache = [
       {
@@ -129,6 +143,7 @@ describe("calendar event modal", () => {
         link: "https://example.com",
         section: "section-work",
         subsection: "subsection-1",
+        timeMapIds: ["tm-1"],
         completed: false
       }
     ];
@@ -188,6 +203,12 @@ describe("calendar event modal", () => {
     assert.strictEqual(refs.modal.classList.contains("hidden"), false);
     assert.strictEqual(refs.title.textContent, "Prep for interview");
     assert.ok(refs.details.children.length > 0);
+    const timeMapRow = refs.details.children.find((child) => {
+      const label = child.children[0];
+      return label?.textContent === "TimeMap";
+    });
+    const timeMapValue = timeMapRow?.children?.[1];
+    assert.strictEqual(timeMapValue?.style?.color, "#22c55e");
     refs.actions.forEach((btn) => {
       assert.ok(btn.innerHTML.length > 0);
     });
@@ -232,6 +253,30 @@ describe("calendar event modal", () => {
       child.children.some((inner) => inner.tagName === "A")
     );
     assert.strictEqual(hasLink, false);
+  });
+
+  it("zooms to subsection when clicking detail value", async () => {
+    const eventMeta = {
+      taskId: "task-1",
+      timeMapId: "tm-1",
+      start: new Date(2026, 0, 6, 9, 0, 0),
+      end: new Date(2026, 0, 6, 10, 30, 0)
+    };
+
+    openCalendarEventModal(eventMeta);
+
+    const subsectionRow = refs.details.children.find((child) => {
+      const value = child.children?.[1];
+      return value?.dataset?.zoomType === "subsection";
+    });
+    const value = subsectionRow?.children?.[1];
+    assert.strictEqual(value?.dataset?.zoomType, "subsection");
+    await value?.listeners?.click?.();
+
+    assert.strictEqual(state.zoomFilter?.type, "subsection");
+    assert.strictEqual(state.zoomFilter?.sectionId, "section-work");
+    assert.strictEqual(state.zoomFilter?.subsectionId, "subsection-1");
+    assert.strictEqual(refs.modal.classList.contains("hidden"), true);
   });
 
   it("uses the existing complete button when available", () => {

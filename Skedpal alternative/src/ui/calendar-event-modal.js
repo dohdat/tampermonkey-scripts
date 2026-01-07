@@ -64,6 +64,12 @@ function getTimeMapLabel(timeMapId) {
   return timeMap?.name || "";
 }
 
+function getTimeMapColor(timeMapId) {
+  if (!timeMapId) {return "";}
+  const timeMap = (state.tasksTimeMapsCache || []).find((map) => map.id === timeMapId);
+  return timeMap?.color || "";
+}
+
 function pushDetailRow(rows, label, value, extra = {}) {
   if (!value) {return;}
   rows.push({ label, value, ...extra });
@@ -71,9 +77,19 @@ function pushDetailRow(rows, label, value, extra = {}) {
 
 function buildDetailRows(task, eventMeta) {
   const rows = [];
-  pushDetailRow(rows, "TimeMap", getTimeMapLabel(eventMeta?.timeMapId));
-  pushDetailRow(rows, "Section", getSectionLabel(task.section));
-  pushDetailRow(rows, "Subsection", getSubsectionLabel(task.section, task.subsection));
+  pushDetailRow(rows, "TimeMap", getTimeMapLabel(eventMeta?.timeMapId), {
+    textColor: getTimeMapColor(eventMeta?.timeMapId)
+  });
+  pushDetailRow(rows, "Section", getSectionLabel(task.section), {
+    zoomType: "section",
+    sectionId: task.section || "",
+    subsectionId: ""
+  });
+  pushDetailRow(rows, "Subsection", getSubsectionLabel(task.section, task.subsection), {
+    zoomType: "subsection",
+    sectionId: task.section || "",
+    subsectionId: task.subsection || ""
+  });
   pushDetailRow(rows, "Duration", task.durationMin ? `${task.durationMin} min` : "");
   pushDetailRow(rows, "Deadline", task.deadline ? new Date(task.deadline).toLocaleDateString() : "");
   pushDetailRow(
@@ -84,6 +100,31 @@ function buildDetailRows(task, eventMeta) {
   pushDetailRow(rows, "Priority", task.priority ? `${task.priority}` : "");
   pushDetailRow(rows, "Link", task.link || "", { isLink: true });
   return rows;
+}
+
+async function zoomFromModal(sectionId, subsectionId, type) {
+  if (!sectionId) {return;}
+  if (typeof window !== "undefined" && typeof window.__skedpalZoomFromModal === "function") {
+    window.__skedpalZoomFromModal({
+      type,
+      sectionId,
+      subsectionId: subsectionId || ""
+    });
+    closeCalendarEventModal();
+    return;
+  }
+  const { setZoomFilter, switchView } = await import("./navigation.js");
+  switchView("tasks");
+  if (type === "subsection") {
+    setZoomFilter({
+      type: "subsection",
+      sectionId,
+      subsectionId: subsectionId || ""
+    });
+  } else {
+    setZoomFilter({ type: "section", sectionId });
+  }
+  closeCalendarEventModal();
 }
 
 function renderDetailRows(task, eventMeta) {
@@ -108,9 +149,23 @@ function renderDetailRows(task, eventMeta) {
       value.href = row.value;
       value.target = "_blank";
       value.rel = "noopener noreferrer";
+    } else if (row.zoomType) {
+      value = document.createElement("button");
+      value.type = "button";
+      value.className =
+        "calendar-event-modal__detail-value calendar-event-modal__detail-link calendar-event-modal__detail-link--zoom";
+      value.dataset.zoomType = row.zoomType;
+      value.dataset.zoomSection = row.sectionId || "";
+      value.dataset.zoomSubsection = row.subsectionId || "";
+      value.addEventListener("click", () =>
+        zoomFromModal(row.sectionId || "", row.subsectionId || "", row.zoomType)
+      );
     } else {
       value = document.createElement("span");
       value.className = "calendar-event-modal__detail-value";
+    }
+    if (row.textColor) {
+      value.style.color = row.textColor;
     }
     value.textContent = row.value;
     value.setAttribute("data-test-skedpal", `calendar-event-modal-detail-value-${index}`);

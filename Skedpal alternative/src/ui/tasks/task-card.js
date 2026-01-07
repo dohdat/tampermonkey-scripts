@@ -166,11 +166,11 @@ function buildTaskTitleActions(task, detailsOpen) {
   detailsToggleBtn.setAttribute("data-test-skedpal", "task-details-toggle");
   detailsToggleBtn.innerHTML = detailsOpen ? caretDownIconSvg : caretRightIconSvg;
   titleActions.appendChild(zoomTaskBtn);
-  titleActions.appendChild(editTaskBtn);
   titleActions.appendChild(duplicateTaskBtn);
   titleActions.appendChild(addSubtaskBtn);
-  titleActions.appendChild(detailsToggleBtn);
+  titleActions.appendChild(editTaskBtn);
   titleActions.appendChild(deleteTaskBtn);
+  titleActions.appendChild(detailsToggleBtn);
   actionsWrap.appendChild(titleActions);
   return actionsWrap;
 }

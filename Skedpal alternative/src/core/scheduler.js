@@ -298,7 +298,9 @@ function buildScheduleCandidates(tasks, now, horizonEnd) {
   const ignored = new Set();
   const immediatelyUnscheduled = new Set();
   const parentIds = new Set(
-    tasks.filter((task) => task.subtaskParentId).map((task) => task.subtaskParentId)
+    tasks
+      .filter((task) => task.subtaskParentId && !task.completed)
+      .map((task) => task.subtaskParentId)
   );
   const candidates = [];
   tasks

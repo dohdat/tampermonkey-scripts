@@ -121,7 +121,9 @@ async function createEvents(scheduled, tasksById, timeMapsById, token) {
 
 async function persistSchedule(tasks, placements, unscheduled, ignored) {
   const parentIds = new Set(
-    tasks.filter((task) => task.subtaskParentId).map((task) => task.subtaskParentId)
+    tasks
+      .filter((task) => task.subtaskParentId && !task.completed)
+      .map((task) => task.subtaskParentId)
   );
   const byTask = placements.reduce((map, placement) => {
     if (!map.has(placement.taskId)) map.set(placement.taskId, []);

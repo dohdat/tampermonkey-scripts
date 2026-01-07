@@ -56,7 +56,6 @@ export function renderTaskCard(task, context) {
   const titleMarkup = task.link
     ? `<a href="${task.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-lime-300 hover:text-lime-200 underline decoration-lime-400">
           <span>${task.title}</span>
-          <span>🔗</span>
         </a>`
     : task.title;
   const isLongTitle = (task.title || "").length > 60;

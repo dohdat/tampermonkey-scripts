@@ -17,7 +17,6 @@ const {
   sectionFormRow,
   sectionFormToggle,
   subsectionFormWrap,
-  subsectionForm,
   subsectionSectionIdInput,
   subsectionParentIdInput,
   subsectionNameInput,
@@ -31,7 +30,6 @@ const {
   subsectionTaskRepeatSelect,
   subsectionTaskSubtaskScheduleSelect,
   subsectionTimeMapOptions,
-  subsectionModalCloseBtns,
   sidebarFavorites
 } = domRefs;
 

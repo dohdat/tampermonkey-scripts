@@ -4,10 +4,8 @@ import {
   checkboxCheckedIconSvg,
   checkboxIconSvg,
   editIconSvg,
-  favoriteIconSvg,
   plusIconSvg,
   removeIconSvg,
-  subtaskIconSvg,
   zoomInIconSvg
 } from "../constants.js";
 import { formatDateTime, formatDurationShort } from "../utils.js";
@@ -20,9 +18,7 @@ export function renderTaskCard(task, context) {
     collapsedTasks,
     expandedTaskDetails,
     computeTotalDuration,
-    getTaskDepthById,
-    getSectionName,
-    getSubsectionName
+    getTaskDepthById
   } = context;
   const childTasks = tasks.filter((t) => t.subtaskParentId === task.id);
   const hasChildren = childTasks.length > 0;
@@ -31,8 +27,6 @@ export function renderTaskCard(task, context) {
   const baseDurationMin = Number(task.durationMin) || 0;
   const displayDurationMin = hasChildren ? computeTotalDuration(task) : baseDurationMin;
   const timeMapNames = task.timeMapIds.map((id) => timeMapById.get(id)?.name || "Unknown");
-  const sectionName = task.section ? getSectionName(task.section) : "";
-  const subsectionName = task.subsection ? getSubsectionName(task.section, task.subsection) : "";
   const repeatSummary = getRepeatSummary(task.repeat);
   const taskCard = document.createElement("div");
   const isSubtask = depth > 0;

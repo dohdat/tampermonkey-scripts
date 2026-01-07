@@ -299,12 +299,6 @@ export function renderTasks(tasks, timeMaps) {
     });
     if (state.zoomFilter?.type === "task" || state.zoomFilter?.type === "subsection") {
       const subsectionsById = new Map(subsections.map((s) => [s.id, s]));
-      const childrenByParent = subsections.reduce((map, sub) => {
-        const pid = sub.parentId || "";
-        if (!map.has(pid)) map.set(pid, []);
-        map.get(pid).push(sub.id);
-        return map;
-      }, new Map());
       const allowedSubsections = new Set();
       const markWithAncestors = (subsectionId) => {
         let current = subsectionsById.get(subsectionId);
@@ -314,13 +308,6 @@ export function renderTasks(tasks, timeMaps) {
           const parentId = current.parentId || "";
           current = parentId ? subsectionsById.get(parentId) : null;
         }
-      };
-      const markDescendants = (subsectionId) => {
-        (childrenByParent.get(subsectionId) || []).forEach((childId) => {
-          if (allowedSubsections.has(childId)) return;
-          allowedSubsections.add(childId);
-          markDescendants(childId);
-        });
       };
       if (state.zoomFilter?.type === "task") {
         taskSubsections.filter(Boolean).forEach((id) => markWithAncestors(id));

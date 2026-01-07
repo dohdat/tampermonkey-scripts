@@ -4,12 +4,14 @@
   "type": "module",
   "scripts": {
     "prepare": "husky install .husky",
+    "lint": "eslint .",
     "test": "mocha \"test/**/*.test.js\"",
-    "test:coverage": "c8 --check-coverage --lines 80 --statements 80 --functions 80 --branches 70 --reporter=text --reporter=lcov mocha \"test/**/*.test.js\"",
+    "test:coverage": "npm run lint &&c8 --check-coverage --lines 80 --statements 80 --functions 80 --branches 70 --reporter=text --reporter=lcov mocha \"test/**/*.test.js\"",
     "coverage": "nyc mocha \"test/**/*.test.js\""
   },
   "devDependencies": {
     "c8": "^9.1.0",
+    "eslint": "^8.57.0",
     "fake-indexeddb": "^3.1.7",
     "husky": "^8.0.3",
     "mocha": "^10.3.0",

@@ -42,8 +42,7 @@ import { renderBreadcrumb, setZoomFilter, switchView } from "../navigation.js";
 import { showUndoBanner } from "../notifications.js";
 import {
   repeatStore,
-  setRepeatFromSelection,
-  buildRepeatFromState
+  setRepeatFromSelection
 } from "../repeat.js";
 
 const {
@@ -61,7 +60,6 @@ const {
   taskSubtaskScheduleSelect,
   taskSubtaskScheduleWrap,
   taskRepeatSelect,
-  subsectionTaskRepeatSelect,
   repeatCompleteModal,
   repeatCompleteList,
   repeatCompleteEmpty,

@@ -59,17 +59,6 @@ class FakeElement {
   }
 }
 
-function createSelect(options = []) {
-  const select = new FakeElement("select");
-  options.forEach((opt) => {
-    const option = new FakeElement("option");
-    option.value = opt.value;
-    option.textContent = opt.label;
-    select._options.set(opt.value, option);
-  });
-  return select;
-}
-
 global.document = {
   createElement: (tag) => new FakeElement(tag),
   createTextNode: (text) => ({ nodeType: 3, textContent: text }),

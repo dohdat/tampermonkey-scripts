@@ -9,9 +9,7 @@ import {
 
 const {
   taskDeadlineInput,
-  taskStartFromInput,
   taskRepeatSelect,
-  taskRepeatCustom,
   taskRepeatUnit,
   taskRepeatInterval,
   taskRepeatWeekdays,

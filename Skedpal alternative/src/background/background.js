@@ -6,119 +6,6 @@ import {
 } from "../data/db.js";
 import { scheduleTasks } from "../core/scheduler.js";
 
-const SOURCE_KEY = "personal-skedpal";
-
-function getTimeZone() {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone;
-}
-
-function getAuthToken(interactive = true) {
-  return new Promise((resolve, reject) => {
-    chrome.identity.getAuthToken({ interactive }, (token) => {
-      if (chrome.runtime.lastError || !token) {
-        reject(new Error(chrome.runtime.lastError?.message || "Auth failed"));
-      } else {
-        resolve(token);
-      }
-    });
-  });
-}
-
-function removeCachedToken(token) {
-  return new Promise((resolve) => {
-    chrome.identity.removeCachedAuthToken({ token }, () => resolve());
-  });
-}
-
-async function apiFetch(path, options, token) {
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    ...(options?.body ? { "Content-Type": "application/json" } : {}),
-    ...(options?.headers || {})
-  };
-  const response = await fetch(`https://www.googleapis.com/calendar/v3${path}`, {
-    method: options?.method || "GET",
-    headers,
-    body: options?.body
-  });
-  if (response.status === 401) {
-    await removeCachedToken(token);
-    throw new Error("Unauthorized with Calendar API");
-  }
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Calendar API ${response.status}: ${text}`);
-  }
-  if (response.status === 204) return null;
-  return response.json();
-}
-
-async function deleteExistingScheduledEvents(token) {
-  let pageToken;
-  const deleted = [];
-  do {
-    const search = new URLSearchParams({
-      privateExtendedProperty: `source=${SOURCE_KEY}`,
-      maxResults: "250",
-      showDeleted: "false",
-      singleEvents: "true"
-    });
-    if (pageToken) search.set("pageToken", pageToken);
-    const data = await apiFetch(`/calendars/primary/events?${search.toString()}`, {}, token);
-    const items = data.items || [];
-    for (const event of items) {
-      await apiFetch(`/calendars/primary/events/${event.id}`, { method: "DELETE" }, token);
-      deleted.push(event.id);
-    }
-    pageToken = data.nextPageToken;
-  } while (pageToken);
-  return deleted.length;
-}
-
-async function fetchBusy(token, timeMin, timeMax) {
-  const body = JSON.stringify({
-    timeMin,
-    timeMax,
-    items: [{ id: "primary" }]
-  });
-  const data = await apiFetch("/freeBusy", { method: "POST", body }, token);
-  const busy = data.calendars?.primary?.busy || [];
-  return busy.map((block) => ({
-    start: new Date(block.start),
-    end: new Date(block.end)
-  }));
-}
-
-function mapById(list) {
-  return list.reduce((acc, item) => {
-    acc[item.id] = item;
-    return acc;
-  }, {});
-}
-
-async function createEvents(scheduled, tasksById, timeMapsById, token) {
-  const timeZone = getTimeZone();
-  for (const placement of scheduled) {
-    const task = tasksById[placement.taskId];
-    const timeMap = timeMapsById[placement.timeMapId];
-    if (!task || !timeMap) continue;
-    const body = JSON.stringify({
-      summary: task.title,
-      description: `Auto placed by Personal SkedPal (manual run). TimeMap: ${timeMap.name}`,
-      start: { dateTime: placement.start.toISOString(), timeZone },
-      end: { dateTime: placement.end.toISOString(), timeZone },
-      extendedProperties: {
-        private: {
-          source: SOURCE_KEY,
-          taskId: task.id,
-          timeMapId: placement.timeMapId
-        }
-      }
-    });
-    await apiFetch("/calendars/primary/events", { method: "POST", body }, token);
-  }
-}
-
 async function persistSchedule(tasks, placements, unscheduled, ignored) {
   const parentIds = new Set(
     tasks
@@ -178,7 +65,6 @@ async function runReschedule() {
     };
   }
 
-  const horizonEnd = new Date(now.getTime() + settings.schedulingHorizonDays * 24 * 60 * 60 * 1000);
   const busy = [];
 
   const { scheduled, unscheduled, ignored } = scheduleTasks({

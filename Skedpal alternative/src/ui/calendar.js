@@ -215,15 +215,6 @@ function getEventMetaFromBlock(block) {
   };
 }
 
-function getDragMinutesFromPointer(dayCol, clientY, durationMinutes) {
-  const rect = dayCol.getBoundingClientRect();
-  const y = clampMinutes(clientY - rect.top, 0, rect.height);
-  const minutes = (y / rect.height) * 24 * 60;
-  const rounded = roundMinutesToStep(minutes, DRAG_STEP_MINUTES);
-  const maxStart = Math.max(0, 24 * 60 - durationMinutes);
-  return clampMinutes(rounded, 0, maxStart);
-}
-
 function updateDragTarget(dayCol, block, minutes) {
   const top = (minutes / 60) * HOUR_HEIGHT;
   block.style.top = `${top}px`;
@@ -445,6 +436,11 @@ function startCalendarDrag(event) {
   if (!dayCol || !dayCol.dataset.day) return;
   const eventMeta = getEventMetaFromBlock(target);
   if (!eventMeta) return;
+  const rect = dayCol.getBoundingClientRect();
+  const y = clampMinutes(event.clientY - rect.top, 0, rect.height);
+  const pointerMinutes = (y / rect.height) * 24 * 60;
+  const startMinutes = getMinutesIntoDay(eventMeta.start);
+  const grabOffsetMinutes = pointerMinutes - startMinutes;
   const durationMinutes = Math.max(
     DRAG_STEP_MINUTES,
     Math.round((eventMeta.end.getTime() - eventMeta.start.getTime()) / 60000)
@@ -457,7 +453,8 @@ function startCalendarDrag(event) {
     durationMinutes,
     originDayKey: dayCol.dataset.day,
     originMinutes: roundMinutesToStep(getMinutesIntoDay(eventMeta.start), DRAG_STEP_MINUTES),
-    minutes: roundMinutesToStep(getMinutesIntoDay(eventMeta.start), DRAG_STEP_MINUTES)
+    minutes: roundMinutesToStep(getMinutesIntoDay(eventMeta.start), DRAG_STEP_MINUTES),
+    grabOffsetMinutes
   };
   target.classList.add("calendar-event--dragging");
   dayCol.classList.add("calendar-day-col--drag-target");
@@ -477,11 +474,13 @@ function handleCalendarDragMove(event) {
     nextDayCol.appendChild(dragState.block);
     dragState.dayCol = nextDayCol;
   }
-  const minutes = getDragMinutesFromPointer(
-    nextDayCol,
-    event.clientY,
-    dragState.durationMinutes
-  );
+  const rect = nextDayCol.getBoundingClientRect();
+  const y = clampMinutes(event.clientY - rect.top, 0, rect.height);
+  const pointerMinutes = (y / rect.height) * 24 * 60;
+  const adjustedMinutes = pointerMinutes - (dragState.grabOffsetMinutes || 0);
+  const roundedMinutes = roundMinutesToStep(adjustedMinutes, DRAG_STEP_MINUTES);
+  const maxStart = Math.max(0, 24 * 60 - dragState.durationMinutes);
+  const minutes = clampMinutes(roundedMinutes, 0, maxStart);
   dragState.minutes = minutes;
   updateDragTarget(nextDayCol, dragState.block, minutes);
 }

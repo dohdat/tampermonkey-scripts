@@ -1,4 +1,4 @@
-import { getAllTasks, getAllTimeMaps, saveTask, deleteTask } from "../../data/db.js";
+import { getAllTasks, getAllTimeMaps, saveTask } from "../../data/db.js";
 import { getUpcomingOccurrences } from "../../core/scheduler.js";
 import { domRefs } from "../constants.js";
 import {
@@ -24,13 +24,6 @@ import {
   renderTaskSectionOptions,
   renderTaskSubsectionOptions,
   getSubsectionTemplate,
-  openSubsectionModal,
-  handleAddSubsection,
-  handleRenameSection,
-  handleRemoveSection,
-  handleRemoveSubsection,
-  handleToggleSectionFavorite,
-  handleToggleSubsectionFavorite,
   renderFavoriteShortcuts
 } from "../sections.js";
 import { renderTaskTimeMapOptions, collectSelectedValues } from "../time-maps.js";
@@ -38,7 +31,7 @@ import { renderTasks } from "./tasks-render.js";
 import { renderTodayView } from "./today-view.js";
 import { renderCalendar } from "../calendar.js";
 import { ensureTaskIds, migrateSectionsAndTasks } from "./tasks.js";
-import { renderBreadcrumb, setZoomFilter, switchView } from "../navigation.js";
+import { renderBreadcrumb, switchView } from "../navigation.js";
 import { showUndoBanner } from "../notifications.js";
 import {
   repeatStore,
@@ -90,7 +83,7 @@ export function closeRepeatCompleteModal() {
   document.body.classList.remove("modal-open");
 }
 
-function openRepeatCompleteModal(task) {
+export function openRepeatCompleteModal(task) {
   if (!repeatCompleteModal || !repeatCompleteList) {return;}
   repeatCompleteList.innerHTML = "";
   const horizonDays = Number(state.settingsCache?.schedulingHorizonDays) || 14;
@@ -200,7 +193,7 @@ export async function loadTasks() {
   renderTimeMapsAndTasks(timeMaps);
 }
 
-function renderTimeMapsAndTasks(timeMaps) {
+export function renderTimeMapsAndTasks(timeMaps) {
   renderTasks(state.tasksCache, timeMaps);
   renderBreadcrumb();
   renderTodayView(state.tasksCache, timeMaps, {
@@ -210,72 +203,73 @@ function renderTimeMapsAndTasks(timeMaps) {
   renderCalendar(state.tasksCache);
 }
 
-export async function handleTaskSubmit(event) {
-  event.preventDefault();
-  const id = document.getElementById("task-id").value || uuid();
-  const title = document.getElementById("task-title").value.trim();
-  const durationMin = Number(document.getElementById("task-duration").value);
-  const minBlockMin = Number(taskMinBlockInput.value) || 30;
-  const priority = Number(document.getElementById("task-priority").value);
-  const deadline = taskDeadlineInput.value;
-  const startFrom = taskStartFromInput.value;
-  const link = (taskLinkInput.value || "").trim();
-  const timeMapIds = collectSelectedValues(taskTimeMapOptions);
-  const defaultSectionId = (state.settingsCache.sections || [])[0]?.id || "";
-  const section = taskSectionSelect.value || defaultSectionId;
-  const subsection = taskSubsectionSelect.value || "";
-  const parentId = (taskParentIdInput.value || "").trim();
-  const parentTask = parentId ? state.tasksCache.find((t) => t.id === parentId) : null;
-  const existingTask = state.tasksCache.find((t) => t.id === id);
-  const isParentTask = state.tasksCache.some((t) => t.subtaskParentId === id);
+function getTaskFormValues() {
+  return {
+    id: document.getElementById("task-id").value || uuid(),
+    title: document.getElementById("task-title").value.trim(),
+    durationMin: Number(document.getElementById("task-duration").value),
+    minBlockMin: Number(taskMinBlockInput.value) || 30,
+    priority: Number(document.getElementById("task-priority").value),
+    deadline: taskDeadlineInput.value,
+    startFrom: taskStartFromInput.value,
+    link: (taskLinkInput.value || "").trim(),
+    timeMapIds: collectSelectedValues(taskTimeMapOptions),
+    section: taskSectionSelect.value || (state.settingsCache.sections || [])[0]?.id || "",
+    subsection: taskSubsectionSelect.value || "",
+    parentId: (taskParentIdInput.value || "").trim()
+  };
+}
+
+function validateTaskForm(values) {
+  if (!values.title || !values.durationMin) {
+    return "Title and duration are required.";
+  }
+  if (values.durationMin < 15 || values.durationMin % 15 !== 0) {
+    return "Duration must be at least 15 minutes and in 15 minute steps.";
+  }
+  if (values.timeMapIds.length === 0) {
+    return "Select at least one TimeMap.";
+  }
+  if (isStartAfterDeadline(values.startFrom, values.deadline)) {
+    return "Start from cannot be after deadline.";
+  }
+  return "";
+}
+
+function resolveTaskOrder(existingTask, parentTask, section, subsection) {
   const targetKey = getContainerKey(section, subsection);
   const isEditingInPlace =
     existingTask && getContainerKey(existingTask.section, existingTask.subsection) === targetKey;
   const canUseParentOrdering =
     parentTask && getContainerKey(parentTask.section, parentTask.subsection) === targetKey;
-  let order = getNextOrder(section, subsection, state.tasksCache);
   if (isEditingInPlace) {
-    order = existingTask.order;
-  } else if (canUseParentOrdering) {
-    order = getNextSubtaskOrder(parentTask, section, subsection, state.tasksCache);
+    return existingTask.order;
   }
+  if (canUseParentOrdering) {
+    return getNextSubtaskOrder(parentTask, section, subsection, state.tasksCache);
+  }
+  return getNextOrder(section, subsection, state.tasksCache);
+}
 
-  if (!title || !durationMin) {
-    alert("Title and duration are required.");
-    return;
-  }
-  if (durationMin < 15 || durationMin % 15 !== 0) {
-    alert("Duration must be at least 15 minutes and in 15 minute steps.");
-    return;
-  }
-  if (timeMapIds.length === 0) {
-    alert("Select at least one TimeMap.");
-    return;
-  }
-  if (isStartAfterDeadline(startFrom, deadline)) {
-    alert("Start from cannot be after deadline.");
-    return;
-  }
-
+function buildTaskPayload(values, existingTask, parentTask, isParentTask, order) {
   const repeat = taskRepeatSelect.value === "custom" ? repeatStore.lastRepeatSelection : { type: "none" };
   const normalizedSubtaskScheduleMode = normalizeSubtaskScheduleMode(taskSubtaskScheduleSelect?.value);
   const subtaskScheduleMode = isParentTask
     ? normalizedSubtaskScheduleMode
     : existingTask?.subtaskScheduleMode || normalizedSubtaskScheduleMode;
-
-  const updatedTask = {
-    id,
-    title,
-    durationMin,
-    minBlockMin,
-    priority,
-    deadline: parseLocalDateInput(deadline),
-    startFrom: parseLocalDateInput(startFrom),
-    subtaskParentId: parentTask?.id || parentId || null,
-    link: link || "",
-    timeMapIds,
-    section,
-    subsection,
+  return {
+    id: values.id,
+    title: values.title,
+    durationMin: values.durationMin,
+    minBlockMin: values.minBlockMin,
+    priority: values.priority,
+    deadline: parseLocalDateInput(values.deadline),
+    startFrom: parseLocalDateInput(values.startFrom),
+    subtaskParentId: parentTask?.id || values.parentId || null,
+    link: values.link || "",
+    timeMapIds: values.timeMapIds,
+    section: values.section,
+    subsection: values.subsection,
     order,
     subtaskScheduleMode,
     repeat,
@@ -286,27 +280,43 @@ export async function handleTaskSubmit(event) {
     scheduledStart: null,
     scheduledEnd: null
   };
+}
 
+async function updateParentTaskDescendants(taskId, updatedTask) {
+  const descendants = getTaskAndDescendants(taskId, state.tasksCache).slice(1);
+  if (!descendants.length) {return;}
+  const inherited = getInheritedSubtaskFields(updatedTask);
+  await Promise.all(
+    descendants.map((task) =>
+      saveTask({
+        ...task,
+        ...inherited,
+        scheduleStatus: "unscheduled",
+        scheduledStart: null,
+        scheduledEnd: null,
+        scheduledTimeMapId: null,
+        scheduledInstances: []
+      })
+    )
+  );
+}
+
+export async function handleTaskSubmit(event) {
+  event.preventDefault();
+  const values = getTaskFormValues();
+  const parentTask = values.parentId ? state.tasksCache.find((t) => t.id === values.parentId) : null;
+  const existingTask = state.tasksCache.find((t) => t.id === values.id);
+  const isParentTask = state.tasksCache.some((t) => t.subtaskParentId === values.id);
+  const error = validateTaskForm(values);
+  if (error) {
+    alert(error);
+    return;
+  }
+  const order = resolveTaskOrder(existingTask, parentTask, values.section, values.subsection);
+  const updatedTask = buildTaskPayload(values, existingTask, parentTask, isParentTask, order);
   await saveTask(updatedTask);
-
   if (isParentTask && existingTask) {
-    const inherited = getInheritedSubtaskFields(updatedTask);
-    const descendants = getTaskAndDescendants(id, state.tasksCache).slice(1);
-    if (descendants.length) {
-      await Promise.all(
-        descendants.map((task) =>
-          saveTask({
-            ...task,
-            ...inherited,
-            scheduleStatus: "unscheduled",
-            scheduledStart: null,
-            scheduledEnd: null,
-            scheduledTimeMapId: null,
-            scheduledInstances: []
-          })
-        )
-      );
-    }
+    await updateParentTaskDescendants(values.id, updatedTask);
   }
   resetTaskForm(true);
   await loadTasks();
@@ -434,173 +444,6 @@ export function openTaskEditById(taskId, options = {}) {
   const task = state.tasksCache.find((t) => t.id === taskId);
   if (!task) {return;}
   openTaskEdit(task, options);
-}
-
-export async function handleTaskListClick(event) {
-  const btn = event.target.closest("button");
-  if (!btn) {return;}
-  const completeTaskId = btn.dataset.completeTask;
-  const addSection = btn.dataset.addSection;
-  const addSubsectionFor = btn.dataset.addSubsection;
-  const toggleSubsectionFor = btn.dataset.toggleSubsection;
-  const addSubsectionTaskTarget = btn.dataset.addSubsectionTarget;
-  const zoomSectionId = btn.dataset.zoomSection;
-  const zoomSubsectionId = btn.dataset.zoomSubsection;
-  const zoomTaskId = btn.dataset.zoomTask;
-  const hasZoomSubAttr = btn.getAttribute("data-zoom-subsection") !== null;
-  const addChildSubsectionId = btn.dataset.addChildSubsection;
-  const addChildSectionId = btn.dataset.sectionId;
-  const submitChildSubsectionId = btn.dataset.submitChildSubsection;
-  const editSectionId = btn.dataset.editSection;
-  const favoriteSectionId = btn.dataset.favoriteSection;
-  const removeSectionId = btn.dataset.removeSection;
-  const editSubsectionId = btn.dataset.editSubsection;
-  const favoriteSubsectionId = btn.dataset.favoriteSubsection;
-  const removeSubsectionId = btn.dataset.removeSubsection;
-  const parentSectionId = btn.dataset.parentSection;
-  const editId = btn.dataset.edit;
-  const deleteId = btn.dataset.delete;
-  const addSubtaskId = btn.dataset.addSubtask;
-  const toggleTaskDetailsId = btn.dataset.toggleTaskDetails;
-  const toggleTaskCollapseId = btn.dataset.toggleTaskCollapse;
-  if (completeTaskId !== undefined) {
-    const affected = getTaskAndDescendants(completeTaskId, state.tasksCache);
-    const target = affected[0];
-    if (target) {
-      if (target.repeat && target.repeat.type !== "none" && !target.completed) {
-        openRepeatCompleteModal(target);
-        return;
-      }
-      const snapshots = affected.map((t) => JSON.parse(JSON.stringify(t)));
-      const completed = !target.completed;
-      const timestamp = completed ? new Date().toISOString() : null;
-      const updates = snapshots.map((t) => {
-        let updatedStatus = t.scheduleStatus || "unscheduled";
-        if (completed && t.scheduleStatus !== "completed") {
-          updatedStatus = "completed";
-        } else if (!completed && t.scheduleStatus === "completed") {
-          updatedStatus = "unscheduled";
-        }
-        return {
-          ...t,
-          completed,
-          completedAt: timestamp,
-          scheduleStatus: updatedStatus
-        };
-      });
-      await Promise.all(updates.map((t) => saveTask(t)));
-      await loadTasks();
-      const name = target.title || "Untitled task";
-      const extra = updates.length > 1 ? ` and ${updates.length - 1} subtasks` : "";
-      showUndoBanner(
-        `${completed ? "Completed" : "Marked incomplete"} "${name}"${extra}.`,
-        async () => {
-          await Promise.all(snapshots.map((snap) => saveTask(snap)));
-          await loadTasks();
-        }
-      );
-    }
-  } else if (zoomTaskId !== undefined) {
-    switchView("tasks");
-    setZoomFilter({
-      type: "task",
-      taskId: zoomTaskId,
-      sectionId: zoomSectionId || "",
-      subsectionId: zoomSubsectionId || ""
-    });
-  } else if (hasZoomSubAttr && zoomSubsectionId !== "") {
-    switchView("tasks");
-    setZoomFilter({
-      type: "subsection",
-      sectionId: zoomSectionId || "",
-      subsectionId: zoomSubsectionId || ""
-    });
-  } else if (zoomSectionId !== undefined && hasZoomSubAttr) {
-    switchView("tasks");
-    setZoomFilter({ type: "section", sectionId: zoomSectionId || "" });
-  } else if (addChildSubsectionId !== undefined) {
-    const sectionId = addChildSectionId || "";
-    openSubsectionModal(sectionId, addChildSubsectionId);
-  } else if (submitChildSubsectionId !== undefined) {
-    const card = btn.closest(`[data-subsection-card="${submitChildSubsectionId}"]`);
-    const form = card?.querySelector(`[data-child-subsection-form="${submitChildSubsectionId}"]`);
-    const input = card?.querySelector(`[data-child-subsection-input="${submitChildSubsectionId}"]`);
-    const value = input?.value?.trim();
-    if (value) {
-      const parentSection = btn.dataset.parentSection || "";
-      await handleAddSubsection(parentSection, value, submitChildSubsectionId);
-      input.value = "";
-      form?.classList.add("hidden");
-    }
-  } else if (favoriteSectionId !== undefined) {
-    await handleToggleSectionFavorite(favoriteSectionId);
-  } else if (favoriteSubsectionId !== undefined) {
-    await handleToggleSubsectionFavorite(parentSectionId, favoriteSubsectionId);
-  } else if (editSectionId !== undefined) {
-    await handleRenameSection(editSectionId);
-  } else if (removeSectionId !== undefined) {
-    await handleRemoveSection(removeSectionId);
-  } else if (editSubsectionId !== undefined) {
-    openSubsectionModal(parentSectionId || "", "", editSubsectionId);
-  } else if (removeSubsectionId !== undefined) {
-    await handleRemoveSubsection(parentSectionId, removeSubsectionId);
-  } else if (btn.dataset.toggleSectionCollapse !== undefined) {
-    const sectionId = btn.dataset.toggleSectionCollapse || "";
-    if (state.collapsedSections.has(sectionId)) {
-      state.collapsedSections.delete(sectionId);
-    } else {
-      state.collapsedSections.add(sectionId);
-    }
-    renderTimeMapsAndTasks(state.tasksTimeMapsCache);
-  } else if (btn.dataset.toggleSubsectionCollapse !== undefined) {
-    const subId = btn.dataset.toggleSubsectionCollapse || "";
-    if (state.collapsedSubsections.has(subId)) {
-      state.collapsedSubsections.delete(subId);
-    } else {
-      state.collapsedSubsections.add(subId);
-    }
-    renderTimeMapsAndTasks(state.tasksTimeMapsCache);
-  } else if (toggleSubsectionFor !== undefined) {
-    openSubsectionModal(toggleSubsectionFor, "");
-  } else if (addSubsectionFor !== undefined) {
-    openSubsectionModal(addSubsectionFor, "");
-  } else if (addSection !== undefined) {
-    startTaskInSection(addSection, addSubsectionTaskTarget || "");
-  } else if (editId) {
-    openTaskEditById(editId, { switchView: true });
-  } else if (addSubtaskId !== undefined) {
-    const parentTask = state.tasksCache.find((t) => t.id === addSubtaskId);
-    if (parentTask) {
-      startSubtaskFromTask(parentTask);
-    }
-  } else if (toggleTaskDetailsId !== undefined) {
-    if (state.expandedTaskDetails.has(toggleTaskDetailsId)) {
-      state.expandedTaskDetails.delete(toggleTaskDetailsId);
-    } else {
-      state.expandedTaskDetails.add(toggleTaskDetailsId);
-    }
-    renderTimeMapsAndTasks(state.tasksTimeMapsCache);
-  } else if (toggleTaskCollapseId !== undefined) {
-    if (state.collapsedTasks.has(toggleTaskCollapseId)) {
-      state.collapsedTasks.delete(toggleTaskCollapseId);
-    } else {
-      state.collapsedTasks.add(toggleTaskCollapseId);
-    }
-    renderTimeMapsAndTasks(state.tasksTimeMapsCache);
-  } else if (deleteId) {
-    const affected = getTaskAndDescendants(deleteId, state.tasksCache);
-    const snapshot = affected.map((t) => JSON.parse(JSON.stringify(t)));
-    await Promise.all(affected.map((t) => deleteTask(t.id)));
-    await loadTasks();
-    if (snapshot.length) {
-      const name = snapshot[0].title || "Untitled task";
-      const extra = snapshot.length > 1 ? ` and ${snapshot.length - 1} subtasks` : "";
-      showUndoBanner(`Deleted "${name}"${extra}.`, async () => {
-        await Promise.all(snapshot.map((t) => saveTask(t)));
-        await loadTasks();
-      });
-    }
-  }
 }
 
 export async function updateScheduleSummary() {

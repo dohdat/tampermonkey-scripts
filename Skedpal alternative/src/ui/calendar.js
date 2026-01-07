@@ -242,22 +242,15 @@ function updateNowIndicator() {
   todayCol.appendChild(indicator);
 }
 
-function renderCalendarGrid(range, events, timeMapColorById) {
-  const { calendarGrid } = domRefs;
-  if (!calendarGrid) {return;}
-  calendarGrid.innerHTML = "";
-  calendarGrid.style.setProperty("--calendar-hour-height", `${HOUR_HEIGHT}px`);
-
+function buildCalendarHeader(range) {
   const header = document.createElement("div");
   header.className = "calendar-grid-header";
   header.setAttribute("data-test-skedpal", "calendar-grid-header");
   header.style.gridTemplateColumns = `90px repeat(${range.days}, minmax(0, 1fr))`;
-
   const headerSpacer = document.createElement("div");
   headerSpacer.className = "calendar-grid-spacer";
   headerSpacer.setAttribute("data-test-skedpal", "calendar-grid-spacer");
   header.appendChild(headerSpacer);
-
   for (let i = 0; i < range.days; i += 1) {
     const day = addCalendarDays(range.start, i);
     const dayLabel = document.createElement("div");
@@ -273,12 +266,10 @@ function renderCalendarGrid(range, events, timeMapColorById) {
     }
     header.appendChild(dayLabel);
   }
+  return header;
+}
 
-  const body = document.createElement("div");
-  body.className = "calendar-grid-body";
-  body.setAttribute("data-test-skedpal", "calendar-grid-body");
-  body.style.gridTemplateColumns = "90px 1fr";
-
+function buildCalendarTimeColumn() {
   const timeCol = document.createElement("div");
   timeCol.className = "calendar-time-col";
   timeCol.setAttribute("data-test-skedpal", "calendar-time-col");
@@ -289,19 +280,73 @@ function renderCalendarGrid(range, events, timeMapColorById) {
     label.setAttribute("data-test-skedpal", "calendar-time-label");
     timeCol.appendChild(label);
   }
+  return timeCol;
+}
 
+function buildCalendarEventBlock(item, timeMapColorById) {
+  const top = (item.startMinutes / 60) * HOUR_HEIGHT;
+  const height = Math.max(20, ((item.endMinutes - item.startMinutes) / 60) * HOUR_HEIGHT);
+  const block = document.createElement("div");
+  block.className = "calendar-event";
+  block.style.top = `${top}px`;
+  block.style.height = `${height}px`;
+  if (item.columnCount > 1) {
+    const inset = EVENT_OVERLAP_INSET;
+    const totalGutter = EVENT_GUTTER * (item.columnCount - 1);
+    block.style.width = `calc((100% - ${totalGutter}px) / ${item.columnCount} - ${inset * 2}px)`;
+    block.style.left = `calc(${item.columnIndex} * ((100% - ${totalGutter}px) / ${item.columnCount}) + ${item.columnIndex * EVENT_GUTTER}px + ${inset}px)`;
+    block.style.right = "auto";
+  } else {
+    block.style.left = `${EVENT_EDGE_INSET}px`;
+    block.style.right = `${EVENT_EDGE_INSET}px`;
+  }
+  block.dataset.eventTaskId = item.event.taskId;
+  block.dataset.eventOccurrenceId = item.event.occurrenceId || "";
+  block.dataset.eventTimeMapId = item.event.timeMapId || "";
+  block.dataset.eventStart = item.event.start.toISOString();
+  block.dataset.eventEnd = item.event.end.toISOString();
+  block.dataset.eventInstanceIndex = String(item.event.instanceIndex);
+  const styles = getCalendarEventStyles(item.event, timeMapColorById);
+  if (styles) {
+    block.style.backgroundColor = styles.backgroundColor;
+    block.style.borderColor = styles.borderColor;
+  }
+  block.setAttribute("data-test-skedpal", "calendar-event");
+  let title = null;
+  if (item.event.link) {
+    title = document.createElement("a");
+    title.className = "calendar-event-title calendar-event-title-link";
+    title.href = item.event.link;
+    title.target = "_blank";
+    title.rel = "noopener noreferrer";
+    title.textContent = item.event.title;
+    title.setAttribute("data-test-skedpal", "calendar-event-title-link");
+  } else {
+    title = document.createElement("div");
+    title.className = "calendar-event-title";
+    title.textContent = item.event.title;
+    title.setAttribute("data-test-skedpal", "calendar-event-title");
+  }
+  const time = document.createElement("div");
+  time.className = "calendar-event-time";
+  time.textContent = formatEventTimeRange(item.eventStart, item.eventEnd);
+  time.setAttribute("data-test-skedpal", "calendar-event-time");
+  block.appendChild(title);
+  block.appendChild(time);
+  return block;
+}
+
+function buildCalendarDays(range, events, timeMapColorById) {
   const daysWrap = document.createElement("div");
   daysWrap.className = "calendar-days";
   daysWrap.setAttribute("data-test-skedpal", "calendar-days");
   daysWrap.style.gridTemplateColumns = `repeat(${range.days}, minmax(0, 1fr))`;
-
   const eventsByDay = new Map();
   events.forEach((event) => {
     const key = getDayKey(event.start);
     if (!eventsByDay.has(key)) {eventsByDay.set(key, []);}
     eventsByDay.get(key).push(event);
   });
-
   for (let i = 0; i < range.days; i += 1) {
     const day = addCalendarDays(range.start, i);
     const dayKey = getDayKey(day);
@@ -312,63 +357,26 @@ function renderCalendarGrid(range, events, timeMapColorById) {
     const dayEvents = eventsByDay.get(dayKey) || [];
     const layout = buildDayEventLayout(dayEvents, day);
     layout.forEach((item) => {
-      const top = (item.startMinutes / 60) * HOUR_HEIGHT;
-      const height = Math.max(
-        20,
-        ((item.endMinutes - item.startMinutes) / 60) * HOUR_HEIGHT
-      );
-      const block = document.createElement("div");
-      block.className = "calendar-event";
-      block.style.top = `${top}px`;
-      block.style.height = `${height}px`;
-      if (item.columnCount > 1) {
-        const inset = EVENT_OVERLAP_INSET;
-        const totalGutter = EVENT_GUTTER * (item.columnCount - 1);
-        block.style.width = `calc((100% - ${totalGutter}px) / ${item.columnCount} - ${inset * 2}px)`;
-        block.style.left = `calc(${item.columnIndex} * ((100% - ${totalGutter}px) / ${item.columnCount}) + ${item.columnIndex * EVENT_GUTTER}px + ${inset}px)`;
-        block.style.right = "auto";
-      } else {
-        block.style.left = `${EVENT_EDGE_INSET}px`;
-        block.style.right = `${EVENT_EDGE_INSET}px`;
-      }
-      block.dataset.eventTaskId = item.event.taskId;
-      block.dataset.eventOccurrenceId = item.event.occurrenceId || "";
-      block.dataset.eventTimeMapId = item.event.timeMapId || "";
-      block.dataset.eventStart = item.event.start.toISOString();
-      block.dataset.eventEnd = item.event.end.toISOString();
-      block.dataset.eventInstanceIndex = String(item.event.instanceIndex);
-      const styles = getCalendarEventStyles(item.event, timeMapColorById);
-      if (styles) {
-        block.style.backgroundColor = styles.backgroundColor;
-        block.style.borderColor = styles.borderColor;
-      }
-      block.setAttribute("data-test-skedpal", "calendar-event");
-      let title = null;
-      if (item.event.link) {
-        title = document.createElement("a");
-        title.className = "calendar-event-title calendar-event-title-link";
-        title.href = item.event.link;
-        title.target = "_blank";
-        title.rel = "noopener noreferrer";
-        title.textContent = item.event.title;
-        title.setAttribute("data-test-skedpal", "calendar-event-title-link");
-      } else {
-        title = document.createElement("div");
-        title.className = "calendar-event-title";
-        title.textContent = item.event.title;
-        title.setAttribute("data-test-skedpal", "calendar-event-title");
-      }
-      const time = document.createElement("div");
-      time.className = "calendar-event-time";
-      time.textContent = formatEventTimeRange(item.eventStart, item.eventEnd);
-      time.setAttribute("data-test-skedpal", "calendar-event-time");
-      block.appendChild(title);
-      block.appendChild(time);
+      const block = buildCalendarEventBlock(item, timeMapColorById);
       col.appendChild(block);
     });
     daysWrap.appendChild(col);
   }
+  return daysWrap;
+}
 
+function renderCalendarGrid(range, events, timeMapColorById) {
+  const { calendarGrid } = domRefs;
+  if (!calendarGrid) {return;}
+  calendarGrid.innerHTML = "";
+  calendarGrid.style.setProperty("--calendar-hour-height", `${HOUR_HEIGHT}px`);
+  const header = buildCalendarHeader(range);
+  const body = document.createElement("div");
+  body.className = "calendar-grid-body";
+  body.setAttribute("data-test-skedpal", "calendar-grid-body");
+  body.style.gridTemplateColumns = "90px 1fr";
+  const timeCol = buildCalendarTimeColumn();
+  const daysWrap = buildCalendarDays(range, events, timeMapColorById);
   body.appendChild(timeCol);
   body.appendChild(daysWrap);
   calendarGrid.appendChild(header);

@@ -348,6 +348,12 @@ export function enableDeadlinePicker() {
 }
 
 export function registerRepeatEventHandlers() {
+  registerRepeatSelectHandlers();
+  registerRepeatStateHandlers();
+  registerRepeatModalHandlers();
+}
+
+function registerRepeatSelectHandlers() {
   taskRepeatSelect?.addEventListener("change", () => {
     const value = taskRepeatSelect.value;
     const baseSelection =
@@ -389,7 +395,9 @@ export function registerRepeatEventHandlers() {
       syncSubsectionRepeatLabel();
     }
   });
+}
 
+function registerRepeatStateHandlers() {
   taskRepeatUnit?.addEventListener("change", () => {
     const unit = taskRepeatUnit.value || "week";
     repeatStore.repeatState.unit = unit;
@@ -467,7 +475,9 @@ export function registerRepeatEventHandlers() {
     taskRepeatEndCount.value = Math.max(1, Number(taskRepeatEndCount.value) || 1);
     updateRepeatEnd();
   });
+}
 
+function registerRepeatModalHandlers() {
   repeatModalCloseBtns.forEach((btn) =>
     btn.addEventListener("click", () => {
       closeRepeatModal();

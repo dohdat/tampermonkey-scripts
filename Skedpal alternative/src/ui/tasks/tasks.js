@@ -136,13 +136,11 @@ export async function ensureTaskIds(tasks) {
   return withIds;
 }
 
-export async function migrateSectionsAndTasks(tasks, settings) {
-  const mergedSettings = { ...DEFAULT_SETTINGS, ...(settings || {}) };
+function buildSectionMaps(mergedSettings) {
   const sectionsInput = Array.isArray(mergedSettings.sections) ? mergedSettings.sections : [];
   const sectionIdMap = new Map();
   const sectionNameMap = new Map();
   const sections = [];
-
   const addSection = (name, id, favorite = false, favoriteOrder = null) => {
     const finalId = id || uuid();
     if (sectionIdMap.has(finalId)) {return sectionIdMap.get(finalId);}
@@ -157,7 +155,6 @@ export async function migrateSectionsAndTasks(tasks, settings) {
     sections.push(section);
     return section;
   };
-
   sectionsInput.forEach((entry) => {
     if (entry && typeof entry === "object" && entry.id) {
       addSection(entry.name, entry.id, entry.favorite, entry.favoriteOrder);
@@ -168,12 +165,14 @@ export async function migrateSectionsAndTasks(tasks, settings) {
   if (sections.length === 0) {
     DEFAULT_SETTINGS.sections.forEach((s) => addSection(s.name, s.id, s.favorite));
   }
+  return { sections, sectionIdMap, sectionNameMap, addSection };
+}
 
+function buildSubsectionMaps(mergedSettings, sectionIdMap, sectionNameMap) {
   const subsectionsRaw = mergedSettings.subsections || {};
   const subsections = {};
   const subsectionIdMaps = {};
   const subsectionNameMaps = {};
-
   const ensureSubsectionMaps = (sectionId) => {
     if (!subsections[sectionId]) {
       subsections[sectionId] = [];
@@ -191,7 +190,6 @@ export async function migrateSectionsAndTasks(tasks, settings) {
       subsectionNameMaps[sectionId] = nameMap;
     }
   };
-
   Object.entries(subsectionsRaw).forEach(([key, list]) => {
     const targetSectionId = sectionIdMap.has(key)
       ? key
@@ -220,13 +218,16 @@ export async function migrateSectionsAndTasks(tasks, settings) {
       if (name) {subsectionNameMaps[targetSectionId].set(name.toLowerCase(), id);}
     });
   });
+  return { subsections, subsectionIdMaps, subsectionNameMaps, ensureSubsectionMaps };
+}
 
-  sections.forEach((section) => ensureSubsectionMaps(section.id));
-
+function normalizeTaskSections(tasks, sectionMaps, subsectionMaps) {
+  const { sectionIdMap, sectionNameMap, addSection } = sectionMaps;
+  const { subsections, subsectionIdMaps, subsectionNameMaps, ensureSubsectionMaps } =
+    subsectionMaps;
   const tasksById = new Map(tasks.map((t) => [t.id, t]));
   const updatedTasks = [];
   const taskUpdates = [];
-
   tasks.forEach((task) => {
     let newSectionId = "";
     if (task.section) {
@@ -234,11 +235,7 @@ export async function migrateSectionsAndTasks(tasks, settings) {
         newSectionId = task.section;
       } else {
         const fromName = sectionNameMap.get(task.section.toLowerCase?.() || task.section);
-        if (fromName) {
-          newSectionId = fromName;
-        } else {
-          newSectionId = addSection(task.section).id;
-        }
+        newSectionId = fromName || addSection(task.section).id;
       }
     }
     ensureSubsectionMaps(newSectionId);
@@ -273,13 +270,24 @@ export async function migrateSectionsAndTasks(tasks, settings) {
       taskUpdates.push(saveTask(updated));
     }
   });
+  return { updatedTasks, taskUpdates };
+}
 
+export async function migrateSectionsAndTasks(tasks, settings) {
+  const mergedSettings = { ...DEFAULT_SETTINGS, ...(settings || {}) };
+  const sectionMaps = buildSectionMaps(mergedSettings);
+  const subsectionMaps = buildSubsectionMaps(
+    mergedSettings,
+    sectionMaps.sectionIdMap,
+    sectionMaps.sectionNameMap
+  );
+  sectionMaps.sections.forEach((section) => subsectionMaps.ensureSubsectionMaps(section.id));
+  const { updatedTasks, taskUpdates } = normalizeTaskSections(tasks, sectionMaps, subsectionMaps);
   const normalizedSettings = {
     ...mergedSettings,
-    sections,
-    subsections
+    sections: sectionMaps.sections,
+    subsections: subsectionMaps.subsections
   };
-
   const settingsChanged = JSON.stringify(mergedSettings) !== JSON.stringify(normalizedSettings);
   if (settingsChanged) {
     await saveTaskSettings(normalizedSettings);
@@ -287,7 +295,6 @@ export async function migrateSectionsAndTasks(tasks, settings) {
   if (taskUpdates.length) {
     await Promise.all(taskUpdates);
   }
-
   return { tasks: updatedTasks, settings: normalizedSettings };
 }
 

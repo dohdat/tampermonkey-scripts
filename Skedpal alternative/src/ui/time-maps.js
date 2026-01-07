@@ -20,21 +20,14 @@ const getTimeMapColorInput = () => domRefs.timeMapColorInput;
 const getTimeMapDaySelect = () => domRefs.timeMapDaySelect;
 const getTimeMapDayAdd = () => domRefs.timeMapDayAdd;
 
-function createDayRow(day, blocks = []) {
-  const row = document.createElement("div");
-  row.dataset.dayRow = String(day);
-  row.className = "rounded-xl border border-slate-700 bg-slate-900/60 p-3";
-  row.setAttribute("data-test-skedpal", "timemap-day-row");
-
+function createDayHeader(day, row) {
   const header = document.createElement("div");
   header.className = "flex items-center justify-between gap-2";
   header.setAttribute("data-test-skedpal", "timemap-day-header");
-
   const label = document.createElement("span");
   label.className = "text-sm font-semibold text-slate-100";
   label.textContent = dayOptions.find((opt) => opt.value === Number(day))?.label || String(day);
   label.setAttribute("data-test-skedpal", "timemap-day-label");
-
   const removeDayBtn = document.createElement("button");
   removeDayBtn.type = "button";
   removeDayBtn.className =
@@ -44,45 +37,37 @@ function createDayRow(day, blocks = []) {
   removeDayBtn.addEventListener("click", () => {
     row.remove();
   });
-
   header.appendChild(label);
   header.appendChild(removeDayBtn);
-  row.appendChild(header);
+  return header;
+}
 
-  const blocksContainer = document.createElement("div");
-  blocksContainer.className = "mt-2 flex flex-col gap-2";
-  blocksContainer.dataset.blocksFor = day;
-  blocksContainer.setAttribute("data-test-skedpal", "timemap-blocks");
-
-  const createBlock = (block = { startTime: "09:00", endTime: "12:00" }) => {
-    const wrapper = document.createElement("div");
-    wrapper.className =
-      "flex flex-wrap items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 text-xs text-slate-200";
-    wrapper.dataset.block = day;
-    wrapper.setAttribute("data-test-skedpal", "timemap-block");
-
-    const start = document.createElement("input");
-    start.type = "time";
-    start.value = block.startTime || "09:00";
-    start.className =
-      "w-24 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100 focus:border-lime-400 focus:outline-none";
-    start.dataset.startFor = day;
-    start.setAttribute("data-test-skedpal", "timemap-block-start");
-
-    const end = document.createElement("input");
-    end.type = "time";
-    end.value = block.endTime || "12:00";
-    end.className =
-      "w-24 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100 focus:border-lime-400 focus:outline-none";
-    end.dataset.endFor = day;
-    end.setAttribute("data-test-skedpal", "timemap-block-end");
-
-    const removeBtn = document.createElement("button");
-    removeBtn.type = "button";
-    removeBtn.title = "Remove block";
-    removeBtn.className = "modal-close-btn modal-close-btn--sm";
-    removeBtn.setAttribute("aria-label", "Remove block");
-    removeBtn.innerHTML = `
+function createTimeBlock(day, block = { startTime: "09:00", endTime: "12:00" }) {
+  const wrapper = document.createElement("div");
+  wrapper.className =
+    "flex flex-wrap items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 text-xs text-slate-200";
+  wrapper.dataset.block = day;
+  wrapper.setAttribute("data-test-skedpal", "timemap-block");
+  const start = document.createElement("input");
+  start.type = "time";
+  start.value = block.startTime || "09:00";
+  start.className =
+    "w-24 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100 focus:border-lime-400 focus:outline-none";
+  start.dataset.startFor = day;
+  start.setAttribute("data-test-skedpal", "timemap-block-start");
+  const end = document.createElement("input");
+  end.type = "time";
+  end.value = block.endTime || "12:00";
+  end.className =
+    "w-24 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100 focus:border-lime-400 focus:outline-none";
+  end.dataset.endFor = day;
+  end.setAttribute("data-test-skedpal", "timemap-block-end");
+  const removeBtn = document.createElement("button");
+  removeBtn.type = "button";
+  removeBtn.title = "Remove block";
+  removeBtn.className = "modal-close-btn modal-close-btn--sm";
+  removeBtn.setAttribute("aria-label", "Remove block");
+  removeBtn.innerHTML = `
       <svg
         class="modal-close-icon modal-close-icon--sm"
         aria-hidden="true"
@@ -100,18 +85,31 @@ function createDayRow(day, blocks = []) {
       </svg>
       <span class="sr-only" data-test-skedpal="modal-close-label">Remove block</span>
     `;
-    removeBtn.setAttribute("data-test-skedpal", "timemap-block-remove");
-    removeBtn.addEventListener("click", () => {
-      wrapper.remove();
-    });
+  removeBtn.setAttribute("data-test-skedpal", "timemap-block-remove");
+  removeBtn.addEventListener("click", () => {
+    wrapper.remove();
+  });
+  wrapper.appendChild(start);
+  wrapper.appendChild(document.createTextNode("to"));
+  wrapper.appendChild(end);
+  wrapper.appendChild(removeBtn);
+  return wrapper;
+}
 
-    wrapper.appendChild(start);
-    wrapper.appendChild(document.createTextNode("to"));
-    wrapper.appendChild(end);
-    wrapper.appendChild(removeBtn);
-    return wrapper;
-  };
+function createBlocksContainer(day, blocks) {
+  const blocksContainer = document.createElement("div");
+  blocksContainer.className = "mt-2 flex flex-col gap-2";
+  blocksContainer.dataset.blocksFor = day;
+  blocksContainer.setAttribute("data-test-skedpal", "timemap-blocks");
+  if (blocks.length > 0) {
+    blocks.forEach((block) => blocksContainer.appendChild(createTimeBlock(day, block)));
+  } else {
+    blocksContainer.appendChild(createTimeBlock(day));
+  }
+  return blocksContainer;
+}
 
+function createAddBlockButton(day, blocksContainer) {
   const addBlockBtn = document.createElement("button");
   addBlockBtn.type = "button";
   addBlockBtn.textContent = "Add time range";
@@ -119,15 +117,20 @@ function createDayRow(day, blocks = []) {
     "mt-2 w-fit rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
   addBlockBtn.setAttribute("data-test-skedpal", "timemap-block-add");
   addBlockBtn.addEventListener("click", () => {
-    blocksContainer.appendChild(createBlock());
+    blocksContainer.appendChild(createTimeBlock(day));
   });
+  return addBlockBtn;
+}
 
-  if (blocks.length > 0) {
-    blocks.forEach((block) => blocksContainer.appendChild(createBlock(block)));
-  } else {
-    blocksContainer.appendChild(createBlock());
-  }
-
+function createDayRow(day, blocks = []) {
+  const row = document.createElement("div");
+  row.dataset.dayRow = String(day);
+  row.className = "rounded-xl border border-slate-700 bg-slate-900/60 p-3";
+  row.setAttribute("data-test-skedpal", "timemap-day-row");
+  const header = createDayHeader(day, row);
+  const blocksContainer = createBlocksContainer(day, blocks);
+  const addBlockBtn = createAddBlockButton(day, blocksContainer);
+  row.appendChild(header);
   row.appendChild(blocksContainer);
   row.appendChild(addBlockBtn);
   return row;
@@ -400,87 +403,94 @@ export function closeTimeMapForm() {
   }
 }
 
+async function handleTimeMapEdit(editId, timeMaps) {
+  const tm = timeMaps.map(normalizeTimeMap).find((t) => t.id === editId);
+  if (!tm) {return;}
+  document.getElementById("timemap-id").value = tm.id;
+  document.getElementById("timemap-name").value = tm.name;
+  const timeMapColorInput = getTimeMapColorInput();
+  const timeMapDayRows = getTimeMapDayRows();
+  if (timeMapColorInput) {
+    timeMapColorInput.value = tm.color || themeColors.green500;
+  }
+  if (timeMapDayRows) {
+    renderDayRows(timeMapDayRows, tm.rules);
+  }
+  openTimeMapForm();
+  const { switchView } = await import("./navigation.js");
+  switchView("settings");
+}
+
+async function handleTimeMapDelete(deleteId) {
+  const confirmRemove = confirm("Delete this TimeMap? Tasks using it will be updated.");
+  if (!confirmRemove) {return;}
+  await deleteTimeMap(deleteId);
+  const timeMapsRaw = await getAllTimeMaps();
+  const remainingTimeMaps = timeMapsRaw.map(normalizeTimeMap);
+  const remainingIds = new Set(remainingTimeMaps.map((tm) => tm.id));
+  let nextSettings = { ...state.settingsCache };
+  let settingsChanged = false;
+  if (nextSettings.defaultTimeMapId === deleteId) {
+    nextSettings = {
+      ...nextSettings,
+      defaultTimeMapId: remainingTimeMaps[0]?.id || null
+    };
+    settingsChanged = true;
+  }
+  const subsections = { ...(nextSettings.subsections || {}) };
+  Object.entries(subsections).forEach(([sectionId, list]) => {
+    const updatedList = (list || []).map((sub) => {
+      if (!Array.isArray(sub?.template?.timeMapIds)) {return sub;}
+      const filtered = sub.template.timeMapIds.filter((id) => remainingIds.has(id));
+      if (filtered.length === sub.template.timeMapIds.length) {return sub;}
+      settingsChanged = true;
+      return {
+        ...sub,
+        template: {
+          ...sub.template,
+          timeMapIds: filtered
+        }
+      };
+    });
+    subsections[sectionId] = updatedList;
+  });
+  if (settingsChanged) {
+    nextSettings = { ...nextSettings, subsections };
+    state.settingsCache = nextSettings;
+    await saveSettings(nextSettings);
+  }
+  const tasks = await getAllTasks();
+  const updates = tasks
+    .filter((task) => Array.isArray(task.timeMapIds) && task.timeMapIds.includes(deleteId))
+    .map((task) => {
+      const timeMapIds = resolveTimeMapIdsAfterDelete(
+        task,
+        nextSettings,
+        remainingTimeMaps,
+        deleteId
+      );
+      if (timeMapIds.length === task.timeMapIds.length && timeMapIds.every((id) => task.timeMapIds.includes(id))) {
+        return null;
+      }
+      return saveTask({ ...task, timeMapIds });
+    })
+    .filter(Boolean);
+  if (updates.length) {
+    await Promise.all(updates);
+  }
+  const { loadTasks } = await import("./tasks/tasks-actions.js");
+  await Promise.all([loadTimeMaps(), loadTasks()]);
+}
+
 export async function handleTimeMapListClick(event, timeMaps) {
   const btn = event.target.closest("button");
   if (!btn) {return;}
   const editId = btn.dataset.edit;
   const deleteId = btn.dataset.delete;
   if (editId) {
-    const tm = timeMaps.map(normalizeTimeMap).find((t) => t.id === editId);
-    if (tm) {
-      document.getElementById("timemap-id").value = tm.id;
-      document.getElementById("timemap-name").value = tm.name;
-      const timeMapColorInput = getTimeMapColorInput();
-      const timeMapDayRows = getTimeMapDayRows();
-      if (timeMapColorInput) {
-        timeMapColorInput.value = tm.color || themeColors.green500;
-      }
-      if (timeMapDayRows) {
-        renderDayRows(timeMapDayRows, tm.rules);
-      }
-      openTimeMapForm();
-      const { switchView } = await import("./navigation.js");
-      switchView("settings");
-    }
+    await handleTimeMapEdit(editId, timeMaps);
   } else if (deleteId) {
-    const confirmRemove = confirm("Delete this TimeMap? Tasks using it will be updated.");
-    if (!confirmRemove) {return;}
-    await deleteTimeMap(deleteId);
-    const timeMapsRaw = await getAllTimeMaps();
-    const remainingTimeMaps = timeMapsRaw.map(normalizeTimeMap);
-    const remainingIds = new Set(remainingTimeMaps.map((tm) => tm.id));
-    let nextSettings = { ...state.settingsCache };
-    let settingsChanged = false;
-    if (nextSettings.defaultTimeMapId === deleteId) {
-      nextSettings = {
-        ...nextSettings,
-        defaultTimeMapId: remainingTimeMaps[0]?.id || null
-      };
-      settingsChanged = true;
-    }
-    const subsections = { ...(nextSettings.subsections || {}) };
-    Object.entries(subsections).forEach(([sectionId, list]) => {
-      const updatedList = (list || []).map((sub) => {
-        if (!Array.isArray(sub?.template?.timeMapIds)) {return sub;}
-        const filtered = sub.template.timeMapIds.filter((id) => remainingIds.has(id));
-        if (filtered.length === sub.template.timeMapIds.length) {return sub;}
-        settingsChanged = true;
-        return {
-          ...sub,
-          template: {
-            ...sub.template,
-            timeMapIds: filtered
-          }
-        };
-      });
-      subsections[sectionId] = updatedList;
-    });
-    if (settingsChanged) {
-      nextSettings = { ...nextSettings, subsections };
-      state.settingsCache = nextSettings;
-      await saveSettings(nextSettings);
-    }
-    const tasks = await getAllTasks();
-    const updates = tasks
-      .filter((task) => Array.isArray(task.timeMapIds) && task.timeMapIds.includes(deleteId))
-      .map((task) => {
-        const timeMapIds = resolveTimeMapIdsAfterDelete(
-          task,
-          nextSettings,
-          remainingTimeMaps,
-          deleteId
-        );
-        if (timeMapIds.length === task.timeMapIds.length && timeMapIds.every((id) => task.timeMapIds.includes(id))) {
-          return null;
-        }
-        return saveTask({ ...task, timeMapIds });
-      })
-      .filter(Boolean);
-    if (updates.length) {
-      await Promise.all(updates);
-    }
-    const { loadTasks } = await import("./tasks/tasks-actions.js");
-    await Promise.all([loadTimeMaps(), loadTasks()]);
+    await handleTimeMapDelete(deleteId);
   }
 }
 

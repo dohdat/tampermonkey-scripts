@@ -12,24 +12,16 @@ import { formatDateTime, formatDurationShort } from "../utils.js";
 import { getRepeatSummary } from "../repeat.js";
 import { themeColors } from "../theme.js";
 
-export function renderTaskCard(task, context) {
-  const {
-    tasks,
-    timeMapById,
-    collapsedTasks,
-    expandedTaskDetails,
-    computeTotalDuration,
-    getTaskDepthById
-  } = context;
-  const childTasks = tasks.filter((t) => t.subtaskParentId === task.id);
-  const hasChildren = childTasks.length > 0;
-  const isCollapsed = collapsedTasks.has(task.id);
-  const depth = getTaskDepthById(task.id);
-  const baseDurationMin = Number(task.durationMin) || 0;
-  const displayDurationMin = hasChildren ? computeTotalDuration(task) : baseDurationMin;
-  const timeMapNames = task.timeMapIds.map((id) => timeMapById.get(id)?.name || "Unknown");
-  const repeatSummary = getRepeatSummary(task.repeat);
-  const taskCard = document.createElement("div");
+function buildTitleMarkup(task) {
+  if (!task.link) {
+    return task.title;
+  }
+  return `<a href="${task.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-lime-300 hover:text-lime-200 underline decoration-lime-400">
+          <span>${task.title}</span>
+        </a>`;
+}
+
+function applyTaskCardBaseStyles(taskCard, task, depth, timeMapById) {
   const isSubtask = depth > 0;
   taskCard.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow";
   taskCard.setAttribute("data-test-skedpal", "task-card");
@@ -47,14 +39,11 @@ export function renderTaskCard(task, context) {
   if (color) {
     taskCard.style.backgroundColor = `${color}1a`;
   }
-  const titleMarkup = task.link
-    ? `<a href="${task.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-lime-300 hover:text-lime-200 underline decoration-lime-400">
-          <span>${task.title}</span>
-        </a>`
-    : task.title;
-  const isLongTitle = (task.title || "").length > 60;
-  const header = document.createElement("div");
-  header.className = `task-title-row title-hover-group${isLongTitle ? " task-title-row--stacked" : ""}`;
+}
+
+function buildTitleWrap(task, options) {
+  const { hasChildren, isCollapsed, isLongTitle, titleMarkup, detailsOpen, displayDurationMin } =
+    options;
   const titleWrap = document.createElement("h3");
   titleWrap.className = "task-title-main text-base font-semibold";
   if (hasChildren) {
@@ -88,18 +77,14 @@ export function renderTaskCard(task, context) {
     titleTextWrap.style.textDecoration = "line-through";
     titleTextWrap.style.textDecorationColor = themeColors.green400;
   }
+  return { titleWrap, isLongTitle, displayDurationMin, detailsOpen };
+}
+
+function buildTaskTitleActions(task, detailsOpen) {
   const actionsWrap = document.createElement("div");
   actionsWrap.className = "task-actions-wrap";
-  actionsWrap.style.flex = "1";
-  actionsWrap.style.flexWrap = isLongTitle ? "nowrap" : "wrap";
-  actionsWrap.style.justifyContent = "flex-start";
-  const durationPill = document.createElement("span");
-  durationPill.className = "pill pill-muted";
-  durationPill.setAttribute("data-test-skedpal", "task-duration");
-  durationPill.textContent = formatDurationShort(displayDurationMin);
   const titleActions = document.createElement("div");
   titleActions.className = "title-actions task-title-actions";
-  titleActions.setAttribute("data-test-skedpal", "task-title-actions");
   titleActions.setAttribute("data-test-skedpal", "task-title-actions");
   const zoomTaskBtn = document.createElement("button");
   zoomTaskBtn.type = "button";
@@ -140,7 +125,6 @@ export function renderTaskCard(task, context) {
   detailsToggleBtn.type = "button";
   detailsToggleBtn.dataset.toggleTaskDetails = task.id;
   detailsToggleBtn.className = "title-icon-btn";
-  const detailsOpen = expandedTaskDetails.has(task.id);
   detailsToggleBtn.title = detailsOpen ? "Hide details" : "Show details";
   detailsToggleBtn.setAttribute("aria-label", detailsOpen ? "Hide details" : "Show details");
   detailsToggleBtn.setAttribute("data-test-skedpal", "task-details-toggle");
@@ -150,6 +134,19 @@ export function renderTaskCard(task, context) {
   titleActions.appendChild(addSubtaskBtn);
   titleActions.appendChild(detailsToggleBtn);
   titleActions.appendChild(deleteTaskBtn);
+  actionsWrap.appendChild(titleActions);
+  return actionsWrap;
+}
+
+function buildTaskDurationPill(displayDurationMin) {
+  const durationPill = document.createElement("span");
+  durationPill.className = "pill pill-muted";
+  durationPill.setAttribute("data-test-skedpal", "task-duration");
+  durationPill.textContent = formatDurationShort(displayDurationMin);
+  return durationPill;
+}
+
+function buildTaskSummaryRow(task) {
   const summaryRow = document.createElement("div");
   summaryRow.className = "task-summary-row";
   summaryRow.setAttribute("data-test-skedpal", "task-summary-row");
@@ -164,31 +161,48 @@ export function renderTaskCard(task, context) {
       });
     }
   }
-  actionsWrap.appendChild(durationPill);
-  actionsWrap.appendChild(titleActions);
-  if (summaryRow.textContent) {
+  return summaryRow.textContent ? summaryRow : null;
+}
+
+function buildTaskHeader(task, options) {
+  const header = document.createElement("div");
+  header.className = `task-title-row title-hover-group${options.isLongTitle ? " task-title-row--stacked" : ""}`;
+  const { titleWrap, displayDurationMin, detailsOpen, isLongTitle } = buildTitleWrap(task, options);
+  const actionsWrap = buildTaskTitleActions(task, detailsOpen);
+  actionsWrap.style.flex = "1";
+  actionsWrap.style.flexWrap = isLongTitle ? "nowrap" : "wrap";
+  actionsWrap.style.justifyContent = "flex-start";
+  const durationPill = buildTaskDurationPill(displayDurationMin);
+  if (actionsWrap.firstChild) {
+    actionsWrap.insertBefore(durationPill, actionsWrap.firstChild);
+  } else {
+    actionsWrap.appendChild(durationPill);
+  }
+  const summaryRow = buildTaskSummaryRow(task);
+  if (summaryRow) {
     actionsWrap.appendChild(summaryRow);
   }
   header.appendChild(titleWrap);
   header.appendChild(actionsWrap);
-  taskCard.appendChild(header);
+  return header;
+}
 
-  if (detailsOpen) {
-    const meta = document.createElement("div");
-    meta.className = "mt-2 flex flex-wrap gap-2 text-xs text-slate-400";
-    meta.setAttribute("data-test-skedpal", "task-meta");
-    const deadlineMarkup = task.deadline
-      ? `<span data-test-skedpal="task-deadline">Deadline: ${formatDateTime(task.deadline)}</span>`
-      : "";
-    const startFromMarkup = task.startFrom
-      ? `<span data-test-skedpal="task-start-from">Start from: ${formatDateTime(
-          task.startFrom
-        )}</span>`
-      : "";
-    const minBlockMarkup = task.minBlockMin
-      ? `<span data-test-skedpal="task-min-block">Min block: ${task.minBlockMin}m</span>`
-      : "";
-    meta.innerHTML = `
+function buildTaskMeta(task, timeMapNames, repeatSummary) {
+  const meta = document.createElement("div");
+  meta.className = "mt-2 flex flex-wrap gap-2 text-xs text-slate-400";
+  meta.setAttribute("data-test-skedpal", "task-meta");
+  const deadlineMarkup = task.deadline
+    ? `<span data-test-skedpal="task-deadline">Deadline: ${formatDateTime(task.deadline)}</span>`
+    : "";
+  const startFromMarkup = task.startFrom
+    ? `<span data-test-skedpal="task-start-from">Start from: ${formatDateTime(
+        task.startFrom
+      )}</span>`
+    : "";
+  const minBlockMarkup = task.minBlockMin
+    ? `<span data-test-skedpal="task-min-block">Min block: ${task.minBlockMin}m</span>`
+    : "";
+  meta.innerHTML = `
           ${deadlineMarkup}
           ${startFromMarkup}
           ${minBlockMarkup}
@@ -196,32 +210,74 @@ export function renderTaskCard(task, context) {
           <span data-test-skedpal="task-timemaps">TimeMaps: ${timeMapNames.join(", ")}</span>
           <span data-test-skedpal="task-repeat">Repeat: ${repeatSummary}</span>
         `;
-    taskCard.appendChild(meta);
+  return meta;
+}
 
-    const isRepeating = task.repeat && task.repeat.type !== "none";
-    if (!isRepeating) {
-      const scheduledStartMarkup = task.scheduledStart
-        ? `<span data-test-skedpal="task-scheduled-start">Start: ${formatDateTime(
-            task.scheduledStart
-          )}</span>`
-        : "";
-      const scheduledEndMarkup = task.scheduledEnd
-        ? `<span data-test-skedpal="task-scheduled-end">End: ${formatDateTime(
-            task.scheduledEnd
-          )}</span>`
-        : "";
-      if (scheduledStartMarkup || scheduledEndMarkup) {
-        const statusRow = document.createElement("div");
-        statusRow.className = "mt-1 flex flex-wrap gap-3 text-xs text-slate-400";
-        statusRow.innerHTML = `
+function buildTaskScheduleDetails(task) {
+  const scheduledStartMarkup = task.scheduledStart
+    ? `<span data-test-skedpal="task-scheduled-start">Start: ${formatDateTime(
+        task.scheduledStart
+      )}</span>`
+    : "";
+  const scheduledEndMarkup = task.scheduledEnd
+    ? `<span data-test-skedpal="task-scheduled-end">End: ${formatDateTime(
+        task.scheduledEnd
+      )}</span>`
+    : "";
+  if (!scheduledStartMarkup && !scheduledEndMarkup) {
+    return null;
+  }
+  const statusRow = document.createElement("div");
+  statusRow.className = "mt-1 flex flex-wrap gap-3 text-xs text-slate-400";
+  statusRow.innerHTML = `
           ${scheduledStartMarkup}
           ${scheduledEndMarkup}
         `;
-        statusRow.setAttribute("data-test-skedpal", "task-status-details");
+  statusRow.setAttribute("data-test-skedpal", "task-status-details");
+  return statusRow;
+}
+
+export function renderTaskCard(task, context) {
+  const {
+    tasks,
+    timeMapById,
+    collapsedTasks,
+    expandedTaskDetails,
+    computeTotalDuration,
+    getTaskDepthById
+  } = context;
+  const childTasks = tasks.filter((t) => t.subtaskParentId === task.id);
+  const hasChildren = childTasks.length > 0;
+  const isCollapsed = collapsedTasks.has(task.id);
+  const depth = getTaskDepthById(task.id);
+  const baseDurationMin = Number(task.durationMin) || 0;
+  const displayDurationMin = hasChildren ? computeTotalDuration(task) : baseDurationMin;
+  const timeMapNames = task.timeMapIds.map((id) => timeMapById.get(id)?.name || "Unknown");
+  const repeatSummary = getRepeatSummary(task.repeat);
+  const taskCard = document.createElement("div");
+  applyTaskCardBaseStyles(taskCard, task, depth, timeMapById);
+  const titleMarkup = buildTitleMarkup(task);
+  const isLongTitle = (task.title || "").length > 60;
+  const detailsOpen = expandedTaskDetails.has(task.id);
+  const header = buildTaskHeader(task, {
+    hasChildren,
+    isCollapsed,
+    isLongTitle,
+    titleMarkup,
+    detailsOpen,
+    displayDurationMin
+  });
+  taskCard.appendChild(header);
+  if (detailsOpen) {
+    const meta = buildTaskMeta(task, timeMapNames, repeatSummary);
+    taskCard.appendChild(meta);
+    const isRepeating = task.repeat && task.repeat.type !== "none";
+    if (!isRepeating) {
+      const statusRow = buildTaskScheduleDetails(task);
+      if (statusRow) {
         taskCard.appendChild(statusRow);
       }
     }
   }
-
   return taskCard;
 }

@@ -18,17 +18,18 @@ const {
   migrateSectionsAndTasks
 } = await import("../src/ui/tasks/tasks.js");
 
-describe("tasks ui helpers", () => {
-  beforeEach(() => {
-    global.crypto.randomUUID = (() => {
-      let counter = 0;
-      return () => {
-        counter += 1;
-        return `uuid-${counter}`;
-      };
-    })();
-  });
+function resetUuidCounter() {
+  global.crypto.randomUUID = (() => {
+    let counter = 0;
+    return () => {
+      counter += 1;
+      return `uuid-${counter}`;
+    };
+  })();
+}
 
+describe("task reorder", () => {
+  beforeEach(() => resetUuidCounter());
   it("reorders tasks across sections with subtasks", () => {
     const tasks = [
       { id: "p1", title: "Parent", section: "s1", subsection: "", order: 1 },
@@ -80,7 +81,10 @@ describe("tasks ui helpers", () => {
     const result = computeTaskReorderUpdates(tasks, "missing", "s1", "", null);
     assert.deepStrictEqual(result, { updates: [], changed: false });
   });
+});
 
+describe("task defaults", () => {
+  beforeEach(() => resetUuidCounter());
   it("assigns ids and default fields when missing", async () => {
     const tasks = [
       { title: "Untitled", section: "s1", subsection: "" },
@@ -107,7 +111,10 @@ describe("tasks ui helpers", () => {
     const normalized = await ensureTaskIds(tasks);
     assert.strictEqual(normalized[0].order, 1);
   });
+});
 
+describe("task migrations", () => {
+  beforeEach(() => resetUuidCounter());
   it("migrates section and subsection names to ids", async () => {
     const tasks = [{ id: "t1", title: "Task", section: "Focus", subsection: "Deep" }];
     const settings = {

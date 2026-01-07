@@ -17,7 +17,6 @@ import { initSettings } from "./settings.js";
 import {
   loadTasks,
   handleTaskSubmit,
-  handleTaskListClick,
   handleReschedule,
   syncTaskDurationHelper,
   updateScheduleSummary,
@@ -26,6 +25,7 @@ import {
   closeRepeatCompleteModal,
   openTaskEditById
 } from "./tasks/tasks-actions.js";
+import { handleTaskListClick } from "./tasks/task-list-actions.js";
 import {
   renderTaskSubsectionOptions,
   openSectionForm,
@@ -97,14 +97,42 @@ async function hydrate() {
 }
 
 function registerEventListeners() {
+  registerTimeMapHandlers();
+  registerTaskFormHandlers();
+  registerSectionHandlers();
+  registerNavigationHandlers();
+  registerFavoritesHandlers();
+  registerListHandlers();
+  registerSubsectionHandlers();
+  registerModalHandlers();
+  registerKeyboardHandlers();
+  registerCustomEventHandlers();
+  registerRepeatEventHandlers();
+  setRepeatFromSelection({ type: "none" });
+}
+
+function registerTimeMapHandlers() {
   document.getElementById("timemap-form")?.addEventListener("submit", handleTimeMapSubmit);
   document.getElementById("timemap-set-default")?.addEventListener("click", handleSetDefaultTimeMap);
-  document.getElementById("task-form")?.addEventListener("submit", handleTaskSubmit);
   document.getElementById("timemap-reset")?.addEventListener("click", resetTimeMapForm);
   timeMapCancel?.addEventListener("click", () => {
     resetTimeMapForm();
     closeTimeMapForm();
   });
+  timeMapToggle?.addEventListener("click", () => {
+    if (timeMapFormWrap.classList.contains("hidden")) {
+      openTimeMapForm();
+    } else {
+      closeTimeMapForm();
+    }
+  });
+  timeMapList?.addEventListener("click", async (event) => {
+    await handleTimeMapListClick(event, state.tasksTimeMapsCache);
+  });
+}
+
+function registerTaskFormHandlers() {
+  document.getElementById("task-form")?.addEventListener("submit", handleTaskSubmit);
   if (taskLinkInput && taskLinkClearBtn) {
     const syncClear = () => toggleClearButtonVisibility(taskLinkInput, taskLinkClearBtn);
     taskLinkInput.addEventListener("input", syncClear);
@@ -119,9 +147,19 @@ function registerEventListeners() {
     taskDurationInput.addEventListener("input", syncTaskDurationHelper);
     syncTaskDurationHelper();
   }
-
+  taskToggle?.addEventListener("click", () => {
+    startTaskInSection();
+  });
+  taskList?.addEventListener("click", async (event) => {
+    await handleTaskListClick(event);
+  });
+  todayList?.addEventListener("click", async (event) => {
+    await handleTaskListClick(event);
+  });
   rescheduleButtons.forEach((btn) => btn.addEventListener("click", handleReschedule));
+}
 
+function registerSectionHandlers() {
   sectionAddBtn?.addEventListener("click", handleAddSection);
   sectionFormToggle?.addEventListener("click", () => {
     if (sectionFormToggle.classList.contains("hidden")) {return;}
@@ -143,7 +181,9 @@ function registerEventListeners() {
     handleRemoveSection(btn.dataset.removeSection);
   });
   taskSectionSelect?.addEventListener("change", () => renderTaskSubsectionOptions());
+}
 
+function registerNavigationHandlers() {
   navButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
       if (btn.dataset.view === "tasks") {
@@ -154,7 +194,9 @@ function registerEventListeners() {
     });
   });
   settingsToggleBtn?.addEventListener("click", () => switchView("settings"));
+}
 
+function registerFavoritesHandlers() {
   sidebarFavorites?.addEventListener("click", (event) => {
     const btn = event.target.closest("[data-fav-jump]");
     if (!btn) {return;}
@@ -168,7 +210,6 @@ function registerEventListeners() {
       setZoomFilter({ type: "section", sectionId });
     }
   });
-
   sidebarFavorites?.addEventListener("dragstart", (event) => {
     const item = event.target.closest("[data-fav-row]");
     if (!item) {return;}
@@ -179,7 +220,6 @@ function registerEventListeners() {
     item.classList.add("opacity-60");
     sidebarFavorites.dataset.draggingKey = favKey;
   });
-
   sidebarFavorites?.addEventListener("dragover", (event) => {
     event.preventDefault();
     const draggingKey = sidebarFavorites.dataset.draggingKey;
@@ -198,7 +238,6 @@ function registerEventListeners() {
       );
     }
   });
-
   sidebarFavorites?.addEventListener("drop", async (event) => {
     event.preventDefault();
     const draggingKey = sidebarFavorites.dataset.draggingKey;
@@ -208,7 +247,6 @@ function registerEventListeners() {
       .filter(Boolean);
     await updateFavoriteOrder(orderedKeys);
   });
-
   sidebarFavorites?.addEventListener("dragend", (event) => {
     const item = event.target.closest("[data-fav-row]");
     if (item) {
@@ -216,38 +254,14 @@ function registerEventListeners() {
     }
     delete sidebarFavorites.dataset.draggingKey;
   });
+}
 
-  timeMapToggle?.addEventListener("click", () => {
-    if (timeMapFormWrap.classList.contains("hidden")) {
-      openTimeMapForm();
-    } else {
-      closeTimeMapForm();
-    }
-  });
-
-  taskToggle?.addEventListener("click", () => {
-    startTaskInSection();
-  });
-
-  timeMapList?.addEventListener("click", async (event) => {
-    await handleTimeMapListClick(event, state.tasksTimeMapsCache);
-  });
-
-  taskList?.addEventListener("click", async (event) => {
-    await handleTaskListClick(event);
-  });
-
-  todayList?.addEventListener("click", async (event) => {
-    await handleTaskListClick(event);
-  });
-
+function registerListHandlers() {
   subsectionModalCloseBtns.forEach((btn) => btn.addEventListener("click", closeSubsectionModal));
-
   subsectionForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     await handleSubsectionFormSubmit();
   });
-
   taskList?.addEventListener("keydown", async (event) => {
     if (event.key !== "Enter") {return;}
     const input = event.target;
@@ -276,26 +290,9 @@ function registerEventListeners() {
       }
     }
   });
+}
 
-  taskFormWrap?.addEventListener("click", (event) => {
-    if (event.target === taskFormWrap) {
-      closeTaskForm();
-    }
-  });
-
-  taskModalCloseButtons.forEach((btn) => btn.addEventListener("click", closeTaskForm));
-  repeatCompleteCloseBtns.forEach((btn) =>
-    btn.addEventListener("click", closeRepeatCompleteModal)
-  );
-  repeatCompleteList?.addEventListener("click", async (event) => {
-    const btn = event.target.closest("[data-repeat-complete-date]");
-    if (!btn) {return;}
-    await handleRepeatOccurrenceComplete(
-      btn.dataset.repeatCompleteTask || "",
-      btn.dataset.repeatCompleteDate || ""
-    );
-  });
-
+function registerSubsectionHandlers() {
   taskList?.addEventListener("keydown", async (event) => {
     if (event.key !== "Tab") {return;}
     const target = event.target;
@@ -310,15 +307,39 @@ function registerEventListeners() {
       await indentTaskUnderPrevious(card);
     }
   });
+}
 
+function registerModalHandlers() {
+  taskFormWrap?.addEventListener("click", (event) => {
+    if (event.target === taskFormWrap) {
+      closeTaskForm();
+    }
+  });
+  taskModalCloseButtons.forEach((btn) => btn.addEventListener("click", closeTaskForm));
+  repeatCompleteCloseBtns.forEach((btn) =>
+    btn.addEventListener("click", closeRepeatCompleteModal)
+  );
+  repeatCompleteList?.addEventListener("click", async (event) => {
+    const btn = event.target.closest("[data-repeat-complete-date]");
+    if (!btn) {return;}
+    await handleRepeatOccurrenceComplete(
+      btn.dataset.repeatCompleteTask || "",
+      btn.dataset.repeatCompleteDate || ""
+    );
+  });
+}
+
+function registerKeyboardHandlers() {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !taskFormWrap.classList.contains("hidden")) {
       closeTaskForm();
     }
   });
-
   window.addEventListener("keydown", handleNavigationShortcuts);
   window.addEventListener("auxclick", handleNavigationMouseButtons);
+}
+
+function registerCustomEventHandlers() {
   window.addEventListener("skedpal:repeat-occurrence-complete", async (event) => {
     const detail = event?.detail || {};
     if (!detail.taskId || !detail.occurrenceIso) {return;}
@@ -330,10 +351,6 @@ function registerEventListeners() {
     const shouldSwitch = detail.switchView !== false;
     openTaskEditById(detail.taskId, { switchView: shouldSwitch });
   });
-
-  registerRepeatEventHandlers();
-  setRepeatFromSelection({ type: "none" });
-
 }
 
 applyTheme();

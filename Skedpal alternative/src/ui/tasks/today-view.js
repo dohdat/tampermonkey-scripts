@@ -36,19 +36,8 @@ function getTodayStart(task, dayStart, dayEnd) {
   return null;
 }
 
-export function renderTodayView(tasks, timeMaps, options = {}) {
-  const list = domRefs.todayList;
-  if (!list) {return;}
-  list.innerHTML = "";
-  const now = options.now ? new Date(options.now) : new Date();
-  const collapsedTasks =
-    options.collapsedTasks instanceof Set ? options.collapsedTasks : new Set();
-  const expandedTaskDetails =
-    options.expandedTaskDetails instanceof Set ? options.expandedTaskDetails : new Set();
-  const dayStart = startOfDay(now);
-  const dayEnd = endOfDay(now);
-  const timeMapById = new Map(timeMaps.map((tm) => [tm.id, normalizeTimeMap(tm)]));
-  const todayTasks = (tasks || [])
+function buildTodayTasks(tasks, dayStart, dayEnd) {
+  return (tasks || [])
     .filter((task) => !task.completed && task.scheduleStatus === "scheduled")
     .map((task) => ({
       task,
@@ -57,23 +46,27 @@ export function renderTodayView(tasks, timeMaps, options = {}) {
     .filter((entry) => entry.todayStart)
     .sort((a, b) => a.todayStart - b.todayStart)
     .map((entry) => entry.task);
+}
 
-  if (todayTasks.length === 0) {
-    const empty = document.createElement("div");
-    empty.className =
-      "rounded-2xl border border-dashed border-slate-800 bg-slate-900/50 px-4 py-6 text-sm text-slate-400";
-    empty.textContent = "No tasks scheduled for today.";
-    empty.setAttribute("data-test-skedpal", "today-empty");
-    list.appendChild(empty);
-    return;
-  }
+function renderTodayEmpty(list) {
+  const empty = document.createElement("div");
+  empty.className =
+    "rounded-2xl border border-dashed border-slate-800 bg-slate-900/50 px-4 py-6 text-sm text-slate-400";
+  empty.textContent = "No tasks scheduled for today.";
+  empty.setAttribute("data-test-skedpal", "today-empty");
+  list.appendChild(empty);
+}
 
-  const parentById = (tasks || []).reduce((map, task) => {
+function buildParentMap(tasks) {
+  return (tasks || []).reduce((map, task) => {
     if (task.subtaskParentId) {
       map.set(task.id, task.subtaskParentId);
     }
     return map;
   }, new Map());
+}
+
+function buildTaskDepthGetter(parentById) {
   const depthMemo = new Map();
   const getTaskDepthById = (taskId) => {
     if (!taskId) {return 0;}
@@ -87,13 +80,20 @@ export function renderTodayView(tasks, timeMaps, options = {}) {
     depthMemo.set(taskId, depth);
     return depth;
   };
-  const childrenByParent = todayTasks.reduce((map, task) => {
+  return getTaskDepthById;
+}
+
+function buildChildrenByParent(tasks) {
+  return tasks.reduce((map, task) => {
     const pid = task.subtaskParentId || "";
     if (!pid) {return map;}
     if (!map.has(pid)) {map.set(pid, []);}
     map.get(pid).push(task);
     return map;
   }, new Map());
+}
+
+function buildDurationCalculator(childrenByParent) {
   const durationMemo = new Map();
   const computeTotalDuration = (task) => {
     if (!task?.id) {return 0;}
@@ -108,10 +108,40 @@ export function renderTodayView(tasks, timeMaps, options = {}) {
     durationMemo.set(task.id, total);
     return total;
   };
-  const getSubsectionName = (sectionId, subsectionId) => {
+  return computeTotalDuration;
+}
+
+function buildSubsectionNameGetter() {
+  return (sectionId, subsectionId) => {
     const subs = getSubsectionsFor(sectionId);
     return subs.find((s) => s.id === subsectionId)?.name || "";
   };
+}
+
+export function renderTodayView(tasks, timeMaps, options = {}) {
+  const list = domRefs.todayList;
+  if (!list) {return;}
+  list.innerHTML = "";
+  const now = options.now ? new Date(options.now) : new Date();
+  const collapsedTasks =
+    options.collapsedTasks instanceof Set ? options.collapsedTasks : new Set();
+  const expandedTaskDetails =
+    options.expandedTaskDetails instanceof Set ? options.expandedTaskDetails : new Set();
+  const dayStart = startOfDay(now);
+  const dayEnd = endOfDay(now);
+  const timeMapById = new Map(timeMaps.map((tm) => [tm.id, normalizeTimeMap(tm)]));
+  const todayTasks = buildTodayTasks(tasks, dayStart, dayEnd);
+
+  if (todayTasks.length === 0) {
+    renderTodayEmpty(list);
+    return;
+  }
+
+  const parentById = buildParentMap(tasks);
+  const getTaskDepthById = buildTaskDepthGetter(parentById);
+  const childrenByParent = buildChildrenByParent(todayTasks);
+  const computeTotalDuration = buildDurationCalculator(childrenByParent);
+  const getSubsectionName = buildSubsectionNameGetter();
   todayTasks.forEach((task) => {
     list.appendChild(
       renderTaskCard(task, {

@@ -23,7 +23,8 @@ import {
   updateScheduleSummary,
   startTaskInSection,
   handleRepeatOccurrenceComplete,
-  closeRepeatCompleteModal
+  closeRepeatCompleteModal,
+  openTaskEditById
 } from "./tasks/tasks-actions.js";
 import {
   renderTaskSubsectionOptions,
@@ -322,6 +323,12 @@ function registerEventListeners() {
     const detail = event?.detail || {};
     if (!detail.taskId || !detail.occurrenceIso) return;
     await handleRepeatOccurrenceComplete(detail.taskId, detail.occurrenceIso);
+  });
+  window.addEventListener("skedpal:task-edit", (event) => {
+    const detail = event?.detail || {};
+    if (!detail.taskId) return;
+    const shouldSwitch = detail.switchView !== false;
+    openTaskEditById(detail.taskId, { switchView: shouldSwitch });
   });
 
   registerRepeatEventHandlers();

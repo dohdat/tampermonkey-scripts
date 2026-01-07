@@ -397,6 +397,44 @@ export function startSubtaskFromTask(task) {
   switchView("tasks");
 }
 
+export function openTaskEdit(task, options = {}) {
+  if (!task) return;
+  const { switchView: shouldSwitchView = true } = options;
+  const isParentTask = state.tasksCache.some((t) => t.subtaskParentId === task.id);
+  document.getElementById("task-id").value = task.id;
+  document.getElementById("task-title").value = task.title;
+  taskLinkInput.value = task.link || "";
+  syncTaskLinkClear();
+  document.getElementById("task-duration").value = task.durationMin;
+  syncTaskDurationHelper();
+  taskMinBlockInput.value = task.minBlockMin || "30";
+  document.getElementById("task-priority").value = String(task.priority);
+  taskDeadlineInput.value = task.deadline ? task.deadline.slice(0, 10) : "";
+  taskStartFromInput.value = task.startFrom ? task.startFrom.slice(0, 10) : "";
+  taskParentIdInput.value = task.subtaskParentId || "";
+  setRepeatFromSelection(task.repeat, "task");
+  renderTaskSectionOptions(task.section);
+  renderTaskSubsectionOptions(task.subsection);
+  renderTaskTimeMapOptions(state.tasksTimeMapsCache, task.timeMapIds);
+  if (taskSubtaskScheduleWrap) {
+    taskSubtaskScheduleWrap.classList.toggle("hidden", !isParentTask);
+  }
+  if (taskSubtaskScheduleSelect) {
+    const mode = normalizeSubtaskScheduleMode(task.subtaskScheduleMode);
+    taskSubtaskScheduleSelect.value = mode;
+  }
+  openTaskForm();
+  if (shouldSwitchView) {
+    switchView("tasks");
+  }
+}
+
+export function openTaskEditById(taskId, options = {}) {
+  const task = state.tasksCache.find((t) => t.id === taskId);
+  if (!task) return;
+  openTaskEdit(task, options);
+}
+
 export async function handleTaskListClick(event) {
   const btn = event.target.closest("button");
   if (!btn) return;
@@ -528,34 +566,7 @@ export async function handleTaskListClick(event) {
   } else if (addSection !== undefined) {
     startTaskInSection(addSection, addSubsectionTaskTarget || "");
   } else if (editId) {
-    const task = state.tasksCache.find((t) => t.id === editId);
-    if (task) {
-      const isParentTask = state.tasksCache.some((t) => t.subtaskParentId === task.id);
-      document.getElementById("task-id").value = task.id;
-      document.getElementById("task-title").value = task.title;
-      taskLinkInput.value = task.link || "";
-      syncTaskLinkClear();
-      document.getElementById("task-duration").value = task.durationMin;
-      syncTaskDurationHelper();
-      taskMinBlockInput.value = task.minBlockMin || "30";
-      document.getElementById("task-priority").value = String(task.priority);
-      taskDeadlineInput.value = task.deadline ? task.deadline.slice(0, 10) : "";
-      taskStartFromInput.value = task.startFrom ? task.startFrom.slice(0, 10) : "";
-      taskParentIdInput.value = task.subtaskParentId || "";
-      setRepeatFromSelection(task.repeat, "task");
-      renderTaskSectionOptions(task.section);
-      renderTaskSubsectionOptions(task.subsection);
-      renderTaskTimeMapOptions(state.tasksTimeMapsCache, task.timeMapIds);
-      if (taskSubtaskScheduleWrap) {
-        taskSubtaskScheduleWrap.classList.toggle("hidden", !isParentTask);
-      }
-      if (taskSubtaskScheduleSelect) {
-        const mode = normalizeSubtaskScheduleMode(task.subtaskScheduleMode);
-        taskSubtaskScheduleSelect.value = mode;
-      }
-      openTaskForm();
-      switchView("tasks");
-    }
+    openTaskEditById(editId, { switchView: true });
   } else if (addSubtaskId !== undefined) {
     const parentTask = state.tasksCache.find((t) => t.id === addSubtaskId);
     if (parentTask) {

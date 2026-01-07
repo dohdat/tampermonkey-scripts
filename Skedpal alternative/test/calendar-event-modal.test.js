@@ -289,6 +289,28 @@ describe("calendar event modal", () => {
     assert.strictEqual(dispatched.detail.occurrenceIso, expected.toISOString());
   });
 
+  it("dispatches edit events without switching views", () => {
+    let dispatched = null;
+    window.dispatchEvent = (event) => {
+      dispatched = event;
+    };
+    const eventMeta = {
+      taskId: "task-1",
+      timeMapId: "tm-1",
+      start: new Date(2026, 0, 6, 9, 0, 0),
+      end: new Date(2026, 0, 6, 10, 30, 0)
+    };
+
+    initCalendarEventModal();
+    openCalendarEventModal(eventMeta);
+    refs.actions[3].listeners.click();
+
+    assert.ok(dispatched);
+    assert.strictEqual(dispatched.type, "skedpal:task-edit");
+    assert.strictEqual(dispatched.detail.taskId, "task-1");
+    assert.strictEqual(dispatched.detail.switchView, false);
+  });
+
   it("returns early when the task is missing", () => {
     const eventMeta = {
       taskId: "missing-task",

@@ -282,7 +282,14 @@ function handleZoomAction() {
 
 function handleEditAction() {
   if (!activeTask) return;
-  triggerTaskButton(`[data-edit="${activeTask.id}"]`);
+  window.dispatchEvent(
+    new CustomEvent("skedpal:task-edit", {
+      detail: {
+        taskId: activeTask.id,
+        switchView: false
+      }
+    })
+  );
   closeCalendarEventModal();
 }
 

@@ -204,25 +204,28 @@ export function renderTaskCard(task, context) {
         `;
     taskCard.appendChild(meta);
 
-    const scheduledStartMarkup = task.scheduledStart
-      ? `<span data-test-skedpal="task-scheduled-start">Start: ${formatDateTime(
-          task.scheduledStart
-        )}</span>`
-      : "";
-    const scheduledEndMarkup = task.scheduledEnd
-      ? `<span data-test-skedpal="task-scheduled-end">End: ${formatDateTime(
-          task.scheduledEnd
-        )}</span>`
-      : "";
-    if (scheduledStartMarkup || scheduledEndMarkup) {
-      const statusRow = document.createElement("div");
-      statusRow.className = "mt-1 flex flex-wrap gap-3 text-xs text-slate-400";
-      statusRow.innerHTML = `
+    const isRepeating = task.repeat && task.repeat.type !== "none";
+    if (!isRepeating) {
+      const scheduledStartMarkup = task.scheduledStart
+        ? `<span data-test-skedpal="task-scheduled-start">Start: ${formatDateTime(
+            task.scheduledStart
+          )}</span>`
+        : "";
+      const scheduledEndMarkup = task.scheduledEnd
+        ? `<span data-test-skedpal="task-scheduled-end">End: ${formatDateTime(
+            task.scheduledEnd
+          )}</span>`
+        : "";
+      if (scheduledStartMarkup || scheduledEndMarkup) {
+        const statusRow = document.createElement("div");
+        statusRow.className = "mt-1 flex flex-wrap gap-3 text-xs text-slate-400";
+        statusRow.innerHTML = `
           ${scheduledStartMarkup}
           ${scheduledEndMarkup}
         `;
-      statusRow.setAttribute("data-test-skedpal", "task-status-details");
-      taskCard.appendChild(statusRow);
+        statusRow.setAttribute("data-test-skedpal", "task-status-details");
+        taskCard.appendChild(statusRow);
+      }
     }
   }
 

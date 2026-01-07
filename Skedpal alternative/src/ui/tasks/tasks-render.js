@@ -327,20 +327,33 @@ export function renderTasks(tasks, timeMaps) {
     }
 
     const ungroupedTasks = sortTasksByOrder(sectionTasks.filter((t) => !t.subsection));
-    const ungroupedZone = document.createElement("div");
-    ungroupedZone.dataset.dropSection = isNoSection ? "" : section.id;
-    ungroupedZone.dataset.dropSubsection = "";
-    ungroupedZone.className =
-      "space-y-2 rounded-xl border border-dashed border-slate-700 bg-slate-900/50 px-3 py-3";
-    ungroupedZone.classList.add(TASK_ZONE_CLASS);
-    if (ungroupedTasks.length === 0 && !suppressPlaceholders) {
-      const empty = document.createElement("div");
-      empty.className = `text-xs text-slate-500 ${TASK_PLACEHOLDER_CLASS}`;
-      empty.textContent = "Drag tasks here or add new.";
-      ungroupedZone.appendChild(empty);
-    } else {
+    if (isNoSection) {
+      const ungroupedZone = document.createElement("div");
+      ungroupedZone.dataset.dropSection = "";
+      ungroupedZone.dataset.dropSubsection = "";
+      ungroupedZone.className =
+        "space-y-2 rounded-xl border border-dashed border-slate-700 bg-slate-900/50 px-3 py-3";
+      ungroupedZone.classList.add(TASK_ZONE_CLASS);
+      if (ungroupedTasks.length > 0) {
+        ungroupedTasks.forEach((task) => {
+          ungroupedZone.appendChild(
+            renderTaskCard(task, {
+              tasks: baseTasks,
+              timeMapById,
+              collapsedTasks: state.collapsedTasks,
+              expandedTaskDetails: state.expandedTaskDetails,
+              computeTotalDuration,
+              getTaskDepthById,
+              getSectionName,
+              getSubsectionName
+            })
+          );
+        });
+      }
+      sectionBody.appendChild(ungroupedZone);
+    } else if (ungroupedTasks.length > 0) {
       ungroupedTasks.forEach((task) => {
-        ungroupedZone.appendChild(
+        sectionBody.appendChild(
           renderTaskCard(task, {
             tasks: baseTasks,
             timeMapById,
@@ -354,7 +367,6 @@ export function renderTasks(tasks, timeMaps) {
         );
       });
     }
-    sectionBody.appendChild(ungroupedZone);
 
     const buildChildren = (parentId = "") =>
       subsections.filter((s) => (s.parentId || "") === (parentId || ""));

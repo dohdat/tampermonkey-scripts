@@ -36,6 +36,7 @@ import {
 import { renderTaskTimeMapOptions, collectSelectedValues } from "../time-maps.js";
 import { renderTasks } from "./tasks-render.js";
 import { renderTodayView } from "./today-view.js";
+import { renderCalendar } from "../calendar.js";
 import { ensureTaskIds, migrateSectionsAndTasks } from "./tasks.js";
 import { renderBreadcrumb, setZoomFilter, switchView } from "../navigation.js";
 import { showUndoBanner } from "../notifications.js";
@@ -208,6 +209,7 @@ function renderTimeMapsAndTasks(timeMaps) {
     collapsedTasks: state.collapsedTasks,
     expandedTaskDetails: state.expandedTaskDetails
   });
+  renderCalendar(state.tasksCache);
 }
 
 export async function handleTaskSubmit(event) {

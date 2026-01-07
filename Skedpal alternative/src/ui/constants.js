@@ -116,5 +116,13 @@ export const domRefs = {
   horizonInput: document.getElementById("horizon"),
   notificationBanner: document.getElementById("notification-banner"),
   notificationMessage: document.getElementById("notification-message"),
-  notificationUndoButton: document.getElementById("notification-undo")
+  notificationUndoButton: document.getElementById("notification-undo"),
+  calendarView: document.getElementById("calendar"),
+  calendarGrid: document.getElementById("calendar-grid"),
+  calendarTitle: document.getElementById("calendar-title"),
+  calendarPrevBtn: document.getElementById("calendar-prev"),
+  calendarNextBtn: document.getElementById("calendar-next"),
+  calendarTodayBtn: document.getElementById("calendar-today"),
+  calendarDayBtn: document.getElementById("calendar-view-day"),
+  calendarWeekBtn: document.getElementById("calendar-view-week")
 };

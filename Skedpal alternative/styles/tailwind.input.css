@@ -108,3 +108,23 @@ body.modal-open{overflow:hidden}
 .sidebar-fav-empty{padding:.4rem .6rem;font-size:.85rem;color:#94a3b8;background:rgba(15,23,42,.25);border-radius:12px;border:1px dashed #1f2937}
 @media (max-width:900px){.sidebar{width:210px}.app-main{margin-left:210px}}
 
+/* Calendar view */
+.calendar-grid{display:flex;flex-direction:column;gap:0;border-radius:16px;border:1px solid rgba(51,65,85,.6);overflow:hidden}
+.calendar-grid-header{display:grid;grid-template-columns:90px repeat(7,minmax(0,1fr));border-bottom:1px solid rgba(51,65,85,.5);background:rgba(15,23,42,.65)}
+.calendar-grid-spacer{border-right:1px solid rgba(51,65,85,.5)}
+.calendar-day-header{padding:10px 8px;text-align:center;font-size:.75rem;font-weight:600;color:#e2e8f0;border-right:1px solid rgba(51,65,85,.35)}
+.calendar-day-header--today{color:#a3e635}
+.calendar-grid-body{display:grid;grid-template-columns:90px 1fr;min-height:calc(var(--calendar-hour-height) * 24)}
+.calendar-time-col{display:grid;grid-template-rows:repeat(24,var(--calendar-hour-height));background:rgba(15,23,42,.6);border-right:1px solid rgba(51,65,85,.5)}
+.calendar-time-label{padding:6px 8px;font-size:.7rem;color:#94a3b8;border-bottom:1px solid rgba(51,65,85,.35)}
+.calendar-days{display:grid;min-height:calc(var(--calendar-hour-height) * 24)}
+.calendar-day-col{position:relative;min-height:calc(var(--calendar-hour-height) * 24);border-right:1px solid rgba(51,65,85,.25);background:repeating-linear-gradient(to bottom,rgba(15,23,42,.6) 0,rgba(15,23,42,.6) calc(var(--calendar-hour-height) - 1px),rgba(51,65,85,.35) calc(var(--calendar-hour-height) - 1px),rgba(51,65,85,.35) var(--calendar-hour-height))}
+.calendar-event{position:absolute;left:8px;right:8px;padding:6px 8px;border-radius:10px;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.4);color:#e2e8f0;box-shadow:0 6px 12px rgba(15,23,42,.45);overflow:hidden}
+.calendar-event-title{font-size:.75rem;font-weight:600;line-height:1.2}
+.calendar-event-time{font-size:.7rem;color:#bae6fd}
+.calendar-empty{padding:16px;text-align:center;font-size:.75rem;color:#94a3b8;background:rgba(15,23,42,.4)}
+.calendar-view-btn{padding:6px 12px;border-radius:10px;font-weight:600;color:#94a3b8;transition:color .2s ease,background .2s ease}
+.calendar-view-btn:hover{color:#e2e8f0}
+.calendar-view-btn--active{background:rgba(163,230,53,.2);color:#d9f99d}
+@media (max-width:768px){.calendar-grid-header{grid-template-columns:70px repeat(7,minmax(0,1fr))}.calendar-grid-body{grid-template-columns:70px 1fr}}
+

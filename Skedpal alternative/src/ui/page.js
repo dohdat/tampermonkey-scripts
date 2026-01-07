@@ -49,6 +49,7 @@ import { parseZoomFromUrl, parseViewFromUrl, toggleClearButtonVisibility } from 
 import { closeTaskForm } from "./ui.js";
 import { indentTaskUnderPrevious, outdentTask } from "./tasks/tasks-sortable.js";
 import { state } from "./state/page-state.js";
+import { initCalendarView } from "./calendar.js";
 
 const {
   timeMapDayRows,
@@ -330,4 +331,5 @@ function registerEventListeners() {
 
 initViewFromUrl(parseViewFromUrl);
 registerEventListeners();
+initCalendarView();
 hydrate();

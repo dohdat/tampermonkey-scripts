@@ -13,5 +13,7 @@ export const state = {
   notificationUndoHandler: null,
   navStack: [],
   navIndex: -1,
-  sortableInstances: []
+  sortableInstances: [],
+  calendarViewMode: "week",
+  calendarAnchorDate: new Date()
 };

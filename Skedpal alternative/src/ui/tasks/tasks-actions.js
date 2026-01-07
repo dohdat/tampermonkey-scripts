@@ -642,3 +642,7 @@ export async function handleReschedule() {
     await Promise.all([loadTasks(), updateScheduleSummary()]);
   }
 }
+
+window.addEventListener("skedpal:tasks-updated", () => {
+  loadTasks().then(updateScheduleSummary);
+});

@@ -14,6 +14,7 @@ export const favoriteIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" widt
 export const zoomInIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 4h2m0 0v2m0-2V2m0 2h2m1 5a6 6 0 1 1-12 0 6 6 0 0 1 12 0Zm-2.5 3.5L17 17"></path></svg>`;
 export const zoomOutIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 10h4m2 1a6 6 0 1 1-12 0 6 6 0 0 1 12 0Zm-2.5 3.5L17 17"></path></svg>`;
 export const plusIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 4v12M4 10h12" stroke-linecap="round"></path></svg>`;
+export const deferIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="14" height="13" rx="2"></rect><path d="M6.5 2.5v3M13.5 2.5v3M3 8h14"></path><path d="M10 11v3m0 0 1.5-1.5M10 14l-1.5-1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
 export const subtaskIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 4v12"></path><path d="M9 8h6l-2.5-2.5M15 8l-2.5 2.5"></path></svg>`;
 export const checkboxIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7" stroke="currentColor" fill="none"></circle></svg>`;
 export const checkboxCheckedIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="7" stroke="currentColor" fill="none"></circle><path d="m6.5 10 2.2 2.2 4.8-4.9" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
@@ -124,5 +125,17 @@ export const domRefs = {
   calendarNextBtn: document.getElementById("calendar-next"),
   calendarTodayBtn: document.getElementById("calendar-today"),
   calendarDayBtn: document.getElementById("calendar-view-day"),
-  calendarWeekBtn: document.getElementById("calendar-view-week")
+  calendarWeekBtn: document.getElementById("calendar-view-week"),
+  calendarEventModal: document.getElementById("calendar-event-modal"),
+  calendarEventModalTitle: document.getElementById("calendar-event-modal-title"),
+  calendarEventModalTime: document.getElementById("calendar-event-modal-time"),
+  calendarEventModalDetails: document.getElementById("calendar-event-modal-details"),
+  calendarEventModalComplete: document.getElementById("calendar-event-modal-complete-checkbox"),
+  calendarEventModalDeferInput: document.getElementById("calendar-event-modal-defer-date"),
+  calendarEventModalActionButtons: [
+    ...document.querySelectorAll("[data-calendar-event-action]")
+  ],
+  calendarEventModalCloseButtons: [
+    ...document.querySelectorAll("[data-calendar-event-close]")
+  ]
 };

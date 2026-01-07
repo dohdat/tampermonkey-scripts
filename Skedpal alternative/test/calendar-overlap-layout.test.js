@@ -6,7 +6,7 @@ global.document = {
   getElementById: () => null
 };
 
-const { buildDayEventLayout } = await import("../src/ui/calendar.js");
+const { buildDayEventLayout } = await import("../src/ui/calendar-layout.js");
 
 function buildEvent(id, startIso, endIso) {
   return {

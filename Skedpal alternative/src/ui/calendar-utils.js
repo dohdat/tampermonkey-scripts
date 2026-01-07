@@ -56,6 +56,10 @@ export function addCalendarDays(date, days) {
   return addDays(date, days);
 }
 
+export function getMinutesIntoDay(date) {
+  return date.getHours() * 60 + date.getMinutes();
+}
+
 export function getDateFromDayKey(dayKey) {
   if (typeof dayKey !== "string") return null;
   const [year, month, day] = dayKey.split("-").map((value) => Number(value));

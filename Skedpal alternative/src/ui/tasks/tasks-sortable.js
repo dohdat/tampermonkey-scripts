@@ -68,8 +68,8 @@ export function findPreviousTaskId(card) {
 export async function handleTaskSortEnd(evt) {
   const movedTaskId = evt.item?.dataset?.taskId;
   const targetZone = evt.to?.closest?.("[data-drop-section]");
-  if (!movedTaskId || !targetZone) {return;}
-  if (evt.from === evt.to && evt.oldIndex === evt.newIndex) {return;}
+  if (!movedTaskId || !targetZone) {return false;}
+  if (evt.from === evt.to && evt.oldIndex === evt.newIndex) {return false;}
   const targetSection = (targetZone.dataset.dropSection || "").trim();
   const targetSubsection = (targetZone.dataset.dropSubsection || "").trim();
   const dropBeforeId = getDropBeforeId(evt.item);

@@ -359,7 +359,6 @@ export async function handleAddSubsection(sectionId, value, parentSubsectionId =
   renderTaskSectionOptions(sectionId);
   const { loadTasks } = await import("./tasks/tasks-actions.js");
   await loadTasks();
-  return entry;
 }
 
 export async function handleRenameSection(sectionId) {

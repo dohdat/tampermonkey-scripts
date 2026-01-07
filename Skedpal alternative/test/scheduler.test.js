@@ -108,6 +108,47 @@ describe("scheduler", () => {
     );
   });
 
+  it("does not schedule repeating occurrences before their day", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 1);
+    const timeMaps = [
+      {
+        id: "tm-all",
+        days: [0, 1, 2, 3, 4, 5, 6],
+        startTime: "09:00",
+        endTime: "10:00"
+      }
+    ];
+    const tasks = [
+      {
+        id: "weekly",
+        title: "Weekly",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-all"],
+        repeat: {
+          type: "custom",
+          unit: "week",
+          interval: 1,
+          weeklyDays: [(now.getDay() + 1) % 7]
+        }
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 2,
+      now
+    });
+
+    const nextDayStart = new Date(now);
+    nextDayStart.setDate(nextDayStart.getDate() + 1);
+    nextDayStart.setHours(0, 0, 0, 0);
+    assert.strictEqual(result.scheduled.length, 1);
+    assert.ok(result.scheduled[0].start >= nextDayStart);
+  });
+
   it("skips completed repeat occurrences", () => {
     const now = nextWeekday(new Date(2026, 0, 1), 1);
     const timeMaps = [

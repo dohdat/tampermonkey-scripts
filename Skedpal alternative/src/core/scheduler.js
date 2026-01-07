@@ -339,12 +339,18 @@ function buildScheduleCandidates(tasks, now, horizonEnd) {
         }
         return;
       }
+      const isRepeating = normalized.repeat && normalized.repeat.type !== "none";
       occurrenceDates.forEach((deadline, index) => {
         if (completedOccurrences.has(deadline.toISOString())) {
           return;
         }
+        const occurrenceStart = isRepeating ? startOfDay(deadline) : null;
         const earliestStart = new Date(
-          Math.max(now.getTime(), normalized.startFrom.getTime())
+          Math.max(
+            now.getTime(),
+            normalized.startFrom.getTime(),
+            occurrenceStart ? occurrenceStart.getTime() : 0
+          )
         );
         candidates.push({
           ...normalized,

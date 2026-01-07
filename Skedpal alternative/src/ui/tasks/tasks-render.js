@@ -238,18 +238,11 @@ export function renderTasks(tasks, timeMaps) {
       addSubsectionToggle.className =
         "rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
       addSubsectionToggle.textContent = "Add subsection";
-      const addTaskBtn = document.createElement("button");
-      addTaskBtn.type = "button";
-      addTaskBtn.dataset.addSection = section.id;
-      addTaskBtn.className =
-        "rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
-      addTaskBtn.textContent = "Add task";
       titleActions.appendChild(collapseBtn);
       titleActions.appendChild(editSectionBtn);
       titleActions.appendChild(zoomSectionBtn);
       titleActions.appendChild(favoriteSectionBtn);
       titleActions.appendChild(addSubsectionToggle);
-      titleActions.appendChild(addTaskBtn);
       titleActions.appendChild(removeSectionBtn);
       title.appendChild(titleActions);
     }

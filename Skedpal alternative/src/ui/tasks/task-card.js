@@ -50,7 +50,6 @@ export function renderTaskCard(task, context) {
   }
   const color = timeMapById.get(task.timeMapIds[0])?.color;
   if (color) {
-    taskCard.style.borderColor = color;
     taskCard.style.backgroundColor = `${color}1a`;
   }
   const titleMarkup = task.link

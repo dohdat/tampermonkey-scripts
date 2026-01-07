@@ -98,7 +98,7 @@ export function renderTaskCard(task, context) {
   const actionsWrap = document.createElement("div");
   actionsWrap.className = "task-actions-wrap";
   actionsWrap.style.flex = "1";
-  actionsWrap.style.flexWrap = "wrap";
+  actionsWrap.style.flexWrap = isLongTitle ? "nowrap" : "wrap";
   actionsWrap.style.justifyContent = "flex-start";
   const durationPill = document.createElement("span");
   durationPill.className = "pill pill-muted";
@@ -158,7 +158,7 @@ export function renderTaskCard(task, context) {
   titleActions.appendChild(detailsToggleBtn);
   titleActions.appendChild(deleteTaskBtn);
   const summaryRow = document.createElement("div");
-  summaryRow.className = `task-summary-row${isLongTitle ? " task-summary-row--stacked" : ""}`;
+  summaryRow.className = "task-summary-row";
   summaryRow.setAttribute("data-test-skedpal", "task-summary-row");
   summaryRow.style.marginTop = "0";
   summaryRow.style.marginLeft = "auto";

@@ -628,6 +628,11 @@ export async function handleReschedule() {
   });
   scheduleStatus.textContent = "Scheduling...";
   try {
+    if (state.pendingSettingsSave) {
+      await state.pendingSettingsSave.catch((error) => {
+        console.warn("Failed to save settings before scheduling.", error);
+      });
+    }
     const response = await new Promise((resolve, reject) => {
       chrome.runtime.sendMessage({ type: "reschedule" }, (resp) => {
         if (chrome.runtime.lastError) {

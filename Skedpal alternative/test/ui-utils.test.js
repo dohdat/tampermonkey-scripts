@@ -4,6 +4,7 @@ import { describe, it } from "mocha";
 import {
   getInheritedSubtaskFields,
   getLocalDateKey,
+  normalizeHorizonDays,
   toggleClearButtonVisibility
 } from "../src/ui/utils.js";
 
@@ -85,5 +86,23 @@ describe("getInheritedSubtaskFields", () => {
 
   it("returns an empty object for missing parent tasks", () => {
     assert.deepStrictEqual(getInheritedSubtaskFields(null), {});
+  });
+});
+
+describe("normalizeHorizonDays", () => {
+  it("returns the parsed value when inside the range", () => {
+    assert.strictEqual(normalizeHorizonDays("21", 1, 60, 14), 21);
+  });
+
+  it("clamps values below the minimum", () => {
+    assert.strictEqual(normalizeHorizonDays(0, 1, 60, 14), 1);
+  });
+
+  it("clamps values above the maximum", () => {
+    assert.strictEqual(normalizeHorizonDays(120, 1, 60, 14), 60);
+  });
+
+  it("falls back for invalid values", () => {
+    assert.strictEqual(normalizeHorizonDays("nope", 1, 60, 14), 14);
   });
 });

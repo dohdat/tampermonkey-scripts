@@ -14,6 +14,7 @@ import { sortTasksByOrder, normalizeTimeMap, getSubsectionDescendantIds } from "
 import { state } from "../state/page-state.js";
 import { getSubsectionsFor, getSectionName } from "../sections.js";
 import { destroyTaskSortables, setupTaskSortables } from "./tasks-sortable.js";
+import { themeColors } from "../theme.js";
 const { taskList } = domRefs;
 
 export function renderTasks(tasks, timeMaps) {
@@ -221,8 +222,8 @@ export function renderTasks(tasks, timeMaps) {
         editSectionBtn.className = "title-icon-btn";
         editSectionBtn.title = "Edit section";
         editSectionBtn.innerHTML = editIconSvg;
-        editSectionBtn.style.borderColor = "#22c55e";
-        editSectionBtn.style.color = "#22c55e";
+        editSectionBtn.style.borderColor = themeColors.green500;
+        editSectionBtn.style.color = themeColors.green500;
         const zoomSectionBtn = document.createElement("button");
         zoomSectionBtn.type = "button";
         zoomSectionBtn.dataset.zoomSection = section.id;
@@ -242,8 +243,8 @@ export function renderTasks(tasks, timeMaps) {
         removeSectionBtn.className = "title-icon-btn";
         removeSectionBtn.title = "Remove section";
         removeSectionBtn.innerHTML = removeIconSvg;
-        removeSectionBtn.style.borderColor = "#f97316";
-        removeSectionBtn.style.color = "#f97316";
+        removeSectionBtn.style.borderColor = themeColors.orange500;
+        removeSectionBtn.style.color = themeColors.orange500;
         if (isDefaultSection) {
           removeSectionBtn.disabled = true;
           removeSectionBtn.classList.add("opacity-50", "cursor-not-allowed");
@@ -396,8 +397,8 @@ export function renderTasks(tasks, timeMaps) {
       editSubBtn.className = "title-icon-btn";
       editSubBtn.title = "Edit subsection";
       editSubBtn.innerHTML = editIconSvg;
-      editSubBtn.style.borderColor = "#22c55e";
-      editSubBtn.style.color = "#22c55e";
+      editSubBtn.style.borderColor = themeColors.green500;
+      editSubBtn.style.color = themeColors.green500;
       const zoomSubBtn = document.createElement("button");
       zoomSubBtn.type = "button";
       zoomSubBtn.dataset.zoomSubsection = sub.id;
@@ -419,8 +420,8 @@ export function renderTasks(tasks, timeMaps) {
       removeSubBtn.className = "title-icon-btn";
       removeSubBtn.title = "Remove subsection";
       removeSubBtn.innerHTML = removeIconSvg;
-      removeSubBtn.style.borderColor = "#f97316";
-      removeSubBtn.style.color = "#f97316";
+      removeSubBtn.style.borderColor = themeColors.orange500;
+      removeSubBtn.style.color = themeColors.orange500;
       const addSubTaskBtn = document.createElement("button");
       addSubTaskBtn.type = "button";
       addSubTaskBtn.dataset.addSection = isNoSection ? "" : section.id;

@@ -10,6 +10,7 @@ import {
 } from "../constants.js";
 import { formatDateTime, formatDurationShort } from "../utils.js";
 import { getRepeatSummary } from "../repeat.js";
+import { themeColors } from "../theme.js";
 
 export function renderTaskCard(task, context) {
   const {
@@ -85,7 +86,7 @@ export function renderTaskCard(task, context) {
   if (task.completed) {
     titleTextWrap.style.opacity = "0.8";
     titleTextWrap.style.textDecoration = "line-through";
-    titleTextWrap.style.textDecorationColor = "#4ade80";
+    titleTextWrap.style.textDecorationColor = themeColors.green400;
   }
   const actionsWrap = document.createElement("div");
   actionsWrap.className = "task-actions-wrap";
@@ -116,8 +117,8 @@ export function renderTaskCard(task, context) {
   editTaskBtn.title = "Edit task";
   editTaskBtn.setAttribute("data-test-skedpal", "task-edit-btn");
   editTaskBtn.innerHTML = editIconSvg;
-  editTaskBtn.style.borderColor = "#22c55e";
-  editTaskBtn.style.color = "#22c55e";
+  editTaskBtn.style.borderColor = themeColors.green500;
+  editTaskBtn.style.color = themeColors.green500;
   const deleteTaskBtn = document.createElement("button");
   deleteTaskBtn.type = "button";
   deleteTaskBtn.dataset.delete = task.id;
@@ -125,8 +126,8 @@ export function renderTaskCard(task, context) {
   deleteTaskBtn.title = "Delete task";
   deleteTaskBtn.setAttribute("data-test-skedpal", "task-delete-btn");
   deleteTaskBtn.innerHTML = removeIconSvg;
-  deleteTaskBtn.style.borderColor = "#f97316";
-  deleteTaskBtn.style.color = "#f97316";
+  deleteTaskBtn.style.borderColor = themeColors.orange500;
+  deleteTaskBtn.style.color = themeColors.orange500;
   const addSubtaskBtn = document.createElement("button");
   addSubtaskBtn.type = "button";
   addSubtaskBtn.dataset.addSubtask = task.id;

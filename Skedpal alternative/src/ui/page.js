@@ -71,7 +71,6 @@ const {
   navButtons,
   settingsToggleBtn,
   sidebarFavorites,
-  horizonInput,
   subsectionForm,
   subsectionModalCloseBtns,
   taskList,
@@ -334,11 +333,6 @@ function registerEventListeners() {
   registerRepeatEventHandlers();
   setRepeatFromSelection({ type: "none" });
 
-  horizonInput?.addEventListener("input", (event) => {
-    const value = Number(event.target.value);
-    const parsed = Number.isFinite(value) ? Math.max(1, Math.min(90, value)) : 14;
-    event.target.value = parsed;
-  });
 }
 
 initViewFromUrl(parseViewFromUrl);

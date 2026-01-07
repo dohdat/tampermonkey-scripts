@@ -9,6 +9,7 @@ import {
 import { dayOptions, domRefs } from "./constants.js";
 import { normalizeTimeMap, resolveTimeMapIdsAfterDelete, uuid } from "./utils.js";
 import { state } from "./state/page-state.js";
+import { themeColors } from "./theme.js";
 
 const getTimeMapList = () => domRefs.timeMapList;
 const getTimeMapDayRows = () => domRefs.timeMapDayRows;
@@ -162,6 +163,9 @@ export function renderTimeMaps(timeMaps) {
     const tm = normalizeTimeMap(tmRaw);
     const taskCount = usageCounts.get(tm.id) || 0;
     const isDefault = state.settingsCache.defaultTimeMapId === tm.id;
+    const editBtnBackground = tm.color || "transparent";
+    const editBtnBorder = tm.color || themeColors.slate600;
+    const editBtnColor = tm.color ? themeColors.slate800 : themeColors.slate200;
     const card = document.createElement("div");
     card.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow";
     card.setAttribute("data-test-skedpal", "timemap-card");
@@ -184,7 +188,7 @@ export function renderTimeMaps(timeMaps) {
       </h3>
       <div class="mt-1 flex flex-wrap gap-2 text-xs text-slate-400">${rulesText}</div>
       <div class="mt-3 flex gap-2">
-        <button style="background:${tm.color || "transparent"};border-color:${tm.color || "#334155"};color:${tm.color ? "#0f172a" : "#e2e8f0"}" class="rounded-lg border px-3 py-1 text-xs font-semibold" data-edit="${tm.id}">Edit</button>
+        <button style="background:${editBtnBackground};border-color:${editBtnBorder};color:${editBtnColor}" class="rounded-lg border px-3 py-1 text-xs font-semibold" data-edit="${tm.id}">Edit</button>
         <button class="rounded-lg bg-orange-500/90 px-3 py-1 text-xs font-semibold text-slate-900 hover:bg-orange-400" data-delete="${tm.id}" data-test-skedpal="timemap-delete">Delete</button>
       </div>
     `;
@@ -248,8 +252,8 @@ export function renderTaskTimeMapOptions(
     }
     const swatch = document.createElement("span");
     swatch.className = "h-3 w-3 rounded-full border border-slate-700";
-    swatch.style.backgroundColor = tm.color || "#cbd5e1";
-    swatch.style.borderColor = tm.color || "#334155";
+    swatch.style.backgroundColor = tm.color || themeColors.slate300;
+    swatch.style.borderColor = tm.color || themeColors.slate600;
     label.appendChild(input);
     label.appendChild(swatch);
     label.appendChild(text);
@@ -276,7 +280,7 @@ export function renderTimeMapOptions(
     checkbox.className = "h-4 w-4 rounded border-slate-700 bg-slate-900 text-lime-400";
     const colorDot = document.createElement("span");
     colorDot.className = "h-3 w-3 rounded-full";
-    colorDot.style.backgroundColor = tm.color || "#22c55e";
+    colorDot.style.backgroundColor = tm.color || themeColors.green500;
     const name = document.createElement("span");
     name.textContent = tm.name || "Unnamed TimeMap";
     label.appendChild(checkbox);
@@ -316,7 +320,7 @@ export function getTimeMapFormData() {
   const timeMapColorInput = getTimeMapColorInput();
   const timeMapDayRows = getTimeMapDayRows();
   if (!timeMapColorInput || !timeMapDayRows) return null;
-  const color = timeMapColorInput.value || "#22c55e";
+  const color = timeMapColorInput.value || themeColors.green500;
   const rules = collectTimeMapRules(timeMapDayRows);
   if (rules.length === 0) {
     alert("Select at least one day and a valid time window.");
@@ -367,7 +371,7 @@ export function resetTimeMapForm() {
   const timeMapColorInput = getTimeMapColorInput();
   const timeMapDayRows = getTimeMapDayRows();
   if (timeMapColorInput) {
-    timeMapColorInput.value = "#22c55e";
+    timeMapColorInput.value = themeColors.green500;
   }
   if (timeMapDayRows) {
     renderDayRows(timeMapDayRows, []);
@@ -409,7 +413,7 @@ export async function handleTimeMapListClick(event, timeMaps) {
       const timeMapColorInput = getTimeMapColorInput();
       const timeMapDayRows = getTimeMapDayRows();
       if (timeMapColorInput) {
-        timeMapColorInput.value = tm.color || "#22c55e";
+        timeMapColorInput.value = tm.color || themeColors.green500;
       }
       if (timeMapDayRows) {
         renderDayRows(timeMapDayRows, tm.rules);
@@ -486,4 +490,11 @@ if (timeMapDayAdd && typeof timeMapDayAdd.addEventListener === "function" && tim
   timeMapDayAdd.addEventListener("click", () => {
     addTimeMapDay(timeMapDaySelect.value);
   });
+}
+const timeMapColorInput = getTimeMapColorInput();
+if (timeMapColorInput) {
+  const current = timeMapColorInput.value || "";
+  if (!current || current.toLowerCase() === "#000000") {
+    timeMapColorInput.value = themeColors.green500;
+  }
 }

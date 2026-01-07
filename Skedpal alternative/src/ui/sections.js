@@ -10,6 +10,7 @@ import { getSectionColorMap, isStartAfterDeadline, normalizeSubtaskScheduleMode,
 import { state } from "./state/page-state.js";
 import { repeatStore, setRepeatFromSelection, syncSubsectionRepeatLabel } from "./repeat.js";
 import { renderTimeMapOptions, collectSelectedValues } from "./time-maps.js";
+import { themeColors } from "./theme.js";
 
 const {
   sectionList,
@@ -467,7 +468,10 @@ export function renderFavoriteShortcuts() {
   sidebarFavorites.classList.remove("hidden");
   const sections = (state.settingsCache.sections || []).filter((s) => s.favorite);
   const sectionColorMap = getSectionColorMap(state.settingsCache.sections || []);
-  const fallbackColor = { dot: "#a3e635", glow: "rgba(163, 230, 53, 0.18)" };
+  const fallbackColor = {
+    dot: themeColors.lime400,
+    glow: themeColors.lime400Glow
+  };
   const subsectionMap = state.settingsCache.subsections || {};
   const subsectionEntries = Object.entries(subsectionMap).flatMap(([sectionId, list]) =>
     (list || []).filter((s) => s.favorite).map((s) => ({ ...s, sectionId }))

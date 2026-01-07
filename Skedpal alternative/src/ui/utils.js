@@ -75,6 +75,12 @@ export function formatDate(value) {
   return date && !Number.isNaN(date) ? date.toLocaleDateString() : "";
 }
 
+export function normalizeHorizonDays(value, min = 1, max = 60, fallback = 14) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
 export function getInheritedSubtaskFields(parentTask) {
   if (!parentTask) return {};
   return {

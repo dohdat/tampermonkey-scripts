@@ -131,7 +131,7 @@ body.modal-open{overflow:hidden}
 .calendar-event-title-link:hover{color:#93c5fd}
 .calendar-event-time{font-size:.7rem;color:#bae6fd}
 .calendar-event-modal__panel{max-width:520px}
-.calendar-event-modal__header{align-items:center}
+.calendar-event-modal__header{align-items:flex-start}
 .calendar-event-modal__actions{display:flex;align-items:center;gap:.75rem}
 .calendar-event-modal__complete{display:inline-flex;align-items:center;gap:.4rem;font-size:.8rem;color:#e2e8f0}
 .calendar-event-modal__complete input{accent-color:#a3e635}

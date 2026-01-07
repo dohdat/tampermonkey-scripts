@@ -1,7 +1,13 @@
 import { domRefs } from "./constants.js";
 import { state } from "./state/page-state.js";
 
-const { notificationBanner, notificationMessage, notificationUndoButton } = domRefs;
+function getNotificationNodes() {
+  return {
+    banner: document.getElementById("notification-banner") || domRefs.notificationBanner,
+    message: document.getElementById("notification-message") || domRefs.notificationMessage,
+    undoButton: document.getElementById("notification-undo") || domRefs.notificationUndoButton
+  };
+}
 
 export function isTypingTarget(target) {
   if (!target) return false;
@@ -22,22 +28,24 @@ export function hideNotificationBanner() {
     clearTimeout(state.notificationHideTimeout);
     state.notificationHideTimeout = null;
   }
-  notificationBanner?.classList.add("hidden");
-  if (notificationUndoButton) {
-    notificationUndoButton.disabled = false;
+  const { banner, undoButton } = getNotificationNodes();
+  banner?.classList?.add("hidden");
+  if (undoButton) {
+    undoButton.disabled = false;
   }
   state.notificationUndoHandler = null;
 }
 
 export function showUndoBanner(message, undoHandler) {
-  if (!notificationBanner || !notificationMessage || !notificationUndoButton) return;
+  const { banner, message: messageNode, undoButton } = getNotificationNodes();
+  if (!banner || !messageNode || !undoButton) return;
   hideNotificationBanner();
-  notificationMessage.textContent = message;
+  messageNode.textContent = message;
   state.notificationUndoHandler = undoHandler;
-  notificationBanner.classList.remove("hidden");
-  notificationUndoButton.disabled = false;
-  notificationUndoButton.onclick = async () => {
-    notificationUndoButton.disabled = true;
+  banner.classList?.remove("hidden");
+  undoButton.disabled = false;
+  undoButton.onclick = async () => {
+    undoButton.disabled = true;
     try {
       await state.notificationUndoHandler?.();
     } catch (error) {

@@ -482,7 +482,7 @@ export async function handleTimeMapListClick(event, timeMaps) {
 
 const timeMapDayAdd = getTimeMapDayAdd();
 const timeMapDaySelect = getTimeMapDaySelect();
-if (timeMapDayAdd && timeMapDaySelect) {
+if (timeMapDayAdd && typeof timeMapDayAdd.addEventListener === "function" && timeMapDaySelect) {
   timeMapDayAdd.addEventListener("click", () => {
     addTimeMapDay(timeMapDaySelect.value);
   });

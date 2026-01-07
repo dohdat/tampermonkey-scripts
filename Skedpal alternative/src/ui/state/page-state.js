@@ -14,6 +14,6 @@ export const state = {
   navStack: [],
   navIndex: -1,
   sortableInstances: [],
-  calendarViewMode: "week",
+  calendarViewMode: "day",
   calendarAnchorDate: new Date()
 };

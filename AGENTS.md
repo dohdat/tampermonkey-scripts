@@ -23,6 +23,8 @@
 - Scheduler extension: load unpacked, exercise Tasks/TimeMaps/Schedule tabs, run **Reschedule Now**, and confirm events respect deadlines, priorities, and allowed TimeMaps within the 14-day horizon.
 - Storage changes: verify IndexedDB migrations keep existing user data; avoid destructive schema tweaks without migration steps.
 - Networked features: handle auth failures and rate limits gracefully; log errors to console, not alerts.
+- After making changes, run `npm run test:coverage` to verify all tests pass and coverage remains acceptable.
+
 
 ## File Organization
 - Group code by feature folders already present (`background`, `core`, `data`, `ui`, `ui/tasks`, `ui/state`); place new files alongside related code rather than growing a single file past the 600-line cap.

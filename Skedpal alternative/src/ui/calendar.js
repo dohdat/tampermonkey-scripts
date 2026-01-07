@@ -7,7 +7,7 @@ import {
   getDayKey
 } from "./calendar-utils.js";
 
-const HOUR_HEIGHT = 48;
+const HOUR_HEIGHT = 144;
 let nowIndicatorTimer = null;
 
 function formatHourLabel(hour) {
@@ -209,6 +209,18 @@ function updateViewToggle(viewMode) {
   }
 }
 
+export function focusCalendarNow(options = {}) {
+  const { behavior = "auto" } = options;
+  const { calendarGrid } = domRefs;
+  if (!calendarGrid) return false;
+  const indicator = calendarGrid.querySelector(
+    '[data-test-skedpal="calendar-now-indicator"]'
+  );
+  if (!indicator || typeof indicator.scrollIntoView !== "function") return false;
+  indicator.scrollIntoView({ block: "center", inline: "nearest", behavior });
+  return true;
+}
+
 export function renderCalendar(tasks = state.tasksCache) {
   const viewMode = state.calendarViewMode || "week";
   const range = getCalendarRange(state.calendarAnchorDate, viewMode);
@@ -251,6 +263,7 @@ export function initCalendarView() {
     calendarTodayBtn.addEventListener("click", () => {
       state.calendarAnchorDate = new Date();
       renderCalendar();
+      focusCalendarNow({ behavior: "auto" });
     });
   }
   if (calendarDayBtn) {

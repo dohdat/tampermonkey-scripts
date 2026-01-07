@@ -4,6 +4,7 @@ import { updateUrlWithView, updateUrlWithZoom } from "./utils.js";
 import { renderTasks } from "./tasks/tasks-render.js";
 import { getSectionName, getSubsectionsFor } from "./sections.js";
 import { isTypingTarget } from "./notifications.js";
+import { focusCalendarNow, renderCalendar } from "./calendar.js";
 
 const { views, navButtons, navBreadcrumb } = domRefs;
 
@@ -30,6 +31,11 @@ export function switchView(target) {
     btn.setAttribute("aria-current", active ? "page" : "false");
   });
   updateUrlWithView(resolvedTarget);
+  if (resolvedTarget === "calendar") {
+    state.calendarAnchorDate = new Date();
+    renderCalendar();
+    focusCalendarNow({ behavior: "auto" });
+  }
 }
 
 export function getZoomLabel() {

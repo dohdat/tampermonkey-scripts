@@ -116,6 +116,10 @@ export const domRefs = {
   scheduleStatus: document.getElementById("schedule-status"),
   rescheduleButtons: [...document.querySelectorAll("[data-reschedule-btn]")],
   scheduleSummary: document.getElementById("scheduled-summary"),
+  reportList: document.getElementById("report-list"),
+  reportBadge: document.querySelector
+    ? document.querySelector("[data-test-skedpal='nav-report-badge']")
+    : null,
   horizonInput: document.getElementById("horizon"),
   notificationBanner: document.getElementById("notification-banner"),
   notificationMessage: document.getElementById("notification-message"),

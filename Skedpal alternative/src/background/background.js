@@ -4,9 +4,35 @@ import {
   getSettings,
   saveTask
 } from "../data/db.js";
-import { scheduleTasks } from "../core/scheduler.js";
+import { scheduleTasks, getUpcomingOccurrences } from "../core/scheduler.js";
 
-async function persistSchedule(tasks, placements, unscheduled, ignored) {
+function resolveScheduleStatus(task, parentIds, ignored, taskPlacements) {
+  if (parentIds.has(task.id)) {return null;}
+  if (ignored.includes(task.id) && taskPlacements.length === 0) {return "ignored";}
+  if (taskPlacements.length > 0) {return "scheduled";}
+  return "unscheduled";
+}
+
+function shouldCountMiss(task, status, parentIds) {
+  return !task.completed && status && status !== "scheduled" && !parentIds.has(task.id);
+}
+
+function getScheduledOccurrenceCount(taskPlacements) {
+  if (!taskPlacements.length) {return 0;}
+  const occurrenceIds = taskPlacements.map((p) => p.occurrenceId).filter(Boolean);
+  if (occurrenceIds.length) {
+    return new Set(occurrenceIds).size;
+  }
+  return 1;
+}
+
+function getExpectedOccurrenceCount(task, now, horizonDays) {
+  if (!task?.repeat || task.repeat.type === "none") {return 0;}
+  const cap = Math.max(50, horizonDays * 3);
+  return getUpcomingOccurrences(task, now, cap, horizonDays).length;
+}
+
+async function persistSchedule(tasks, placements, unscheduled, ignored, now, horizonDays) {
   const parentIds = new Set(
     tasks
       .filter((task) => task.subtaskParentId && !task.completed)
@@ -31,15 +57,17 @@ async function persistSchedule(tasks, placements, unscheduled, ignored) {
     task.scheduledStart = taskPlacements[0]?.start?.toISOString() || null;
     task.scheduledEnd = taskPlacements[taskPlacements.length - 1]?.end?.toISOString() || null;
     task.scheduledTimeMapId = taskPlacements[0]?.timeMapId || null;
-    if (parentIds.has(task.id)) {
-      task.scheduleStatus = null;
-    } else if (ignored.includes(task.id) && taskPlacements.length === 0) {
-      task.scheduleStatus = "ignored";
-    } else if (taskPlacements.length > 0) {
-      task.scheduleStatus = "scheduled";
-    } else {
-      task.scheduleStatus = "unscheduled";
+    task.scheduleStatus = resolveScheduleStatus(task, parentIds, ignored, taskPlacements);
+    const expectedOccurrences = getExpectedOccurrenceCount(task, now, horizonDays);
+    const scheduledOccurrences = getScheduledOccurrenceCount(taskPlacements);
+    const missedOccurrences = Math.max(0, expectedOccurrences - scheduledOccurrences);
+    if (missedOccurrences > 0 || shouldCountMiss(task, task.scheduleStatus, parentIds)) {
+      task.missedCount = (Number(task.missedCount) || 0) + Math.max(1, missedOccurrences);
+      task.lastMissedAt = timestamp;
     }
+    task.expectedCount = expectedOccurrences;
+    task.scheduledCount = scheduledOccurrences;
+    task.missedLastRun = missedOccurrences;
     task.lastScheduledRun = timestamp;
     await saveTask(task);
   }
@@ -76,7 +104,7 @@ async function runReschedule() {
     now
   });
 
-  await persistSchedule(tasks, scheduled, unscheduled, ignored);
+  await persistSchedule(tasks, scheduled, unscheduled, ignored, now, settings.schedulingHorizonDays);
 
   const scheduledTaskCount = new Set(scheduled.map((p) => p.taskId)).size;
 

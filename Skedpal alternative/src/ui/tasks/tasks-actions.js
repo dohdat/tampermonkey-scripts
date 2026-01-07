@@ -42,6 +42,7 @@ import {
   buildTemplateFormValues,
   validateTaskForm
 } from "./task-form-helpers.js";
+import { renderReport } from "../report.js";
 
 const {
   taskTimeMapOptions,
@@ -240,6 +241,7 @@ export function renderTimeMapsAndTasks(timeMaps) {
     expandedTaskDetails: state.expandedTaskDetails
   });
   renderCalendar(state.tasksCache);
+  renderReport(state.tasksCache);
 }
 
 function getTaskFormValues() {

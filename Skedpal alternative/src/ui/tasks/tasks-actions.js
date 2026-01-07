@@ -451,7 +451,7 @@ function buildSubtaskFormValues(task) {
     id: "",
     parentId: task.id,
     title: task.title || "",
-    link: task.link || "",
+    link: "",
     durationMin: task.durationMin || 30,
     minBlockMin: task.minBlockMin || task.durationMin || 30,
     priority: task.priority || 3,

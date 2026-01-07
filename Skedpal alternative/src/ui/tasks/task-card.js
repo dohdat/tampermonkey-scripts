@@ -3,6 +3,7 @@ import {
   caretRightIconSvg,
   checkboxCheckedIconSvg,
   checkboxIconSvg,
+  duplicateIconSvg,
   editIconSvg,
   plusIconSvg,
   removeIconSvg,
@@ -104,6 +105,15 @@ function buildTaskTitleActions(task, detailsOpen) {
   editTaskBtn.innerHTML = editIconSvg;
   editTaskBtn.style.borderColor = themeColors.green500;
   editTaskBtn.style.color = themeColors.green500;
+  const duplicateTaskBtn = document.createElement("button");
+  duplicateTaskBtn.type = "button";
+  duplicateTaskBtn.dataset.duplicateTask = task.id;
+  duplicateTaskBtn.className = "title-icon-btn";
+  duplicateTaskBtn.title = "Duplicate task";
+  duplicateTaskBtn.setAttribute("data-test-skedpal", "task-duplicate-btn");
+  duplicateTaskBtn.innerHTML = duplicateIconSvg;
+  duplicateTaskBtn.style.borderColor = themeColors.blue500;
+  duplicateTaskBtn.style.color = themeColors.blue500;
   const deleteTaskBtn = document.createElement("button");
   deleteTaskBtn.type = "button";
   deleteTaskBtn.dataset.delete = task.id;
@@ -131,6 +141,7 @@ function buildTaskTitleActions(task, detailsOpen) {
   detailsToggleBtn.innerHTML = detailsOpen ? caretDownIconSvg : caretRightIconSvg;
   titleActions.appendChild(zoomTaskBtn);
   titleActions.appendChild(editTaskBtn);
+  titleActions.appendChild(duplicateTaskBtn);
   titleActions.appendChild(addSubtaskBtn);
   titleActions.appendChild(detailsToggleBtn);
   titleActions.appendChild(deleteTaskBtn);

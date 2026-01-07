@@ -33,6 +33,7 @@ import { renderCalendar } from "../calendar.js";
 import { ensureTaskIds, migrateSectionsAndTasks } from "./tasks.js";
 import { renderBreadcrumb, switchView } from "../navigation.js";
 import { showUndoBanner } from "../notifications.js";
+import { buildDuplicateTasks } from "./task-duplicate.js";
 import {
   repeatStore,
   setRepeatFromSelection
@@ -191,6 +192,15 @@ export async function loadTasks() {
   renderTaskSectionOptions();
   renderTaskTimeMapOptions(timeMaps);
   renderTimeMapsAndTasks(timeMaps);
+}
+
+export async function duplicateTaskWithChildren(taskId) {
+  if (!taskId) {return;}
+  const originals = getTaskAndDescendants(taskId, state.tasksCache);
+  if (!originals.length) {return;}
+  const duplicates = buildDuplicateTasks(originals, state.tasksCache);
+  await Promise.all(duplicates.map((task) => saveTask(task)));
+  await loadTasks();
 }
 
 export function renderTimeMapsAndTasks(timeMaps) {

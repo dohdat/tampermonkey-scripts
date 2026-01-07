@@ -18,7 +18,8 @@ import {
   renderTimeMapsAndTasks,
   startTaskInSection,
   startSubtaskFromTask,
-  openTaskEditById
+  openTaskEditById,
+  duplicateTaskWithChildren
 } from "./tasks-actions.js";
 
 function parseTaskListClick(btn) {
@@ -44,6 +45,7 @@ function parseTaskListClick(btn) {
     parentSectionId: btn.dataset.parentSection,
     editId: btn.dataset.edit,
     deleteId: btn.dataset.delete,
+    duplicateTaskId: btn.dataset.duplicateTask,
     addSubtaskId: btn.dataset.addSubtask,
     toggleTaskDetailsId: btn.dataset.toggleTaskDetails,
     toggleTaskCollapseId: btn.dataset.toggleTaskCollapse
@@ -199,30 +201,43 @@ function handleCollapseActions(btn, action) {
 }
 
 async function handleTaskActions(action) {
-  if (action.addSection !== undefined) {
-    startTaskInSection(action.addSection, action.addSubsectionTaskTarget || "");
-    return true;
-  }
-  if (action.toggleSubsectionFor !== undefined || action.addSubsectionFor !== undefined) {
-    openSubsectionModal(action.toggleSubsectionFor || action.addSubsectionFor, "");
-    return true;
-  }
-  if (action.editId) {
-    openTaskEditById(action.editId, { switchView: true });
-    return true;
-  }
-  if (action.addSubtaskId !== undefined) {
-    const parentTask = state.tasksCache.find((t) => t.id === action.addSubtaskId);
-    if (parentTask) {
-      startSubtaskFromTask(parentTask);
+  const handlers = [
+    {
+      when: action.addSection !== undefined,
+      run: () => startTaskInSection(action.addSection, action.addSubsectionTaskTarget || "")
+    },
+    {
+      when: action.toggleSubsectionFor !== undefined || action.addSubsectionFor !== undefined,
+      run: () => openSubsectionModal(action.toggleSubsectionFor || action.addSubsectionFor, "")
+    },
+    {
+      when: Boolean(action.editId),
+      run: () => openTaskEditById(action.editId, { switchView: true })
+    },
+    {
+      when: Boolean(action.duplicateTaskId),
+      run: () => duplicateTaskWithChildren(action.duplicateTaskId)
+    },
+    {
+      when: action.addSubtaskId !== undefined,
+      run: () => handleAddSubtaskAction(action.addSubtaskId)
+    },
+    {
+      when: Boolean(action.deleteId),
+      run: () => deleteTaskWithUndo(action.deleteId)
     }
-    return true;
+  ];
+  const match = handlers.find((handler) => handler.when);
+  if (!match) {return false;}
+  await match.run();
+  return true;
+}
+
+function handleAddSubtaskAction(taskId) {
+  const parentTask = state.tasksCache.find((t) => t.id === taskId);
+  if (parentTask) {
+    startSubtaskFromTask(parentTask);
   }
-  if (action.deleteId) {
-    await deleteTaskWithUndo(action.deleteId);
-    return true;
-  }
-  return false;
 }
 
 async function deleteTaskWithUndo(taskId) {

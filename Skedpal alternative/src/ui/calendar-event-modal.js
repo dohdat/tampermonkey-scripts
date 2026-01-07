@@ -12,6 +12,7 @@ import { parseLocalDateInput } from "./utils.js";
 
 let activeTask = null;
 let activeEventMeta = null;
+let calendarEventModalInitializedFor = null;
 
 function resolveRef(current, id) {
   if (current) {return current;}
@@ -374,6 +375,9 @@ function handleDeferChange(event) {
 
 export function initCalendarEventModal() {
   const calendarEventModal = resolveRef(domRefs.calendarEventModal, "calendar-event-modal");
+  if (!calendarEventModal) {return;}
+  if (calendarEventModalInitializedFor === calendarEventModal) {return;}
+  calendarEventModalInitializedFor = calendarEventModal;
   const calendarEventModalCloseButtons = domRefs.calendarEventModalCloseButtons || [];
   const calendarEventModalActionButtons = domRefs.calendarEventModalActionButtons || [];
   const calendarEventModalComplete = resolveRef(

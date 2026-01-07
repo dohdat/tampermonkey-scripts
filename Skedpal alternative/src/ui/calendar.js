@@ -39,6 +39,7 @@ let dragState = null;
 let pendingDrag = null;
 let lastDragCompletedAt = 0;
 let lastDragMoved = false;
+let calendarViewInitialized = false;
 
 function formatHourLabel(hour) {
   const d = new Date();
@@ -552,6 +553,11 @@ export function renderCalendar(tasks = state.tasksCache) {
 }
 
 export function initCalendarView() {
+  if (calendarViewInitialized) {
+    renderCalendar();
+    return;
+  }
+  calendarViewInitialized = true;
   const {
     calendarPrevBtn,
     calendarNextBtn,

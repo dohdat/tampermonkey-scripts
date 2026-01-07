@@ -11,6 +11,7 @@ import { saveTask } from "../data/db.js";
 import { parseLocalDateInput } from "./utils.js";
 
 let activeTask = null;
+let activeEventMeta = null;
 
 function resolveRef(current, id) {
   if (current) return current;
@@ -203,6 +204,7 @@ function closeCalendarEventModal() {
     document.body.classList.remove("modal-open");
   }
   activeTask = null;
+  activeEventMeta = null;
 }
 
 export function openCalendarEventModal(eventMeta) {
@@ -211,6 +213,7 @@ export function openCalendarEventModal(eventMeta) {
   const task = state.tasksCache.find((entry) => entry.id === eventMeta.taskId);
   if (!task) return;
   activeTask = task;
+  activeEventMeta = eventMeta;
   const calendarEventModalTitle = resolveRef(
     domRefs.calendarEventModalTitle,
     "calendar-event-modal-title"
@@ -250,6 +253,20 @@ export function openCalendarEventModal(eventMeta) {
 
 function handleCompleteAction() {
   if (!activeTask) return;
+  if (activeTask.repeat?.type && activeTask.repeat.type !== "none" && activeEventMeta?.start) {
+    const occurrenceDate = new Date(activeEventMeta.start);
+    occurrenceDate.setHours(23, 59, 59, 999);
+    window.dispatchEvent(
+      new CustomEvent("skedpal:repeat-occurrence-complete", {
+        detail: {
+          taskId: activeTask.id,
+          occurrenceIso: occurrenceDate.toISOString()
+        }
+      })
+    );
+    closeCalendarEventModal();
+    return;
+  }
   const handled = triggerTaskButton(`[data-complete-task="${activeTask.id}"]`);
   if (!handled) {
     fallbackCompleteToggle();

@@ -155,4 +155,34 @@ describe("calendar render", () => {
     const empty = findByTestId(domRefs.calendarGrid, "calendar-empty");
     assert.strictEqual(empty.length, 1);
   });
+
+  it("skips scheduled instances that are already completed", () => {
+    const { domRefs, renderCalendar } = testRefs;
+    const start = new Date(2026, 0, 6, 9, 0, 0);
+    const end = new Date(2026, 0, 6, 10, 0, 0);
+    const completed = new Date(start);
+    completed.setHours(23, 59, 59, 999);
+    const tasks = [
+      {
+        id: "task-2",
+        title: "Repeat block",
+        scheduleStatus: "scheduled",
+        completedOccurrences: [completed.toISOString()],
+        scheduledInstances: [
+          {
+            start: start.toISOString(),
+            end: end.toISOString(),
+            timeMapId: "tm-2",
+            occurrenceId: "occ-2"
+          }
+        ]
+      }
+    ];
+    state.tasksTimeMapsCache = [{ id: "tm-2", color: "#22c55e" }];
+
+    renderCalendar(tasks);
+
+    const events = findByTestId(domRefs.calendarGrid, "calendar-event");
+    assert.strictEqual(events.length, 0);
+  });
 });

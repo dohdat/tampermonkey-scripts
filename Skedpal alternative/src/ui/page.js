@@ -318,6 +318,11 @@ function registerEventListeners() {
 
   window.addEventListener("keydown", handleNavigationShortcuts);
   window.addEventListener("auxclick", handleNavigationMouseButtons);
+  window.addEventListener("skedpal:repeat-occurrence-complete", async (event) => {
+    const detail = event?.detail || {};
+    if (!detail.taskId || !detail.occurrenceIso) return;
+    await handleRepeatOccurrenceComplete(detail.taskId, detail.occurrenceIso);
+  });
 
   registerRepeatEventHandlers();
   setRepeatFromSelection({ type: "none" });

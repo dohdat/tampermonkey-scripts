@@ -42,6 +42,12 @@ function formatEventTimeRange(start, end) {
   return `${startLabel} - ${endLabel}`;
 }
 
+function endOfDay(date) {
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
 
 export function getCalendarEventStyles(event, timeMapColorById) {
   const color = timeMapColorById?.get?.(event?.timeMapId || "");
@@ -57,11 +63,16 @@ function getScheduledEvents(tasks) {
   (tasks || []).forEach((task) => {
     if (task.scheduleStatus !== "scheduled") return;
     const instances = Array.isArray(task.scheduledInstances) ? task.scheduledInstances : [];
+    const completedOccurrences = new Set(task.completedOccurrences || []);
     instances.forEach((instance, index) => {
       if (!instance?.start || !instance?.end) return;
       const start = new Date(instance.start);
       const end = new Date(instance.end);
       if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return;
+      if (completedOccurrences.size) {
+        const occurrenceIso = endOfDay(start).toISOString();
+        if (completedOccurrences.has(occurrenceIso)) return;
+      }
       events.push({
         taskId: task.id,
         title: task.title || "Untitled task",

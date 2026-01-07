@@ -97,6 +97,12 @@ describe("calendar event modal", () => {
     };
     global.document.body = new FakeElement("body");
     global.window = { dispatchEvent: () => {} };
+    global.CustomEvent = class CustomEvent {
+      constructor(type, init) {
+        this.type = type;
+        this.detail = init?.detail || null;
+      }
+    };
 
     ({ domRefs } = await import("../src/ui/constants.js"));
     ({ state } = await import("../src/ui/state/page-state.js"));
@@ -248,6 +254,39 @@ describe("calendar event modal", () => {
     refs.actions[0].listeners.click();
 
     assert.strictEqual(clicked, true);
+  });
+
+  it("dispatches repeat occurrence completion from the calendar modal", () => {
+    let dispatched = null;
+    window.dispatchEvent = (event) => {
+      dispatched = event;
+    };
+    state.tasksCache = [
+      {
+        id: "task-3",
+        title: "Daily standup",
+        durationMin: 15,
+        repeat: { type: "custom", unit: "day", interval: 1 },
+        completed: false
+      }
+    ];
+    const eventMeta = {
+      taskId: "task-3",
+      timeMapId: "tm-1",
+      start: new Date(2026, 0, 6, 9, 0, 0),
+      end: new Date(2026, 0, 6, 9, 15, 0)
+    };
+    const expected = new Date(eventMeta.start);
+    expected.setHours(23, 59, 59, 999);
+
+    initCalendarEventModal();
+    openCalendarEventModal(eventMeta);
+    refs.actions[0].listeners.click();
+
+    assert.ok(dispatched);
+    assert.strictEqual(dispatched.type, "skedpal:repeat-occurrence-complete");
+    assert.strictEqual(dispatched.detail.taskId, "task-3");
+    assert.strictEqual(dispatched.detail.occurrenceIso, expected.toISOString());
   });
 
   it("returns early when the task is missing", () => {

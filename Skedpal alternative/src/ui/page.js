@@ -19,6 +19,7 @@ import {
   handleTaskSubmit,
   handleTaskListClick,
   handleReschedule,
+  syncTaskDurationHelper,
   updateScheduleSummary,
   startTaskInSection,
   handleRepeatOccurrenceComplete,
@@ -59,6 +60,7 @@ const {
   taskModalCloseButtons,
   taskLinkInput,
   taskLinkClearBtn,
+  taskDurationInput,
   sectionAddBtn,
   sectionFormToggle,
   sectionInput,
@@ -110,6 +112,10 @@ function registerEventListeners() {
       taskLinkInput.focus();
     });
     syncClear();
+  }
+  if (taskDurationInput) {
+    taskDurationInput.addEventListener("input", syncTaskDurationHelper);
+    syncTaskDurationHelper();
   }
 
   rescheduleButtons.forEach((btn) => btn.addEventListener("click", handleReschedule));

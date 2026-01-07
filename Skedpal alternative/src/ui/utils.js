@@ -130,6 +130,16 @@ export function formatDurationShort(minutes) {
   return `${Math.max(1, mins)}m`;
 }
 
+export function formatDurationLong(minutes) {
+  const mins = Math.max(0, Math.round(Number(minutes) || 0));
+  if (!mins) return "0m";
+  const hours = Math.floor(mins / 60);
+  const remainder = mins % 60;
+  if (!hours) return `${remainder}m`;
+  if (!remainder) return `${hours}h`;
+  return `${hours}h ${remainder}m`;
+}
+
 export function toggleClearButtonVisibility(input, button) {
   if (!input || !button) return false;
   const hasValue = Boolean((input.value || "").trim());

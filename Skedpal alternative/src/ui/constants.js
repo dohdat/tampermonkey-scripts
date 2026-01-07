@@ -48,6 +48,8 @@ export const domRefs = {
   taskToggle: document.getElementById("task-toggle"),
   taskModalCloseButtons: [...document.querySelectorAll("[data-task-modal-close]")],
   taskTimeMapOptions: document.getElementById("task-timemap-options"),
+  taskDurationInput: document.getElementById("task-duration"),
+  taskDurationHelper: document.getElementById("task-duration-helper"),
   taskDeadlineInput: document.getElementById("task-deadline"),
   taskStartFromInput: document.getElementById("task-start-from"),
   taskLinkInput: document.getElementById("task-link"),

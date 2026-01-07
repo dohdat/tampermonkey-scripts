@@ -7,6 +7,7 @@ import {
   getContainerKey,
   getTaskAndDescendants,
   formatDate,
+  formatDurationLong,
   getInheritedSubtaskFields,
   getLocalDateKey,
   isStartAfterDeadline,
@@ -50,6 +51,8 @@ const {
   taskStartFromInput,
   taskLinkInput,
   taskLinkClearBtn,
+  taskDurationInput,
+  taskDurationHelper,
   taskMinBlockInput,
   taskParentIdInput,
   taskSectionSelect,
@@ -69,6 +72,18 @@ import { openTaskForm, closeTaskForm } from "../ui.js";
 
 function syncTaskLinkClear() {
   toggleClearButtonVisibility(taskLinkInput, taskLinkClearBtn);
+}
+
+export function syncTaskDurationHelper() {
+  if (!taskDurationInput || !taskDurationHelper) return;
+  const minutes = Number(taskDurationInput.value);
+  if (!Number.isFinite(minutes) || minutes <= 0) {
+    taskDurationHelper.textContent = "";
+    taskDurationHelper.classList.add("hidden");
+    return;
+  }
+  taskDurationHelper.textContent = `= ${formatDurationLong(minutes)}`;
+  taskDurationHelper.classList.remove("hidden");
 }
 
 export function closeRepeatCompleteModal() {
@@ -304,6 +319,7 @@ export function resetTaskForm(shouldClose = false) {
   taskLinkInput.value = "";
   syncTaskLinkClear();
   document.getElementById("task-duration").value = "30";
+  syncTaskDurationHelper();
   taskMinBlockInput.value = "30";
   document.getElementById("task-priority").value = "3";
   taskDeadlineInput.value = "";
@@ -333,6 +349,7 @@ export function startTaskInSection(sectionId = "", subsectionId = "") {
   taskLinkInput.value = template?.link || "";
   syncTaskLinkClear();
   document.getElementById("task-duration").value = template?.durationMin || "30";
+  syncTaskDurationHelper();
   taskMinBlockInput.value = template?.minBlockMin || "30";
   document.getElementById("task-priority").value = String(template?.priority || 3);
   taskDeadlineInput.value = template?.deadline ? template.deadline.slice(0, 10) : "";
@@ -359,6 +376,7 @@ export function startSubtaskFromTask(task) {
   taskLinkInput.value = task.link || "";
   syncTaskLinkClear();
   document.getElementById("task-duration").value = task.durationMin || "30";
+  syncTaskDurationHelper();
   taskMinBlockInput.value = task.minBlockMin || task.durationMin || "30";
   document.getElementById("task-priority").value = String(task.priority || 3);
   taskDeadlineInput.value = task.deadline ? task.deadline.slice(0, 10) : "";
@@ -518,6 +536,7 @@ export async function handleTaskListClick(event) {
       taskLinkInput.value = task.link || "";
       syncTaskLinkClear();
       document.getElementById("task-duration").value = task.durationMin;
+      syncTaskDurationHelper();
       taskMinBlockInput.value = task.minBlockMin || "30";
       document.getElementById("task-priority").value = String(task.priority);
       taskDeadlineInput.value = task.deadline ? task.deadline.slice(0, 10) : "";

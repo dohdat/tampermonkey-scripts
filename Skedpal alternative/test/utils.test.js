@@ -11,6 +11,7 @@ const {
   formatDate,
   formatRRuleDate,
   formatDurationShort,
+  formatDurationLong,
   getWeekdayShortLabel,
   getNthWeekday,
   formatOrdinal,
@@ -126,6 +127,10 @@ describe("utils formatting helpers", () => {
     assert.strictEqual(formatDurationShort(0), "1m");
     assert.strictEqual(formatDurationShort(30), "30m");
     assert.strictEqual(formatDurationShort(90), "1.5h");
+    assert.strictEqual(formatDurationLong(0), "0m");
+    assert.strictEqual(formatDurationLong(30), "30m");
+    assert.strictEqual(formatDurationLong(60), "1h");
+    assert.strictEqual(formatDurationLong(210), "3h 30m");
     assert.strictEqual(getWeekdayShortLabel(2), "Tue");
     assert.strictEqual(getWeekdayShortLabel(9), "Sun");
     const lastWeekday = getNthWeekday(new Date(2026, 4, 31));

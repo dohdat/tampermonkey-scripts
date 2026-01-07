@@ -167,8 +167,8 @@ export function renderTimeMaps(timeMaps) {
     const taskCount = usageCounts.get(tm.id) || 0;
     const isDefault = state.settingsCache.defaultTimeMapId === tm.id;
     const editBtnBackground = tm.color || "transparent";
-    const editBtnBorder = tm.color || themeColors.slate600;
-    const editBtnColor = tm.color ? themeColors.slate800 : themeColors.slate200;
+    const editBtnBorder = tm.color || themeColors.slate500;
+    const editBtnColor = tm.color ? themeColors.slate800 : themeColors.slate100;
     const card = document.createElement("div");
     card.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow";
     card.setAttribute("data-test-skedpal", "timemap-card");
@@ -255,8 +255,8 @@ export function renderTaskTimeMapOptions(
     }
     const swatch = document.createElement("span");
     swatch.className = "h-3 w-3 rounded-full border border-slate-700";
-    swatch.style.backgroundColor = tm.color || themeColors.slate300;
-    swatch.style.borderColor = tm.color || themeColors.slate600;
+    swatch.style.backgroundColor = tm.color || themeColors.slate100;
+    swatch.style.borderColor = tm.color || themeColors.slate500;
     label.appendChild(input);
     label.appendChild(swatch);
     label.appendChild(text);

@@ -75,7 +75,7 @@ function buildTitleWrap(task, options) {
   if (task.completed) {
     titleTextWrap.style.opacity = "0.8";
     titleTextWrap.style.textDecoration = "line-through";
-    titleTextWrap.style.textDecorationColor = themeColors.green400;
+    titleTextWrap.style.textDecorationColor = themeColors.green500;
   }
   return { titleWrap, isLongTitle, displayDurationMin, detailsOpen };
 }

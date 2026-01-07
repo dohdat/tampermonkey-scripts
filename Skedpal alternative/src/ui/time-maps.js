@@ -154,11 +154,17 @@ export function renderTimeMaps(timeMaps) {
       '<div class="flex items-center justify-center rounded-xl border border-dashed border-slate-700 bg-slate-900/60 px-3 py-4 text-sm text-slate-400">No TimeMaps yet. Add at least one availability map.</div>';
     return;
   }
+  const usageCounts = timeMaps.reduce((map, tm) => {
+    map.set(tm.id, Number(tm.taskCount) || 0);
+    return map;
+  }, new Map());
   timeMaps.forEach((tmRaw) => {
     const tm = normalizeTimeMap(tmRaw);
+    const taskCount = usageCounts.get(tm.id) || 0;
     const isDefault = state.settingsCache.defaultTimeMapId === tm.id;
     const card = document.createElement("div");
     card.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow";
+    card.setAttribute("data-test-skedpal", "timemap-card");
     if (tm.color) {
       card.style.borderColor = tm.color;
       card.style.backgroundColor = `${tm.color}1a`;
@@ -171,9 +177,10 @@ export function renderTimeMaps(timeMaps) {
         )
         .join("; ") || "";
     card.innerHTML = `
-      <h3 class="text-base font-semibold flex items-center gap-2">
+      <h3 class="text-base font-semibold flex flex-wrap items-center gap-2">
         <span>${tm.name}</span>
         ${isDefault ? '<span class="rounded-full border border-lime-400/60 bg-lime-400/10 px-2 py-1 text-xs font-semibold text-lime-300">Default</span>' : ""}
+        <span class="rounded-full border border-slate-700 bg-slate-800/70 px-2 py-1 text-xs font-semibold text-slate-200" data-test-skedpal="timemap-task-count">${taskCount}</span>
       </h3>
       <div class="mt-1 flex flex-wrap gap-2 text-xs text-slate-400">${rulesText}</div>
       <div class="mt-3 flex gap-2">
@@ -186,10 +193,25 @@ export function renderTimeMaps(timeMaps) {
 }
 
 export async function loadTimeMaps() {
-  const timeMapsRaw = await getAllTimeMaps();
+  const [timeMapsRaw, tasks] = await Promise.all([getAllTimeMaps(), getAllTasks()]);
   const timeMaps = timeMapsRaw.map(normalizeTimeMap);
+  const usageCounts = new Map();
+  (tasks || []).forEach((task) => {
+    const ids = Array.isArray(task.timeMapIds) ? task.timeMapIds : [];
+    ids.forEach((id) => {
+      usageCounts.set(id, (usageCounts.get(id) || 0) + 1);
+    });
+  });
+  const timeMapsWithCounts = timeMaps.map((tm) => ({
+    ...tm,
+    taskCount: usageCounts.get(tm.id) || 0
+  }));
+  timeMapsWithCounts.sort((a, b) => {
+    if (b.taskCount !== a.taskCount) return b.taskCount - a.taskCount;
+    return (a.name || "").localeCompare(b.name || "");
+  });
   state.tasksTimeMapsCache = timeMaps;
-  renderTimeMaps(timeMaps);
+  renderTimeMaps(timeMapsWithCounts);
   renderTaskTimeMapOptions(timeMaps);
 }
 

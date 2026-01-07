@@ -7,6 +7,7 @@ import {
   getContainerKey,
   getTaskAndDescendants,
   formatDate,
+  getInheritedSubtaskFields,
   getLocalDateKey,
   isStartAfterDeadline,
   normalizeTimeMap,
@@ -246,7 +247,7 @@ export async function handleTaskSubmit(event) {
     ? normalizedSubtaskScheduleMode
     : existingTask?.subtaskScheduleMode || normalizedSubtaskScheduleMode;
 
-  await saveTask({
+  const updatedTask = {
     id,
     title,
     durationMin,
@@ -268,7 +269,29 @@ export async function handleTaskSubmit(event) {
     scheduleStatus: "unscheduled",
     scheduledStart: null,
     scheduledEnd: null
-  });
+  };
+
+  await saveTask(updatedTask);
+
+  if (isParentTask && existingTask) {
+    const inherited = getInheritedSubtaskFields(updatedTask);
+    const descendants = getTaskAndDescendants(id, state.tasksCache).slice(1);
+    if (descendants.length) {
+      await Promise.all(
+        descendants.map((task) =>
+          saveTask({
+            ...task,
+            ...inherited,
+            scheduleStatus: "unscheduled",
+            scheduledStart: null,
+            scheduledEnd: null,
+            scheduledTimeMapId: null,
+            scheduledInstances: []
+          })
+        )
+      );
+    }
+  }
   resetTaskForm(true);
   await loadTasks();
 }

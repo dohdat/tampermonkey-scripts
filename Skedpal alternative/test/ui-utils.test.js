@@ -1,7 +1,11 @@
 import assert from "assert";
 import { describe, it } from "mocha";
 
-import { getLocalDateKey, toggleClearButtonVisibility } from "../src/ui/utils.js";
+import {
+  getInheritedSubtaskFields,
+  getLocalDateKey,
+  toggleClearButtonVisibility
+} from "../src/ui/utils.js";
 
 function createInput(value = "") {
   return { value };
@@ -54,5 +58,30 @@ describe("getLocalDateKey", () => {
 
   it("returns an empty string for invalid values", () => {
     assert.strictEqual(getLocalDateKey("not-a-date"), "");
+  });
+});
+
+describe("getInheritedSubtaskFields", () => {
+  it("returns shared scheduling fields from a parent task", () => {
+    const parent = {
+      section: "s1",
+      subsection: "sub1",
+      timeMapIds: ["tm-1"],
+      priority: 4,
+      deadline: "2026-01-06T00:00:00.000Z",
+      startFrom: "2026-01-05T00:00:00.000Z"
+    };
+    assert.deepStrictEqual(getInheritedSubtaskFields(parent), {
+      section: "s1",
+      subsection: "sub1",
+      timeMapIds: ["tm-1"],
+      priority: 4,
+      deadline: "2026-01-06T00:00:00.000Z",
+      startFrom: "2026-01-05T00:00:00.000Z"
+    });
+  });
+
+  it("returns an empty object for missing parent tasks", () => {
+    assert.deepStrictEqual(getInheritedSubtaskFields(null), {});
   });
 });

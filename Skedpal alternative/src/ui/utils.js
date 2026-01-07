@@ -75,6 +75,18 @@ export function formatDate(value) {
   return date && !Number.isNaN(date) ? date.toLocaleDateString() : "";
 }
 
+export function getInheritedSubtaskFields(parentTask) {
+  if (!parentTask) return {};
+  return {
+    section: parentTask.section || "",
+    subsection: parentTask.subsection || "",
+    timeMapIds: Array.isArray(parentTask.timeMapIds) ? [...parentTask.timeMapIds] : [],
+    priority: Number(parentTask.priority) || 0,
+    deadline: parentTask.deadline || null,
+    startFrom: parentTask.startFrom || null
+  };
+}
+
 export function getLocalDateKey(value) {
   const date = value ? new Date(value) : null;
   if (!date || Number.isNaN(date.getTime())) return "";

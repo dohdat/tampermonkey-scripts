@@ -194,9 +194,6 @@ export function renderTaskCard(task, context) {
     const minBlockMarkup = task.minBlockMin
       ? `<span data-test-skedpal="task-min-block">Min block: ${task.minBlockMin}m</span>`
       : "";
-    const linkMarkup = task.link
-      ? `<span class="text-lime-300 underline" data-test-skedpal="task-link">Link attached</span>`
-      : "";
     meta.innerHTML = `
           ${deadlineMarkup}
           ${startFromMarkup}
@@ -204,7 +201,6 @@ export function renderTaskCard(task, context) {
           <span data-test-skedpal="task-priority">Priority: ${task.priority}</span>
           <span data-test-skedpal="task-timemaps">TimeMaps: ${timeMapNames.join(", ")}</span>
           <span data-test-skedpal="task-repeat">Repeat: ${repeatSummary}</span>
-          ${linkMarkup}
         `;
     taskCard.appendChild(meta);
 

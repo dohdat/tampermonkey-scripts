@@ -228,7 +228,6 @@ describe("task card", () => {
     assert.ok(title.innerHTML.includes('href="https://example.com"'));
     assert.ok(findByInnerHTML(card, "Repeat: Every 2 weeks"));
     assert.ok(findByInnerHTML(card, "TimeMaps: Unknown"));
-    assert.ok(findByInnerHTML(card, "Link attached"));
   });
 
   it("shows scheduled summary row and collapsed caret when configured", () => {

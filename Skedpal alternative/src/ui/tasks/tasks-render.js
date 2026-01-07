@@ -118,6 +118,31 @@ export function renderTasks(tasks, timeMaps) {
     }
     return visible;
   })();
+  const isTaskZoom = state.zoomFilter?.type === "task";
+  if (isTaskZoom) {
+    const zoomWrap = document.createElement("div");
+    zoomWrap.className = "space-y-2";
+    zoomWrap.setAttribute("data-test-skedpal", "task-zoom-list");
+    sortTasksByOrder(filteredTasks).forEach((task) => {
+      zoomWrap.appendChild(
+        renderTaskCard(task, {
+          tasks: baseTasks,
+          timeMapById,
+          collapsedTasks: state.collapsedTasks,
+          expandedTaskDetails: state.expandedTaskDetails,
+          computeTotalDuration,
+          getTaskDepthById,
+          getSectionName,
+          getSubsectionName: (sectionId, subsectionId) => {
+            const subs = getSubsectionsFor(sectionId);
+            return subs.find((s) => s.id === subsectionId)?.name || "";
+          }
+        })
+      );
+    });
+    taskList.appendChild(zoomWrap);
+    return;
+  }
   const suppressPlaceholders = Boolean(state.zoomFilter);
   const sections = [...(state.settingsCache.sections || [])];
   const seenSectionIds = new Set(sections.map((s) => s.id));

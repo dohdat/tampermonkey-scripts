@@ -11,6 +11,9 @@ class FakeElement {
     this.attributes = {};
     this.className = "";
     this.textContent = "";
+    this.href = "";
+    this.target = "";
+    this.rel = "";
     this._innerHTML = "";
     this.style = {
       setProperty: (name, value) => {
@@ -117,6 +120,7 @@ describe("calendar render", () => {
       {
         id: "task-1",
         title: "Focus block",
+        link: "https://example.com",
         scheduleStatus: "scheduled",
         scheduledInstances: [
           {
@@ -138,6 +142,9 @@ describe("calendar render", () => {
     assert.strictEqual(events.length, 1);
     assert.strictEqual(events[0].dataset.eventTaskId, "task-1");
     assert.strictEqual(events[0].dataset.eventOccurrenceId, "occ-1");
+    const links = findByTestId(events[0], "calendar-event-title-link");
+    assert.strictEqual(links.length, 1);
+    assert.strictEqual(links[0].target, "_blank");
   });
 
   it("renders an empty state when no events are in range", () => {

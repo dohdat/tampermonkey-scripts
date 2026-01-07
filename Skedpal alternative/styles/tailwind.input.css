@@ -127,6 +127,8 @@ body.modal-open{overflow:hidden}
 .calendar-event{position:absolute;left:8px;right:8px;padding:6px 8px;border-radius:10px;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.4);color:#e2e8f0;box-shadow:0 6px 12px rgba(15,23,42,.45);overflow:hidden;cursor:grab;user-select:none;touch-action:none}
 .calendar-event--dragging{cursor:grabbing;opacity:.88;z-index:6;box-shadow:0 16px 24px rgba(15,23,42,.6)}
 .calendar-event-title{font-size:.75rem;font-weight:600;line-height:1.2}
+.calendar-event-title-link{color:#60a5fa;text-decoration:underline;text-underline-offset:2px}
+.calendar-event-title-link:hover{color:#93c5fd}
 .calendar-event-time{font-size:.7rem;color:#bae6fd}
 .calendar-empty{padding:16px;text-align:center;font-size:.75rem;color:#94a3b8;background:rgba(15,23,42,.4)}
 .calendar-view-btn{padding:6px 12px;border-radius:10px;font-weight:600;color:#94a3b8;transition:color .2s ease,background .2s ease}

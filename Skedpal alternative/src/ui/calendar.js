@@ -125,6 +125,7 @@ function getScheduledEvents(tasks) {
       events.push({
         taskId: task.id,
         title: task.title || "Untitled task",
+        link: task.link || "",
         start,
         end,
         timeMapId: instance.timeMapId || "",
@@ -397,10 +398,21 @@ function renderCalendarGrid(range, events, timeMapColorById) {
         block.style.borderColor = styles.borderColor;
       }
       block.setAttribute("data-test-skedpal", "calendar-event");
-      const title = document.createElement("div");
-      title.className = "calendar-event-title";
-      title.textContent = item.event.title;
-      title.setAttribute("data-test-skedpal", "calendar-event-title");
+      let title = null;
+      if (item.event.link) {
+        title = document.createElement("a");
+        title.className = "calendar-event-title calendar-event-title-link";
+        title.href = item.event.link;
+        title.target = "_blank";
+        title.rel = "noopener noreferrer";
+        title.textContent = item.event.title;
+        title.setAttribute("data-test-skedpal", "calendar-event-title-link");
+      } else {
+        title = document.createElement("div");
+        title.className = "calendar-event-title";
+        title.textContent = item.event.title;
+        title.setAttribute("data-test-skedpal", "calendar-event-title");
+      }
       const time = document.createElement("div");
       time.className = "calendar-event-time";
       time.textContent = formatEventTimeRange(item.eventStart, item.eventEnd);
@@ -426,6 +438,7 @@ function clearDragState() {
 }
 
 function startCalendarDrag(event) {
+  if (event.target?.closest?.("a")) return;
   const target = event.target.closest?.(".calendar-event");
   if (!target || event.button !== 0) return;
   const dayCol = target.closest?.(".calendar-day-col");

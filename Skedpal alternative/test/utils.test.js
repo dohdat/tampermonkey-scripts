@@ -22,6 +22,7 @@ const {
   getNextSubtaskOrder,
   getTaskDepth,
   getTaskAndDescendants,
+  getSubsectionDescendantIds,
   normalizeSubtaskScheduleMode,
   resolveTimeMapIdsAfterDelete
 } = await import("../src/ui/utils.js");
@@ -174,6 +175,27 @@ describe("utils task ordering helpers", () => {
     assert.deepStrictEqual(result.map((t) => t.id), ["p1", "c1", "c2"]);
     assert.deepStrictEqual(getTaskAndDescendants("", tasks), []);
     assert.deepStrictEqual(getTaskAndDescendants("missing", tasks), []);
+  });
+});
+
+describe("utils subsection helpers", () => {
+  it("returns descendant ids for a subsection", () => {
+    const subs = [
+      { id: "a", parentId: "" },
+      { id: "b", parentId: "a" },
+      { id: "c", parentId: "b" },
+      { id: "d", parentId: "a" }
+    ];
+    const ids = getSubsectionDescendantIds(subs, "a");
+    assert.strictEqual(ids.has("a"), true);
+    assert.strictEqual(ids.has("b"), true);
+    assert.strictEqual(ids.has("c"), true);
+    assert.strictEqual(ids.has("d"), true);
+  });
+
+  it("returns empty set when root id is missing", () => {
+    const ids = getSubsectionDescendantIds([], "");
+    assert.strictEqual(ids.size, 0);
   });
 });
 

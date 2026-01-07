@@ -235,6 +235,28 @@ export function getTaskAndDescendants(taskId, tasks = []) {
   return root ? [root, ...result] : result;
 }
 
+export function getSubsectionDescendantIds(subsections = [], rootId = "") {
+  if (!rootId) return new Set();
+  const childrenByParent = (subsections || []).reduce((map, sub) => {
+    const pid = sub.parentId || "";
+    if (!map.has(pid)) map.set(pid, []);
+    map.get(pid).push(sub.id);
+    return map;
+  }, new Map());
+  const visited = new Set();
+  const stack = [rootId];
+  while (stack.length) {
+    const current = stack.pop();
+    if (!current || visited.has(current)) continue;
+    visited.add(current);
+    const children = childrenByParent.get(current) || [];
+    children.forEach((childId) => {
+      if (!visited.has(childId)) stack.push(childId);
+    });
+  }
+  return visited;
+}
+
 function hashString(value) {
   let hash = 0;
   for (let i = 0; i < value.length; i += 1) {

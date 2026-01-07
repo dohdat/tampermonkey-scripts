@@ -10,7 +10,7 @@ import {
   domRefs
 } from "../constants.js";
 import { renderTaskCard } from "./task-card.js";
-import { sortTasksByOrder, normalizeTimeMap } from "../utils.js";
+import { sortTasksByOrder, normalizeTimeMap, getSubsectionDescendantIds } from "../utils.js";
 import { state } from "../state/page-state.js";
 import { getSubsectionsFor, getSectionName } from "../sections.js";
 import { destroyTaskSortables, setupTaskSortables } from "./tasks-sortable.js";
@@ -107,10 +107,15 @@ export function renderTasks(tasks, timeMaps) {
       return visible.filter((t) => (t.section || "") === (state.zoomFilter.sectionId || ""));
     }
     if (state.zoomFilter?.type === "subsection") {
+      const sectionId = state.zoomFilter.sectionId || "";
+      const subsectionId = state.zoomFilter.subsectionId || "";
+      const subs = state.settingsCache.subsections?.[sectionId] || [];
+      const allowedSubsections = getSubsectionDescendantIds(subs, subsectionId);
       return visible.filter(
         (t) =>
-          (t.section || "") === (state.zoomFilter.sectionId || "") &&
-          (t.subsection || "") === (state.zoomFilter.subsectionId || "")
+          (t.section || "") === sectionId &&
+          (t.subsection || "") &&
+          allowedSubsections.has(t.subsection || "")
       );
     }
     if (state.zoomFilter?.type === "task") {

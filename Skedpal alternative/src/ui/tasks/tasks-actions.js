@@ -1,10 +1,12 @@
 import { getAllTasks, getAllTimeMaps, saveTask, deleteTask } from "../../data/db.js";
+import { getUpcomingOccurrences } from "../../core/scheduler.js";
 import { domRefs } from "../constants.js";
 import {
   getNextOrder,
   getNextSubtaskOrder,
   getContainerKey,
   getTaskAndDescendants,
+  formatDate,
   isStartAfterDeadline,
   normalizeTimeMap,
   normalizeSubtaskScheduleMode,
@@ -54,6 +56,9 @@ const {
   taskSubtaskScheduleWrap,
   taskRepeatSelect,
   subsectionTaskRepeatSelect,
+  repeatCompleteModal,
+  repeatCompleteList,
+  repeatCompleteEmpty,
   scheduleStatus,
   rescheduleButtons,
   scheduleSummary
@@ -62,6 +67,70 @@ import { openTaskForm, closeTaskForm } from "../ui.js";
 
 function syncTaskLinkClear() {
   toggleClearButtonVisibility(taskLinkInput, taskLinkClearBtn);
+}
+
+export function closeRepeatCompleteModal() {
+  if (repeatCompleteModal) repeatCompleteModal.classList.add("hidden");
+  document.body.classList.remove("modal-open");
+}
+
+function openRepeatCompleteModal(task) {
+  if (!repeatCompleteModal || !repeatCompleteList) return;
+  repeatCompleteList.innerHTML = "";
+  const occurrences = getUpcomingOccurrences(task, new Date(), 10, 365);
+  if (!occurrences.length) {
+    repeatCompleteEmpty?.classList.remove("hidden");
+  } else {
+    repeatCompleteEmpty?.classList.add("hidden");
+    occurrences.forEach((date) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "repeat-complete-option";
+      btn.dataset.repeatCompleteTask = task.id;
+      btn.dataset.repeatCompleteDate = date.toISOString();
+      btn.setAttribute("data-test-skedpal", "repeat-complete-option");
+      const label = document.createElement("span");
+      label.className = "repeat-complete-label";
+      label.textContent = formatDate(date) || date.toLocaleDateString();
+      label.setAttribute("data-test-skedpal", "repeat-complete-label");
+      const meta = document.createElement("span");
+      meta.className = "repeat-complete-meta";
+      meta.textContent = date.toLocaleDateString(undefined, { weekday: "short" });
+      meta.setAttribute("data-test-skedpal", "repeat-complete-meta");
+      btn.appendChild(label);
+      btn.appendChild(meta);
+      repeatCompleteList.appendChild(btn);
+    });
+  }
+  repeatCompleteModal.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+}
+
+export async function handleRepeatOccurrenceComplete(taskId, occurrenceIso) {
+  if (!taskId || !occurrenceIso) return;
+  const task = state.tasksCache.find((t) => t.id === taskId);
+  if (!task) return;
+  const previous = JSON.parse(JSON.stringify(task));
+  const completedOccurrences = new Set(task.completedOccurrences || []);
+  if (completedOccurrences.has(occurrenceIso)) {
+    closeRepeatCompleteModal();
+    return;
+  }
+  completedOccurrences.add(occurrenceIso);
+  await saveTask({
+    ...task,
+    completedOccurrences: Array.from(completedOccurrences),
+    completed: false,
+    completedAt: task.completedAt || null,
+    scheduleStatus: task.scheduleStatus || "unscheduled"
+  });
+  await loadTasks();
+  closeRepeatCompleteModal();
+  const dateLabel = formatDate(occurrenceIso) || new Date(occurrenceIso).toLocaleDateString();
+  showUndoBanner(`Completed "${task.title}" on ${dateLabel}.`, async () => {
+    await saveTask(previous);
+    await loadTasks();
+  });
 }
 
 export async function loadTasks() {
@@ -162,6 +231,7 @@ export async function handleTaskSubmit(event) {
     repeat,
     completed: existingTask?.completed || false,
     completedAt: existingTask?.completedAt || null,
+    completedOccurrences: existingTask?.completedOccurrences || [],
     scheduleStatus: "unscheduled",
     scheduledStart: null,
     scheduledEnd: null
@@ -284,6 +354,10 @@ export async function handleTaskListClick(event) {
     const affected = getTaskAndDescendants(completeTaskId, state.tasksCache);
     const target = affected[0];
     if (target) {
+      if (target.repeat && target.repeat.type !== "none" && !target.completed) {
+        openRepeatCompleteModal(target);
+        return;
+      }
       const snapshots = affected.map((t) => JSON.parse(JSON.stringify(t)));
       const completed = !target.completed;
       const timestamp = completed ? new Date().toISOString() : null;

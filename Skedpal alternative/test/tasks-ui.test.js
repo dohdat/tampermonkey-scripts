@@ -93,6 +93,7 @@ describe("tasks ui helpers", () => {
     assert.strictEqual(normalized[0].startFrom, null);
     assert.strictEqual(normalized[0].completed, false);
     assert.strictEqual(normalized[0].completedAt, null);
+    assert.deepStrictEqual(normalized[0].completedOccurrences, []);
     assert.deepStrictEqual(normalized[0].repeat, { type: "none" });
     assert.strictEqual(normalized[0].scheduleStatus, "unscheduled");
     assert.strictEqual(normalized[0].order, 1);

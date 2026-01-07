@@ -294,6 +294,20 @@ function buildOccurrenceDates(task, now, horizonEnd) {
   return occurrences;
 }
 
+export function getUpcomingOccurrences(task, now = new Date(), count = 10, horizonDays = 365) {
+  if (!task) return [];
+  const horizonEnd = endOfDay(addDays(now, horizonDays));
+  const normalized = normalizeTask(task, now, horizonEnd);
+  const occurrences = buildOccurrenceDates(normalized, now, horizonEnd);
+  const completedOccurrences = new Set(
+    (task.completedOccurrences || []).map((value) => {
+      const date = new Date(value);
+      return Number.isNaN(date) ? String(value) : date.toISOString();
+    })
+  );
+  return occurrences.filter((date) => !completedOccurrences.has(date.toISOString())).slice(0, count);
+}
+
 function buildScheduleCandidates(tasks, now, horizonEnd) {
   const ignored = new Set();
   const immediatelyUnscheduled = new Set();
@@ -311,6 +325,12 @@ function buildScheduleCandidates(tasks, now, horizonEnd) {
       }
       const normalized = normalizeTask(task, now, horizonEnd);
       const occurrenceDates = buildOccurrenceDates(normalized, now, horizonEnd);
+      const completedOccurrences = new Set(
+        (task.completedOccurrences || []).map((value) => {
+          const date = new Date(value);
+          return Number.isNaN(date) ? String(value) : date.toISOString();
+        })
+      );
       if (!occurrenceDates || occurrenceDates.length === 0) {
         if (normalized.deadline < now) {
           immediatelyUnscheduled.add(task.id);
@@ -320,6 +340,9 @@ function buildScheduleCandidates(tasks, now, horizonEnd) {
         return;
       }
       occurrenceDates.forEach((deadline, index) => {
+        if (completedOccurrences.has(deadline.toISOString())) {
+          return;
+        }
         const earliestStart = new Date(
           Math.max(now.getTime(), normalized.startFrom.getTime())
         );

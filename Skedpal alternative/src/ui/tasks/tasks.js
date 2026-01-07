@@ -97,6 +97,10 @@ export async function ensureTaskIds(tasks) {
       nextTask = { ...nextTask, completedAt: null };
       changed = true;
     }
+    if (!Array.isArray(nextTask.completedOccurrences)) {
+      nextTask = { ...nextTask, completedOccurrences: [] };
+      changed = true;
+    }
     if (!nextTask.repeat) {
       nextTask = { ...nextTask, repeat: { type: "none" } };
       changed = true;

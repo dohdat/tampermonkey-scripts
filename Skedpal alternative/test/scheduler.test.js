@@ -108,6 +108,47 @@ describe("scheduler", () => {
     );
   });
 
+  it("skips completed repeat occurrences", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 1);
+    const timeMaps = [
+      {
+        id: "tm-all",
+        days: [now.getDay(), (now.getDay() + 1) % 7],
+        startTime: "09:00",
+        endTime: "11:00"
+      }
+    ];
+    const completedDate = new Date(now);
+    completedDate.setHours(23, 59, 59, 999);
+    const tasks = [
+      {
+        id: "weekly",
+        title: "Weekly",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-all"],
+        repeat: {
+          type: "custom",
+          unit: "week",
+          interval: 1,
+          weeklyDays: [now.getDay(), (now.getDay() + 1) % 7]
+        },
+        completedOccurrences: [completedDate.toISOString()]
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 2,
+      now
+    });
+
+    assert.strictEqual(result.scheduled.length, 1);
+    assert.strictEqual(result.scheduled[0].taskId, "weekly");
+  });
+
   it("schedules monthly and yearly repeats and honors startFrom", () => {
     const now = nextWeekday(new Date(2026, 0, 1), 1);
     const startFrom = shiftDate(now, 0, 10, 0);

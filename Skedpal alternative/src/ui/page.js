@@ -20,7 +20,9 @@ import {
   handleTaskListClick,
   handleReschedule,
   updateScheduleSummary,
-  startTaskInSection
+  startTaskInSection,
+  handleRepeatOccurrenceComplete,
+  closeRepeatCompleteModal
 } from "./tasks/tasks-actions.js";
 import {
   renderTaskSubsectionOptions,
@@ -71,7 +73,9 @@ const {
   taskList,
   todayList,
   timeMapList,
-  rescheduleButtons
+  rescheduleButtons,
+  repeatCompleteList,
+  repeatCompleteCloseBtns
 } = domRefs;
 
 async function hydrate() {
@@ -272,6 +276,17 @@ function registerEventListeners() {
   });
 
   taskModalCloseButtons.forEach((btn) => btn.addEventListener("click", closeTaskForm));
+  repeatCompleteCloseBtns.forEach((btn) =>
+    btn.addEventListener("click", closeRepeatCompleteModal)
+  );
+  repeatCompleteList?.addEventListener("click", async (event) => {
+    const btn = event.target.closest("[data-repeat-complete-date]");
+    if (!btn) return;
+    await handleRepeatOccurrenceComplete(
+      btn.dataset.repeatCompleteTask || "",
+      btn.dataset.repeatCompleteDate || ""
+    );
+  });
 
   taskList?.addEventListener("keydown", async (event) => {
     if (event.key !== "Tab") return;

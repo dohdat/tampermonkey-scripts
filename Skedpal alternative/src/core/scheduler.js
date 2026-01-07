@@ -305,7 +305,13 @@ export function getUpcomingOccurrences(task, now = new Date(), count = 10, horiz
       return Number.isNaN(date) ? String(value) : date.toISOString();
     })
   );
-  return occurrences.filter((date) => !completedOccurrences.has(date.toISOString())).slice(0, count);
+  return occurrences
+    .map((date, index) => ({
+      date,
+      occurrenceId: `${normalized.id || normalized.taskId || task.id}-occ-${index}`
+    }))
+    .filter((entry) => !completedOccurrences.has(entry.date.toISOString()))
+    .slice(0, count);
 }
 
 function buildScheduleCandidates(tasks, now, horizonEnd) {

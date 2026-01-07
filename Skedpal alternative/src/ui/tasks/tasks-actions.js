@@ -7,6 +7,7 @@ import {
   getContainerKey,
   getTaskAndDescendants,
   formatDate,
+  getLocalDateKey,
   isStartAfterDeadline,
   normalizeTimeMap,
   normalizeSubtaskScheduleMode,
@@ -77,12 +78,17 @@ export function closeRepeatCompleteModal() {
 function openRepeatCompleteModal(task) {
   if (!repeatCompleteModal || !repeatCompleteList) return;
   repeatCompleteList.innerHTML = "";
-  const occurrences = getUpcomingOccurrences(task, new Date(), 10, 365);
+  const horizonDays = Number(state.settingsCache?.schedulingHorizonDays) || 14;
+  const now = new Date();
+  const horizonEnd = new Date(now.getTime());
+  horizonEnd.setDate(horizonEnd.getDate() + horizonDays);
+  horizonEnd.setHours(23, 59, 59, 999);
+  const occurrences = getUpcomingOccurrences(task, now, 10, 365);
   if (!occurrences.length) {
     repeatCompleteEmpty?.classList.remove("hidden");
   } else {
     repeatCompleteEmpty?.classList.add("hidden");
-    occurrences.forEach((date) => {
+    occurrences.forEach(({ date, occurrenceId }) => {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "repeat-complete-option";
@@ -97,8 +103,35 @@ function openRepeatCompleteModal(task) {
       meta.className = "repeat-complete-meta";
       meta.textContent = date.toLocaleDateString(undefined, { weekday: "short" });
       meta.setAttribute("data-test-skedpal", "repeat-complete-meta");
+      const time = document.createElement("span");
+      time.className = "repeat-complete-time";
+      time.setAttribute("data-test-skedpal", "repeat-complete-time");
+      if (date > horizonEnd) {
+        time.textContent = "Out of range";
+      } else {
+        const instances = task.scheduledInstances || [];
+        let matches = instances.filter((instance) => instance.occurrenceId === occurrenceId);
+        if (!matches.length) {
+          const targetKey = getLocalDateKey(date);
+          matches = instances.filter(
+            (instance) => getLocalDateKey(instance.start) === targetKey
+          );
+        }
+        if (matches.length) {
+          const starts = matches.map((m) => new Date(m.start));
+          const ends = matches.map((m) => new Date(m.end));
+          const minStart = new Date(Math.min(...starts.map((d) => d.getTime())));
+          const maxEnd = new Date(Math.max(...ends.map((d) => d.getTime())));
+          const startLabel = minStart.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+          const endLabel = maxEnd.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+          time.textContent = `${startLabel} - ${endLabel}`;
+        } else {
+          time.textContent = "Unscheduled";
+        }
+      }
       btn.appendChild(label);
       btn.appendChild(meta);
+      btn.appendChild(time);
       repeatCompleteList.appendChild(btn);
     });
   }

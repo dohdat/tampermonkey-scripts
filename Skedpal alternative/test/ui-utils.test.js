@@ -1,7 +1,7 @@
 import assert from "assert";
 import { describe, it } from "mocha";
 
-import { toggleClearButtonVisibility } from "../src/ui/utils.js";
+import { getLocalDateKey, toggleClearButtonVisibility } from "../src/ui/utils.js";
 
 function createInput(value = "") {
   return { value };
@@ -43,5 +43,16 @@ describe("toggleClearButtonVisibility", () => {
   it("returns false when elements are missing", () => {
     const result = toggleClearButtonVisibility(null, null);
     assert.strictEqual(result, false);
+  });
+});
+
+describe("getLocalDateKey", () => {
+  it("returns a yyyy-mm-dd key for valid dates", () => {
+    const key = getLocalDateKey(new Date(2026, 0, 6, 15, 30, 0));
+    assert.strictEqual(key, "2026-01-06");
+  });
+
+  it("returns an empty string for invalid values", () => {
+    assert.strictEqual(getLocalDateKey("not-a-date"), "");
   });
 });

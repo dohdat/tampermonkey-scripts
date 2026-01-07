@@ -75,6 +75,15 @@ export function formatDate(value) {
   return date && !Number.isNaN(date) ? date.toLocaleDateString() : "";
 }
 
+export function getLocalDateKey(value) {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function parseLocalDateInput(value) {
   if (!value) return null;
   const parts = value.split("-").map((part) => Number(part));

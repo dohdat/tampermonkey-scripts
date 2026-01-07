@@ -4,11 +4,17 @@ import {
   addCalendarDays,
   getCalendarRange,
   getCalendarTitle,
-  getDayKey
+  getDayKey,
+  getDateFromDayKey,
+  roundMinutesToStep,
+  clampMinutes
 } from "./calendar-utils.js";
+import { saveTask } from "../data/db.js";
 
 const HOUR_HEIGHT = 120;
+const DRAG_STEP_MINUTES = 15;
 let nowIndicatorTimer = null;
+let dragState = null;
 
 function formatHourLabel(hour) {
   const d = new Date();
@@ -20,6 +26,10 @@ function formatEventTimeRange(start, end) {
   const startLabel = start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   const endLabel = end.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   return `${startLabel} - ${endLabel}`;
+}
+
+function getMinutesIntoDay(date) {
+  return date.getHours() * 60 + date.getMinutes();
 }
 
 export function getCalendarEventStyles(event, timeMapColorById) {
@@ -36,7 +46,7 @@ function getScheduledEvents(tasks) {
   (tasks || []).forEach((task) => {
     if (task.scheduleStatus !== "scheduled") return;
     const instances = Array.isArray(task.scheduledInstances) ? task.scheduledInstances : [];
-    instances.forEach((instance) => {
+    instances.forEach((instance, index) => {
       if (!instance?.start || !instance?.end) return;
       const start = new Date(instance.start);
       const end = new Date(instance.end);
@@ -46,11 +56,127 @@ function getScheduledEvents(tasks) {
         title: task.title || "Untitled task",
         start,
         end,
-        timeMapId: instance.timeMapId || ""
+        timeMapId: instance.timeMapId || "",
+        occurrenceId: instance.occurrenceId || "",
+        instanceIndex: index
       });
     });
   });
   return events;
+}
+
+export function buildUpdatedTaskForDrag(task, eventMeta, newStart, newEnd) {
+  if (!task || !eventMeta || !(newStart instanceof Date) || !(newEnd instanceof Date)) {
+    return null;
+  }
+  const instances = Array.isArray(task.scheduledInstances)
+    ? task.scheduledInstances.map((instance) => ({ ...instance }))
+    : [];
+  if (!instances.length) return null;
+  let targetIndex = -1;
+  if (eventMeta.occurrenceId) {
+    targetIndex = instances.findIndex(
+      (instance) => instance.occurrenceId === eventMeta.occurrenceId
+    );
+  }
+  if (targetIndex < 0 && Number.isFinite(eventMeta.instanceIndex)) {
+    targetIndex = eventMeta.instanceIndex;
+  }
+  if (targetIndex < 0 && eventMeta.start instanceof Date && eventMeta.end instanceof Date) {
+    const originalStart = eventMeta.start.getTime();
+    const originalEnd = eventMeta.end.getTime();
+    targetIndex = instances.findIndex((instance) => {
+      const start = new Date(instance.start);
+      const end = new Date(instance.end);
+      return start.getTime() === originalStart && end.getTime() === originalEnd;
+    });
+  }
+  if (targetIndex < 0 || !instances[targetIndex]) return null;
+  instances[targetIndex] = {
+    ...instances[targetIndex],
+    start: newStart.toISOString(),
+    end: newEnd.toISOString()
+  };
+  const sorted = instances
+    .map((instance) => ({
+      ...instance,
+      startDate: new Date(instance.start),
+      endDate: new Date(instance.end)
+    }))
+    .filter(
+      (instance) =>
+        !Number.isNaN(instance.startDate.getTime()) &&
+        !Number.isNaN(instance.endDate.getTime())
+    )
+    .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+  const scheduledStart = sorted[0]?.startDate?.toISOString() || null;
+  const scheduledEnd = sorted[sorted.length - 1]?.endDate?.toISOString() || null;
+  const scheduledTimeMapId = sorted[0]?.timeMapId || null;
+  return {
+    ...task,
+    scheduledInstances: instances,
+    scheduledStart,
+    scheduledEnd,
+    scheduledTimeMapId,
+    scheduleStatus: task.scheduleStatus || "scheduled"
+  };
+}
+
+function getEventMetaFromBlock(block) {
+  const taskId = block?.dataset?.eventTaskId || "";
+  const occurrenceId = block?.dataset?.eventOccurrenceId || "";
+  const instanceIndexRaw = block?.dataset?.eventInstanceIndex || "";
+  const instanceIndex = Number(instanceIndexRaw);
+  const startIso = block?.dataset?.eventStart || "";
+  const endIso = block?.dataset?.eventEnd || "";
+  const start = new Date(startIso);
+  const end = new Date(endIso);
+  if (!taskId || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return null;
+  }
+  return {
+    taskId,
+    occurrenceId,
+    instanceIndex: Number.isFinite(instanceIndex) ? instanceIndex : null,
+    start,
+    end
+  };
+}
+
+function getDragMinutesFromPointer(dayCol, clientY, durationMinutes) {
+  const rect = dayCol.getBoundingClientRect();
+  const y = clampMinutes(clientY - rect.top, 0, rect.height);
+  const minutes = (y / rect.height) * 24 * 60;
+  const rounded = roundMinutesToStep(minutes, DRAG_STEP_MINUTES);
+  const maxStart = Math.max(0, 24 * 60 - durationMinutes);
+  return clampMinutes(rounded, 0, maxStart);
+}
+
+function updateDragTarget(dayCol, block, minutes) {
+  const top = (minutes / 60) * HOUR_HEIGHT;
+  block.style.top = `${top}px`;
+  const timeLabel = block.querySelector('[data-test-skedpal="calendar-event-time"]');
+  if (timeLabel && dragState?.eventMeta) {
+    const start = getDateFromDayKey(dayCol.dataset.day);
+    if (start) {
+      start.setMinutes(minutes, 0, 0);
+      const end = new Date(start.getTime() + dragState.durationMinutes * 60000);
+      timeLabel.textContent = formatEventTimeRange(start, end);
+    }
+  }
+}
+
+async function persistDraggedEvent(eventMeta, dayKey, minutes, durationMinutes) {
+  const task = state.tasksCache.find((candidate) => candidate.id === eventMeta.taskId);
+  if (!task) return;
+  const startDate = getDateFromDayKey(dayKey);
+  if (!startDate) return;
+  startDate.setMinutes(minutes, 0, 0);
+  const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
+  const updated = buildUpdatedTaskForDrag(task, eventMeta, startDate, endDate);
+  if (!updated) return;
+  await saveTask(updated);
+  state.tasksCache = state.tasksCache.map((item) => (item.id === updated.id ? updated : item));
 }
 
 function buildEmptyState() {
@@ -180,6 +306,11 @@ function renderCalendarGrid(range, events, timeMapColorById) {
       block.className = "calendar-event";
       block.style.top = `${top}px`;
       block.style.height = `${height}px`;
+      block.dataset.eventTaskId = event.taskId;
+      block.dataset.eventOccurrenceId = event.occurrenceId || "";
+      block.dataset.eventStart = event.start.toISOString();
+      block.dataset.eventEnd = event.end.toISOString();
+      block.dataset.eventInstanceIndex = String(event.instanceIndex);
       const styles = getCalendarEventStyles(event, timeMapColorById);
       if (styles) {
         block.style.backgroundColor = styles.backgroundColor;
@@ -205,6 +336,89 @@ function renderCalendarGrid(range, events, timeMapColorById) {
   body.appendChild(daysWrap);
   calendarGrid.appendChild(header);
   calendarGrid.appendChild(body);
+}
+
+function clearDragState() {
+  if (!dragState) return;
+  dragState.block?.classList?.remove("calendar-event--dragging");
+  dragState.dayCol?.classList?.remove("calendar-day-col--drag-target");
+  dragState = null;
+}
+
+function startCalendarDrag(event) {
+  const target = event.target.closest?.(".calendar-event");
+  if (!target || event.button !== 0) return;
+  const dayCol = target.closest?.(".calendar-day-col");
+  if (!dayCol || !dayCol.dataset.day) return;
+  const eventMeta = getEventMetaFromBlock(target);
+  if (!eventMeta) return;
+  const durationMinutes = Math.max(
+    DRAG_STEP_MINUTES,
+    Math.round((eventMeta.end.getTime() - eventMeta.start.getTime()) / 60000)
+  );
+  event.preventDefault();
+  dragState = {
+    block: target,
+    dayCol,
+    eventMeta,
+    durationMinutes,
+    originDayKey: dayCol.dataset.day,
+    originMinutes: roundMinutesToStep(getMinutesIntoDay(eventMeta.start), DRAG_STEP_MINUTES),
+    minutes: roundMinutesToStep(getMinutesIntoDay(eventMeta.start), DRAG_STEP_MINUTES)
+  };
+  target.classList.add("calendar-event--dragging");
+  dayCol.classList.add("calendar-day-col--drag-target");
+  if (typeof target.setPointerCapture === "function") {
+    target.setPointerCapture(event.pointerId);
+  }
+}
+
+function handleCalendarDragMove(event) {
+  if (!dragState) return;
+  const hovered = document.elementFromPoint(event.clientX, event.clientY);
+  const nextDayCol = hovered?.closest?.(".calendar-day-col") || dragState.dayCol;
+  if (!nextDayCol || !nextDayCol.dataset.day) return;
+  if (nextDayCol !== dragState.dayCol) {
+    dragState.dayCol?.classList?.remove("calendar-day-col--drag-target");
+    nextDayCol.classList.add("calendar-day-col--drag-target");
+    nextDayCol.appendChild(dragState.block);
+    dragState.dayCol = nextDayCol;
+  }
+  const minutes = getDragMinutesFromPointer(
+    nextDayCol,
+    event.clientY,
+    dragState.durationMinutes
+  );
+  dragState.minutes = minutes;
+  updateDragTarget(nextDayCol, dragState.block, minutes);
+}
+
+async function handleCalendarDragEnd() {
+  if (!dragState) return;
+  const { eventMeta, dayCol, minutes, durationMinutes, originDayKey, originMinutes } =
+    dragState;
+  clearDragState();
+  if (!dayCol || !dayCol.dataset.day) {
+    renderCalendar();
+    return;
+  }
+  if (dayCol.dataset.day === originDayKey && minutes === originMinutes) {
+    renderCalendar();
+    return;
+  }
+  await persistDraggedEvent(eventMeta, dayCol.dataset.day, minutes, durationMinutes);
+  renderCalendar();
+}
+
+function ensureCalendarDragHandlers() {
+  const { calendarGrid } = domRefs;
+  if (!calendarGrid || calendarGrid.dataset.dragReady === "true") return;
+  calendarGrid.dataset.dragReady = "true";
+  calendarGrid.setAttribute("data-test-skedpal", "calendar-grid");
+  calendarGrid.addEventListener("pointerdown", startCalendarDrag);
+  window.addEventListener("pointermove", handleCalendarDragMove);
+  window.addEventListener("pointerup", handleCalendarDragEnd);
+  window.addEventListener("pointercancel", handleCalendarDragEnd);
 }
 
 function updateCalendarTitle(viewMode) {
@@ -302,4 +516,5 @@ export function initCalendarView() {
   }
   nowIndicatorTimer = setInterval(updateNowIndicator, 60 * 1000);
   renderCalendar();
+  ensureCalendarDragHandlers();
 }

@@ -51,6 +51,7 @@ import { closeTaskForm } from "./ui.js";
 import { indentTaskUnderPrevious, outdentTask } from "./tasks/tasks-sortable.js";
 import { state } from "./state/page-state.js";
 import { initCalendarView } from "./calendar.js";
+import { applyTheme } from "./theme.js";
 
 const {
   timeMapDayRows,
@@ -335,6 +336,7 @@ function registerEventListeners() {
 
 }
 
+applyTheme();
 initViewFromUrl(parseViewFromUrl);
 registerEventListeners();
 initCalendarView();

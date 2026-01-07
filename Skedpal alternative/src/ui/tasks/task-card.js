@@ -3,6 +3,7 @@ import {
   caretRightIconSvg,
   checkboxCheckedIconSvg,
   checkboxIconSvg,
+  calendarIconSvg,
   duplicateIconSvg,
   editIconSvg,
   plusIconSvg,
@@ -161,8 +162,11 @@ function buildTaskSummaryRow(task) {
   const summaryRow = document.createElement("div");
   summaryRow.className = "task-summary-row";
   summaryRow.setAttribute("data-test-skedpal", "task-summary-row");
+  summaryRow.style.display = "flex";
+  summaryRow.style.alignItems = "center";
   summaryRow.style.marginTop = "0";
   summaryRow.style.marginLeft = "auto";
+  summaryRow.style.gap = "0.35rem";
   if (task.scheduledStart) {
     const scheduledDate = new Date(task.scheduledStart);
     if (!Number.isNaN(scheduledDate)) {
@@ -170,9 +174,35 @@ function buildTaskSummaryRow(task) {
         hour: "numeric",
         minute: "2-digit"
       });
+      const viewCalendarBtn = document.createElement("button");
+      viewCalendarBtn.type = "button";
+      viewCalendarBtn.className = "title-icon-btn";
+      viewCalendarBtn.title = "View on calendar";
+      viewCalendarBtn.dataset.viewCalendarTask = task.id;
+      viewCalendarBtn.setAttribute("data-test-skedpal", "task-summary-view-calendar");
+      viewCalendarBtn.innerHTML = calendarIconSvg;
+      viewCalendarBtn.style.opacity = "0";
+      viewCalendarBtn.style.pointerEvents = "none";
+      const revealCalendarBtn = () => {
+        viewCalendarBtn.style.opacity = "1";
+        viewCalendarBtn.style.pointerEvents = "auto";
+      };
+      const hideCalendarBtn = () => {
+        viewCalendarBtn.style.opacity = "0";
+        viewCalendarBtn.style.pointerEvents = "none";
+      };
+      if (typeof summaryRow.addEventListener === "function") {
+        summaryRow.addEventListener("mouseenter", revealCalendarBtn);
+        summaryRow.addEventListener("mouseleave", hideCalendarBtn);
+      }
+      if (typeof viewCalendarBtn.addEventListener === "function") {
+        viewCalendarBtn.addEventListener("focus", revealCalendarBtn);
+        viewCalendarBtn.addEventListener("blur", hideCalendarBtn);
+      }
+      summaryRow.appendChild(viewCalendarBtn);
     }
   }
-  return summaryRow.textContent ? summaryRow : null;
+  return summaryRow.children && summaryRow.children.length ? summaryRow : null;
 }
 
 function buildTaskHeader(task, options) {

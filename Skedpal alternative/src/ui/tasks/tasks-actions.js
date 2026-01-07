@@ -29,7 +29,7 @@ import {
 import { renderTaskTimeMapOptions, collectSelectedValues } from "../time-maps.js";
 import { renderTasks } from "./tasks-render.js";
 import { renderTodayView } from "./today-view.js";
-import { renderCalendar } from "../calendar.js";
+import { focusCalendarEvent, renderCalendar } from "../calendar.js";
 import { ensureTaskIds, migrateSectionsAndTasks } from "./tasks.js";
 import { renderBreadcrumb, switchView } from "../navigation.js";
 import { showUndoBanner } from "../notifications.js";
@@ -201,6 +201,31 @@ export async function duplicateTaskWithChildren(taskId) {
   const duplicates = buildDuplicateTasks(originals, state.tasksCache);
   await Promise.all(duplicates.map((task) => saveTask(task)));
   await loadTasks();
+}
+
+function resolveFirstScheduledDate(task) {
+  if (!task) {return null;}
+  if (task.scheduledStart) {
+    const start = new Date(task.scheduledStart);
+    return Number.isNaN(start.getTime()) ? null : start;
+  }
+  const instances = Array.isArray(task.scheduledInstances) ? task.scheduledInstances : [];
+  if (!instances.length) {return null;}
+  const starts = instances
+    .map((instance) => new Date(instance.start))
+    .filter((date) => !Number.isNaN(date.getTime()));
+  if (!starts.length) {return null;}
+  return new Date(Math.min(...starts.map((date) => date.getTime())));
+}
+
+export async function viewTaskOnCalendar(taskId) {
+  const task = state.tasksCache.find((entry) => entry.id === taskId);
+  if (!task || task.scheduleStatus !== "scheduled") {return false;}
+  const targetDate = resolveFirstScheduledDate(task);
+  if (!targetDate) {return false;}
+  switchView("calendar", { calendarAnchorDate: targetDate, focusCalendar: false });
+  renderCalendar(state.tasksCache);
+  return focusCalendarEvent(taskId, { behavior: "smooth" });
 }
 
 export function renderTimeMapsAndTasks(timeMaps) {

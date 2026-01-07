@@ -19,7 +19,8 @@ import {
   startTaskInSection,
   startSubtaskFromTask,
   openTaskEditById,
-  duplicateTaskWithChildren
+  duplicateTaskWithChildren,
+  viewTaskOnCalendar
 } from "./tasks-actions.js";
 
 function parseTaskListClick(btn) {
@@ -33,6 +34,7 @@ function parseTaskListClick(btn) {
     zoomSubsectionId: btn.dataset.zoomSubsection,
     zoomTaskId: btn.dataset.zoomTask,
     hasZoomSubAttr: btn.getAttribute("data-zoom-subsection") !== null,
+    viewCalendarTaskId: btn.dataset.viewCalendarTask,
     addChildSubsectionId: btn.dataset.addChildSubsection,
     addChildSectionId: btn.dataset.sectionId,
     submitChildSubsectionId: btn.dataset.submitChildSubsection,
@@ -213,6 +215,10 @@ async function handleTaskActions(action) {
     {
       when: Boolean(action.editId),
       run: () => openTaskEditById(action.editId, { switchView: true })
+    },
+    {
+      when: Boolean(action.viewCalendarTaskId),
+      run: () => viewTaskOnCalendar(action.viewCalendarTaskId)
     },
     {
       when: Boolean(action.duplicateTaskId),

@@ -15,7 +15,8 @@ export function pushNavigation(filter) {
   state.navIndex = state.navStack.length - 1;
 }
 
-export function switchView(target) {
+export function switchView(target, options = {}) {
+  const { calendarAnchorDate = null, focusCalendar = true } = options;
   const allowedViews = navButtons.map((btn) => btn.dataset.view);
   const resolvedTarget = allowedViews.includes(target) ? target : "tasks";
   if (resolvedTarget !== "tasks" && state.zoomFilter) {
@@ -32,9 +33,11 @@ export function switchView(target) {
   });
   updateUrlWithView(resolvedTarget);
   if (resolvedTarget === "calendar") {
-    state.calendarAnchorDate = new Date();
+    state.calendarAnchorDate = calendarAnchorDate ? new Date(calendarAnchorDate) : new Date();
     renderCalendar();
-    focusCalendarNow({ behavior: "auto" });
+    if (focusCalendar) {
+      focusCalendarNow({ behavior: "auto" });
+    }
   }
 }
 

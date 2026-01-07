@@ -514,6 +514,17 @@ export function focusCalendarNow(options = {}) {
   return true;
 }
 
+export function focusCalendarEvent(taskId, options = {}) {
+  const { behavior = "auto" } = options;
+  if (!taskId) {return false;}
+  const calendarGrid = domRefs.calendarGrid || document.getElementById("calendar-grid");
+  if (!calendarGrid) {return false;}
+  const eventBlock = calendarGrid.querySelector(`[data-event-task-id="${taskId}"]`);
+  if (!eventBlock || typeof eventBlock.scrollIntoView !== "function") {return false;}
+  eventBlock.scrollIntoView({ block: "center", inline: "nearest", behavior });
+  return true;
+}
+
 export function renderCalendar(tasks = state.tasksCache) {
   const viewMode = state.calendarViewMode || "week";
   const range = getCalendarRange(state.calendarAnchorDate, viewMode);

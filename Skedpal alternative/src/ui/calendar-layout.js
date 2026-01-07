@@ -5,7 +5,7 @@ function normalizeEventToDay(event, dayStart, dayEnd) {
   const eventEnd = new Date(Math.min(event.end.getTime(), dayEnd.getTime()));
   const startMinutes = getMinutesIntoDay(eventStart);
   const endMinutes = getMinutesIntoDay(eventEnd);
-  if (endMinutes <= startMinutes) return null;
+  if (endMinutes <= startMinutes) {return null;}
   return {
     event,
     eventStart,
@@ -18,7 +18,7 @@ function normalizeEventToDay(event, dayStart, dayEnd) {
 function buildOverlapGroups(items) {
   const groups = [];
   const sorted = [...items].sort((a, b) => {
-    if (a.startMinutes !== b.startMinutes) return a.startMinutes - b.startMinutes;
+    if (a.startMinutes !== b.startMinutes) {return a.startMinutes - b.startMinutes;}
     return a.endMinutes - b.endMinutes;
   });
   let current = null;

@@ -5,12 +5,12 @@ export function updateUrlWithZoom(filter) {
   if (!filter) {
     url.searchParams.delete("zoom");
   } else {
-    const parts =
-      filter.type === "section"
-        ? ["section", filter.sectionId || ""]
-        : filter.type === "subsection"
-          ? ["subsection", filter.sectionId || "", filter.subsectionId || ""]
-          : ["task", filter.taskId || "", filter.sectionId || "", filter.subsectionId || ""];
+    let parts = ["task", filter.taskId || "", filter.sectionId || "", filter.subsectionId || ""];
+    if (filter.type === "section") {
+      parts = ["section", filter.sectionId || ""];
+    } else if (filter.type === "subsection") {
+      parts = ["subsection", filter.sectionId || "", filter.subsectionId || ""];
+    }
     url.searchParams.set("zoom", parts.join(":"));
   }
   history.replaceState({}, "", url.toString());
@@ -19,7 +19,7 @@ export function updateUrlWithZoom(filter) {
 export function parseZoomFromUrl() {
   const url = new URL(window.location.href);
   const zoom = url.searchParams.get("zoom");
-  if (!zoom) return null;
+  if (!zoom) {return null;}
   const [type, a, b, c] = zoom.split(":");
   if (type === "section") {
     return { type, sectionId: a || "" };
@@ -77,12 +77,12 @@ export function formatDate(value) {
 
 export function normalizeHorizonDays(value, min = 1, max = 60, fallback = 14) {
   const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return fallback;
+  if (!Number.isFinite(parsed)) {return fallback;}
   return Math.min(max, Math.max(min, parsed));
 }
 
 export function getInheritedSubtaskFields(parentTask) {
-  if (!parentTask) return {};
+  if (!parentTask) {return {};}
   return {
     section: parentTask.section || "",
     subsection: parentTask.subsection || "",
@@ -96,7 +96,7 @@ export function getInheritedSubtaskFields(parentTask) {
 
 export function getLocalDateKey(value) {
   const date = value ? new Date(value) : null;
-  if (!date || Number.isNaN(date.getTime())) return "";
+  if (!date || Number.isNaN(date.getTime())) {return "";}
   const year = date.getFullYear();
   const month = `${date.getMonth() + 1}`.padStart(2, "0");
   const day = `${date.getDate()}`.padStart(2, "0");
@@ -104,12 +104,12 @@ export function getLocalDateKey(value) {
 }
 
 export function parseLocalDateInput(value) {
-  if (!value) return null;
+  if (!value) {return null;}
   const parts = value.split("-").map((part) => Number(part));
-  if (parts.length !== 3 || parts.some((part) => !Number.isFinite(part))) return null;
+  if (parts.length !== 3 || parts.some((part) => !Number.isFinite(part))) {return null;}
   const [year, month, day] = parts;
   const localDate = new Date(year, month - 1, day, 0, 0, 0, 0);
-  if (Number.isNaN(localDate.getTime())) return null;
+  if (Number.isNaN(localDate.getTime())) {return null;}
   if (
     localDate.getFullYear() !== year ||
     localDate.getMonth() !== month - 1 ||
@@ -123,7 +123,7 @@ export function parseLocalDateInput(value) {
 export function isStartAfterDeadline(startFrom, deadline) {
   const startIso = parseLocalDateInput(startFrom);
   const deadlineIso = parseLocalDateInput(deadline);
-  if (!startIso || !deadlineIso) return false;
+  if (!startIso || !deadlineIso) {return false;}
   return new Date(startIso) > new Date(deadlineIso);
 }
 
@@ -139,16 +139,16 @@ export function formatDurationShort(minutes) {
 
 export function formatDurationLong(minutes) {
   const mins = Math.max(0, Math.round(Number(minutes) || 0));
-  if (!mins) return "0m";
+  if (!mins) {return "0m";}
   const hours = Math.floor(mins / 60);
   const remainder = mins % 60;
-  if (!hours) return `${remainder}m`;
-  if (!remainder) return `${hours}h`;
+  if (!hours) {return `${remainder}m`;}
+  if (!remainder) {return `${hours}h`;}
   return `${hours}h ${remainder}m`;
 }
 
 export function toggleClearButtonVisibility(input, button) {
-  if (!input || !button) return false;
+  if (!input || !button) {return false;}
   const hasValue = Boolean((input.value || "").trim());
   button.classList.toggle("hidden", !hasValue);
   return hasValue;
@@ -166,19 +166,19 @@ export function getNthWeekday(date) {
 }
 
 export function formatOrdinal(n) {
-  if (n === -1) return "last";
+  if (n === -1) {return "last";}
   const mod10 = n % 10;
   const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return `${n}st`;
-  if (mod10 === 2 && mod100 !== 12) return `${n}nd`;
-  if (mod10 === 3 && mod100 !== 13) return `${n}rd`;
+  if (mod10 === 1 && mod100 !== 11) {return `${n}st`;}
+  if (mod10 === 2 && mod100 !== 12) {return `${n}nd`;}
+  if (mod10 === 3 && mod100 !== 13) {return `${n}rd`;}
   return `${n}th`;
 }
 
 export function formatRRuleDate(dateStr) {
-  if (!dateStr) return "";
+  if (!dateStr) {return "";}
   const d = new Date(dateStr);
-  if (Number.isNaN(d.getTime())) return "";
+  if (Number.isNaN(d.getTime())) {return "";}
   const y = d.getFullYear();
   const m = `${d.getMonth() + 1}`.padStart(2, "0");
   const day = `${d.getDate()}`.padStart(2, "0");
@@ -208,16 +208,16 @@ export function getContainerKey(section, subsection) {
 export function getNextOrder(section, subsection, tasks = []) {
   const key = getContainerKey(section, subsection);
   const maxOrder = (tasks || []).reduce((max, task) => {
-    if (getContainerKey(task.section, task.subsection) !== key) return max;
+    if (getContainerKey(task.section, task.subsection) !== key) {return max;}
     const orderValue = Number(task.order);
-    if (!Number.isFinite(orderValue)) return max;
+    if (!Number.isFinite(orderValue)) {return max;}
     return Math.max(max, orderValue);
   }, 0);
   return maxOrder + 1;
 }
 
 export function getNextSubtaskOrder(parentTask, section, subsection, tasks = []) {
-  if (!parentTask) return getNextOrder(section, subsection, tasks);
+  if (!parentTask) {return getNextOrder(section, subsection, tasks);}
   const targetKey = getContainerKey(section, subsection);
   const siblings = sortTasksByOrder(
     (tasks || []).filter(
@@ -232,12 +232,12 @@ export function getNextSubtaskOrder(parentTask, section, subsection, tasks = [])
 }
 
 export function getTaskDepth(taskId, tasks = []) {
-  if (!taskId) return 0;
+  if (!taskId) {return 0;}
   const byId = new Map((tasks || []).map((t) => [t.id, t]));
   const memo = new Map();
   const compute = (id) => {
-    if (!id) return 0;
-    if (memo.has(id)) return memo.get(id);
+    if (!id) {return 0;}
+    if (memo.has(id)) {return memo.get(id);}
     const task = byId.get(id);
     if (!task?.subtaskParentId) {
       memo.set(id, 0);
@@ -251,10 +251,10 @@ export function getTaskDepth(taskId, tasks = []) {
 }
 
 export function getTaskAndDescendants(taskId, tasks = []) {
-  if (!taskId) return [];
+  if (!taskId) {return [];}
   const byParent = (tasks || []).reduce((map, task) => {
     const pid = task.subtaskParentId || "";
-    if (!map.has(pid)) map.set(pid, []);
+    if (!map.has(pid)) {map.set(pid, []);}
     map.get(pid).push(task);
     return map;
   }, new Map());
@@ -274,10 +274,10 @@ export function getTaskAndDescendants(taskId, tasks = []) {
 }
 
 export function getSubsectionDescendantIds(subsections = [], rootId = "") {
-  if (!rootId) return new Set();
+  if (!rootId) {return new Set();}
   const childrenByParent = (subsections || []).reduce((map, sub) => {
     const pid = sub.parentId || "";
-    if (!map.has(pid)) map.set(pid, []);
+    if (!map.has(pid)) {map.set(pid, []);}
     map.get(pid).push(sub.id);
     return map;
   }, new Map());
@@ -285,11 +285,11 @@ export function getSubsectionDescendantIds(subsections = [], rootId = "") {
   const stack = [rootId];
   while (stack.length) {
     const current = stack.pop();
-    if (!current || visited.has(current)) continue;
+    if (!current || visited.has(current)) {continue;}
     visited.add(current);
     const children = childrenByParent.get(current) || [];
     children.forEach((childId) => {
-      if (!visited.has(childId)) stack.push(childId);
+      if (!visited.has(childId)) {stack.push(childId);}
     });
   }
   return visited;
@@ -327,7 +327,7 @@ export function resolveTimeMapIdsAfterDelete(task, settings, timeMaps, deletedId
   const remainingIds = new Set((timeMaps || []).map((tm) => tm.id));
   const initialIds = Array.isArray(task?.timeMapIds) ? task.timeMapIds : [];
   const filtered = initialIds.filter((id) => id !== deletedId && remainingIds.has(id));
-  if (filtered.length) return [...new Set(filtered)];
+  if (filtered.length) {return [...new Set(filtered)];}
 
   const sectionId = task?.section || "";
   const subsectionId = task?.subsection || "";
@@ -337,10 +337,10 @@ export function resolveTimeMapIdsAfterDelete(task, settings, timeMaps, deletedId
     ? subsection.template.timeMapIds
     : [];
   const templateFiltered = templateIds.filter((id) => remainingIds.has(id));
-  if (templateFiltered.length) return [...new Set(templateFiltered)];
+  if (templateFiltered.length) {return [...new Set(templateFiltered)];}
 
   const defaultId = settings?.defaultTimeMapId;
-  if (defaultId && remainingIds.has(defaultId)) return [defaultId];
+  if (defaultId && remainingIds.has(defaultId)) {return [defaultId];}
 
   const firstAvailable = remainingIds.values().next().value;
   return firstAvailable ? [firstAvailable] : [];

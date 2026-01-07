@@ -21,12 +21,12 @@ class FakeElement {
       remove: (...names) => names.forEach((n) => this._classSet.delete(n)),
       toggle: (name, force) => {
         if (force === undefined) {
-          if (this._classSet.has(name)) this._classSet.delete(name);
-          else this._classSet.add(name);
+          if (this._classSet.has(name)) {this._classSet.delete(name);}
+          else {this._classSet.add(name);}
           return;
         }
-        if (force) this._classSet.add(name);
-        else this._classSet.delete(name);
+        if (force) {this._classSet.add(name);}
+        else {this._classSet.delete(name);}
       },
       contains: (name) => this._classSet.has(name)
     };
@@ -65,11 +65,11 @@ class FakeElement {
 }
 
 function findByTestAttr(root, value) {
-  if (!root) return null;
-  if (root.attributes?.["data-test-skedpal"] === value) return root;
+  if (!root) {return null;}
+  if (root.attributes?.["data-test-skedpal"] === value) {return root;}
   for (const child of root.children || []) {
     const found = findByTestAttr(child, value);
-    if (found) return found;
+    if (found) {return found;}
   }
   return null;
 }

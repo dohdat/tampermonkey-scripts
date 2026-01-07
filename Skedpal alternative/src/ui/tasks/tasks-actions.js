@@ -74,7 +74,7 @@ function syncTaskLinkClear() {
 }
 
 export function syncTaskDurationHelper() {
-  if (!taskDurationInput || !taskDurationHelper) return;
+  if (!taskDurationInput || !taskDurationHelper) {return;}
   const minutes = Number(taskDurationInput.value);
   if (!Number.isFinite(minutes) || minutes <= 0) {
     taskDurationHelper.textContent = "";
@@ -86,12 +86,12 @@ export function syncTaskDurationHelper() {
 }
 
 export function closeRepeatCompleteModal() {
-  if (repeatCompleteModal) repeatCompleteModal.classList.add("hidden");
+  if (repeatCompleteModal) {repeatCompleteModal.classList.add("hidden");}
   document.body.classList.remove("modal-open");
 }
 
 function openRepeatCompleteModal(task) {
-  if (!repeatCompleteModal || !repeatCompleteList) return;
+  if (!repeatCompleteModal || !repeatCompleteList) {return;}
   repeatCompleteList.innerHTML = "";
   const horizonDays = Number(state.settingsCache?.schedulingHorizonDays) || 14;
   const now = new Date();
@@ -155,9 +155,9 @@ function openRepeatCompleteModal(task) {
 }
 
 export async function handleRepeatOccurrenceComplete(taskId, occurrenceIso) {
-  if (!taskId || !occurrenceIso) return;
+  if (!taskId || !occurrenceIso) {return;}
   const task = state.tasksCache.find((t) => t.id === taskId);
-  if (!task) return;
+  if (!task) {return;}
   const previous = JSON.parse(JSON.stringify(task));
   const completedOccurrences = new Set(task.completedOccurrences || []);
   if (completedOccurrences.has(occurrenceIso)) {
@@ -233,11 +233,12 @@ export async function handleTaskSubmit(event) {
     existingTask && getContainerKey(existingTask.section, existingTask.subsection) === targetKey;
   const canUseParentOrdering =
     parentTask && getContainerKey(parentTask.section, parentTask.subsection) === targetKey;
-  const order = isEditingInPlace
-    ? existingTask.order
-    : canUseParentOrdering
-      ? getNextSubtaskOrder(parentTask, section, subsection, state.tasksCache)
-      : getNextOrder(section, subsection, state.tasksCache);
+  let order = getNextOrder(section, subsection, state.tasksCache);
+  if (isEditingInPlace) {
+    order = existingTask.order;
+  } else if (canUseParentOrdering) {
+    order = getNextSubtaskOrder(parentTask, section, subsection, state.tasksCache);
+  }
 
   if (!title || !durationMin) {
     alert("Title and duration are required.");
@@ -398,7 +399,7 @@ export function startSubtaskFromTask(task) {
 }
 
 export function openTaskEdit(task, options = {}) {
-  if (!task) return;
+  if (!task) {return;}
   const { switchView: shouldSwitchView = true } = options;
   const isParentTask = state.tasksCache.some((t) => t.subtaskParentId === task.id);
   document.getElementById("task-id").value = task.id;
@@ -431,13 +432,13 @@ export function openTaskEdit(task, options = {}) {
 
 export function openTaskEditById(taskId, options = {}) {
   const task = state.tasksCache.find((t) => t.id === taskId);
-  if (!task) return;
+  if (!task) {return;}
   openTaskEdit(task, options);
 }
 
 export async function handleTaskListClick(event) {
   const btn = event.target.closest("button");
-  if (!btn) return;
+  if (!btn) {return;}
   const completeTaskId = btn.dataset.completeTask;
   const addSection = btn.dataset.addSection;
   const addSubsectionFor = btn.dataset.addSubsection;
@@ -474,12 +475,12 @@ export async function handleTaskListClick(event) {
       const completed = !target.completed;
       const timestamp = completed ? new Date().toISOString() : null;
       const updates = snapshots.map((t) => {
-        const updatedStatus =
-          completed && t.scheduleStatus !== "completed"
-            ? "completed"
-            : !completed && t.scheduleStatus === "completed"
-              ? "unscheduled"
-              : t.scheduleStatus || "unscheduled";
+        let updatedStatus = t.scheduleStatus || "unscheduled";
+        if (completed && t.scheduleStatus !== "completed") {
+          updatedStatus = "completed";
+        } else if (!completed && t.scheduleStatus === "completed") {
+          updatedStatus = "unscheduled";
+        }
         return {
           ...t,
           completed,
@@ -608,7 +609,7 @@ export async function updateScheduleSummary() {
   const unscheduled = tasks.filter((t) => t.scheduleStatus === "unscheduled").length;
   const ignored = tasks.filter((t) => t.scheduleStatus === "ignored").length;
   const lastRun = tasks.reduce((latest, t) => {
-    if (!t.lastScheduledRun) return latest;
+    if (!t.lastScheduledRun) {return latest;}
     return latest ? Math.max(latest, new Date(t.lastScheduledRun)) : new Date(t.lastScheduledRun);
   }, null);
   scheduleSummary.innerHTML = `

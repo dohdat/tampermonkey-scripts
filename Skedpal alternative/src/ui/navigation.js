@@ -39,7 +39,7 @@ export function switchView(target) {
 }
 
 export function getZoomLabel() {
-  if (!state.zoomFilter) return "";
+  if (!state.zoomFilter) {return "";}
   if (state.zoomFilter.type === "section") {
     const name = state.zoomFilter.sectionId ? getSectionName(state.zoomFilter.sectionId) : "No section";
     return `section "${name || "Untitled section"}"`;
@@ -63,7 +63,7 @@ export function setZoomFilter(filter, options = {}) {
   updateUrlWithZoom(filter);
   renderTasks(state.tasksCache, state.tasksTimeMapsCache);
   renderBreadcrumb();
-  if (record) pushNavigation(filter);
+  if (record) {pushNavigation(filter);}
 }
 
 export function clearZoomFilter(options = {}) {
@@ -72,7 +72,7 @@ export function clearZoomFilter(options = {}) {
   updateUrlWithZoom(null);
   renderTasks(state.tasksCache, state.tasksTimeMapsCache);
   renderBreadcrumb();
-  if (record) pushNavigation(null);
+  if (record) {pushNavigation(null);}
 }
 
 export function goHome() {
@@ -89,21 +89,21 @@ export function applyNavEntry(entry) {
 }
 
 export function goBackInNavigation() {
-  if (state.navIndex <= 0) return false;
+  if (state.navIndex <= 0) {return false;}
   state.navIndex -= 1;
   applyNavEntry(state.navStack[state.navIndex]);
   return true;
 }
 
 export function goForwardInNavigation() {
-  if (state.navIndex < 0 || state.navIndex >= state.navStack.length - 1) return false;
+  if (state.navIndex < 0 || state.navIndex >= state.navStack.length - 1) {return false;}
   state.navIndex += 1;
   applyNavEntry(state.navStack[state.navIndex]);
   return true;
 }
 
 export function zoomOutOneLevel() {
-  if (!state.zoomFilter) return;
+  if (!state.zoomFilter) {return;}
   if (state.zoomFilter.type === "task") {
     if (state.zoomFilter.subsectionId) {
       setZoomFilter(
@@ -133,11 +133,11 @@ export function zoomOutOneLevel() {
 }
 
 export function renderBreadcrumb() {
-  if (!navBreadcrumb) return;
+  if (!navBreadcrumb) {return;}
   navBreadcrumb.innerHTML = "";
   const crumbs = [];
   const addSectionCrumb = (sectionId) => {
-    if (sectionId === undefined || sectionId === null) return;
+    if (sectionId === undefined || sectionId === null) {return;}
     const label = sectionId ? getSectionName(sectionId) || "Untitled section" : "No section";
     crumbs.push({
       label,
@@ -145,7 +145,7 @@ export function renderBreadcrumb() {
     });
   };
   const addSubsectionCrumb = (sectionId, subsectionId) => {
-    if (!subsectionId) return;
+    if (!subsectionId) {return;}
     const name =
       getSubsectionsFor(sectionId).find((s) => s.id === subsectionId)?.name || "Untitled subsection";
     crumbs.push({
@@ -159,9 +159,9 @@ export function renderBreadcrumb() {
     });
   };
   const addTaskCrumb = (taskId, sectionId, subsectionId) => {
-    if (!taskId) return;
+    if (!taskId) {return;}
     const task = state.tasksCache.find((t) => t.id === taskId);
-    if (!task) return;
+    if (!task) {return;}
     crumbs.push({
       label: task.title || "Task",
       onClick: () =>
@@ -217,24 +217,24 @@ export function renderBreadcrumb() {
 }
 
 export function handleNavigationShortcuts(event) {
-  if (isTypingTarget(event.target)) return;
+  if (isTypingTarget(event.target)) {return;}
   const key = event.key;
   const isBack = key === "BrowserBack";
   const isForward = key === "BrowserForward";
-  if (!isBack && !isForward) return;
+  if (!isBack && !isForward) {return;}
   if (isBack) {
-    if (goBackInNavigation()) event.preventDefault();
+    if (goBackInNavigation()) {event.preventDefault();}
   } else if (isForward) {
-    if (goForwardInNavigation()) event.preventDefault();
+    if (goForwardInNavigation()) {event.preventDefault();}
   }
 }
 
 export function handleNavigationMouseButtons(event) {
-  if (isTypingTarget(event.target)) return;
+  if (isTypingTarget(event.target)) {return;}
   if (event.button === 3) {
-    if (goBackInNavigation()) event.preventDefault();
+    if (goBackInNavigation()) {event.preventDefault();}
   } else if (event.button === 4) {
-    if (goForwardInNavigation()) event.preventDefault();
+    if (goForwardInNavigation()) {event.preventDefault();}
   }
 }
 

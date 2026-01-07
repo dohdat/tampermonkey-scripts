@@ -116,9 +116,9 @@ function startOfWeek(date) {
 }
 
 function normalizeDeadline(value, fallback) {
-  if (!value) return endOfDay(fallback);
+  if (!value) {return endOfDay(fallback);}
   const date = new Date(value);
-  if (Number.isNaN(date)) return endOfDay(fallback);
+  if (Number.isNaN(date)) {return endOfDay(fallback);}
   const atMidnight = date.getHours() === 0 && date.getMinutes() === 0 && date.getSeconds() === 0;
   return atMidnight ? endOfDay(date) : date;
 }
@@ -146,7 +146,7 @@ function normalizeSubtaskScheduleMode(value) {
 function buildParentModeMap(tasks) {
   const map = new Map();
   tasks.forEach((task) => {
-    if (!task?.id) return;
+    if (!task?.id) {return;}
     map.set(task.id, normalizeSubtaskScheduleMode(task.subtaskScheduleMode));
   });
   return map;
@@ -156,8 +156,8 @@ function buildSubtaskOrderMap(tasks) {
   const groups = new Map();
   tasks.forEach((task, index) => {
     const parentId = task.subtaskParentId;
-    if (!parentId) return;
-    if (!groups.has(parentId)) groups.set(parentId, []);
+    if (!parentId) {return;}
+    if (!groups.has(parentId)) {groups.set(parentId, []);}
     groups.get(parentId).push({
       id: task.id,
       order: Number(task.order),
@@ -169,7 +169,7 @@ function buildSubtaskOrderMap(tasks) {
     items.sort((a, b) => {
       const aOrder = Number.isFinite(a.order) ? a.order : Number.MAX_SAFE_INTEGER;
       const bOrder = Number.isFinite(b.order) ? b.order : Number.MAX_SAFE_INTEGER;
-      if (aOrder !== bOrder) return aOrder - bOrder;
+      if (aOrder !== bOrder) {return aOrder - bOrder;}
       return a.index - b.index;
     });
     items.forEach((item, position) => {
@@ -222,8 +222,8 @@ function buildOccurrenceDates(task, now, horizonEnd) {
       cursor <= limitDate && count < maxCount;
       cursor = addDays(cursor, interval), count += 1
     ) {
-      if (cursor < nowStart) continue;
-      if (cursor > horizonEnd) break;
+      if (cursor < nowStart) {continue;}
+      if (cursor > horizonEnd) {break;}
       occurrences.push(endOfDay(cursor));
     }
     return occurrences;
@@ -239,11 +239,11 @@ function buildOccurrenceDates(task, now, horizonEnd) {
     while (weekStart <= limitDate && emitted < maxCount) {
       for (const day of weeklyDays) {
         const candidate = addDays(weekStart, day);
-        if (candidate < anchor || candidate < nowStart) continue;
-        if (candidate > limitDate || candidate > horizonEnd) continue;
+        if (candidate < anchor || candidate < nowStart) {continue;}
+        if (candidate > limitDate || candidate > horizonEnd) {continue;}
         occurrences.push(endOfDay(candidate));
         emitted += 1;
-        if (emitted >= maxCount) break;
+        if (emitted >= maxCount) {break;}
       }
       weekStart = addDays(weekStart, 7 * interval);
     }
@@ -302,7 +302,7 @@ function buildOccurrenceDates(task, now, horizonEnd) {
 }
 
 export function getUpcomingOccurrences(task, now = new Date(), count = 10, horizonDays = 365) {
-  if (!task) return [];
+  if (!task) {return [];}
   const horizonEnd = endOfDay(addDays(now, horizonDays));
   const normalized = normalizeTask(task, now, horizonEnd);
   const occurrences = buildOccurrenceDates(normalized, now, horizonEnd);
@@ -376,17 +376,17 @@ function buildScheduleCandidates(tasks, now, horizonEnd) {
 
   const sorted = candidates.sort((a, b) => {
     const deadlineDelta = a.deadline - b.deadline;
-    if (deadlineDelta !== 0) return deadlineDelta;
+    if (deadlineDelta !== 0) {return deadlineDelta;}
     const priorityDelta = b.priority - a.priority;
-    if (priorityDelta !== 0) return priorityDelta;
+    if (priorityDelta !== 0) {return priorityDelta;}
     const startDelta = a.startFrom - b.startFrom;
-    if (startDelta !== 0) return startDelta;
+    if (startDelta !== 0) {return startDelta;}
     const sectionDelta = (a.section || "").localeCompare(b.section || "");
-    if (sectionDelta !== 0) return sectionDelta;
+    if (sectionDelta !== 0) {return sectionDelta;}
     const subsectionDelta = (a.subsection || "").localeCompare(b.subsection || "");
-    if (subsectionDelta !== 0) return subsectionDelta;
+    if (subsectionDelta !== 0) {return subsectionDelta;}
     const orderDelta = (Number(a.order) || 0) - (Number(b.order) || 0);
-    if (orderDelta !== 0) return orderDelta;
+    if (orderDelta !== 0) {return orderDelta;}
     return (a.title || "").localeCompare(b.title || "");
   });
 
@@ -404,10 +404,10 @@ function placeTaskInSlots(task, freeSlots, now, options = {}) {
   if (requireSingleBlock) {
     for (let i = 0; i < slots.length; i += 1) {
       const slot = slots[i];
-      if (!task.timeMapIds.includes(slot.timeMapId)) continue;
+      if (!task.timeMapIds.includes(slot.timeMapId)) {continue;}
       const slotStartMs = Math.max(slot.start.getTime(), now.getTime(), task.startFrom.getTime());
       const slotEndLimitMs = Math.min(slot.end.getTime(), deadlineMs);
-      if (slotEndLimitMs - slotStartMs < remaining) continue;
+      if (slotEndLimitMs - slotStartMs < remaining) {continue;}
       const placement = {
         taskId: task.id,
         occurrenceId: task.occurrenceId,
@@ -445,14 +445,14 @@ function placeTaskInSlots(task, freeSlots, now, options = {}) {
 
   for (let i = 0; i < slots.length && remaining > 0; i += 1) {
     const slot = slots[i];
-    if (!task.timeMapIds.includes(slot.timeMapId)) continue;
+    if (!task.timeMapIds.includes(slot.timeMapId)) {continue;}
     const slotStartMs = Math.max(slot.start.getTime(), now.getTime(), task.startFrom.getTime());
     const slotEndLimitMs = Math.min(slot.end.getTime(), deadlineMs);
-    if (slotEndLimitMs - slotStartMs < minRequired) continue;
+    if (slotEndLimitMs - slotStartMs < minRequired) {continue;}
 
     const effectiveMin = Math.min(task.minBlockMs, remaining);
     const availableMs = slotEndLimitMs - slotStartMs;
-    if (availableMs < effectiveMin) continue;
+    if (availableMs < effectiveMin) {continue;}
 
     const chunkMs = Math.min(remaining, availableMs);
     const placement = {
@@ -527,21 +527,21 @@ export function scheduleTasks({
         const bOrder = subtaskOrderById.has(b.id)
           ? subtaskOrderById.get(b.id)
           : Number.MAX_SAFE_INTEGER;
-        if (aOrder !== bOrder) return aOrder - bOrder;
+        if (aOrder !== bOrder) {return aOrder - bOrder;}
       }
     }
     const deadlineDelta = a.deadline - b.deadline;
-    if (deadlineDelta !== 0) return deadlineDelta;
+    if (deadlineDelta !== 0) {return deadlineDelta;}
     const priorityDelta = b.priority - a.priority;
-    if (priorityDelta !== 0) return priorityDelta;
+    if (priorityDelta !== 0) {return priorityDelta;}
     const startDelta = a.startFrom - b.startFrom;
-    if (startDelta !== 0) return startDelta;
+    if (startDelta !== 0) {return startDelta;}
     const sectionDelta = (a.section || "").localeCompare(b.section || "");
-    if (sectionDelta !== 0) return sectionDelta;
+    if (sectionDelta !== 0) {return sectionDelta;}
     const subsectionDelta = (a.subsection || "").localeCompare(b.subsection || "");
-    if (subsectionDelta !== 0) return subsectionDelta;
+    if (subsectionDelta !== 0) {return subsectionDelta;}
     const orderDelta = (Number(a.order) || 0) - (Number(b.order) || 0);
-    if (orderDelta !== 0) return orderDelta;
+    if (orderDelta !== 0) {return orderDelta;}
     return (a.title || "").localeCompare(b.title || "");
   });
 

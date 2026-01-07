@@ -28,7 +28,7 @@ export function applyFavoriteOrder(settings, orderedKeys = []) {
   let nextOrder = getNextFavoriteOrder(settings);
 
   const updatedSections = sections.map((section) => {
-    if (!section.favorite) return section;
+    if (!section.favorite) {return section;}
     const key = buildFavoriteKey({ type: "section", sectionId: section.id });
     const favoriteOrder = orderMap.get(key) || section.favoriteOrder || nextOrder++;
     return { ...section, favoriteOrder };
@@ -37,7 +37,7 @@ export function applyFavoriteOrder(settings, orderedKeys = []) {
   const updatedSubsections = {};
   Object.entries(subsections).forEach(([sectionId, list]) => {
     updatedSubsections[sectionId] = (list || []).map((sub) => {
-      if (!sub.favorite) return sub;
+      if (!sub.favorite) {return sub;}
       const key = buildFavoriteKey({
         type: "subsection",
         sectionId,
@@ -53,7 +53,7 @@ export function applyFavoriteOrder(settings, orderedKeys = []) {
 
 export function toggleFavoriteById(list, targetId, nextOrder) {
   return (list || []).map((item) => {
-    if (item.id !== targetId) return item;
+    if (item.id !== targetId) {return item;}
     const favorite = !item.favorite;
     return {
       ...item,

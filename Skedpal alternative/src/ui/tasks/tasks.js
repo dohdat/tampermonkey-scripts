@@ -9,7 +9,7 @@ export function computeTaskReorderUpdates(
   dropBeforeId
 ) {
   const movedTask = tasks.find((t) => t.id === movedTaskId);
-  if (!movedTask) return { updates: [], changed: false };
+  if (!movedTask) {return { updates: [], changed: false };}
   const movedSubtree = getTaskAndDescendants(movedTaskId, tasks);
   const movedIds = new Set(movedSubtree.map((t) => t.id));
   const originalById = new Map(tasks.map((task) => [task.id, task]));
@@ -145,7 +145,7 @@ export async function migrateSectionsAndTasks(tasks, settings) {
 
   const addSection = (name, id, favorite = false, favoriteOrder = null) => {
     const finalId = id || uuid();
-    if (sectionIdMap.has(finalId)) return sectionIdMap.get(finalId);
+    if (sectionIdMap.has(finalId)) {return sectionIdMap.get(finalId);}
     const section = {
       id: finalId,
       name: name || "Untitled section",
@@ -153,7 +153,7 @@ export async function migrateSectionsAndTasks(tasks, settings) {
       favoriteOrder: Number.isFinite(Number(favoriteOrder)) ? Number(favoriteOrder) : null
     };
     sectionIdMap.set(finalId, section);
-    if (section.name) sectionNameMap.set(section.name.toLowerCase(), finalId);
+    if (section.name) {sectionNameMap.set(section.name.toLowerCase(), finalId);}
     sections.push(section);
     return section;
   };
@@ -184,7 +184,7 @@ export async function migrateSectionsAndTasks(tasks, settings) {
       (subsections[sectionId] || []).forEach((sub) => {
         if (sub?.id) {
           idMap.set(sub.id, sub);
-          if (sub.name) nameMap.set(sub.name.toLowerCase(), sub.id);
+          if (sub.name) {nameMap.set(sub.name.toLowerCase(), sub.id);}
         }
       });
       subsectionIdMaps[sectionId] = idMap;
@@ -196,7 +196,7 @@ export async function migrateSectionsAndTasks(tasks, settings) {
     const targetSectionId = sectionIdMap.has(key)
       ? key
       : sectionNameMap.get((key || "").toLowerCase());
-    if (!targetSectionId) return;
+    if (!targetSectionId) {return;}
     ensureSubsectionMaps(targetSectionId);
     (list || []).forEach((item) => {
       const isObj = typeof item === "object" && item !== null;
@@ -206,7 +206,7 @@ export async function migrateSectionsAndTasks(tasks, settings) {
       const favoriteOrder = isObj && item?.favoriteOrder ? Number(item.favoriteOrder) : null;
       const parentId = isObj && item?.parentId ? item.parentId : "";
       const template = isObj && item?.template ? { ...item.template } : undefined;
-      if (subsectionIdMaps[targetSectionId].has(id)) return;
+      if (subsectionIdMaps[targetSectionId].has(id)) {return;}
       const sub = {
         id,
         name,
@@ -217,7 +217,7 @@ export async function migrateSectionsAndTasks(tasks, settings) {
       };
       subsections[targetSectionId].push(sub);
       subsectionIdMaps[targetSectionId].set(id, sub);
-      if (name) subsectionNameMaps[targetSectionId].set(name.toLowerCase(), id);
+      if (name) {subsectionNameMaps[targetSectionId].set(name.toLowerCase(), id);}
     });
   });
 
@@ -257,7 +257,7 @@ export async function migrateSectionsAndTasks(tasks, settings) {
           const sub = { id: subId, name: task.subsection, favorite: false };
           subsections[newSectionId].push(sub);
           idMap.set(subId, sub);
-          if (sub.name) nameMap.set(sub.name.toLowerCase(), subId);
+          if (sub.name) {nameMap.set(sub.name.toLowerCase(), subId);}
           newSubsectionId = subId;
         }
       }

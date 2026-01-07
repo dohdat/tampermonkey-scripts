@@ -124,7 +124,7 @@ function registerEventListeners() {
 
   sectionAddBtn?.addEventListener("click", handleAddSection);
   sectionFormToggle?.addEventListener("click", () => {
-    if (sectionFormToggle.classList.contains("hidden")) return;
+    if (sectionFormToggle.classList.contains("hidden")) {return;}
     if (sectionFormToggle.textContent?.includes("Hide")) {
       closeSectionForm();
     } else {
@@ -139,7 +139,7 @@ function registerEventListeners() {
   });
   sectionList?.addEventListener("click", (event) => {
     const btn = event.target.closest("button[data-remove-section]");
-    if (!btn) return;
+    if (!btn) {return;}
     handleRemoveSection(btn.dataset.removeSection);
   });
   taskSectionSelect?.addEventListener("change", () => renderTaskSubsectionOptions());
@@ -157,7 +157,7 @@ function registerEventListeners() {
 
   sidebarFavorites?.addEventListener("click", (event) => {
     const btn = event.target.closest("[data-fav-jump]");
-    if (!btn) return;
+    if (!btn) {return;}
     const type = btn.dataset.favType;
     const sectionId = btn.dataset.sectionId || "";
     const subsectionId = btn.dataset.subsectionId || "";
@@ -171,9 +171,9 @@ function registerEventListeners() {
 
   sidebarFavorites?.addEventListener("dragstart", (event) => {
     const item = event.target.closest("[data-fav-row]");
-    if (!item) return;
+    if (!item) {return;}
     const favKey = item.dataset.favKey || "";
-    if (!favKey) return;
+    if (!favKey) {return;}
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", favKey);
     item.classList.add("opacity-60");
@@ -183,9 +183,9 @@ function registerEventListeners() {
   sidebarFavorites?.addEventListener("dragover", (event) => {
     event.preventDefault();
     const draggingKey = sidebarFavorites.dataset.draggingKey;
-    if (!draggingKey) return;
+    if (!draggingKey) {return;}
     const target = event.target.closest("[data-fav-row]");
-    if (!target || target.dataset.favKey === draggingKey) return;
+    if (!target || target.dataset.favKey === draggingKey) {return;}
     const rect = target.getBoundingClientRect();
     const after = event.clientY > rect.top + rect.height / 2;
     if (after) {
@@ -202,7 +202,7 @@ function registerEventListeners() {
   sidebarFavorites?.addEventListener("drop", async (event) => {
     event.preventDefault();
     const draggingKey = sidebarFavorites.dataset.draggingKey;
-    if (!draggingKey) return;
+    if (!draggingKey) {return;}
     const orderedKeys = [...sidebarFavorites.querySelectorAll("[data-fav-row]")]
       .map((node) => node.dataset.favKey || "")
       .filter(Boolean);
@@ -249,9 +249,9 @@ function registerEventListeners() {
   });
 
   taskList?.addEventListener("keydown", async (event) => {
-    if (event.key !== "Enter") return;
+    if (event.key !== "Enter") {return;}
     const input = event.target;
-    if (!(input instanceof HTMLElement)) return;
+    if (!(input instanceof HTMLElement)) {return;}
     if (input.matches("[data-subsection-input]")) {
       event.preventDefault();
       const sectionId = input.dataset.subsectionInput || "";
@@ -289,7 +289,7 @@ function registerEventListeners() {
   );
   repeatCompleteList?.addEventListener("click", async (event) => {
     const btn = event.target.closest("[data-repeat-complete-date]");
-    if (!btn) return;
+    if (!btn) {return;}
     await handleRepeatOccurrenceComplete(
       btn.dataset.repeatCompleteTask || "",
       btn.dataset.repeatCompleteDate || ""
@@ -297,11 +297,11 @@ function registerEventListeners() {
   });
 
   taskList?.addEventListener("keydown", async (event) => {
-    if (event.key !== "Tab") return;
+    if (event.key !== "Tab") {return;}
     const target = event.target;
-    if (!(target instanceof HTMLElement)) return;
+    if (!(target instanceof HTMLElement)) {return;}
     const card = target.closest("[data-task-id]");
-    if (!card || card !== document.activeElement) return;
+    if (!card || card !== document.activeElement) {return;}
     event.preventDefault();
     event.stopPropagation();
     if (event.shiftKey) {
@@ -321,12 +321,12 @@ function registerEventListeners() {
   window.addEventListener("auxclick", handleNavigationMouseButtons);
   window.addEventListener("skedpal:repeat-occurrence-complete", async (event) => {
     const detail = event?.detail || {};
-    if (!detail.taskId || !detail.occurrenceIso) return;
+    if (!detail.taskId || !detail.occurrenceIso) {return;}
     await handleRepeatOccurrenceComplete(detail.taskId, detail.occurrenceIso);
   });
   window.addEventListener("skedpal:task-edit", (event) => {
     const detail = event?.detail || {};
-    if (!detail.taskId) return;
+    if (!detail.taskId) {return;}
     const shouldSwitch = detail.switchView !== false;
     openTaskEditById(detail.taskId, { switchView: shouldSwitch });
   });

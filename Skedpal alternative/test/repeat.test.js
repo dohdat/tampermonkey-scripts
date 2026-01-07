@@ -22,12 +22,12 @@ class FakeElement {
       remove: (...names) => names.forEach((n) => this._classSet.delete(n)),
       toggle: (name, force) => {
         if (force === undefined) {
-          if (this._classSet.has(name)) this._classSet.delete(name);
-          else this._classSet.add(name);
+          if (this._classSet.has(name)) {this._classSet.delete(name);}
+          else {this._classSet.add(name);}
           return;
         }
-        if (force) this._classSet.add(name);
-        else this._classSet.delete(name);
+        if (force) {this._classSet.add(name);}
+        else {this._classSet.delete(name);}
       },
       contains: (name) => this._classSet.has(name)
     };
@@ -115,7 +115,7 @@ describe("repeat utils", () => {
       getElementById: () => null
     };
     const selectSetup = (el, options) => {
-      if (!el) return;
+      if (!el) {return;}
       el._options = new Map();
       options.forEach((opt) => {
         const option = new FakeElement("option");
@@ -133,7 +133,7 @@ describe("repeat utils", () => {
     };
 
     const reset = (el) => {
-      if (!el) return;
+      if (!el) {return;}
       el.value = "";
       el.checked = false;
       el.disabled = false;

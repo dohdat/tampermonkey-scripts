@@ -63,7 +63,7 @@ class FakeElement {
   }
 
   remove() {
-    if (!this.parentElement) return;
+    if (!this.parentElement) {return;}
     this.parentElement.children = this.parentElement.children.filter((child) => child !== this);
   }
 

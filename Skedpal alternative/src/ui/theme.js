@@ -231,7 +231,7 @@ export const themeVars = {
 };
 
 export function applyTheme(target = typeof document !== "undefined" ? document.documentElement : null) {
-  if (!target || !target.ownerDocument) return;
+  if (!target || !target.ownerDocument) {return;}
   const doc = target.ownerDocument;
   let style = doc.getElementById("skedpal-theme");
   if (!style) {

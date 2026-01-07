@@ -30,8 +30,8 @@ export function renderTasks(tasks, timeMaps) {
   }, new Map());
   const depthMemo = new Map();
   const getTaskDepthById = (taskId) => {
-    if (!taskId) return 0;
-    if (depthMemo.has(taskId)) return depthMemo.get(taskId);
+    if (!taskId) {return 0;}
+    if (depthMemo.has(taskId)) {return depthMemo.get(taskId);}
     const parentId = parentById.get(taskId);
     if (!parentId) {
       depthMemo.set(taskId, 0);
@@ -43,8 +43,8 @@ export function renderTasks(tasks, timeMaps) {
   };
   const collapsedAncestorMemo = new Map();
   const hasCollapsedAncestor = (taskId) => {
-    if (!taskId) return false;
-    if (collapsedAncestorMemo.has(taskId)) return collapsedAncestorMemo.get(taskId);
+    if (!taskId) {return false;}
+    if (collapsedAncestorMemo.has(taskId)) {return collapsedAncestorMemo.get(taskId);}
     const parentId = parentById.get(taskId);
     if (!parentId) {
       collapsedAncestorMemo.set(taskId, false);
@@ -60,15 +60,15 @@ export function renderTasks(tasks, timeMaps) {
   };
   const childrenByParent = tasks.reduce((map, task) => {
     const pid = task.subtaskParentId || "";
-    if (!pid) return map;
-    if (!map.has(pid)) map.set(pid, []);
+    if (!pid) {return map;}
+    if (!map.has(pid)) {map.set(pid, []);}
     map.get(pid).push(task);
     return map;
   }, new Map());
   const durationMemo = new Map();
   const computeTotalDuration = (task) => {
-    if (!task?.id) return 0;
-    if (durationMemo.has(task.id)) return durationMemo.get(task.id);
+    if (!task?.id) {return 0;}
+    if (durationMemo.has(task.id)) {return durationMemo.get(task.id);}
     const children = childrenByParent.get(task.id) || [];
     if (children.length === 0) {
       const own = Number(task.durationMin) || 0;
@@ -86,8 +86,8 @@ export function renderTasks(tasks, timeMaps) {
             const ids = new Set([state.zoomFilter.taskId]);
             const stack = [state.zoomFilter.taskId];
             const childrenByParent = baseTasks.reduce((map, task) => {
-              if (!task.subtaskParentId) return map;
-              if (!map.has(task.subtaskParentId)) map.set(task.subtaskParentId, []);
+              if (!task.subtaskParentId) {return map;}
+              if (!map.has(task.subtaskParentId)) {map.set(task.subtaskParentId, []);}
               map.get(task.subtaskParentId).push(task.id);
               return map;
             }, new Map());
@@ -95,7 +95,7 @@ export function renderTasks(tasks, timeMaps) {
               const current = stack.pop();
               const children = childrenByParent.get(current) || [];
               children.forEach((childId) => {
-                if (ids.has(childId)) return;
+                if (ids.has(childId)) {return;}
                 ids.add(childId);
                 stack.push(childId);
               });
@@ -169,9 +169,9 @@ export function renderTasks(tasks, timeMaps) {
   const relevantSectionIds = new Set(
     filteredTasks.map((t) => (t.section === undefined ? "" : t.section || ""))
   );
-  if (state.zoomFilter?.type === "section") relevantSectionIds.add(state.zoomFilter.sectionId || "");
-  if (state.zoomFilter?.type === "subsection") relevantSectionIds.add(state.zoomFilter.sectionId || "");
-  if (state.zoomFilter?.type === "task") relevantSectionIds.add(state.zoomFilter.sectionId || "");
+  if (state.zoomFilter?.type === "section") {relevantSectionIds.add(state.zoomFilter.sectionId || "");}
+  if (state.zoomFilter?.type === "subsection") {relevantSectionIds.add(state.zoomFilter.sectionId || "");}
+  if (state.zoomFilter?.type === "task") {relevantSectionIds.add(state.zoomFilter.sectionId || "");}
   const allSections = [
     ...sections,
     ...missingSections,
@@ -289,7 +289,7 @@ export function renderTasks(tasks, timeMaps) {
       : [];
     const taskSubsections = Array.from(new Set(sectionTasks.map((t) => t.subsection).filter(Boolean)));
     taskSubsections.forEach((subId) => {
-      if (subsections.find((s) => s.id === subId)) return;
+      if (subsections.find((s) => s.id === subId)) {return;}
       if (subId) {
         subsections.push({
           id: subId,
@@ -304,7 +304,7 @@ export function renderTasks(tasks, timeMaps) {
       const markWithAncestors = (subsectionId) => {
         let current = subsectionsById.get(subsectionId);
         while (current) {
-          if (allowedSubsections.has(current.id)) break;
+          if (allowedSubsections.has(current.id)) {break;}
           allowedSubsections.add(current.id);
           const parentId = current.parentId || "";
           current = parentId ? subsectionsById.get(parentId) : null;

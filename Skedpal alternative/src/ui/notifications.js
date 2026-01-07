@@ -10,9 +10,9 @@ function getNotificationNodes() {
 }
 
 export function isTypingTarget(target) {
-  if (!target) return false;
+  if (!target) {return false;}
   const tag = target.tagName;
-  if (!tag) return false;
+  if (!tag) {return false;}
   const name = tag.toLowerCase();
   return (
     target.isContentEditable ||
@@ -38,7 +38,7 @@ export function hideNotificationBanner() {
 
 export function showUndoBanner(message, undoHandler) {
   const { banner, message: messageNode, undoButton } = getNotificationNodes();
-  if (!banner || !messageNode || !undoButton) return;
+  if (!banner || !messageNode || !undoButton) {return;}
   hideNotificationBanner();
   messageNode.textContent = message;
   state.notificationUndoHandler = undoHandler;

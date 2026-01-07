@@ -20,7 +20,7 @@ import { computeTaskReorderUpdates } from "./tasks.js";
 const { taskList } = domRefs;
 
 export function toggleZoneHighlight(zone, shouldHighlight) {
-  if (!zone) return;
+  if (!zone) {return;}
   sortableHighlightClasses.forEach((cls) =>
     zone.classList[shouldHighlight ? "add" : "remove"](cls)
   );
@@ -32,7 +32,7 @@ export function destroyTaskSortables() {
 }
 
 export function ensureSortableStyles() {
-  if (document.getElementById(TASK_SORTABLE_STYLE_ID)) return;
+  if (document.getElementById(TASK_SORTABLE_STYLE_ID)) {return;}
   const style = document.createElement("style");
   style.id = TASK_SORTABLE_STYLE_ID;
   style.setAttribute("data-test-skedpal", "task-sortable-styles");
@@ -55,11 +55,11 @@ export function getDropBeforeId(element) {
 }
 
 export function findPreviousTaskId(card) {
-  if (!card) return "";
+  if (!card) {return "";}
   let prev = card.previousElementSibling;
   while (prev) {
     const prevId = prev.dataset?.taskId;
-    if (prevId) return prevId;
+    if (prevId) {return prevId;}
     prev = prev.previousElementSibling;
   }
   return "";
@@ -68,8 +68,8 @@ export function findPreviousTaskId(card) {
 export async function handleTaskSortEnd(evt) {
   const movedTaskId = evt.item?.dataset?.taskId;
   const targetZone = evt.to?.closest?.("[data-drop-section]");
-  if (!movedTaskId || !targetZone) return;
-  if (evt.from === evt.to && evt.oldIndex === evt.newIndex) return;
+  if (!movedTaskId || !targetZone) {return;}
+  if (evt.from === evt.to && evt.oldIndex === evt.newIndex) {return;}
   const targetSection = (targetZone.dataset.dropSection || "").trim();
   const targetSubsection = (targetZone.dataset.dropSubsection || "").trim();
   const dropBeforeId = getDropBeforeId(evt.item);
@@ -80,17 +80,17 @@ export async function handleTaskSortEnd(evt) {
   const targetKey = getContainerKey(targetSection, targetSubsection);
   const movedSubtreeIds = new Set(getTaskAndDescendants(movedTaskId, state.tasksCache).map((t) => t.id));
   const resolveParent = (task) => {
-    if (!task) return { found: false, parentId: null };
+    if (!task) {return { found: false, parentId: null };}
     let candidateId = task.subtaskParentId || null;
     while (candidateId && movedSubtreeIds.has(candidateId)) {
       const ancestor = state.tasksCache.find((t) => t.id === candidateId);
       candidateId = ancestor?.subtaskParentId || null;
     }
-    if (!candidateId) return { found: true, parentId: null };
+    if (!candidateId) {return { found: true, parentId: null };}
     const candidateTask = state.tasksCache.find((t) => t.id === candidateId);
-    if (!candidateTask) return { found: true, parentId: null };
+    if (!candidateTask) {return { found: true, parentId: null };}
     const candidateKey = getContainerKey(candidateTask.section, candidateTask.subsection);
-    if (candidateKey !== targetKey) return { found: true, parentId: null };
+    if (candidateKey !== targetKey) {return { found: true, parentId: null };}
     return { found: true, parentId: candidateId };
   };
   const parentFromDropBefore = resolveParent(dropBeforeTask);
@@ -117,7 +117,7 @@ export async function handleTaskSortEnd(evt) {
     }
   }
   const changed = updates.length > 0 || reorderResult.changed;
-  if (!changed) return false;
+  if (!changed) {return false;}
   await Promise.all(updates.map((t) => saveTask(t)));
   const { loadTasks } = await import("./tasks-actions.js");
   await loadTasks();
@@ -143,9 +143,9 @@ export function setupTaskSortables() {
       onStart: (event) => {
         toggleZoneHighlight(event.from, true);
         const taskId = event.item?.dataset?.taskId;
-        if (!taskId) return;
+        if (!taskId) {return;}
         const hasChildren = state.tasksCache.some((task) => task.subtaskParentId === taskId);
-        if (!hasChildren || state.collapsedTasks.has(taskId)) return;
+        if (!hasChildren || state.collapsedTasks.has(taskId)) {return;}
         state.collapsedTasks.add(taskId);
         event.item.dataset.collapsedOnDrag = "1";
         const descendants = getTaskAndDescendants(taskId, state.tasksCache).slice(1);
@@ -173,7 +173,7 @@ export function setupTaskSortables() {
 }
 
 export async function indentTaskUnderPrevious(card) {
-  if (!card) return;
+  if (!card) {return;}
   const childId = card.dataset.taskId;
   const childDepth = getTaskDepth(childId, state.tasksCache);
   let parentId = "";
@@ -189,12 +189,12 @@ export async function indentTaskUnderPrevious(card) {
     }
     prev = prev.previousElementSibling;
   }
-  if (!childId || !parentId) return;
+  if (!childId || !parentId) {return;}
   const childTask = state.tasksCache.find((t) => t.id === childId);
   const parentTask = state.tasksCache.find((t) => t.id === parentId);
-  if (!childTask || !parentTask) return;
+  if (!childTask || !parentTask) {return;}
   const childDescendants = new Set(getTaskAndDescendants(childId, state.tasksCache).map((t) => t.id));
-  if (childDescendants.has(parentTask.id)) return;
+  if (childDescendants.has(parentTask.id)) {return;}
   const section = parentTask.section || "";
   const subsection = parentTask.subsection || "";
   const nextOrder = getNextSubtaskOrder(parentTask, section, subsection, state.tasksCache);
@@ -211,12 +211,12 @@ export async function indentTaskUnderPrevious(card) {
 }
 
 export async function outdentTask(card) {
-  if (!card) return;
+  if (!card) {return;}
   const childId = card.dataset.taskId;
   const childTask = state.tasksCache.find((t) => t.id === childId);
-  if (!childTask || !childTask.subtaskParentId) return;
+  if (!childTask || !childTask.subtaskParentId) {return;}
   const parentTask = state.tasksCache.find((t) => t.id === childTask.subtaskParentId);
-  if (!parentTask) return;
+  if (!parentTask) {return;}
   const subtree = getTaskAndDescendants(childId, state.tasksCache);
   const descendantIds = new Set(subtree.filter((t) => t.id !== childId).map((t) => t.id));
   const oldSection = childTask.section || "";
@@ -252,12 +252,12 @@ export async function outdentTask(card) {
     const desiredOrder = idx + 1;
     const desiredSection = task.section || "";
     const desiredSubsection = task.subsection || "";
-    const desiredParentId =
-      task.id === childId
-        ? newParentId
-        : descendantIds.has(task.id) || adoptedIds.has(task.id)
-          ? parentTask.id
-          : task.subtaskParentId;
+    let desiredParentId = task.subtaskParentId;
+    if (task.id === childId) {
+      desiredParentId = newParentId;
+    } else if (descendantIds.has(task.id) || adoptedIds.has(task.id)) {
+      desiredParentId = parentTask.id;
+    }
     const original = originalById.get(task.id);
     const needsUpdate =
       !original ||
@@ -275,7 +275,7 @@ export async function outdentTask(card) {
       });
     }
   });
-  if (updates.length === 0) return;
+  if (updates.length === 0) {return;}
   await Promise.all(updates.map((t) => saveTask(t)));
   const { loadTasks } = await import("./tasks-actions.js");
   await loadTasks();

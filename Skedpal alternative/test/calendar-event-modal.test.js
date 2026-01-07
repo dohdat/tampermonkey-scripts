@@ -86,12 +86,12 @@ describe("calendar event modal", () => {
       createElement: (tagName) => new FakeElement(tagName),
       querySelectorAll: () => [],
       getElementById: (id) => {
-        if (id === "calendar-event-modal") return refs.modal;
-        if (id === "calendar-event-modal-title") return refs.title;
-        if (id === "calendar-event-modal-time") return refs.time;
-        if (id === "calendar-event-modal-details") return refs.details;
-        if (id === "calendar-event-modal-complete-checkbox") return refs.complete;
-        if (id === "calendar-event-modal-defer-date") return refs.defer;
+        if (id === "calendar-event-modal") {return refs.modal;}
+        if (id === "calendar-event-modal-title") {return refs.title;}
+        if (id === "calendar-event-modal-time") {return refs.time;}
+        if (id === "calendar-event-modal-details") {return refs.details;}
+        if (id === "calendar-event-modal-complete-checkbox") {return refs.complete;}
+        if (id === "calendar-event-modal-defer-date") {return refs.defer;}
         return null;
       }
     };

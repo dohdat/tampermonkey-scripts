@@ -51,7 +51,7 @@ function endOfDay(date) {
 
 export function getCalendarEventStyles(event, timeMapColorById) {
   const color = timeMapColorById?.get?.(event?.timeMapId || "");
-  if (!color) return null;
+  if (!color) {return null;}
   return {
     backgroundColor: `${color}1a`,
     borderColor: color
@@ -61,17 +61,17 @@ export function getCalendarEventStyles(event, timeMapColorById) {
 function getScheduledEvents(tasks) {
   const events = [];
   (tasks || []).forEach((task) => {
-    if (task.scheduleStatus !== "scheduled") return;
+    if (task.scheduleStatus !== "scheduled") {return;}
     const instances = Array.isArray(task.scheduledInstances) ? task.scheduledInstances : [];
     const completedOccurrences = new Set(task.completedOccurrences || []);
     instances.forEach((instance, index) => {
-      if (!instance?.start || !instance?.end) return;
+      if (!instance?.start || !instance?.end) {return;}
       const start = new Date(instance.start);
       const end = new Date(instance.end);
-      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return;
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {return;}
       if (completedOccurrences.size) {
         const occurrenceIso = endOfDay(start).toISOString();
-        if (completedOccurrences.has(occurrenceIso)) return;
+        if (completedOccurrences.has(occurrenceIso)) {return;}
       }
       events.push({
         taskId: task.id,
@@ -95,7 +95,7 @@ export function buildUpdatedTaskForDrag(task, eventMeta, newStart, newEnd) {
   const instances = Array.isArray(task.scheduledInstances)
     ? task.scheduledInstances.map((instance) => ({ ...instance }))
     : [];
-  if (!instances.length) return null;
+  if (!instances.length) {return null;}
   let targetIndex = -1;
   if (eventMeta.occurrenceId) {
     targetIndex = instances.findIndex(
@@ -114,7 +114,7 @@ export function buildUpdatedTaskForDrag(task, eventMeta, newStart, newEnd) {
       return start.getTime() === originalStart && end.getTime() === originalEnd;
     });
   }
-  if (targetIndex < 0 || !instances[targetIndex]) return null;
+  if (targetIndex < 0 || !instances[targetIndex]) {return null;}
   instances[targetIndex] = {
     ...instances[targetIndex],
     start: newStart.toISOString(),
@@ -184,13 +184,13 @@ function updateDragTarget(dayCol, block, minutes) {
 
 async function persistDraggedEvent(eventMeta, dayKey, minutes, durationMinutes) {
   const task = state.tasksCache.find((candidate) => candidate.id === eventMeta.taskId);
-  if (!task) return;
+  if (!task) {return;}
   const startDate = getDateFromDayKey(dayKey);
-  if (!startDate) return;
+  if (!startDate) {return;}
   startDate.setMinutes(minutes, 0, 0);
   const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
   const updated = buildUpdatedTaskForDrag(task, eventMeta, startDate, endDate);
-  if (!updated) return;
+  if (!updated) {return;}
   await saveTask(updated);
   state.tasksCache = state.tasksCache.map((item) => (item.id === updated.id ? updated : item));
 }
@@ -226,17 +226,17 @@ function positionNowIndicator(indicator, now) {
 
 function updateNowIndicator() {
   const { calendarGrid } = domRefs;
-  if (!calendarGrid) return;
+  if (!calendarGrid) {return;}
   const viewMode = state.calendarViewMode || "week";
   const range = getCalendarRange(state.calendarAnchorDate, viewMode);
   calendarGrid
     .querySelectorAll('[data-test-skedpal="calendar-now-indicator"]')
     .forEach((node) => node.remove());
   const now = new Date();
-  if (now < range.start || now >= range.end) return;
+  if (now < range.start || now >= range.end) {return;}
   const todayKey = getDayKey(now);
   const todayCol = calendarGrid.querySelector(`[data-day="${todayKey}"]`);
-  if (!todayCol) return;
+  if (!todayCol) {return;}
   const indicator = buildNowIndicator();
   positionNowIndicator(indicator, now);
   todayCol.appendChild(indicator);
@@ -244,7 +244,7 @@ function updateNowIndicator() {
 
 function renderCalendarGrid(range, events, timeMapColorById) {
   const { calendarGrid } = domRefs;
-  if (!calendarGrid) return;
+  if (!calendarGrid) {return;}
   calendarGrid.innerHTML = "";
   calendarGrid.style.setProperty("--calendar-hour-height", `${HOUR_HEIGHT}px`);
 
@@ -298,7 +298,7 @@ function renderCalendarGrid(range, events, timeMapColorById) {
   const eventsByDay = new Map();
   events.forEach((event) => {
     const key = getDayKey(event.start);
-    if (!eventsByDay.has(key)) eventsByDay.set(key, []);
+    if (!eventsByDay.has(key)) {eventsByDay.set(key, []);}
     eventsByDay.get(key).push(event);
   });
 
@@ -376,16 +376,16 @@ function renderCalendarGrid(range, events, timeMapColorById) {
 }
 
 function clearDragState() {
-  if (!dragState) return;
+  if (!dragState) {return;}
   dragState.block?.classList?.remove("calendar-event--dragging");
   dragState.dayCol?.classList?.remove("calendar-day-col--drag-target");
   dragState = null;
 }
 
 function beginCalendarDrag(pending) {
-  if (!pending || pending !== pendingDrag) return;
+  if (!pending || pending !== pendingDrag) {return;}
   const { block, dayCol, eventMeta, pointerId, lastClientY } = pending;
-  if (!block || !dayCol || !eventMeta) return;
+  if (!block || !dayCol || !eventMeta) {return;}
   const rect = dayCol.getBoundingClientRect();
   const y = clampMinutes(lastClientY - rect.top, 0, rect.height);
   const pointerMinutes = (y / rect.height) * 24 * 60;
@@ -415,13 +415,13 @@ function beginCalendarDrag(pending) {
 }
 
 function scheduleCalendarDrag(event) {
-  if (event.target?.closest?.("a")) return;
+  if (event.target?.closest?.("a")) {return;}
   const target = event.target.closest?.(".calendar-event");
-  if (!target || event.button !== 0) return;
+  if (!target || event.button !== 0) {return;}
   const dayCol = target.closest?.(".calendar-day-col");
-  if (!dayCol || !dayCol.dataset.day) return;
+  if (!dayCol || !dayCol.dataset.day) {return;}
   const eventMeta = getEventMetaFromBlock(target);
-  if (!eventMeta) return;
+  if (!eventMeta) {return;}
   if (pendingDrag?.timer) {
     clearTimeout(pendingDrag.timer);
   }
@@ -450,10 +450,10 @@ function handleCalendarDragMove(event) {
       pendingDrag = null;
     }
   }
-  if (!dragState) return;
+  if (!dragState) {return;}
   const hovered = document.elementFromPoint(event.clientX, event.clientY);
   const nextDayCol = hovered?.closest?.(".calendar-day-col") || dragState.dayCol;
-  if (!nextDayCol || !nextDayCol.dataset.day) return;
+  if (!nextDayCol || !nextDayCol.dataset.day) {return;}
   if (nextDayCol !== dragState.dayCol) {
     dragState.dayCol?.classList?.remove("calendar-day-col--drag-target");
     nextDayCol.classList.add("calendar-day-col--drag-target");
@@ -479,7 +479,7 @@ async function handleCalendarDragEnd() {
     clearTimeout(pendingDrag.timer);
     pendingDrag = null;
   }
-  if (!dragState) return;
+  if (!dragState) {return;}
   const { eventMeta, dayCol, minutes, durationMinutes, originDayKey, originMinutes } =
     dragState;
   lastDragCompletedAt = Date.now();
@@ -498,18 +498,18 @@ async function handleCalendarDragEnd() {
 }
 
 function handleCalendarEventClick(event) {
-  if (event.target?.closest?.("a")) return;
-  if (lastDragMoved && Date.now() - lastDragCompletedAt < 250) return;
+  if (event.target?.closest?.("a")) {return;}
+  if (lastDragMoved && Date.now() - lastDragCompletedAt < 250) {return;}
   const block = event.target.closest?.(".calendar-event");
-  if (!block) return;
+  if (!block) {return;}
   const eventMeta = getEventMetaFromBlock(block);
-  if (!eventMeta) return;
+  if (!eventMeta) {return;}
   openCalendarEventModal(eventMeta);
 }
 
 function ensureCalendarDragHandlers() {
   const { calendarGrid } = domRefs;
-  if (!calendarGrid || calendarGrid.dataset.dragReady === "true") return;
+  if (!calendarGrid || calendarGrid.dataset.dragReady === "true") {return;}
   calendarGrid.dataset.dragReady = "true";
   calendarGrid.setAttribute("data-test-skedpal", "calendar-grid");
   calendarGrid.addEventListener("pointerdown", scheduleCalendarDrag);
@@ -521,7 +521,7 @@ function ensureCalendarDragHandlers() {
 
 function updateCalendarTitle(viewMode) {
   const { calendarTitle } = domRefs;
-  if (!calendarTitle) return;
+  if (!calendarTitle) {return;}
   calendarTitle.textContent = getCalendarTitle(state.calendarAnchorDate, viewMode);
 }
 
@@ -538,11 +538,11 @@ function updateViewToggle(viewMode) {
 export function focusCalendarNow(options = {}) {
   const { behavior = "auto" } = options;
   const calendarGrid = domRefs.calendarGrid || document.getElementById("calendar-grid");
-  if (!calendarGrid) return false;
+  if (!calendarGrid) {return false;}
   const indicator = calendarGrid.querySelector(
     '[data-test-skedpal="calendar-now-indicator"]'
   );
-  if (!indicator || typeof indicator.scrollIntoView !== "function") return false;
+  if (!indicator || typeof indicator.scrollIntoView !== "function") {return false;}
   indicator.scrollIntoView({ block: "center", inline: "nearest", behavior });
   return true;
 }

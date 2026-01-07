@@ -138,7 +138,7 @@ export function renderDayRows(container, rules = []) {
   const rulesMap = new Map();
   rules.forEach((r) => {
     const day = Number(r.day);
-    if (!rulesMap.has(day)) rulesMap.set(day, []);
+    if (!rulesMap.has(day)) {rulesMap.set(day, []);}
     rulesMap.get(day).push({ ...r, day });
   });
   rulesMap.forEach((blocks, day) => {
@@ -148,7 +148,7 @@ export function renderDayRows(container, rules = []) {
 
 export function renderTimeMaps(timeMaps) {
   const timeMapList = getTimeMapList();
-  if (!timeMapList) return;
+  if (!timeMapList) {return;}
   timeMapList.innerHTML = "";
   if (timeMaps.length === 0) {
     timeMapList.innerHTML =
@@ -211,7 +211,7 @@ export async function loadTimeMaps() {
     taskCount: usageCounts.get(tm.id) || 0
   }));
   timeMapsWithCounts.sort((a, b) => {
-    if (b.taskCount !== a.taskCount) return b.taskCount - a.taskCount;
+    if (b.taskCount !== a.taskCount) {return b.taskCount - a.taskCount;}
     return (a.name || "").localeCompare(b.name || "");
   });
   state.tasksTimeMapsCache = timeMaps;
@@ -225,7 +225,7 @@ export function renderTaskTimeMapOptions(
   defaultTimeMapId = state.settingsCache.defaultTimeMapId
 ) {
   const taskTimeMapOptions = getTaskTimeMapOptions();
-  if (!taskTimeMapOptions) return;
+  if (!taskTimeMapOptions) {return;}
   taskTimeMapOptions.innerHTML = "";
   if (timeMaps.length === 0) {
     taskTimeMapOptions.innerHTML = `<span class="text-xs text-slate-400">Create TimeMaps first.</span>`;
@@ -266,7 +266,7 @@ export function renderTimeMapOptions(
   selectedIds = [],
   timeMaps = state.tasksTimeMapsCache || []
 ) {
-  if (!container) return;
+  if (!container) {return;}
   container.innerHTML = "";
   const normalized = timeMaps.map(normalizeTimeMap);
   normalized.forEach((tm) => {
@@ -319,7 +319,7 @@ export function getTimeMapFormData() {
   const name = document.getElementById("timemap-name").value.trim();
   const timeMapColorInput = getTimeMapColorInput();
   const timeMapDayRows = getTimeMapDayRows();
-  if (!timeMapColorInput || !timeMapDayRows) return null;
+  if (!timeMapColorInput || !timeMapDayRows) {return null;}
   const color = timeMapColorInput.value || themeColors.green500;
   const rules = collectTimeMapRules(timeMapDayRows);
   if (rules.length === 0) {
@@ -336,18 +336,18 @@ export function getTimeMapFormData() {
 
 export function addTimeMapDay(day) {
   const timeMapDayRows = getTimeMapDayRows();
-  if (!timeMapDayRows) return;
+  if (!timeMapDayRows) {return;}
   const parsedDay = Number(day);
-  if (!Number.isFinite(parsedDay)) return;
+  if (!Number.isFinite(parsedDay)) {return;}
   const exists = timeMapDayRows.querySelector(`[data-day-row="${parsedDay}"]`);
-  if (exists) return;
+  if (exists) {return;}
   timeMapDayRows.appendChild(createDayRow(parsedDay, []));
 }
 
 export async function handleTimeMapSubmit(event) {
   event.preventDefault();
   const timeMap = getTimeMapFormData();
-  if (!timeMap) return;
+  if (!timeMap) {return;}
   await saveTimeMap(timeMap);
   resetTimeMapForm();
   closeTimeMapForm();
@@ -357,7 +357,7 @@ export async function handleTimeMapSubmit(event) {
 export async function handleSetDefaultTimeMap(event) {
   event.preventDefault();
   const timeMap = getTimeMapFormData();
-  if (!timeMap) return;
+  if (!timeMap) {return;}
   await saveTimeMap(timeMap);
   state.settingsCache = { ...state.settingsCache, defaultTimeMapId: timeMap.id };
   await saveSettings(state.settingsCache);
@@ -402,7 +402,7 @@ export function closeTimeMapForm() {
 
 export async function handleTimeMapListClick(event, timeMaps) {
   const btn = event.target.closest("button");
-  if (!btn) return;
+  if (!btn) {return;}
   const editId = btn.dataset.edit;
   const deleteId = btn.dataset.delete;
   if (editId) {
@@ -424,7 +424,7 @@ export async function handleTimeMapListClick(event, timeMaps) {
     }
   } else if (deleteId) {
     const confirmRemove = confirm("Delete this TimeMap? Tasks using it will be updated.");
-    if (!confirmRemove) return;
+    if (!confirmRemove) {return;}
     await deleteTimeMap(deleteId);
     const timeMapsRaw = await getAllTimeMaps();
     const remainingTimeMaps = timeMapsRaw.map(normalizeTimeMap);
@@ -441,9 +441,9 @@ export async function handleTimeMapListClick(event, timeMaps) {
     const subsections = { ...(nextSettings.subsections || {}) };
     Object.entries(subsections).forEach(([sectionId, list]) => {
       const updatedList = (list || []).map((sub) => {
-        if (!Array.isArray(sub?.template?.timeMapIds)) return sub;
+        if (!Array.isArray(sub?.template?.timeMapIds)) {return sub;}
         const filtered = sub.template.timeMapIds.filter((id) => remainingIds.has(id));
-        if (filtered.length === sub.template.timeMapIds.length) return sub;
+        if (filtered.length === sub.template.timeMapIds.length) {return sub;}
         settingsChanged = true;
         return {
           ...sub,

@@ -42,11 +42,11 @@ export function getSectionById(id) {
 }
 
 export function getSectionName(id) {
-  if (!id) return "";
+  if (!id) {return "";}
   const section = getSectionById(id);
-  if (section?.name) return section.name;
-  if (id === "section-work-default") return "Work";
-  if (id === "section-personal-default") return "Personal";
+  if (section?.name) {return section.name;}
+  if (id === "section-work-default") {return "Work";}
+  if (id === "section-personal-default") {return "Personal";}
   return "";
 }
 
@@ -169,13 +169,13 @@ export function renderTaskSectionOptions(selected) {
   const noneOpt = document.createElement("option");
   noneOpt.value = "";
   noneOpt.textContent = "No section";
-  if (!selectedSection) noneOpt.selected = true;
+  if (!selectedSection) {noneOpt.selected = true;}
   taskSectionSelect.appendChild(noneOpt);
   sections.forEach((section) => {
     const opt = document.createElement("option");
     opt.value = section.id;
     opt.textContent = section.name;
-    if (selectedSection) opt.selected = selectedSection.id === section.id;
+    if (selectedSection) {opt.selected = selectedSection.id === section.id;}
     taskSectionSelect.appendChild(opt);
   });
   taskSectionSelect.disabled = false;
@@ -203,7 +203,7 @@ export function renderTaskSubsectionOptions(selected) {
       opt.value = sub.id;
       const prefix = depth > 0 ? `${"-- ".repeat(depth)}` : "";
       opt.textContent = `${prefix}${sub.name}`;
-      if (selectedSubsection) opt.selected = selectedSubsection.id === sub.id;
+      if (selectedSubsection) {opt.selected = selectedSubsection.id === sub.id;}
       taskSubsectionSelect.appendChild(opt);
       addOptions(sub.id, depth + 1);
     });
@@ -223,7 +223,7 @@ export function getSubsectionTemplate(sectionId, subsectionId) {
 
 export function openSubsectionModal(sectionId, parentId = "", existingSubsectionId = "") {
   const { subsectionFormWrap } = domRefs;
-  if (!subsectionFormWrap) return;
+  if (!subsectionFormWrap) {return;}
   repeatStore.repeatTarget = "subsection";
   const subs = getSubsectionsFor(sectionId);
   const existing = subs.find((s) => s.id === existingSubsectionId);
@@ -263,7 +263,7 @@ export function openSubsectionModal(sectionId, parentId = "", existingSubsection
 
 export async function handleAddSection() {
   const name = sectionInput.value.trim();
-  if (!name) return;
+  if (!name) {return;}
   const sections = state.settingsCache.sections || [];
   if (sections.some((s) => s.name.toLowerCase() === name.toLowerCase())) {
     sectionInput.value = "";
@@ -284,15 +284,15 @@ export async function handleAddSection() {
 }
 
 export async function handleRemoveSection(id) {
-  if (id === "section-work-default" || id === "section-personal-default") return;
+  if (id === "section-work-default" || id === "section-personal-default") {return;}
   const sections = state.settingsCache.sections || [];
   const nextSections = sections.filter((s) => s.id !== id);
-  if (nextSections.length === sections.length) return;
+  if (nextSections.length === sections.length) {return;}
   const target = sections.find((s) => s.id === id);
   const confirmRemove = confirm(
     `Delete section "${target?.name || "Untitled section"}" and clear its tasks' section/subsection?`
   );
-  if (!confirmRemove) return;
+  if (!confirmRemove) {return;}
   const subsections = { ...(state.settingsCache.subsections || {}) };
   delete subsections[id];
   state.settingsCache = { ...state.settingsCache, sections: nextSections, subsections };
@@ -313,7 +313,7 @@ export async function handleRemoveSection(id) {
 
 export async function handleAddSubsection(sectionId, value, parentSubsectionId = "") {
   const name = value.trim();
-  if (!sectionId || !name) return;
+  if (!sectionId || !name) {return;}
   if (
     isStartAfterDeadline(subsectionTaskStartFromInput?.value || "", subsectionTaskDeadlineInput?.value || "")
   ) {
@@ -331,7 +331,7 @@ export async function handleAddSubsection(sectionId, value, parentSubsectionId =
         s.name.toLowerCase() === name.toLowerCase()
     )
   )
-    return;
+    {return;}
   const entry = {
     id: uuid(),
     name,
@@ -365,12 +365,12 @@ export async function handleAddSubsection(sectionId, value, parentSubsectionId =
 export async function handleRenameSection(sectionId) {
   const sections = state.settingsCache.sections || [];
   const section = sections.find((s) => s.id === sectionId);
-  if (!section) return;
+  if (!section) {return;}
   const next = prompt("Rename section", section.name || "");
-  if (next === null) return;
+  if (next === null) {return;}
   const name = next.trim();
-  if (!name || name.toLowerCase() === section.name.toLowerCase()) return;
-  if (sections.some((s) => s.id !== sectionId && s.name.toLowerCase() === name.toLowerCase())) return;
+  if (!name || name.toLowerCase() === section.name.toLowerCase()) {return;}
+  if (sections.some((s) => s.id !== sectionId && s.name.toLowerCase() === name.toLowerCase())) {return;}
   const updatedSections = sections.map((s) => (s.id === sectionId ? { ...s, name } : s));
   state.settingsCache = { ...state.settingsCache, sections: updatedSections };
   await saveSettings(state.settingsCache);
@@ -381,16 +381,16 @@ export async function handleRenameSection(sectionId) {
 }
 
 export async function handleRenameSubsection(sectionId, subsectionId) {
-  if (!sectionId || !subsectionId) return;
+  if (!sectionId || !subsectionId) {return;}
   const subsections = { ...(state.settingsCache.subsections || {}) };
   const list = subsections[sectionId] || [];
   const target = list.find((s) => s.id === subsectionId);
-  if (!target) return;
+  if (!target) {return;}
   const next = prompt("Rename subsection", target.name || "");
-  if (next === null) return;
+  if (next === null) {return;}
   const name = next.trim();
-  if (!name || name.toLowerCase() === target.name.toLowerCase()) return;
-  if (list.some((s) => s.id !== subsectionId && s.name.toLowerCase() === name.toLowerCase())) return;
+  if (!name || name.toLowerCase() === target.name.toLowerCase()) {return;}
+  if (list.some((s) => s.id !== subsectionId && s.name.toLowerCase() === name.toLowerCase())) {return;}
   const updatedList = list.map((s) => (s.id === subsectionId ? { ...s, name } : s));
   subsections[sectionId] = updatedList;
   state.settingsCache = { ...state.settingsCache, subsections };
@@ -401,7 +401,7 @@ export async function handleRenameSubsection(sectionId, subsectionId) {
 }
 
 export async function handleRemoveSubsection(sectionId, subsectionId) {
-  if (!sectionId || !subsectionId) return;
+  if (!sectionId || !subsectionId) {return;}
   const subsections = { ...(state.settingsCache.subsections || {}) };
   const list = subsections[sectionId] || [];
   const target = list.find((s) => s.id === subsectionId);
@@ -413,11 +413,11 @@ export async function handleRemoveSubsection(sectionId, subsectionId) {
         ? { ...s, parentId }
         : s
     );
-  if (nextList.length === list.length) return;
+  if (nextList.length === list.length) {return;}
   const confirmRemove = confirm(
     `Delete subsection "${target?.name || "Untitled subsection"}" and move its tasks to the parent subsection?`
   );
-  if (!confirmRemove) return;
+  if (!confirmRemove) {return;}
   subsections[sectionId] = nextList;
   state.settingsCache = { ...state.settingsCache, subsections };
   await saveSettings(state.settingsCache);
@@ -448,7 +448,7 @@ export async function handleToggleSectionFavorite(sectionId) {
 }
 
 export async function handleToggleSubsectionFavorite(sectionId, subsectionId) {
-  if (!sectionId || !subsectionId) return;
+  if (!sectionId || !subsectionId) {return;}
   const subsections = { ...(state.settingsCache.subsections || {}) };
   const list = subsections[sectionId] || [];
   const nextOrder = getNextFavoriteOrder(state.settingsCache);
@@ -463,7 +463,7 @@ export async function handleToggleSubsectionFavorite(sectionId, subsectionId) {
 }
 
 export function renderFavoriteShortcuts() {
-  if (!sidebarFavorites) return;
+  if (!sidebarFavorites) {return;}
   sidebarFavorites.innerHTML = "";
   sidebarFavorites.classList.remove("hidden");
   const sections = (state.settingsCache.sections || []).filter((s) => s.favorite);
@@ -496,7 +496,7 @@ export function renderFavoriteShortcuts() {
   ].sort((a, b) => {
     const aOrder = Number.isFinite(a.favoriteOrder) ? a.favoriteOrder : Number.MAX_SAFE_INTEGER;
     const bOrder = Number.isFinite(b.favoriteOrder) ? b.favoriteOrder : Number.MAX_SAFE_INTEGER;
-    if (aOrder !== bOrder) return aOrder - bOrder;
+    if (aOrder !== bOrder) {return aOrder - bOrder;}
     return a.label.localeCompare(b.label);
   });
 
@@ -524,7 +524,7 @@ export function renderFavoriteShortcuts() {
     btn.dataset.favJump = "true";
     btn.dataset.favType = item.type;
     btn.dataset.sectionId = item.sectionId || "";
-    if (item.subsectionId) btn.dataset.subsectionId = item.subsectionId;
+    if (item.subsectionId) {btn.dataset.subsectionId = item.subsectionId;}
     btn.innerHTML = `
       <span class="sidebar-fav-dot" aria-hidden="true" data-test-skedpal="sidebar-fav-dot" style="background:${item.dot};box-shadow:0 0 0 2px ${item.glow};"></span>
       <span class="sidebar-fav-text">
@@ -549,7 +549,7 @@ export async function updateFavoriteOrder(orderedKeys = []) {
 }
 
 export function closeSubsectionModal() {
-  if (subsectionFormWrap) subsectionFormWrap.classList.add("hidden");
+  if (subsectionFormWrap) {subsectionFormWrap.classList.add("hidden");}
   editingSubsectionId = "";
   editingSectionId = "";
   repeatStore.subsectionRepeatSelection = { type: "none" };
@@ -568,7 +568,7 @@ export async function handleSubsectionFormSubmit() {
   const sectionId = subsectionSectionIdInput.value || editingSectionId || "";
   const parentId = subsectionParentIdInput.value || "";
   const name = subsectionNameInput.value || "";
-  if (!sectionId || !name) return;
+  if (!sectionId || !name) {return;}
   if (
     isStartAfterDeadline(subsectionTaskStartFromInput?.value || "", subsectionTaskDeadlineInput?.value || "")
   ) {

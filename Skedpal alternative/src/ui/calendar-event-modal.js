@@ -14,7 +14,7 @@ let activeTask = null;
 let activeEventMeta = null;
 
 function resolveRef(current, id) {
-  if (current) return current;
+  if (current) {return current;}
   return document.getElementById(id);
 }
 
@@ -52,7 +52,7 @@ function getSectionLabel(sectionId) {
 }
 
 function getSubsectionLabel(sectionId, subsectionId) {
-  if (!sectionId || !subsectionId) return "";
+  if (!sectionId || !subsectionId) {return "";}
   const list = state.settingsCache?.subsections?.[sectionId] || [];
   const match = list.find((subsection) => subsection.id === subsectionId);
   return match?.name || "";
@@ -103,7 +103,7 @@ function renderDetailRows(task, eventMeta) {
     domRefs.calendarEventModalDetails,
     "calendar-event-modal-details"
   );
-  if (!calendarEventModalDetails) return;
+  if (!calendarEventModalDetails) {return;}
   calendarEventModalDetails.innerHTML = "";
   buildDetailRows(task, eventMeta).forEach((row, index) => {
     const wrap = document.createElement("div");
@@ -134,9 +134,9 @@ function renderDetailRows(task, eventMeta) {
 
 function setActionButtonIcons() {
   const calendarEventModalActionButtons = domRefs.calendarEventModalActionButtons || [];
-  if (!calendarEventModalActionButtons.length) return;
+  if (!calendarEventModalActionButtons.length) {return;}
   calendarEventModalActionButtons.forEach((button) => {
-    if (!button?.dataset?.calendarEventAction) return;
+    if (!button?.dataset?.calendarEventAction) {return;}
     if (button.dataset.calendarEventAction === "complete") {
       button.innerHTML = checkboxIconSvg;
       button.title = "Complete";
@@ -158,7 +158,7 @@ function setActionButtonIcons() {
 
 function triggerTaskButton(selector) {
   const btn = document.querySelector(selector);
-  if (!btn || typeof btn.click !== "function") return false;
+  if (!btn || typeof btn.click !== "function") {return false;}
   btn.click();
   return true;
 }
@@ -168,7 +168,7 @@ function emitTasksUpdated() {
 }
 
 async function fallbackCompleteToggle() {
-  if (!activeTask) return;
+  if (!activeTask) {return;}
   const completed = !activeTask.completed;
   await saveTask({
     ...activeTask,
@@ -180,7 +180,7 @@ async function fallbackCompleteToggle() {
 }
 
 async function fallbackDefer(dateValue) {
-  if (!activeTask) return;
+  if (!activeTask) {return;}
   const parsed = parseLocalDateInput(dateValue);
   await saveTask({
     ...activeTask,
@@ -196,7 +196,7 @@ async function fallbackDefer(dateValue) {
 
 function closeCalendarEventModal() {
   const calendarEventModal = domRefs.calendarEventModal;
-  if (!calendarEventModal) return;
+  if (!calendarEventModal) {return;}
   if (calendarEventModal.classList) {
     calendarEventModal.classList.add("hidden");
   }
@@ -209,9 +209,9 @@ function closeCalendarEventModal() {
 
 export function openCalendarEventModal(eventMeta) {
   const calendarEventModal = resolveRef(domRefs.calendarEventModal, "calendar-event-modal");
-  if (!calendarEventModal || !eventMeta) return;
+  if (!calendarEventModal || !eventMeta) {return;}
   const task = state.tasksCache.find((entry) => entry.id === eventMeta.taskId);
-  if (!task) return;
+  if (!task) {return;}
   activeTask = task;
   activeEventMeta = eventMeta;
   const calendarEventModalTitle = resolveRef(
@@ -252,7 +252,7 @@ export function openCalendarEventModal(eventMeta) {
 }
 
 function handleCompleteAction() {
-  if (!activeTask) return;
+  if (!activeTask) {return;}
   if (activeTask.repeat?.type && activeTask.repeat.type !== "none" && activeEventMeta?.start) {
     const occurrenceDate = new Date(activeEventMeta.start);
     occurrenceDate.setHours(23, 59, 59, 999);
@@ -275,13 +275,13 @@ function handleCompleteAction() {
 }
 
 function handleZoomAction() {
-  if (!activeTask) return;
+  if (!activeTask) {return;}
   triggerTaskButton(`[data-zoom-task="${activeTask.id}"]`);
   closeCalendarEventModal();
 }
 
 function handleEditAction() {
-  if (!activeTask) return;
+  if (!activeTask) {return;}
   window.dispatchEvent(
     new CustomEvent("skedpal:task-edit", {
       detail: {
@@ -294,7 +294,7 @@ function handleEditAction() {
 }
 
 function handleDeleteAction() {
-  if (!activeTask) return;
+  if (!activeTask) {return;}
   triggerTaskButton(`[data-delete="${activeTask.id}"]`);
   closeCalendarEventModal();
 }
@@ -304,7 +304,7 @@ function handleDeferAction() {
     domRefs.calendarEventModalDeferInput,
     "calendar-event-modal-defer-date"
   );
-  if (!calendarEventModalDeferInput) return;
+  if (!calendarEventModalDeferInput) {return;}
   if (typeof calendarEventModalDeferInput.showPicker === "function") {
     calendarEventModalDeferInput.showPicker();
   } else {
@@ -313,7 +313,7 @@ function handleDeferAction() {
 }
 
 function handleDeferChange(event) {
-  if (!event?.target?.value) return;
+  if (!event?.target?.value) {return;}
   fallbackDefer(event.target.value);
   closeCalendarEventModal();
 }
@@ -330,7 +330,7 @@ export function initCalendarEventModal() {
     domRefs.calendarEventModalDeferInput,
     "calendar-event-modal-defer-date"
   );
-  if (!calendarEventModal) return;
+  if (!calendarEventModal) {return;}
   setActionButtonIcons();
   calendarEventModalCloseButtons.forEach((btn) => {
     btn.addEventListener("click", closeCalendarEventModal);

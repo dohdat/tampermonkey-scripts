@@ -13,7 +13,7 @@ async function persistSchedule(tasks, placements, unscheduled, ignored) {
       .map((task) => task.subtaskParentId)
   );
   const byTask = placements.reduce((map, placement) => {
-    if (!map.has(placement.taskId)) map.set(placement.taskId, []);
+    if (!map.has(placement.taskId)) {map.set(placement.taskId, []);}
     map.get(placement.taskId).push(placement);
     return map;
   }, new Map());
@@ -31,14 +31,15 @@ async function persistSchedule(tasks, placements, unscheduled, ignored) {
     task.scheduledStart = taskPlacements[0]?.start?.toISOString() || null;
     task.scheduledEnd = taskPlacements[taskPlacements.length - 1]?.end?.toISOString() || null;
     task.scheduledTimeMapId = taskPlacements[0]?.timeMapId || null;
-    task.scheduleStatus =
-      parentIds.has(task.id)
-        ? null
-        : ignored.includes(task.id) && taskPlacements.length === 0
-          ? "ignored"
-          : taskPlacements.length > 0
-            ? "scheduled"
-            : "unscheduled";
+    if (parentIds.has(task.id)) {
+      task.scheduleStatus = null;
+    } else if (ignored.includes(task.id) && taskPlacements.length === 0) {
+      task.scheduleStatus = "ignored";
+    } else if (taskPlacements.length > 0) {
+      task.scheduleStatus = "scheduled";
+    } else {
+      task.scheduleStatus = "unscheduled";
+    }
     task.lastScheduledRun = timestamp;
     await saveTask(task);
   }

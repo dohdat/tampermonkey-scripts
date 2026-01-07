@@ -21,12 +21,12 @@ class FakeElement {
       remove: (...names) => names.forEach((n) => this._classSet.delete(n)),
       toggle: (name, force) => {
         if (force === undefined) {
-          if (this._classSet.has(name)) this._classSet.delete(name);
-          else this._classSet.add(name);
+          if (this._classSet.has(name)) {this._classSet.delete(name);}
+          else {this._classSet.add(name);}
           return;
         }
-        if (force) this._classSet.add(name);
-        else this._classSet.delete(name);
+        if (force) {this._classSet.add(name);}
+        else {this._classSet.delete(name);}
       },
       contains: (name) => this._classSet.has(name)
     };
@@ -82,10 +82,10 @@ class FakeElement {
 }
 
 function findFirst(root, predicate) {
-  if (predicate(root)) return root;
+  if (predicate(root)) {return root;}
   for (const child of root.children || []) {
     const found = findFirst(child, predicate);
-    if (found) return found;
+    if (found) {return found;}
   }
   return null;
 }

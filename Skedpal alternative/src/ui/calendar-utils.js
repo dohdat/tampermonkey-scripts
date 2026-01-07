@@ -45,7 +45,7 @@ export function getCalendarTitle(anchorDate, viewMode) {
 
 export function getDayKey(date) {
   const d = new Date(date);
-  if (Number.isNaN(d.getTime())) return "";
+  if (Number.isNaN(d.getTime())) {return "";}
   const year = d.getFullYear();
   const month = `${d.getMonth() + 1}`.padStart(2, "0");
   const day = `${d.getDate()}`.padStart(2, "0");
@@ -61,24 +61,24 @@ export function getMinutesIntoDay(date) {
 }
 
 export function getDateFromDayKey(dayKey) {
-  if (typeof dayKey !== "string") return null;
+  if (typeof dayKey !== "string") {return null;}
   const [year, month, day] = dayKey.split("-").map((value) => Number(value));
-  if (!year || !month || !day) return null;
+  if (!year || !month || !day) {return null;}
   const date = new Date(year, month - 1, day);
-  if (Number.isNaN(date.getTime())) return null;
+  if (Number.isNaN(date.getTime())) {return null;}
   date.setHours(0, 0, 0, 0);
   return date;
 }
 
 export function roundMinutesToStep(minutes, step = 15) {
-  if (!Number.isFinite(minutes)) return 0;
+  if (!Number.isFinite(minutes)) {return 0;}
   const safeStep = Number.isFinite(step) && step > 0 ? step : 15;
   return Math.round(minutes / safeStep) * safeStep;
 }
 
 export function clampMinutes(minutes, min, max) {
-  if (!Number.isFinite(minutes)) return min;
-  if (!Number.isFinite(min)) return minutes;
-  if (!Number.isFinite(max)) return minutes;
+  if (!Number.isFinite(minutes)) {return min;}
+  if (!Number.isFinite(min)) {return minutes;}
+  if (!Number.isFinite(max)) {return minutes;}
   return Math.min(Math.max(minutes, min), max);
 }

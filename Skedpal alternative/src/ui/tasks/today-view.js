@@ -26,7 +26,7 @@ function getTodayStart(task, dayStart, dayEnd) {
     })
     .filter(Boolean)
     .find((start) => start >= dayStart && start <= dayEnd);
-  if (todayInstance) return todayInstance;
+  if (todayInstance) {return todayInstance;}
   if (task.scheduledStart) {
     const start = new Date(task.scheduledStart);
     if (!Number.isNaN(start) && start >= dayStart && start <= dayEnd) {
@@ -38,7 +38,7 @@ function getTodayStart(task, dayStart, dayEnd) {
 
 export function renderTodayView(tasks, timeMaps, options = {}) {
   const list = domRefs.todayList;
-  if (!list) return;
+  if (!list) {return;}
   list.innerHTML = "";
   const now = options.now ? new Date(options.now) : new Date();
   const collapsedTasks =
@@ -76,8 +76,8 @@ export function renderTodayView(tasks, timeMaps, options = {}) {
   }, new Map());
   const depthMemo = new Map();
   const getTaskDepthById = (taskId) => {
-    if (!taskId) return 0;
-    if (depthMemo.has(taskId)) return depthMemo.get(taskId);
+    if (!taskId) {return 0;}
+    if (depthMemo.has(taskId)) {return depthMemo.get(taskId);}
     const parentId = parentById.get(taskId);
     if (!parentId) {
       depthMemo.set(taskId, 0);
@@ -89,15 +89,15 @@ export function renderTodayView(tasks, timeMaps, options = {}) {
   };
   const childrenByParent = todayTasks.reduce((map, task) => {
     const pid = task.subtaskParentId || "";
-    if (!pid) return map;
-    if (!map.has(pid)) map.set(pid, []);
+    if (!pid) {return map;}
+    if (!map.has(pid)) {map.set(pid, []);}
     map.get(pid).push(task);
     return map;
   }, new Map());
   const durationMemo = new Map();
   const computeTotalDuration = (task) => {
-    if (!task?.id) return 0;
-    if (durationMemo.has(task.id)) return durationMemo.get(task.id);
+    if (!task?.id) {return 0;}
+    if (durationMemo.has(task.id)) {return durationMemo.get(task.id);}
     const children = childrenByParent.get(task.id) || [];
     if (children.length === 0) {
       const own = Number(task.durationMin) || 0;

@@ -405,20 +405,28 @@ export async function handleRemoveSubsection(sectionId, subsectionId) {
   if (!sectionId || !subsectionId) return;
   const subsections = { ...(state.settingsCache.subsections || {}) };
   const list = subsections[sectionId] || [];
-  const nextList = list.filter((s) => s.id !== subsectionId);
-  if (nextList.length === list.length) return;
   const target = list.find((s) => s.id === subsectionId);
+  const parentId = target?.parentId || "";
+  const nextList = list
+    .filter((s) => s.id !== subsectionId)
+    .map((s) =>
+      s.parentId === subsectionId
+        ? { ...s, parentId }
+        : s
+    );
+  if (nextList.length === list.length) return;
   const confirmRemove = confirm(
-    `Delete subsection "${target?.name || "Untitled subsection"}" and clear its tasks from this subsection?`
+    `Delete subsection "${target?.name || "Untitled subsection"}" and move its tasks to the parent subsection?`
   );
   if (!confirmRemove) return;
   subsections[sectionId] = nextList;
   state.settingsCache = { ...state.settingsCache, subsections };
   await saveSettings(state.settingsCache);
   const tasks = await getAllTasks();
+  const nextSubsectionId = parentId || "";
   const updates = tasks
     .filter((t) => t.section === sectionId && t.subsection === subsectionId)
-    .map((t) => saveTask({ ...t, subsection: "" }));
+    .map((t) => saveTask({ ...t, subsection: nextSubsectionId }));
   if (updates.length) {
     await Promise.all(updates);
   }

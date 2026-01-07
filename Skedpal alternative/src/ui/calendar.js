@@ -13,6 +13,9 @@ import { saveTask } from "../data/db.js";
 
 const HOUR_HEIGHT = 120;
 const DRAG_STEP_MINUTES = 15;
+const EVENT_GUTTER = 2;
+const EVENT_EDGE_INSET = 8;
+const EVENT_OVERLAP_INSET = 4;
 let nowIndicatorTimer = null;
 let dragState = null;
 
@@ -30,6 +33,74 @@ function formatEventTimeRange(start, end) {
 
 function getMinutesIntoDay(date) {
   return date.getHours() * 60 + date.getMinutes();
+}
+
+function normalizeEventToDay(event, dayStart, dayEnd) {
+  const eventStart = new Date(Math.max(event.start.getTime(), dayStart.getTime()));
+  const eventEnd = new Date(Math.min(event.end.getTime(), dayEnd.getTime()));
+  const startMinutes = getMinutesIntoDay(eventStart);
+  const endMinutes = getMinutesIntoDay(eventEnd);
+  if (endMinutes <= startMinutes) return null;
+  return {
+    event,
+    eventStart,
+    eventEnd,
+    startMinutes,
+    endMinutes
+  };
+}
+
+function buildOverlapGroups(items) {
+  const groups = [];
+  const sorted = [...items].sort((a, b) => {
+    if (a.startMinutes !== b.startMinutes) return a.startMinutes - b.startMinutes;
+    return a.endMinutes - b.endMinutes;
+  });
+  let current = null;
+  sorted.forEach((item) => {
+    if (!current || item.startMinutes >= current.endMinutes) {
+      current = { items: [item], endMinutes: item.endMinutes };
+      groups.push(current);
+      return;
+    }
+    current.items.push(item);
+    current.endMinutes = Math.max(current.endMinutes, item.endMinutes);
+  });
+  return groups;
+}
+
+export function buildDayEventLayout(dayEvents, day) {
+  const dayStart = new Date(day);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = addCalendarDays(dayStart, 1);
+  const normalized = dayEvents
+    .map((event) => normalizeEventToDay(event, dayStart, dayEnd))
+    .filter(Boolean);
+  const groups = buildOverlapGroups(normalized);
+  const layout = [];
+  groups.forEach((group) => {
+    const columns = [];
+    const groupLayout = [];
+    group.items.forEach((item) => {
+      let columnIndex = columns.findIndex((end) => item.startMinutes >= end);
+      if (columnIndex < 0) {
+        columns.push(item.endMinutes);
+        columnIndex = columns.length - 1;
+      } else {
+        columns[columnIndex] = item.endMinutes;
+      }
+      groupLayout.push({
+        ...item,
+        columnIndex,
+        columnCount: columns.length
+      });
+    });
+    groupLayout.forEach((item) => {
+      item.columnCount = columns.length;
+      layout.push(item);
+    });
+  });
+  return layout;
 }
 
 export function getCalendarEventStyles(event, timeMapColorById) {
@@ -294,24 +365,33 @@ function renderCalendarGrid(range, events, timeMapColorById) {
     col.setAttribute("data-test-skedpal", "calendar-day-col");
     col.dataset.day = dayKey;
     const dayEvents = eventsByDay.get(dayKey) || [];
-    dayEvents.forEach((event) => {
-      const eventStart = new Date(Math.max(event.start.getTime(), day.getTime()));
-      const dayEnd = addCalendarDays(day, 1);
-      const eventEnd = new Date(Math.min(event.end.getTime(), dayEnd.getTime()));
-      const startMinutes = eventStart.getHours() * 60 + eventStart.getMinutes();
-      const endMinutes = eventEnd.getHours() * 60 + eventEnd.getMinutes();
-      const top = (startMinutes / 60) * HOUR_HEIGHT;
-      const height = Math.max(20, ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT);
+    const layout = buildDayEventLayout(dayEvents, day);
+    layout.forEach((item) => {
+      const top = (item.startMinutes / 60) * HOUR_HEIGHT;
+      const height = Math.max(
+        20,
+        ((item.endMinutes - item.startMinutes) / 60) * HOUR_HEIGHT
+      );
       const block = document.createElement("div");
       block.className = "calendar-event";
       block.style.top = `${top}px`;
       block.style.height = `${height}px`;
-      block.dataset.eventTaskId = event.taskId;
-      block.dataset.eventOccurrenceId = event.occurrenceId || "";
-      block.dataset.eventStart = event.start.toISOString();
-      block.dataset.eventEnd = event.end.toISOString();
-      block.dataset.eventInstanceIndex = String(event.instanceIndex);
-      const styles = getCalendarEventStyles(event, timeMapColorById);
+      if (item.columnCount > 1) {
+        const inset = EVENT_OVERLAP_INSET;
+        const totalGutter = EVENT_GUTTER * (item.columnCount - 1);
+        block.style.width = `calc((100% - ${totalGutter}px) / ${item.columnCount} - ${inset * 2}px)`;
+        block.style.left = `calc(${item.columnIndex} * ((100% - ${totalGutter}px) / ${item.columnCount}) + ${item.columnIndex * EVENT_GUTTER}px + ${inset}px)`;
+        block.style.right = "auto";
+      } else {
+        block.style.left = `${EVENT_EDGE_INSET}px`;
+        block.style.right = `${EVENT_EDGE_INSET}px`;
+      }
+      block.dataset.eventTaskId = item.event.taskId;
+      block.dataset.eventOccurrenceId = item.event.occurrenceId || "";
+      block.dataset.eventStart = item.event.start.toISOString();
+      block.dataset.eventEnd = item.event.end.toISOString();
+      block.dataset.eventInstanceIndex = String(item.event.instanceIndex);
+      const styles = getCalendarEventStyles(item.event, timeMapColorById);
       if (styles) {
         block.style.backgroundColor = styles.backgroundColor;
         block.style.borderColor = styles.borderColor;
@@ -319,11 +399,11 @@ function renderCalendarGrid(range, events, timeMapColorById) {
       block.setAttribute("data-test-skedpal", "calendar-event");
       const title = document.createElement("div");
       title.className = "calendar-event-title";
-      title.textContent = event.title;
+      title.textContent = item.event.title;
       title.setAttribute("data-test-skedpal", "calendar-event-title");
       const time = document.createElement("div");
       time.className = "calendar-event-time";
-      time.textContent = formatEventTimeRange(event.start, event.end);
+      time.textContent = formatEventTimeRange(item.eventStart, item.eventEnd);
       time.setAttribute("data-test-skedpal", "calendar-event-time");
       block.appendChild(title);
       block.appendChild(time);

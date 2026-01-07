@@ -78,10 +78,27 @@ function createDayRow(day, blocks = []) {
 
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
-    removeBtn.textContent = "x";
     removeBtn.title = "Remove block";
-    removeBtn.className =
-      "h-6 w-6 rounded-full border border-slate-700 text-xs font-semibold text-slate-200 hover:border-orange-400 hover:text-orange-300";
+    removeBtn.className = "modal-close-btn modal-close-btn--sm";
+    removeBtn.setAttribute("aria-label", "Remove block");
+    removeBtn.innerHTML = `
+      <svg
+        class="modal-close-icon modal-close-icon--sm"
+        aria-hidden="true"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        data-test-skedpal="modal-close-icon"
+      >
+        <path
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M6 18 17.94 6M18 18 6.06 6"
+        ></path>
+      </svg>
+      <span class="sr-only" data-test-skedpal="modal-close-label">Remove block</span>
+    `;
     removeBtn.setAttribute("data-test-skedpal", "timemap-block-remove");
     removeBtn.addEventListener("click", () => {
       wrapper.remove();

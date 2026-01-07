@@ -8,6 +8,7 @@ import {
   isStartAfterDeadline,
   normalizeTimeMap,
   normalizeSubtaskScheduleMode,
+  toggleClearButtonVisibility,
   uuid,
   parseLocalDateInput
 } from "../utils.js";
@@ -44,6 +45,7 @@ const {
   taskDeadlineInput,
   taskStartFromInput,
   taskLinkInput,
+  taskLinkClearBtn,
   taskMinBlockInput,
   taskParentIdInput,
   taskSectionSelect,
@@ -57,6 +59,10 @@ const {
   scheduleSummary
 } = domRefs;
 import { openTaskForm, closeTaskForm } from "../ui.js";
+
+function syncTaskLinkClear() {
+  toggleClearButtonVisibility(taskLinkInput, taskLinkClearBtn);
+}
 
 export async function loadTasks() {
   const [tasksRaw, timeMapsRaw] = await Promise.all([getAllTasks(), getAllTimeMaps()]);
@@ -170,6 +176,7 @@ export function resetTaskForm(shouldClose = false) {
   taskParentIdInput.value = "";
   document.getElementById("task-title").value = "";
   taskLinkInput.value = "";
+  syncTaskLinkClear();
   document.getElementById("task-duration").value = "30";
   taskMinBlockInput.value = "30";
   document.getElementById("task-priority").value = "3";
@@ -198,6 +205,7 @@ export function startTaskInSection(sectionId = "", subsectionId = "") {
   const templateSubtaskScheduleMode = normalizeSubtaskScheduleMode(template?.subtaskScheduleMode);
   document.getElementById("task-title").value = template?.title || "";
   taskLinkInput.value = template?.link || "";
+  syncTaskLinkClear();
   document.getElementById("task-duration").value = template?.durationMin || "30";
   taskMinBlockInput.value = template?.minBlockMin || "30";
   document.getElementById("task-priority").value = String(template?.priority || 3);
@@ -223,6 +231,7 @@ export function startSubtaskFromTask(task) {
   taskParentIdInput.value = task.id;
   document.getElementById("task-title").value = task.title || "";
   taskLinkInput.value = task.link || "";
+  syncTaskLinkClear();
   document.getElementById("task-duration").value = task.durationMin || "30";
   taskMinBlockInput.value = task.minBlockMin || task.durationMin || "30";
   document.getElementById("task-priority").value = String(task.priority || 3);
@@ -377,6 +386,7 @@ export async function handleTaskListClick(event) {
       document.getElementById("task-id").value = task.id;
       document.getElementById("task-title").value = task.title;
       taskLinkInput.value = task.link || "";
+      syncTaskLinkClear();
       document.getElementById("task-duration").value = task.durationMin;
       taskMinBlockInput.value = task.minBlockMin || "30";
       document.getElementById("task-priority").value = String(task.priority);

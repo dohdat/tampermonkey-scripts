@@ -42,7 +42,7 @@ import {
   switchView,
   goHome
 } from "./navigation.js";
-import { parseZoomFromUrl, parseViewFromUrl } from "./utils.js";
+import { parseZoomFromUrl, parseViewFromUrl, toggleClearButtonVisibility } from "./utils.js";
 import { closeTaskForm } from "./ui.js";
 import { indentTaskUnderPrevious, outdentTask } from "./tasks/tasks-sortable.js";
 import { state } from "./state/page-state.js";
@@ -55,6 +55,8 @@ const {
   taskFormWrap,
   taskToggle,
   taskModalCloseButtons,
+  taskLinkInput,
+  taskLinkClearBtn,
   sectionAddBtn,
   sectionFormToggle,
   sectionInput,
@@ -95,6 +97,16 @@ function registerEventListeners() {
     resetTimeMapForm();
     closeTimeMapForm();
   });
+  if (taskLinkInput && taskLinkClearBtn) {
+    const syncClear = () => toggleClearButtonVisibility(taskLinkInput, taskLinkClearBtn);
+    taskLinkInput.addEventListener("input", syncClear);
+    taskLinkClearBtn.addEventListener("click", () => {
+      taskLinkInput.value = "";
+      taskLinkInput.dispatchEvent(new Event("input", { bubbles: true }));
+      taskLinkInput.focus();
+    });
+    syncClear();
+  }
 
   rescheduleButtons.forEach((btn) => btn.addEventListener("click", handleReschedule));
 

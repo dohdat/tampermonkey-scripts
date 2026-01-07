@@ -109,6 +109,13 @@ export function formatDurationShort(minutes) {
   return `${Math.max(1, mins)}m`;
 }
 
+export function toggleClearButtonVisibility(input, button) {
+  if (!input || !button) return false;
+  const hasValue = Boolean((input.value || "").trim());
+  button.classList.toggle("hidden", !hasValue);
+  return hasValue;
+}
+
 export function getWeekdayShortLabel(day) {
   return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][day] || "Sun";
 }

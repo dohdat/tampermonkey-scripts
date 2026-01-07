@@ -44,10 +44,20 @@ function applyTaskCardBaseStyles(taskCard, task, depth, timeMapById) {
 }
 
 function buildTitleWrap(task, options) {
-  const { hasChildren, isCollapsed, isLongTitle, titleMarkup, detailsOpen, displayDurationMin } =
-    options;
+  const {
+    hasChildren,
+    isCollapsed,
+    isLongTitle,
+    isSubtask,
+    titleMarkup,
+    detailsOpen,
+    displayDurationMin
+  } = options;
   const titleWrap = document.createElement("h3");
-  titleWrap.className = "task-title-main text-base font-semibold";
+  const titleWeightClass = isSubtask && !hasChildren ? "font-normal" : "font-semibold";
+  const titleSizeClass = isSubtask ? "text-sm" : "text-base";
+  titleWrap.className = `task-title-main ${titleSizeClass} ${titleWeightClass}`;
+  titleWrap.setAttribute("data-test-skedpal", "task-title-wrap");
   if (hasChildren) {
     const collapseTaskBtn = document.createElement("button");
     collapseTaskBtn.type = "button";
@@ -304,6 +314,7 @@ export function renderTaskCard(task, context) {
     hasChildren,
     isCollapsed,
     isLongTitle,
+    isSubtask: depth > 0,
     titleMarkup,
     detailsOpen,
     displayDurationMin

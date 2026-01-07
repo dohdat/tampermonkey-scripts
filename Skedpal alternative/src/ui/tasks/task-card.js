@@ -43,6 +43,47 @@ function applyTaskCardBaseStyles(taskCard, task, depth, timeMapById) {
   }
 }
 
+function buildTaskTitleText(task, titleMarkup, isSubtask) {
+  const titleTextWrap = document.createElement("div");
+  titleTextWrap.className = "task-title-text";
+  titleTextWrap.setAttribute("data-test-skedpal", "task-title");
+  if (isSubtask) {
+    titleTextWrap.classList.add("task-title-text--subtask");
+  }
+  titleTextWrap.innerHTML = titleMarkup;
+  if (task.completed) {
+    titleTextWrap.style.opacity = "0.8";
+    titleTextWrap.style.textDecoration = "line-through";
+    titleTextWrap.style.textDecorationColor = themeColors.green500;
+  }
+  return titleTextWrap;
+}
+
+function buildTaskCollapseButton(task, isCollapsed) {
+  const collapseTaskBtn = document.createElement("button");
+  collapseTaskBtn.type = "button";
+  collapseTaskBtn.dataset.toggleTaskCollapse = task.id;
+  collapseTaskBtn.className = "title-icon-btn";
+  collapseTaskBtn.title = "Expand/collapse subtasks";
+  collapseTaskBtn.setAttribute("data-test-skedpal", "task-collapse-btn");
+  collapseTaskBtn.innerHTML = isCollapsed ? caretRightIconSvg : caretDownIconSvg;
+  return collapseTaskBtn;
+}
+
+function buildTaskCompleteButton(task) {
+  const completeBtn = document.createElement("button");
+  completeBtn.type = "button";
+  completeBtn.dataset.completeTask = task.id;
+  completeBtn.className = "title-icon-btn task-complete-btn";
+  completeBtn.setAttribute("data-test-skedpal", "task-complete-btn");
+  completeBtn.title = task.completed ? "Mark incomplete" : "Mark completed";
+  completeBtn.innerHTML = task.completed ? checkboxCheckedIconSvg : checkboxIconSvg;
+  if (task.completed) {
+    completeBtn.classList.add("task-complete-btn--checked");
+  }
+  return completeBtn;
+}
+
 function buildTitleWrap(task, options) {
   const {
     hasChildren,
@@ -59,36 +100,10 @@ function buildTitleWrap(task, options) {
   titleWrap.className = `task-title-main ${titleSizeClass} ${titleWeightClass}`;
   titleWrap.setAttribute("data-test-skedpal", "task-title-wrap");
   if (hasChildren) {
-    const collapseTaskBtn = document.createElement("button");
-    collapseTaskBtn.type = "button";
-    collapseTaskBtn.dataset.toggleTaskCollapse = task.id;
-    collapseTaskBtn.className = "title-icon-btn";
-    collapseTaskBtn.title = "Expand/collapse subtasks";
-    collapseTaskBtn.setAttribute("data-test-skedpal", "task-collapse-btn");
-    collapseTaskBtn.innerHTML = isCollapsed ? caretRightIconSvg : caretDownIconSvg;
-    titleWrap.appendChild(collapseTaskBtn);
+    titleWrap.appendChild(buildTaskCollapseButton(task, isCollapsed));
   }
-  const completeBtn = document.createElement("button");
-  completeBtn.type = "button";
-  completeBtn.dataset.completeTask = task.id;
-  completeBtn.className = "title-icon-btn task-complete-btn";
-  completeBtn.setAttribute("data-test-skedpal", "task-complete-btn");
-  completeBtn.title = task.completed ? "Mark incomplete" : "Mark completed";
-  completeBtn.innerHTML = task.completed ? checkboxCheckedIconSvg : checkboxIconSvg;
-  if (task.completed) {
-    completeBtn.classList.add("task-complete-btn--checked");
-  }
-  titleWrap.appendChild(completeBtn);
-  const titleTextWrap = document.createElement("div");
-  titleTextWrap.className = "task-title-text";
-  titleTextWrap.setAttribute("data-test-skedpal", "task-title");
-  titleTextWrap.innerHTML = titleMarkup;
-  titleWrap.appendChild(titleTextWrap);
-  if (task.completed) {
-    titleTextWrap.style.opacity = "0.8";
-    titleTextWrap.style.textDecoration = "line-through";
-    titleTextWrap.style.textDecorationColor = themeColors.green500;
-  }
+  titleWrap.appendChild(buildTaskCompleteButton(task));
+  titleWrap.appendChild(buildTaskTitleText(task, titleMarkup, isSubtask));
   return { titleWrap, isLongTitle, displayDurationMin, detailsOpen };
 }
 

@@ -8,6 +8,7 @@ import {
 } from "./calendar-utils.js";
 
 const HOUR_HEIGHT = 48;
+let nowIndicatorTimer = null;
 
 function formatHourLabel(hour) {
   const d = new Date();
@@ -49,6 +50,45 @@ function buildEmptyState() {
   empty.textContent = "No scheduled tasks in this range.";
   empty.setAttribute("data-test-skedpal", "calendar-empty");
   return empty;
+}
+
+function buildNowIndicator() {
+  const indicator = document.createElement("div");
+  indicator.className = "calendar-now-indicator";
+  indicator.setAttribute("data-test-skedpal", "calendar-now-indicator");
+  const dot = document.createElement("div");
+  dot.className = "calendar-now-dot";
+  dot.setAttribute("data-test-skedpal", "calendar-now-dot");
+  const line = document.createElement("div");
+  line.className = "calendar-now-line";
+  line.setAttribute("data-test-skedpal", "calendar-now-line");
+  indicator.appendChild(dot);
+  indicator.appendChild(line);
+  return indicator;
+}
+
+function positionNowIndicator(indicator, now) {
+  const minutes = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+  const top = (minutes / 60) * HOUR_HEIGHT;
+  indicator.style.top = `${top}px`;
+}
+
+function updateNowIndicator() {
+  const { calendarGrid } = domRefs;
+  if (!calendarGrid) return;
+  const viewMode = state.calendarViewMode || "week";
+  const range = getCalendarRange(state.calendarAnchorDate, viewMode);
+  calendarGrid
+    .querySelectorAll('[data-test-skedpal="calendar-now-indicator"]')
+    .forEach((node) => node.remove());
+  const now = new Date();
+  if (now < range.start || now >= range.end) return;
+  const todayKey = getDayKey(now);
+  const todayCol = calendarGrid.querySelector(`[data-day="${todayKey}"]`);
+  if (!todayCol) return;
+  const indicator = buildNowIndicator();
+  positionNowIndicator(indicator, now);
+  todayCol.appendChild(indicator);
 }
 
 function renderCalendarGrid(range, events) {
@@ -178,6 +218,7 @@ export function renderCalendar(tasks = state.tasksCache) {
   updateCalendarTitle(viewMode);
   updateViewToggle(viewMode);
   renderCalendarGrid(range, events);
+  updateNowIndicator();
   if (!events.length) {
     domRefs.calendarGrid?.appendChild(buildEmptyState());
   }
@@ -224,5 +265,9 @@ export function initCalendarView() {
       renderCalendar();
     });
   }
+  if (nowIndicatorTimer) {
+    clearInterval(nowIndicatorTimer);
+  }
+  nowIndicatorTimer = setInterval(updateNowIndicator, 60 * 1000);
   renderCalendar();
 }

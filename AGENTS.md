@@ -15,7 +15,7 @@
 - Be defensive with DOM access (null checks, stable selectors). Avoid brittle selectors tied to cosmetic changes on target sites.
 - Keep comments short and only where intent is non-obvious (especially around scheduling logic and Calendar API calls).
 - For CSS, edit `styles/tailwind.input.css` and rebuild `styles/tailwind.css` with  
-  `npx tailwindcss@latest -i styles/tailwind.input.css -o styles/tailwind.css --content pages/index.html,src/ui/page.js --minify`.
+  `npm run build:css`.
 
 ## Testing & Validation
 - Add unit tests for any new features or logic changes to prevent regressions.

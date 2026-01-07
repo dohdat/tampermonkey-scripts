@@ -18,7 +18,7 @@ Manual, deterministic task scheduler that mirrors SkedPal rules and writes to Go
 3) Load the extension unpacked in Chrome:
    - `chrome://extensions` -> enable Developer Mode -> Load unpacked -> select the `Skedpal alternative` folder.
 4) If you change UI markup, rebuild Tailwind with all partials included:
-   - `npx tailwindcss -i styles/tailwind.input.css -o styles/tailwind.css --content pages/index.html,pages/partials/app-shell.html,pages/partials/modals.html,src/ui/**/*.js --minify`
+   - `npm run build:css`
 
 ### Usage
 - Click the extension icon to open the scheduling UI (options page) in a tab, or open it via the extension’s Options.

@@ -119,6 +119,9 @@ body.modal-open{overflow:hidden}
 .calendar-time-label{padding:6px 8px;font-size:.7rem;color:#94a3b8;border-bottom:1px solid rgba(51,65,85,.35)}
 .calendar-days{display:grid;min-height:calc(var(--calendar-hour-height) * 24)}
 .calendar-day-col{position:relative;min-height:calc(var(--calendar-hour-height) * 24);border-right:1px solid rgba(51,65,85,.25);background:repeating-linear-gradient(to bottom,rgba(15,23,42,.6) 0,rgba(15,23,42,.6) calc(var(--calendar-hour-height) - 1px),rgba(51,65,85,.35) calc(var(--calendar-hour-height) - 1px),rgba(51,65,85,.35) var(--calendar-hour-height))}
+.calendar-now-indicator{position:absolute;left:0;right:0;height:0;pointer-events:none}
+.calendar-now-line{position:absolute;left:12px;right:8px;height:2px;background:#f87171;border-radius:999px;box-shadow:0 0 8px rgba(248,113,113,.45);transform:translateY(-1px)}
+.calendar-now-dot{position:absolute;left:4px;width:8px;height:8px;border-radius:999px;background:#f87171;box-shadow:0 0 10px rgba(248,113,113,.6);transform:translateY(-4px)}
 .calendar-event{position:absolute;left:8px;right:8px;padding:6px 8px;border-radius:10px;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.4);color:#e2e8f0;box-shadow:0 6px 12px rgba(15,23,42,.45);overflow:hidden}
 .calendar-event-title{font-size:.75rem;font-weight:600;line-height:1.2}
 .calendar-event-time{font-size:.7rem;color:#bae6fd}

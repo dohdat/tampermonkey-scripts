@@ -111,6 +111,12 @@ export function renderTasks(tasks, timeMaps) {
       const subsectionId = state.zoomFilter.subsectionId || "";
       const subs = state.settingsCache.subsections?.[sectionId] || [];
       const allowedSubsections = getSubsectionDescendantIds(subs, subsectionId);
+      if (allowedSubsections.size === 0) {
+        return visible.filter(
+          (t) =>
+            (t.section || "") === sectionId && (t.subsection || "") === subsectionId
+        );
+      }
       return visible.filter(
         (t) =>
           (t.section || "") === sectionId &&
@@ -181,78 +187,84 @@ export function renderTasks(tasks, timeMaps) {
     const sectionTasks = filteredTasks.filter((t) =>
       isNoSection ? !t.section : t.section === section.id
     );
+    const isSubsectionZoom =
+      state.zoomFilter?.type === "subsection" && state.zoomFilter.sectionId === section.id;
     const card = document.createElement("div");
-    card.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow space-y-3";
+    card.className = isSubsectionZoom
+      ? "space-y-3"
+      : "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow space-y-3";
     card.dataset.sectionCard = section.id;
     const isCollapsed = state.collapsedSections.has(section.id);
-    const header = document.createElement("div");
-    header.className = "flex flex-wrap items-center justify-between gap-2";
-    const title = document.createElement("div");
-    title.className =
-      "title-hover-group flex items-center gap-2 text-base font-semibold text-slate-100";
-    const titleText = document.createElement("span");
-    titleText.textContent = getSectionName(section.id) || section.name || "Untitled section";
-    title.appendChild(titleText);
-    if (!isNoSection) {
-      const titleActions = document.createElement("div");
-      titleActions.className = "title-actions";
-      const collapseBtn = document.createElement("button");
-      collapseBtn.type = "button";
-      collapseBtn.dataset.toggleSectionCollapse = section.id;
-      collapseBtn.className = "title-icon-btn";
-      collapseBtn.title = "Expand/collapse section";
-      collapseBtn.innerHTML = isCollapsed ? caretRightIconSvg : caretDownIconSvg;
-      const isDefaultSection =
-        section.id === "section-work-default" || section.id === "section-personal-default";
-      const editSectionBtn = document.createElement("button");
-      editSectionBtn.type = "button";
-      editSectionBtn.dataset.editSection = section.id;
-      editSectionBtn.className = "title-icon-btn";
-      editSectionBtn.title = "Edit section";
-      editSectionBtn.innerHTML = editIconSvg;
-      editSectionBtn.style.borderColor = "#22c55e";
-      editSectionBtn.style.color = "#22c55e";
-      const zoomSectionBtn = document.createElement("button");
-      zoomSectionBtn.type = "button";
-      zoomSectionBtn.dataset.zoomSection = section.id;
-      zoomSectionBtn.dataset.zoomSubsection = "";
-      zoomSectionBtn.className = "title-icon-btn";
-      zoomSectionBtn.title = "Zoom into section";
-      zoomSectionBtn.innerHTML = zoomInIconSvg;
-      const favoriteSectionBtn = document.createElement("button");
-      favoriteSectionBtn.type = "button";
-      favoriteSectionBtn.dataset.favoriteSection = section.id;
-      favoriteSectionBtn.className = `title-icon-btn${section.favorite ? " favorite-active" : ""}`;
-      favoriteSectionBtn.title = section.favorite ? "Unfavorite section" : "Favorite section";
-      favoriteSectionBtn.innerHTML = favoriteIconSvg;
-      const removeSectionBtn = document.createElement("button");
-      removeSectionBtn.type = "button";
-      removeSectionBtn.dataset.removeSection = section.id;
-      removeSectionBtn.className = "title-icon-btn";
-      removeSectionBtn.title = "Remove section";
-      removeSectionBtn.innerHTML = removeIconSvg;
-      removeSectionBtn.style.borderColor = "#f97316";
-      removeSectionBtn.style.color = "#f97316";
-      if (isDefaultSection) {
-        removeSectionBtn.disabled = true;
-        removeSectionBtn.classList.add("opacity-50", "cursor-not-allowed");
+    if (!isSubsectionZoom) {
+      const header = document.createElement("div");
+      header.className = "flex flex-wrap items-center justify-between gap-2";
+      const title = document.createElement("div");
+      title.className =
+        "title-hover-group flex items-center gap-2 text-base font-semibold text-slate-100";
+      const titleText = document.createElement("span");
+      titleText.textContent = getSectionName(section.id) || section.name || "Untitled section";
+      title.appendChild(titleText);
+      if (!isNoSection) {
+        const titleActions = document.createElement("div");
+        titleActions.className = "title-actions";
+        const collapseBtn = document.createElement("button");
+        collapseBtn.type = "button";
+        collapseBtn.dataset.toggleSectionCollapse = section.id;
+        collapseBtn.className = "title-icon-btn";
+        collapseBtn.title = "Expand/collapse section";
+        collapseBtn.innerHTML = isCollapsed ? caretRightIconSvg : caretDownIconSvg;
+        const isDefaultSection =
+          section.id === "section-work-default" || section.id === "section-personal-default";
+        const editSectionBtn = document.createElement("button");
+        editSectionBtn.type = "button";
+        editSectionBtn.dataset.editSection = section.id;
+        editSectionBtn.className = "title-icon-btn";
+        editSectionBtn.title = "Edit section";
+        editSectionBtn.innerHTML = editIconSvg;
+        editSectionBtn.style.borderColor = "#22c55e";
+        editSectionBtn.style.color = "#22c55e";
+        const zoomSectionBtn = document.createElement("button");
+        zoomSectionBtn.type = "button";
+        zoomSectionBtn.dataset.zoomSection = section.id;
+        zoomSectionBtn.dataset.zoomSubsection = "";
+        zoomSectionBtn.className = "title-icon-btn";
+        zoomSectionBtn.title = "Zoom into section";
+        zoomSectionBtn.innerHTML = zoomInIconSvg;
+        const favoriteSectionBtn = document.createElement("button");
+        favoriteSectionBtn.type = "button";
+        favoriteSectionBtn.dataset.favoriteSection = section.id;
+        favoriteSectionBtn.className = `title-icon-btn${section.favorite ? " favorite-active" : ""}`;
+        favoriteSectionBtn.title = section.favorite ? "Unfavorite section" : "Favorite section";
+        favoriteSectionBtn.innerHTML = favoriteIconSvg;
+        const removeSectionBtn = document.createElement("button");
+        removeSectionBtn.type = "button";
+        removeSectionBtn.dataset.removeSection = section.id;
+        removeSectionBtn.className = "title-icon-btn";
+        removeSectionBtn.title = "Remove section";
+        removeSectionBtn.innerHTML = removeIconSvg;
+        removeSectionBtn.style.borderColor = "#f97316";
+        removeSectionBtn.style.color = "#f97316";
+        if (isDefaultSection) {
+          removeSectionBtn.disabled = true;
+          removeSectionBtn.classList.add("opacity-50", "cursor-not-allowed");
+        }
+        const addSubsectionToggle = document.createElement("button");
+        addSubsectionToggle.type = "button";
+        addSubsectionToggle.dataset.toggleSubsection = section.id;
+        addSubsectionToggle.className =
+          "rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
+        addSubsectionToggle.textContent = "Add subsection";
+        titleActions.appendChild(collapseBtn);
+        titleActions.appendChild(editSectionBtn);
+        titleActions.appendChild(zoomSectionBtn);
+        titleActions.appendChild(favoriteSectionBtn);
+        titleActions.appendChild(addSubsectionToggle);
+        titleActions.appendChild(removeSectionBtn);
+        title.appendChild(titleActions);
       }
-      const addSubsectionToggle = document.createElement("button");
-      addSubsectionToggle.type = "button";
-      addSubsectionToggle.dataset.toggleSubsection = section.id;
-      addSubsectionToggle.className =
-        "rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
-      addSubsectionToggle.textContent = "Add subsection";
-      titleActions.appendChild(collapseBtn);
-      titleActions.appendChild(editSectionBtn);
-      titleActions.appendChild(zoomSectionBtn);
-      titleActions.appendChild(favoriteSectionBtn);
-      titleActions.appendChild(addSubsectionToggle);
-      titleActions.appendChild(removeSectionBtn);
-      title.appendChild(titleActions);
+      header.appendChild(title);
+      card.appendChild(header);
     }
-    header.appendChild(title);
-    card.appendChild(header);
 
     const sectionBody = document.createElement("div");
     sectionBody.dataset.sectionBody = section.id;
@@ -315,8 +327,8 @@ export function renderTasks(tasks, timeMaps) {
       }
       if (state.zoomFilter?.type === "subsection" && state.zoomFilter.sectionId === section.id) {
         const targetId = state.zoomFilter.subsectionId || "";
-        markWithAncestors(targetId);
-        markDescendants(targetId);
+        const descendants = getSubsectionDescendantIds(subsections, targetId);
+        descendants.forEach((id) => allowedSubsections.add(id));
       }
       if (allowedSubsections.size > 0) {
         const filtered = subsections.filter((s) => allowedSubsections.has(s.id));
@@ -373,7 +385,6 @@ export function renderTasks(tasks, timeMaps) {
       const subWrap = document.createElement("div");
       subWrap.className =
         "space-y-2 rounded-xl border border-slate-800 bg-slate-900/60 p-3 pl-4 md:pl-6";
-      subWrap.style.marginLeft = "12px";
       subWrap.dataset.subsectionCard = sub.id;
       const subHeader = document.createElement("div");
       subHeader.className = "flex items-center justify-between text-sm font-semibold text-slate-200";
@@ -500,7 +511,6 @@ export function renderTasks(tasks, timeMaps) {
         const childWrap = document.createElement("div");
         childWrap.className =
           "space-y-2 border-l border-slate-800/60 pl-4 md:pl-6 border-lime-500/10";
-        childWrap.style.marginLeft = "18px";
         children.forEach((child) => childWrap.appendChild(renderSubsection(child)));
         subBody.appendChild(childWrap);
       }
@@ -508,9 +518,17 @@ export function renderTasks(tasks, timeMaps) {
       return subWrap;
     };
 
-    buildChildren().forEach((sub) => {
-      sectionBody.appendChild(renderSubsection(sub));
-    });
+    if (isSubsectionZoom) {
+      const targetId = state.zoomFilter.subsectionId || "";
+      const targetSub = subsections.find((sub) => sub.id === targetId);
+      if (targetSub) {
+        sectionBody.appendChild(renderSubsection(targetSub));
+      }
+    } else {
+      buildChildren().forEach((sub) => {
+        sectionBody.appendChild(renderSubsection(sub));
+      });
+    }
 
     card.appendChild(sectionBody);
     return card;

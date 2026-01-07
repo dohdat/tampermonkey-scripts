@@ -416,6 +416,45 @@ describe("scheduler", () => {
     assert.ok(result.unscheduled.includes("c"));
   });
 
+  it("avoids overlapping tasks across TimeMaps", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 3);
+    const timeMaps = [
+      { id: "tm-a", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "11:00" }] },
+      { id: "tm-b", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "11:00" }] }
+    ];
+    const deadline = shiftDate(now, 0, 23, 59);
+    const tasks = [
+      {
+        id: "t1",
+        title: "Task 1",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-a"],
+        deadline
+      },
+      {
+        id: "t2",
+        title: "Task 2",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-b"],
+        deadline
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 1,
+      now
+    });
+
+    const placements = [...result.scheduled].sort((a, b) => a.start - b.start);
+    assert.strictEqual(placements.length, 2);
+    assert.ok(placements[0].end <= placements[1].start);
+  });
+
   it("enforces sequential subtask ordering", () => {
     const now = nextWeekday(new Date(2026, 0, 1), 4);
     const timeMaps = [

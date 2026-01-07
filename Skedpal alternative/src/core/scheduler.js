@@ -75,6 +75,13 @@ function splitSlot(slot, busy) {
   return parts;
 }
 
+function removeBlockFromSlots(slots, block) {
+  return slots
+    .flatMap((slot) => splitSlot(slot, block))
+    .filter((slot) => slot.end > slot.start)
+    .sort((a, b) => a.start - b.start);
+}
+
 function subtractBusy(windows, busy) {
   const sortedBusy = [...busy].sort((a, b) => a.start - b.start);
   let free = [];
@@ -427,8 +434,9 @@ function placeTaskInSlots(task, freeSlots, now, options = {}) {
         deadlineMs < slot.end.getTime()
           ? [{ ...slot, start: new Date(deadlineMs), end: slot.end }]
           : [];
-      slots = [...slots.slice(0, i), ...before, ...after, ...afterDeadline, ...slots.slice(i + 1)].sort(
-        (a, b) => a.start - b.start
+      slots = removeBlockFromSlots(
+        [...slots.slice(0, i), ...before, ...after, ...afterDeadline, ...slots.slice(i + 1)],
+        placement
       );
       return { success: true, placements, nextSlots: slots };
     }
@@ -476,8 +484,9 @@ function placeTaskInSlots(task, freeSlots, now, options = {}) {
         ? [{ ...slot, start: new Date(deadlineMs), end: slot.end }]
         : [];
 
-    slots = [...slots.slice(0, i), ...before, ...afterFirst, ...afterDeadline, ...slots.slice(i + 1)].sort(
-      (a, b) => a.start - b.start
+    slots = removeBlockFromSlots(
+      [...slots.slice(0, i), ...before, ...afterFirst, ...afterDeadline, ...slots.slice(i + 1)],
+      placement
     );
     i = -1; // restart scan with updated slots
   }

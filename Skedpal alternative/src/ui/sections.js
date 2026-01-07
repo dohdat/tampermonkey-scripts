@@ -199,10 +199,6 @@ export function renderTaskSubsectionOptions(selected) {
       ? subsections.find((s) => s.id === selected) || subsections.find((s) => s.name === selected)
       : null;
   taskSubsectionSelect.innerHTML = "";
-  const noneOpt = document.createElement("option");
-  noneOpt.value = "";
-  noneOpt.textContent = "None";
-  taskSubsectionSelect.appendChild(noneOpt);
 
   const addOptions = (parentId = "", depth = 0) => {
     const siblings = subsections.filter((s) => (s.parentId || "") === (parentId || ""));
@@ -211,6 +207,7 @@ export function renderTaskSubsectionOptions(selected) {
       opt.value = sub.id;
       const prefix = depth > 0 ? `${"-- ".repeat(depth)}` : "";
       opt.textContent = `${prefix}${sub.name}`;
+      opt.setAttribute("data-test-skedpal", "task-subsection-option");
       if (selectedSubsection) {opt.selected = selectedSubsection.id === sub.id;}
       taskSubsectionSelect.appendChild(opt);
       addOptions(sub.id, depth + 1);

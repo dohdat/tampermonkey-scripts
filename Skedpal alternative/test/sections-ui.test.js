@@ -234,9 +234,9 @@ describe("sections ui", () => {
     const subsectionSelect = elementMap.get("task-subsection");
     assert.strictEqual(sectionSelect.children.length, 3);
     assert.strictEqual(sectionSelect.children[2].textContent, "Personal");
-    assert.strictEqual(subsectionSelect.children.length, 3);
-    assert.strictEqual(subsectionSelect.children[1].textContent, "Morning");
-    assert.strictEqual(subsectionSelect.children[2].textContent, "-- Deep");
+    assert.strictEqual(subsectionSelect.children.length, 2);
+    assert.strictEqual(subsectionSelect.children[0].textContent, "Morning");
+    assert.strictEqual(subsectionSelect.children[1].textContent, "-- Deep");
 
     sectionsModule.renderTaskSubsectionOptions("sub2");
     assert.strictEqual(subsectionSelect.value, "sub2");

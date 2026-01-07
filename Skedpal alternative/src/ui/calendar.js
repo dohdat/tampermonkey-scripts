@@ -22,6 +22,10 @@ import {
   openCalendarEventModal
 } from "./calendar-event-modal.js";
 import { buildDayEventLayout } from "./calendar-layout.js";
+import {
+  clearCalendarEventFocus,
+  focusCalendarEventBlock
+} from "./calendar-focus.js";
 
 const HOUR_HEIGHT = 120;
 const DRAG_STEP_MINUTES = 15;
@@ -519,8 +523,10 @@ export function focusCalendarEvent(taskId, options = {}) {
   if (!taskId) {return false;}
   const calendarGrid = domRefs.calendarGrid || document.getElementById("calendar-grid");
   if (!calendarGrid) {return false;}
+  clearCalendarEventFocus(calendarGrid);
   const eventBlock = calendarGrid.querySelector(`[data-event-task-id="${taskId}"]`);
   if (!eventBlock || typeof eventBlock.scrollIntoView !== "function") {return false;}
+  focusCalendarEventBlock(eventBlock, { autoClearMs: 2500, pulse: true });
   eventBlock.scrollIntoView({ block: "center", inline: "nearest", behavior });
   return true;
 }

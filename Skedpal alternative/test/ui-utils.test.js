@@ -68,6 +68,7 @@ describe("getInheritedSubtaskFields", () => {
       subsection: "sub1",
       timeMapIds: ["tm-1"],
       priority: 4,
+      minBlockMin: 45,
       deadline: "2026-01-06T00:00:00.000Z",
       startFrom: "2026-01-05T00:00:00.000Z"
     };
@@ -76,6 +77,7 @@ describe("getInheritedSubtaskFields", () => {
       subsection: "sub1",
       timeMapIds: ["tm-1"],
       priority: 4,
+      minBlockMin: 45,
       deadline: "2026-01-06T00:00:00.000Z",
       startFrom: "2026-01-05T00:00:00.000Z"
     });

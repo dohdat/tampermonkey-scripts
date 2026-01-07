@@ -82,6 +82,7 @@ export function getInheritedSubtaskFields(parentTask) {
     subsection: parentTask.subsection || "",
     timeMapIds: Array.isArray(parentTask.timeMapIds) ? [...parentTask.timeMapIds] : [],
     priority: Number(parentTask.priority) || 0,
+    minBlockMin: Number(parentTask.minBlockMin) || 0,
     deadline: parentTask.deadline || null,
     startFrom: parentTask.startFrom || null
   };

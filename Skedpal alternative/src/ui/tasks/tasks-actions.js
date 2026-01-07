@@ -305,6 +305,7 @@ export async function handleTaskListClick(event) {
       );
     }
   } else if (zoomTaskId !== undefined) {
+    switchView("tasks");
     setZoomFilter({
       type: "task",
       taskId: zoomTaskId,
@@ -312,12 +313,14 @@ export async function handleTaskListClick(event) {
       subsectionId: zoomSubsectionId || ""
     });
   } else if (hasZoomSubAttr && zoomSubsectionId !== "") {
+    switchView("tasks");
     setZoomFilter({
       type: "subsection",
       sectionId: zoomSectionId || "",
       subsectionId: zoomSubsectionId || ""
     });
   } else if (zoomSectionId !== undefined && hasZoomSubAttr) {
+    switchView("tasks");
     setZoomFilter({ type: "section", sectionId: zoomSectionId || "" });
   } else if (addChildSubsectionId !== undefined) {
     const sectionId = addChildSectionId || "";

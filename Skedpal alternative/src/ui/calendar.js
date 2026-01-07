@@ -7,7 +7,7 @@ import {
   getDayKey
 } from "./calendar-utils.js";
 
-const HOUR_HEIGHT = 144;
+const HOUR_HEIGHT = 120;
 let nowIndicatorTimer = null;
 
 function formatHourLabel(hour) {

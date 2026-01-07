@@ -111,6 +111,7 @@ body.modal-open{overflow:hidden}
 /* Calendar view */
 .calendar-grid{display:flex;flex-direction:column;gap:0;border-radius:16px;border:1px solid rgba(51,65,85,.6);overflow:hidden}
 .calendar-grid-header{display:grid;grid-template-columns:90px repeat(7,minmax(0,1fr));border-bottom:1px solid rgba(51,65,85,.5);background:rgba(15,23,42,.65)}
+.calendar-toolbar{position:sticky;top:0;z-index:5;background:rgba(15,23,42,.92);backdrop-filter:blur(6px);padding:8px 0}
 .calendar-grid-spacer{border-right:1px solid rgba(51,65,85,.5)}
 .calendar-day-header{padding:10px 8px;text-align:center;font-size:.75rem;font-weight:600;color:#e2e8f0;border-right:1px solid rgba(51,65,85,.35)}
 .calendar-day-header--today{color:#a3e635}

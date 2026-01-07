@@ -1,13 +1,8 @@
-function parseTime(timeString) {
-  const [hours, minutes] = timeString.split(":").map((part) => parseInt(part, 10));
-  return { hours, minutes };
-}
+import { addDays, endOfDay, parseTime, startOfDay } from "./scheduler/date-utils.js";
+import { buildOccurrenceDates, getUpcomingOccurrences } from "./scheduler/occurrences.js";
+import { normalizeTask } from "./scheduler/task-utils.js";
 
-function addDays(date, days) {
-  const result = new Date(date.getTime());
-  result.setDate(result.getDate() + days);
-  return result;
-}
+export { getUpcomingOccurrences };
 
 function normalizeTimeMap(timeMap) {
   if (Array.isArray(timeMap.rules) && timeMap.rules.length > 0) {
@@ -97,48 +92,6 @@ function subtractBusy(windows, busy) {
   return free.sort((a, b) => a.start - b.start);
 }
 
-function startOfDay(date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function endOfDay(date) {
-  const d = new Date(date);
-  d.setHours(23, 59, 59, 999);
-  return d;
-}
-
-function startOfWeek(date) {
-  const d = startOfDay(date);
-  d.setDate(d.getDate() - d.getDay());
-  return d;
-}
-
-function normalizeDeadline(value, fallback) {
-  if (!value) {return endOfDay(fallback);}
-  const date = new Date(value);
-  if (Number.isNaN(date)) {return endOfDay(fallback);}
-  const atMidnight = date.getHours() === 0 && date.getMinutes() === 0 && date.getSeconds() === 0;
-  return atMidnight ? endOfDay(date) : date;
-}
-
-function normalizeTask(task, now, horizonEnd) {
-  const durationMin = Math.max(15, Number(task.durationMin) || 0);
-  const minBlockMin = Math.max(15, Math.min(Number(task.minBlockMin) || durationMin, durationMin));
-  const deadline = normalizeDeadline(task.deadline, horizonEnd);
-  const startFrom = task.startFrom ? new Date(task.startFrom) : now;
-  return {
-    ...task,
-    durationMs: durationMin * 60 * 1000,
-    minBlockMs: minBlockMin * 60 * 1000,
-    priority: Number(task.priority) || 0,
-    timeMapIds: Array.isArray(task.timeMapIds) ? task.timeMapIds : [],
-    deadline,
-    startFrom
-  };
-}
-
 function normalizeSubtaskScheduleMode(value) {
   return value === "sequential" || value === "sequential-single" ? value : "parallel";
 }
@@ -179,219 +132,6 @@ function buildSubtaskOrderMap(tasks) {
   return orderMap;
 }
 
-function nthWeekdayOfMonth(year, month, weekday, nth) {
-  const first = new Date(year, month, 1);
-  const firstDay = first.getDay();
-  if (nth === -1) {
-    const last = new Date(year, month + 1, 0);
-    const diff = (last.getDay() - weekday + 7) % 7;
-    last.setDate(last.getDate() - diff);
-    return last;
-  }
-  const offset = (weekday - firstDay + 7) % 7;
-  const day = 1 + offset + (nth - 1) * 7;
-  return new Date(year, month, day);
-}
-
-function buildNonRepeatOccurrences(task, now, horizonEnd) {
-  if (task.deadline >= now && task.deadline <= horizonEnd) {
-    return [task.deadline];
-  }
-  if (!task.deadline || Number.isNaN(task.deadline)) {
-    return [horizonEnd];
-  }
-  return [];
-}
-
-function buildDailyOccurrences({ anchor, interval, limitDate, maxCount, nowStart, horizonEnd }) {
-  const occurrences = [];
-  for (
-    let cursor = new Date(anchor), count = 0;
-    cursor <= limitDate && count < maxCount;
-    cursor = addDays(cursor, interval), count += 1
-  ) {
-    if (cursor < nowStart) {continue;}
-    if (cursor > horizonEnd) {break;}
-    occurrences.push(endOfDay(cursor));
-  }
-  return occurrences;
-}
-
-function buildWeeklyOccurrences({
-  anchor,
-  interval,
-  limitDate,
-  maxCount,
-  nowStart,
-  horizonEnd,
-  weeklyDays
-}) {
-  const occurrences = [];
-  let weekStart = startOfWeek(anchor);
-  let emitted = 0;
-  while (weekStart <= limitDate && emitted < maxCount) {
-    for (const day of weeklyDays) {
-      const candidate = addDays(weekStart, day);
-      if (candidate < anchor || candidate < nowStart) {continue;}
-      if (candidate > limitDate || candidate > horizonEnd) {continue;}
-      occurrences.push(endOfDay(candidate));
-      emitted += 1;
-      if (emitted >= maxCount) {break;}
-    }
-    weekStart = addDays(weekStart, 7 * interval);
-  }
-  return occurrences;
-}
-
-function buildMonthlyOccurrences({
-  anchor,
-  interval,
-  limitDate,
-  maxCount,
-  nowStart,
-  horizonEnd,
-  repeat
-}) {
-  const occurrences = [];
-  let cursor = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
-  let emitted = 0;
-  while (cursor <= limitDate && emitted < maxCount) {
-    let candidate;
-    if (repeat.monthlyMode === "nth") {
-      const weekday = repeat.monthlyWeekday ?? anchor.getDay();
-      const nth = repeat.monthlyNth ?? 1;
-      candidate = nthWeekdayOfMonth(cursor.getFullYear(), cursor.getMonth(), weekday, nth);
-    } else {
-      const day = repeat.monthlyDay || anchor.getDate();
-      candidate = new Date(cursor.getFullYear(), cursor.getMonth(), day);
-    }
-    if (
-      candidate >= anchor &&
-      candidate >= nowStart &&
-      candidate <= limitDate &&
-      candidate <= horizonEnd
-    ) {
-      occurrences.push(endOfDay(candidate));
-      emitted += 1;
-    }
-    cursor.setMonth(cursor.getMonth() + interval);
-  }
-  return occurrences;
-}
-
-function buildYearlyOccurrences({
-  anchor,
-  interval,
-  limitDate,
-  maxCount,
-  nowStart,
-  horizonEnd,
-  repeat
-}) {
-  const occurrences = [];
-  let cursor = new Date(anchor);
-  let emitted = 0;
-  while (cursor <= limitDate && emitted < maxCount) {
-    const month = (repeat.yearlyMonth || anchor.getMonth() + 1) - 1;
-    const day = repeat.yearlyDay || anchor.getDate();
-    const candidate = new Date(cursor.getFullYear(), month, day);
-    if (
-      candidate >= anchor &&
-      candidate >= nowStart &&
-      candidate <= limitDate &&
-      candidate <= horizonEnd
-    ) {
-      occurrences.push(endOfDay(candidate));
-      emitted += 1;
-    }
-    cursor.setFullYear(cursor.getFullYear() + interval);
-  }
-  return occurrences;
-}
-
-function buildOccurrenceDates(task, now, horizonEnd) {
-  const repeat = task.repeat || { type: "none" };
-  const anchor = startOfDay(task.startFrom || task.deadline || now);
-  const limitDateRaw =
-    repeat.end?.type === "on" && repeat.end?.date ? new Date(repeat.end.date) : horizonEnd;
-  const limitDate = endOfDay(limitDateRaw > horizonEnd ? horizonEnd : limitDateRaw);
-  const interval = Math.max(1, Number(repeat.interval) || 1);
-  const maxCount =
-    repeat.end?.type === "after" && repeat.end?.count
-      ? Math.max(0, Number(repeat.end.count))
-      : Number.POSITIVE_INFINITY;
-
-  if (!repeat || repeat.type === "none" || repeat.unit === "none") {
-    return buildNonRepeatOccurrences(task, now, horizonEnd);
-  }
-
-  const nowStart = startOfDay(now);
-  if (repeat.unit === "day") {
-    return buildDailyOccurrences({ anchor, interval, limitDate, maxCount, nowStart, horizonEnd });
-  }
-
-  if (repeat.unit === "week") {
-    const weeklyDays =
-      Array.isArray(repeat.weeklyDays) && repeat.weeklyDays.length > 0
-        ? repeat.weeklyDays.map((d) => Number(d))
-        : [anchor.getDay()];
-    return buildWeeklyOccurrences({
-      anchor,
-      interval,
-      limitDate,
-      maxCount,
-      nowStart,
-      horizonEnd,
-      weeklyDays
-    });
-  }
-
-  if (repeat.unit === "month") {
-    return buildMonthlyOccurrences({
-      anchor,
-      interval,
-      limitDate,
-      maxCount,
-      nowStart,
-      horizonEnd,
-      repeat
-    });
-  }
-
-  if (repeat.unit === "year") {
-    return buildYearlyOccurrences({
-      anchor,
-      interval,
-      limitDate,
-      maxCount,
-      nowStart,
-      horizonEnd,
-      repeat
-    });
-  }
-
-  return [];
-}
-
-export function getUpcomingOccurrences(task, now = new Date(), count = 10, horizonDays = 365) {
-  if (!task) {return [];}
-  const horizonEnd = endOfDay(addDays(now, horizonDays));
-  const normalized = normalizeTask(task, now, horizonEnd);
-  const occurrences = buildOccurrenceDates(normalized, now, horizonEnd);
-  const completedOccurrences = new Set(
-    (task.completedOccurrences || []).map((value) => {
-      const date = new Date(value);
-      return Number.isNaN(date) ? String(value) : date.toISOString();
-    })
-  );
-  return occurrences
-    .map((date, index) => ({
-      date,
-      occurrenceId: `${normalized.id || normalized.taskId || task.id}-occ-${index}`
-    }))
-    .filter((entry) => !completedOccurrences.has(entry.date.toISOString()))
-    .slice(0, count);
-}
 
 function buildScheduleCandidates(tasks, now, horizonEnd) {
   const ignored = new Set();
@@ -446,21 +186,7 @@ function buildScheduleCandidates(tasks, now, horizonEnd) {
       });
     });
 
-  const sorted = candidates.sort((a, b) => {
-    const deadlineDelta = a.deadline - b.deadline;
-    if (deadlineDelta !== 0) {return deadlineDelta;}
-    const priorityDelta = b.priority - a.priority;
-    if (priorityDelta !== 0) {return priorityDelta;}
-    const startDelta = a.startFrom - b.startFrom;
-    if (startDelta !== 0) {return startDelta;}
-    const sectionDelta = (a.section || "").localeCompare(b.section || "");
-    if (sectionDelta !== 0) {return sectionDelta;}
-    const subsectionDelta = (a.subsection || "").localeCompare(b.subsection || "");
-    if (subsectionDelta !== 0) {return subsectionDelta;}
-    const orderDelta = (Number(a.order) || 0) - (Number(b.order) || 0);
-    if (orderDelta !== 0) {return orderDelta;}
-    return (a.title || "").localeCompare(b.title || "");
-  });
+  const sorted = candidates.sort(compareCandidateOrder);
 
   return { sorted, ignored, immediatelyUnscheduled };
 }
@@ -574,20 +300,27 @@ function placeTaskInSlots(task, freeSlots, now, options = {}) {
   return placeTaskInMultipleSlots(task, freeSlots, now);
 }
 
+function compareNumeric(aValue, bValue) {
+  if (aValue < bValue) {return -1;}
+  if (aValue > bValue) {return 1;}
+  return 0;
+}
+
 function compareCandidateOrder(a, b) {
-  const deadlineDelta = a.deadline - b.deadline;
-  if (deadlineDelta !== 0) {return deadlineDelta;}
-  const priorityDelta = b.priority - a.priority;
-  if (priorityDelta !== 0) {return priorityDelta;}
-  const startDelta = a.startFrom - b.startFrom;
-  if (startDelta !== 0) {return startDelta;}
-  const sectionDelta = (a.section || "").localeCompare(b.section || "");
-  if (sectionDelta !== 0) {return sectionDelta;}
-  const subsectionDelta = (a.subsection || "").localeCompare(b.subsection || "");
-  if (subsectionDelta !== 0) {return subsectionDelta;}
-  const orderDelta = (Number(a.order) || 0) - (Number(b.order) || 0);
-  if (orderDelta !== 0) {return orderDelta;}
-  return (a.title || "").localeCompare(b.title || "");
+  const comparisons = [
+    () => compareNumeric(a.deadline, b.deadline),
+    () => compareNumeric(b.priority, a.priority),
+    () => compareNumeric(a.startFrom, b.startFrom),
+    () => (a.section || "").localeCompare(b.section || ""),
+    () => (a.subsection || "").localeCompare(b.subsection || ""),
+    () => compareNumeric(Number(a.order) || 0, Number(b.order) || 0),
+    () => (a.title || "").localeCompare(b.title || "")
+  ];
+  for (const compare of comparisons) {
+    const result = compare();
+    if (result !== 0) {return result;}
+  }
+  return 0;
 }
 
 function sortCandidates(candidates, parentModeById, subtaskOrderById) {
@@ -610,24 +343,22 @@ function sortCandidates(candidates, parentModeById, subtaskOrderById) {
   });
 }
 
-function handleSequentialTask(task, state) {
-  const { parentModeById, parentState, slots, now } = state;
+function getParentMode(task, parentModeById) {
   const parentId = task.subtaskParentId || "";
   const mode = parentId ? parentModeById.get(parentId) || "parallel" : "parallel";
-  if (!parentId || mode === "parallel") {
-    return null;
-  }
-  const current = parentState.get(parentId) || { failed: false, lastEnd: null, scheduledOne: false };
-  if (current.failed || (mode === "sequential-single" && current.scheduledOne)) {
-    return { handled: true, success: false, placements: [], nextSlots: slots, parentId, state: current };
-  }
-  const startFrom = current.lastEnd
-    ? new Date(Math.max(task.startFrom.getTime(), current.lastEnd.getTime()))
-    : task.startFrom;
-  const candidate = { ...task, startFrom };
-  const result = placeTaskInSlots(candidate, slots, now, {
-    requireSingleBlock: mode === "sequential-single"
-  });
+  return { parentId, mode };
+}
+
+function isSequentialBlocked(state, mode) {
+  return state.failed || (mode === "sequential-single" && state.scheduledOne);
+}
+
+function getSequentialStart(task, current) {
+  if (!current.lastEnd) {return task.startFrom;}
+  return new Date(Math.max(task.startFrom.getTime(), current.lastEnd.getTime()));
+}
+
+function buildSequentialState(current, mode, result) {
   const nextState = { ...current };
   if (result.success) {
     const lastEnd = result.placements.reduce(
@@ -642,6 +373,23 @@ function handleSequentialTask(task, state) {
   } else {
     nextState.failed = true;
   }
+  return nextState;
+}
+
+function handleSequentialTask(task, state) {
+  const { parentModeById, parentState, slots, now } = state;
+  const { parentId, mode } = getParentMode(task, parentModeById);
+  if (!parentId || mode === "parallel") {return null;}
+  const current = parentState.get(parentId) || { failed: false, lastEnd: null, scheduledOne: false };
+  if (isSequentialBlocked(current, mode)) {
+    return { handled: true, success: false, placements: [], nextSlots: slots, parentId, state: current };
+  }
+  const startFrom = getSequentialStart(task, current);
+  const candidate = { ...task, startFrom };
+  const result = placeTaskInSlots(candidate, slots, now, {
+    requireSingleBlock: mode === "sequential-single"
+  });
+  const nextState = buildSequentialState(current, mode, result);
   return { handled: true, success: result.success, placements: result.placements, nextSlots: result.nextSlots, parentId, state: nextState };
 }
 

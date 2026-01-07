@@ -89,31 +89,36 @@ async function handleTaskComplete(completeTaskId) {
 }
 
 function handleZoomAction(action) {
-  if (action.zoomTaskId !== undefined) {
-    switchView("tasks");
-    setZoomFilter({
-      type: "task",
-      taskId: action.zoomTaskId,
-      sectionId: action.zoomSectionId || "",
-      subsectionId: action.zoomSubsectionId || ""
-    });
-    return true;
-  }
-  if (action.hasZoomSubAttr && action.zoomSubsectionId !== "") {
-    switchView("tasks");
-    setZoomFilter({
-      type: "subsection",
-      sectionId: action.zoomSectionId || "",
-      subsectionId: action.zoomSubsectionId || ""
-    });
-    return true;
-  }
-  if (action.zoomSectionId !== undefined && action.hasZoomSubAttr) {
-    switchView("tasks");
-    setZoomFilter({ type: "section", sectionId: action.zoomSectionId || "" });
-    return true;
-  }
-  return false;
+  const handlers = [
+    {
+      when: action.zoomTaskId !== undefined,
+      run: () =>
+        setZoomFilter({
+          type: "task",
+          taskId: action.zoomTaskId,
+          sectionId: action.zoomSectionId || "",
+          subsectionId: action.zoomSubsectionId || ""
+        })
+    },
+    {
+      when: action.hasZoomSubAttr && action.zoomSubsectionId !== "",
+      run: () =>
+        setZoomFilter({
+          type: "subsection",
+          sectionId: action.zoomSectionId || "",
+          subsectionId: action.zoomSubsectionId || ""
+        })
+    },
+    {
+      when: action.zoomSectionId !== undefined && action.hasZoomSubAttr,
+      run: () => setZoomFilter({ type: "section", sectionId: action.zoomSectionId || "" })
+    }
+  ];
+  const match = handlers.find((handler) => handler.when);
+  if (!match) {return false;}
+  switchView("tasks");
+  match.run();
+  return true;
 }
 
 async function handleChildSubsectionSubmit(btn, submitChildSubsectionId) {
@@ -161,45 +166,36 @@ async function handleSubsectionActions(action) {
 }
 
 function handleCollapseActions(btn, action) {
-  if (btn.dataset.toggleSectionCollapse !== undefined) {
-    const sectionId = btn.dataset.toggleSectionCollapse || "";
-    if (state.collapsedSections.has(sectionId)) {
-      state.collapsedSections.delete(sectionId);
+  const toggleSetEntry = (set, value) => {
+    if (set.has(value)) {
+      set.delete(value);
     } else {
-      state.collapsedSections.add(sectionId);
+      set.add(value);
     }
-    renderTimeMapsAndTasks(state.tasksTimeMapsCache);
-    return true;
-  }
-  if (btn.dataset.toggleSubsectionCollapse !== undefined) {
-    const subId = btn.dataset.toggleSubsectionCollapse || "";
-    if (state.collapsedSubsections.has(subId)) {
-      state.collapsedSubsections.delete(subId);
-    } else {
-      state.collapsedSubsections.add(subId);
+  };
+  const handlers = [
+    {
+      when: btn.dataset.toggleSectionCollapse !== undefined,
+      run: () => toggleSetEntry(state.collapsedSections, btn.dataset.toggleSectionCollapse || "")
+    },
+    {
+      when: btn.dataset.toggleSubsectionCollapse !== undefined,
+      run: () => toggleSetEntry(state.collapsedSubsections, btn.dataset.toggleSubsectionCollapse || "")
+    },
+    {
+      when: action.toggleTaskDetailsId !== undefined,
+      run: () => toggleSetEntry(state.expandedTaskDetails, action.toggleTaskDetailsId)
+    },
+    {
+      when: action.toggleTaskCollapseId !== undefined,
+      run: () => toggleSetEntry(state.collapsedTasks, action.toggleTaskCollapseId)
     }
-    renderTimeMapsAndTasks(state.tasksTimeMapsCache);
-    return true;
-  }
-  if (action.toggleTaskDetailsId !== undefined) {
-    if (state.expandedTaskDetails.has(action.toggleTaskDetailsId)) {
-      state.expandedTaskDetails.delete(action.toggleTaskDetailsId);
-    } else {
-      state.expandedTaskDetails.add(action.toggleTaskDetailsId);
-    }
-    renderTimeMapsAndTasks(state.tasksTimeMapsCache);
-    return true;
-  }
-  if (action.toggleTaskCollapseId !== undefined) {
-    if (state.collapsedTasks.has(action.toggleTaskCollapseId)) {
-      state.collapsedTasks.delete(action.toggleTaskCollapseId);
-    } else {
-      state.collapsedTasks.add(action.toggleTaskCollapseId);
-    }
-    renderTimeMapsAndTasks(state.tasksTimeMapsCache);
-    return true;
-  }
-  return false;
+  ];
+  const match = handlers.find((handler) => handler.when);
+  if (!match) {return false;}
+  match.run();
+  renderTimeMapsAndTasks(state.tasksTimeMapsCache);
+  return true;
 }
 
 async function handleTaskActions(action) {
@@ -207,12 +203,8 @@ async function handleTaskActions(action) {
     startTaskInSection(action.addSection, action.addSubsectionTaskTarget || "");
     return true;
   }
-  if (action.toggleSubsectionFor !== undefined) {
-    openSubsectionModal(action.toggleSubsectionFor, "");
-    return true;
-  }
-  if (action.addSubsectionFor !== undefined) {
-    openSubsectionModal(action.addSubsectionFor, "");
+  if (action.toggleSubsectionFor !== undefined || action.addSubsectionFor !== undefined) {
+    openSubsectionModal(action.toggleSubsectionFor || action.addSubsectionFor, "");
     return true;
   }
   if (action.editId) {
@@ -227,21 +219,24 @@ async function handleTaskActions(action) {
     return true;
   }
   if (action.deleteId) {
-    const affected = getTaskAndDescendants(action.deleteId, state.tasksCache);
-    const snapshot = affected.map((t) => JSON.parse(JSON.stringify(t)));
-    await Promise.all(affected.map((t) => deleteTask(t.id)));
-    await loadTasks();
-    if (snapshot.length) {
-      const name = snapshot[0].title || "Untitled task";
-      const extra = snapshot.length > 1 ? ` and ${snapshot.length - 1} subtasks` : "";
-      showUndoBanner(`Deleted "${name}"${extra}.`, async () => {
-        await Promise.all(snapshot.map((t) => saveTask(t)));
-        await loadTasks();
-      });
-    }
+    await deleteTaskWithUndo(action.deleteId);
     return true;
   }
   return false;
+}
+
+async function deleteTaskWithUndo(taskId) {
+  const affected = getTaskAndDescendants(taskId, state.tasksCache);
+  const snapshot = affected.map((t) => JSON.parse(JSON.stringify(t)));
+  await Promise.all(affected.map((t) => deleteTask(t.id)));
+  await loadTasks();
+  if (!snapshot.length) {return;}
+  const name = snapshot[0].title || "Untitled task";
+  const extra = snapshot.length > 1 ? ` and ${snapshot.length - 1} subtasks` : "";
+  showUndoBanner(`Deleted "${name}"${extra}.`, async () => {
+    await Promise.all(snapshot.map((t) => saveTask(t)));
+    await loadTasks();
+  });
 }
 
 export async function handleTaskListClick(event) {

@@ -487,16 +487,9 @@ function renderSubsection(sub, section, sectionTasks, context, options) {
 function renderSectionCard(section, context, options) {
   const { filteredTasks, suppressPlaceholders } = options;
   const isNoSection = !section.id;
-  const sectionTasks = filteredTasks.filter((t) =>
-    isNoSection ? !t.section : t.section === section.id
-  );
-  const isSubsectionZoom =
-    state.zoomFilter?.type === "subsection" && state.zoomFilter.sectionId === section.id;
-  const card = document.createElement("div");
-  card.className = isSubsectionZoom
-    ? "space-y-3"
-    : "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow space-y-3";
-  card.dataset.sectionCard = section.id;
+  const sectionTasks = getSectionTasks(filteredTasks, section, isNoSection);
+  const isSubsectionZoom = isSubsectionZoomed(section.id);
+  const card = buildSectionCardContainer(section, isSubsectionZoom);
   const isCollapsed = state.collapsedSections.has(section.id);
   if (!isSubsectionZoom) {
     card.appendChild(buildSectionHeader(section, { isNoSection, isCollapsed }));
@@ -509,6 +502,34 @@ function renderSectionCard(section, context, options) {
   }
   const { subsections, taskSubsections } = buildSubsections(section, sectionTasks);
   const filteredSubs = filterSubsectionsForZoom(subsections, taskSubsections, section.id);
+  appendUngroupedTasks(sectionBody, sectionTasks, isNoSection, context);
+  appendSubsections(sectionBody, filteredSubs, section, sectionTasks, context, {
+    isNoSection,
+    suppressPlaceholders,
+    isSubsectionZoom
+  });
+  card.appendChild(sectionBody);
+  return card;
+}
+
+function getSectionTasks(filteredTasks, section, isNoSection) {
+  return filteredTasks.filter((t) => (isNoSection ? !t.section : t.section === section.id));
+}
+
+function isSubsectionZoomed(sectionId) {
+  return state.zoomFilter?.type === "subsection" && state.zoomFilter.sectionId === sectionId;
+}
+
+function buildSectionCardContainer(section, isSubsectionZoom) {
+  const card = document.createElement("div");
+  card.className = isSubsectionZoom
+    ? "space-y-3"
+    : "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow space-y-3";
+  card.dataset.sectionCard = section.id;
+  return card;
+}
+
+function appendUngroupedTasks(sectionBody, sectionTasks, isNoSection, context) {
   const ungroupedTasks = sortTasksByOrder(sectionTasks.filter((t) => !t.subsection));
   if (isNoSection) {
     const ungroupedZone = buildUngroupedZone(context, {
@@ -517,9 +538,15 @@ function renderSectionCard(section, context, options) {
       ungroupedTasks
     });
     sectionBody.appendChild(ungroupedZone);
-  } else if (ungroupedTasks.length > 0) {
+    return;
+  }
+  if (ungroupedTasks.length > 0) {
     renderTaskCards(sectionBody, ungroupedTasks, context);
   }
+}
+
+function appendSubsections(sectionBody, filteredSubs, section, sectionTasks, context, options) {
+  const { isNoSection, suppressPlaceholders, isSubsectionZoom } = options;
   const buildChildren = (parentId = "") =>
     filteredSubs.filter((s) => (s.parentId || "") === (parentId || ""));
   if (isSubsectionZoom) {
@@ -534,21 +561,18 @@ function renderSectionCard(section, context, options) {
         })
       );
     }
-  } else {
-    buildChildren().forEach((sub) => {
-      sectionBody.appendChild(
-        renderSubsection(sub, section, sectionTasks, context, {
-          isNoSection,
-          suppressPlaceholders,
-          buildChildren
-        })
-      );
-    });
+    return;
   }
-  card.appendChild(sectionBody);
-  return card;
+  buildChildren().forEach((sub) => {
+    sectionBody.appendChild(
+      renderSubsection(sub, section, sectionTasks, context, {
+        isNoSection,
+        suppressPlaceholders,
+        buildChildren
+      })
+    );
+  });
 }
-
 export function renderTasks(tasks, timeMaps) {
   destroyTaskSortables();
   taskList.innerHTML = "";

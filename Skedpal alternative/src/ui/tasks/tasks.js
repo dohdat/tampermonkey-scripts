@@ -1,6 +1,54 @@
 import { DEFAULT_SETTINGS, saveTask } from "../../data/db.js";
 import { getContainerKey, getTaskAndDescendants, sortTasksByOrder, uuid } from "../utils.js";
 
+function buildMovedBlock(movedSubtree, targetSection, targetSubsection) {
+  return sortTasksByOrder(movedSubtree).map((task) => ({
+    ...task,
+    section: targetSection,
+    subsection: targetSubsection
+  }));
+}
+
+function getDestinationExisting(tasks, sourceKey, targetKey, movedIds) {
+  const filtered = tasks.filter(
+    (t) => getContainerKey(t.section, t.subsection) === targetKey && !movedIds.has(t.id)
+  );
+  return sortTasksByOrder(filtered);
+}
+
+function assignOrdersToUpdates(list, section, subsection, originalById, updates) {
+  list.forEach((task, index) => {
+    const desiredOrder = index + 1;
+    const original = originalById.get(task.id);
+    if (
+      !original ||
+      (original.section || "") !== (section || "") ||
+      (original.subsection || "") !== (subsection || "") ||
+      original.order !== desiredOrder
+    ) {
+      updates.push({ ...task, section, subsection, order: desiredOrder });
+    }
+  });
+}
+
+function resolveDestinationExisting(sourceKey, targetKey, remainingSource, tasks, movedIds) {
+  if (sourceKey === targetKey) {return remainingSource;}
+  return getDestinationExisting(tasks, sourceKey, targetKey, movedIds);
+}
+
+function normalizeDropBeforeId(dropBeforeId, movedIds, movedTaskId) {
+  if (!dropBeforeId || movedIds.has(dropBeforeId) || dropBeforeId === movedTaskId) {
+    return null;
+  }
+  return dropBeforeId;
+}
+
+function resolveInsertIndex(destinationList, dropBeforeId) {
+  if (!dropBeforeId) {return destinationList.length;}
+  const index = destinationList.findIndex((t) => t.id === dropBeforeId);
+  return index >= 0 ? index : destinationList.length;
+}
+
 export function computeTaskReorderUpdates(
   tasks,
   movedTaskId,
@@ -21,48 +69,30 @@ export function computeTaskReorderUpdates(
         getContainerKey(t.section, t.subsection) === sourceKey && !movedIds.has(t.id)
     )
   );
-  const destinationExisting =
-    sourceKey === targetKey
-      ? remainingSource
-      : sortTasksByOrder(
-          tasks.filter(
-            (t) =>
-              getContainerKey(t.section, t.subsection) === targetKey && !movedIds.has(t.id)
-          )
-        );
+  const destinationExisting = resolveDestinationExisting(
+    sourceKey,
+    targetKey,
+    remainingSource,
+    tasks,
+    movedIds
+  );
   const destinationList = [...destinationExisting];
-  const cleanedDropBeforeId = dropBeforeId && !movedIds.has(dropBeforeId) ? dropBeforeId : null;
-  const insertAtCandidate =
-    cleanedDropBeforeId && cleanedDropBeforeId !== movedTaskId
-      ? destinationList.findIndex((t) => t.id === cleanedDropBeforeId)
-      : -1;
-  const insertAt = insertAtCandidate >= 0 ? insertAtCandidate : destinationList.length;
-  const movedBlock = sortTasksByOrder(movedSubtree).map((task) => ({
-    ...task,
-    section: targetSection,
-    subsection: targetSubsection
-  }));
+  const cleanedDropBeforeId = normalizeDropBeforeId(dropBeforeId, movedIds, movedTaskId);
+  const insertAt = resolveInsertIndex(destinationList, cleanedDropBeforeId);
+  const movedBlock = buildMovedBlock(movedSubtree, targetSection, targetSubsection);
   destinationList.splice(insertAt, 0, ...movedBlock);
   const updates = [];
-  const assignOrders = (list, section, subsection) => {
-    list.forEach((task, index) => {
-      const desiredOrder = index + 1;
-      const original = originalById.get(task.id);
-      if (
-        !original ||
-        (original.section || "") !== (section || "") ||
-        (original.subsection || "") !== (subsection || "") ||
-        original.order !== desiredOrder
-      ) {
-        updates.push({ ...task, section, subsection, order: desiredOrder });
-      }
-    });
-  };
   if (sourceKey === targetKey) {
-    assignOrders(destinationList, targetSection, targetSubsection);
+    assignOrdersToUpdates(destinationList, targetSection, targetSubsection, originalById, updates);
   } else {
-    assignOrders(remainingSource, movedTask.section || "", movedTask.subsection || "");
-    assignOrders(destinationList, targetSection, targetSubsection);
+    assignOrdersToUpdates(
+      remainingSource,
+      movedTask.section || "",
+      movedTask.subsection || "",
+      originalById,
+      updates
+    );
+    assignOrdersToUpdates(destinationList, targetSection, targetSubsection, originalById, updates);
   }
   return { updates, changed: updates.length > 0 };
 }
@@ -71,60 +101,14 @@ export async function ensureTaskIds(tasks) {
   const updates = [];
   const orderTracker = new Map();
   const withIds = tasks.map((task) => {
-    let changed = false;
     let nextTask = task;
-    if (!nextTask.id) {
-      nextTask = { ...nextTask, id: uuid() };
-      changed = true;
-    }
-    if (nextTask.minBlockMin === undefined) {
-      nextTask = { ...nextTask, minBlockMin: 30 };
-      changed = true;
-    }
-    if (nextTask.subtaskParentId === undefined) {
-      nextTask = { ...nextTask, subtaskParentId: null };
-      changed = true;
-    }
-    if (nextTask.startFrom === undefined) {
-      nextTask = { ...nextTask, startFrom: null };
-      changed = true;
-    }
-    if (nextTask.completed === undefined) {
-      nextTask = { ...nextTask, completed: false };
-      changed = true;
-    }
-    if (nextTask.completedAt === undefined) {
-      nextTask = { ...nextTask, completedAt: null };
-      changed = true;
-    }
-    if (!Array.isArray(nextTask.completedOccurrences)) {
-      nextTask = { ...nextTask, completedOccurrences: [] };
-      changed = true;
-    }
-    if (!nextTask.repeat) {
-      nextTask = { ...nextTask, repeat: { type: "none" } };
-      changed = true;
-    }
-    if (!nextTask.scheduleStatus) {
-      nextTask = { ...nextTask, scheduleStatus: "unscheduled" };
-      changed = true;
-    }
-    const key = getContainerKey(nextTask.section, nextTask.subsection);
-    const numericOrder = Number(nextTask.order);
-    const hasOrder = Number.isFinite(numericOrder);
-    const currentMax = orderTracker.get(key) || 0;
-    if (!hasOrder) {
-      const assignedOrder = currentMax + 1;
-      orderTracker.set(key, assignedOrder);
-      nextTask = { ...nextTask, order: assignedOrder };
-      changed = true;
-    } else {
-      orderTracker.set(key, Math.max(currentMax, numericOrder));
-      if (nextTask.order !== numericOrder) {
-        nextTask = { ...nextTask, order: numericOrder };
-        changed = true;
-      }
-    }
+    let changed = false;
+    const defaultsResult = applyTaskDefaults(nextTask);
+    nextTask = defaultsResult.task;
+    changed = defaultsResult.changed;
+    const orderResult = ensureTaskOrder(nextTask, orderTracker);
+    nextTask = orderResult.task;
+    changed = changed || orderResult.changed;
     if (changed) {
       updates.push(saveTask(nextTask));
     }
@@ -134,6 +118,55 @@ export async function ensureTaskIds(tasks) {
     await Promise.all(updates);
   }
   return withIds;
+}
+
+function applyTaskDefaults(task) {
+  let nextTask = task;
+  let changed = false;
+  const defaultFields = [
+    { key: "id", value: uuid(), condition: (t) => !t.id },
+    { key: "minBlockMin", value: 30, condition: (t) => t.minBlockMin === undefined },
+    { key: "subtaskParentId", value: null, condition: (t) => t.subtaskParentId === undefined },
+    { key: "startFrom", value: null, condition: (t) => t.startFrom === undefined },
+    { key: "completed", value: false, condition: (t) => t.completed === undefined },
+    { key: "completedAt", value: null, condition: (t) => t.completedAt === undefined }
+  ];
+  defaultFields.forEach((field) => {
+    if (field.condition(nextTask)) {
+      nextTask = { ...nextTask, [field.key]: field.value };
+      changed = true;
+    }
+  });
+  if (!Array.isArray(nextTask.completedOccurrences)) {
+    nextTask = { ...nextTask, completedOccurrences: [] };
+    changed = true;
+  }
+  if (!nextTask.repeat) {
+    nextTask = { ...nextTask, repeat: { type: "none" } };
+    changed = true;
+  }
+  if (!nextTask.scheduleStatus) {
+    nextTask = { ...nextTask, scheduleStatus: "unscheduled" };
+    changed = true;
+  }
+  return { task: nextTask, changed };
+}
+
+function ensureTaskOrder(task, orderTracker) {
+  const key = getContainerKey(task.section, task.subsection);
+  const numericOrder = Number(task.order);
+  const hasOrder = Number.isFinite(numericOrder);
+  const currentMax = orderTracker.get(key) || 0;
+  if (!hasOrder) {
+    const assignedOrder = currentMax + 1;
+    orderTracker.set(key, assignedOrder);
+    return { task: { ...task, order: assignedOrder }, changed: true };
+  }
+  orderTracker.set(key, Math.max(currentMax, numericOrder));
+  if (task.order !== numericOrder) {
+    return { task: { ...task, order: numericOrder }, changed: true };
+  }
+  return { task, changed: false };
 }
 
 function buildSectionMaps(mergedSettings) {
@@ -191,34 +224,78 @@ function buildSubsectionMaps(mergedSettings, sectionIdMap, sectionNameMap) {
     }
   };
   Object.entries(subsectionsRaw).forEach(([key, list]) => {
-    const targetSectionId = sectionIdMap.has(key)
-      ? key
-      : sectionNameMap.get((key || "").toLowerCase());
+    const targetSectionId = resolveSubsectionSectionId(key, sectionIdMap, sectionNameMap);
     if (!targetSectionId) {return;}
     ensureSubsectionMaps(targetSectionId);
-    (list || []).forEach((item) => {
-      const isObj = typeof item === "object" && item !== null;
-      const name = typeof item === "string" ? item : item?.name || "Untitled subsection";
-      const id = isObj && item?.id ? item.id : uuid();
-      const favorite = isObj && item?.favorite ? Boolean(item.favorite) : false;
-      const favoriteOrder = isObj && item?.favoriteOrder ? Number(item.favoriteOrder) : null;
-      const parentId = isObj && item?.parentId ? item.parentId : "";
-      const template = isObj && item?.template ? { ...item.template } : undefined;
-      if (subsectionIdMaps[targetSectionId].has(id)) {return;}
-      const sub = {
-        id,
-        name,
-        favorite,
-        favoriteOrder: Number.isFinite(favoriteOrder) ? favoriteOrder : null,
-        parentId,
-        ...(template ? { template } : {})
-      };
-      subsections[targetSectionId].push(sub);
-      subsectionIdMaps[targetSectionId].set(id, sub);
-      if (name) {subsectionNameMaps[targetSectionId].set(name.toLowerCase(), id);}
-    });
+    (list || []).forEach((item) =>
+      addSubsectionEntry(item, targetSectionId, subsections, subsectionIdMaps, subsectionNameMaps)
+    );
   });
   return { subsections, subsectionIdMaps, subsectionNameMaps, ensureSubsectionMaps };
+}
+
+function resolveSubsectionSectionId(key, sectionIdMap, sectionNameMap) {
+  if (sectionIdMap.has(key)) {return key;}
+  return sectionNameMap.get((key || "").toLowerCase()) || "";
+}
+
+function getSubsectionName(item) {
+  if (typeof item === "string") {return item;}
+  if (item && typeof item === "object" && item.name) {return item.name;}
+  return "Untitled subsection";
+}
+
+function getSubsectionId(item) {
+  if (item && typeof item === "object" && item.id) {return item.id;}
+  return uuid();
+}
+
+function getSubsectionFavorite(item) {
+  return Boolean(item && typeof item === "object" && item.favorite);
+}
+
+function getSubsectionFavoriteOrder(item) {
+  if (!item || typeof item !== "object") {return null;}
+  const value = Number(item.favoriteOrder);
+  return Number.isFinite(value) ? value : null;
+}
+
+function getSubsectionParentId(item) {
+  return item && typeof item === "object" && item.parentId ? item.parentId : "";
+}
+
+function getSubsectionTemplate(item) {
+  if (item && typeof item === "object" && item.template) {
+    return { ...item.template };
+  }
+  return undefined;
+}
+
+function normalizeSubsectionItem(item) {
+  return {
+    name: getSubsectionName(item),
+    id: getSubsectionId(item),
+    favorite: getSubsectionFavorite(item),
+    favoriteOrder: getSubsectionFavoriteOrder(item),
+    parentId: getSubsectionParentId(item),
+    template: getSubsectionTemplate(item)
+  };
+}
+
+function addSubsectionEntry(item, targetSectionId, subsections, subsectionIdMaps, subsectionNameMaps) {
+  const { name, id, favorite, favoriteOrder, parentId, template } = normalizeSubsectionItem(item);
+  if (subsectionIdMaps[targetSectionId].has(id)) {return;}
+  const sub = {
+    id,
+    name,
+    favorite,
+    favoriteOrder: Number.isFinite(favoriteOrder) ? favoriteOrder : null,
+    parentId,
+    ...(template ? { template } : {})
+  };
+  subsections[targetSectionId].push(sub);
+  subsectionIdMaps[targetSectionId].set(id, sub);
+  if (name) {subsectionNameMaps[targetSectionId].set(name.toLowerCase(), id);}
 }
 
 function normalizeTaskSections(tasks, sectionMaps, subsectionMaps) {
@@ -229,36 +306,15 @@ function normalizeTaskSections(tasks, sectionMaps, subsectionMaps) {
   const updatedTasks = [];
   const taskUpdates = [];
   tasks.forEach((task) => {
-    let newSectionId = "";
-    if (task.section) {
-      if (sectionIdMap.has(task.section)) {
-        newSectionId = task.section;
-      } else {
-        const fromName = sectionNameMap.get(task.section.toLowerCase?.() || task.section);
-        newSectionId = fromName || addSection(task.section).id;
-      }
-    }
+    const newSectionId = resolveTaskSectionId(task, sectionIdMap, sectionNameMap, addSection);
     ensureSubsectionMaps(newSectionId);
-    let newSubsectionId = "";
-    if (task.subsection && newSectionId) {
-      const idMap = subsectionIdMaps[newSectionId];
-      const nameMap = subsectionNameMaps[newSectionId];
-      if (idMap.has(task.subsection)) {
-        newSubsectionId = task.subsection;
-      } else {
-        const fromName = nameMap.get(task.subsection.toLowerCase?.() || task.subsection);
-        if (fromName) {
-          newSubsectionId = fromName;
-        } else {
-          const subId = uuid();
-          const sub = { id: subId, name: task.subsection, favorite: false };
-          subsections[newSectionId].push(sub);
-          idMap.set(subId, sub);
-          if (sub.name) {nameMap.set(sub.name.toLowerCase(), subId);}
-          newSubsectionId = subId;
-        }
-      }
-    }
+    const newSubsectionId = resolveTaskSubsectionId(
+      task,
+      newSectionId,
+      subsectionIdMaps,
+      subsectionNameMaps,
+      subsections
+    );
     const updated = { ...task, section: newSectionId, subsection: newSubsectionId };
     updatedTasks.push(updated);
     const original = tasksById.get(task.id);
@@ -271,6 +327,34 @@ function normalizeTaskSections(tasks, sectionMaps, subsectionMaps) {
     }
   });
   return { updatedTasks, taskUpdates };
+}
+
+function resolveTaskSectionId(task, sectionIdMap, sectionNameMap, addSection) {
+  if (!task.section) {return "";}
+  if (sectionIdMap.has(task.section)) {return task.section;}
+  const fromName = sectionNameMap.get(task.section.toLowerCase?.() || task.section);
+  return fromName || addSection(task.section).id;
+}
+
+function resolveTaskSubsectionId(
+  task,
+  sectionId,
+  subsectionIdMaps,
+  subsectionNameMaps,
+  subsections
+) {
+  if (!task.subsection || !sectionId) {return "";}
+  const idMap = subsectionIdMaps[sectionId];
+  const nameMap = subsectionNameMaps[sectionId];
+  if (idMap.has(task.subsection)) {return task.subsection;}
+  const fromName = nameMap.get(task.subsection.toLowerCase?.() || task.subsection);
+  if (fromName) {return fromName;}
+  const subId = uuid();
+  const sub = { id: subId, name: task.subsection, favorite: false };
+  subsections[sectionId].push(sub);
+  idMap.set(subId, sub);
+  if (sub.name) {nameMap.set(sub.name.toLowerCase(), subId);}
+  return subId;
 }
 
 export async function migrateSectionsAndTasks(tasks, settings) {

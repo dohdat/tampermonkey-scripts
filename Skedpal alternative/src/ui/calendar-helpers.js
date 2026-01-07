@@ -1,0 +1,88 @@
+export function endOfDay(date) {
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
+export function parseInstanceDates(instance) {
+  if (!instance?.start || !instance?.end) {return null;}
+  const start = new Date(instance.start);
+  const end = new Date(instance.end);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {return null;}
+  return { start, end };
+}
+
+export function isCompletedOccurrence(start, completedOccurrences) {
+  if (!completedOccurrences?.size) {return false;}
+  const occurrenceIso = endOfDay(start).toISOString();
+  return completedOccurrences.has(occurrenceIso);
+}
+
+export function buildScheduledEvent(task, instance, index, completedOccurrences) {
+  const dates = parseInstanceDates(instance);
+  if (!dates) {return null;}
+  if (isCompletedOccurrence(dates.start, completedOccurrences)) {return null;}
+  return {
+    taskId: task.id,
+    title: task.title || "Untitled task",
+    link: task.link || "",
+    start: dates.start,
+    end: dates.end,
+    timeMapId: instance.timeMapId || "",
+    occurrenceId: instance.occurrenceId || "",
+    instanceIndex: index
+  };
+}
+
+export function resolveInstanceIndex(instances, eventMeta) {
+  if (eventMeta.occurrenceId) {
+    return instances.findIndex((instance) => instance.occurrenceId === eventMeta.occurrenceId);
+  }
+  if (Number.isFinite(eventMeta.instanceIndex)) {
+    return eventMeta.instanceIndex;
+  }
+  if (eventMeta.start instanceof Date && eventMeta.end instanceof Date) {
+    const originalStart = eventMeta.start.getTime();
+    const originalEnd = eventMeta.end.getTime();
+    return instances.findIndex((instance) => {
+      const dates = parseInstanceDates(instance);
+      if (!dates) {return false;}
+      return dates.start.getTime() === originalStart && dates.end.getTime() === originalEnd;
+    });
+  }
+  return -1;
+}
+
+export function buildScheduleBounds(instances) {
+  const sorted = instances
+    .map((instance) => ({
+      ...instance,
+      startDate: new Date(instance.start),
+      endDate: new Date(instance.end)
+    }))
+    .filter(
+      (instance) =>
+        !Number.isNaN(instance.startDate.getTime()) &&
+        !Number.isNaN(instance.endDate.getTime())
+    )
+    .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+  if (!sorted.length) {
+    return { scheduledStart: null, scheduledEnd: null, scheduledTimeMapId: null };
+  }
+  return {
+    scheduledStart: sorted[0]?.startDate?.toISOString() || null,
+    scheduledEnd: sorted[sorted.length - 1]?.endDate?.toISOString() || null,
+    scheduledTimeMapId: sorted[0]?.timeMapId || null
+  };
+}
+
+export function parseEventMetaDates(dataset) {
+  const startIso = dataset.eventStart || "";
+  const endIso = dataset.eventEnd || "";
+  const start = new Date(startIso);
+  const end = new Date(endIso);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return { start: null, end: null };
+  }
+  return { start, end };
+}

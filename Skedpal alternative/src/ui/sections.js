@@ -11,6 +11,14 @@ import { state } from "./state/page-state.js";
 import { repeatStore, setRepeatFromSelection, syncSubsectionRepeatLabel } from "./repeat.js";
 import { renderTimeMapOptions, collectSelectedValues } from "./time-maps.js";
 import { themeColors } from "./theme.js";
+import {
+  DEFAULT_SUBSECTION_TEMPLATE,
+  formatTemplateDate,
+  getInputValue,
+  getNumberInputValue,
+  resolveSubsectionRepeatSelection,
+  setInputValue
+} from "./sections-helpers.js";
 
 const {
   sectionList,
@@ -221,6 +229,79 @@ export function getSubsectionTemplate(sectionId, subsectionId) {
   return sub?.template || null;
 }
 
+function buildSubsectionTemplateFromInputs() {
+  const repeat = resolveSubsectionRepeatSelection();
+  return {
+    title: getInputValue(subsectionTaskTitleInput, ""),
+    link: getInputValue(subsectionTaskLinkInput, ""),
+    durationMin: getNumberInputValue(subsectionTaskDurationInput, 30),
+    minBlockMin: getNumberInputValue(subsectionTaskMinBlockInput, 30),
+    priority: getNumberInputValue(subsectionTaskPriorityInput, 3),
+    deadline: getInputValue(subsectionTaskDeadlineInput, ""),
+    repeat,
+    startFrom: getInputValue(subsectionTaskStartFromInput, ""),
+    timeMapIds: collectSelectedValues(subsectionTimeMapOptions) || [],
+    subtaskScheduleMode: normalizeSubtaskScheduleMode(subsectionTaskSubtaskScheduleSelect?.value)
+  };
+}
+
+function resolveSubsectionTemplate(existing) {
+  return {
+    ...DEFAULT_SUBSECTION_TEMPLATE,
+    ...(existing?.template || {})
+  };
+}
+
+function applySubsectionTemplate(template) {
+  setInputValue(subsectionTaskTitleInput, template.title || "");
+  setInputValue(subsectionTaskLinkInput, template.link || "");
+  setInputValue(subsectionTaskDurationInput, template.durationMin || 30);
+  setInputValue(subsectionTaskMinBlockInput, template.minBlockMin || 30);
+  setInputValue(subsectionTaskPriorityInput, String(template.priority || 3));
+  setInputValue(subsectionTaskDeadlineInput, formatTemplateDate(template.deadline));
+  setInputValue(subsectionTaskStartFromInput, formatTemplateDate(template.startFrom));
+  const repeat = template.repeat || { type: "none" };
+  setInputValue(subsectionTaskRepeatSelect, repeat.type === "custom" ? "custom" : "none");
+  setRepeatFromSelection(repeat, "subsection");
+  syncSubsectionRepeatLabel();
+  if (subsectionTaskSubtaskScheduleSelect) {
+    subsectionTaskSubtaskScheduleSelect.value = normalizeSubtaskScheduleMode(template.subtaskScheduleMode);
+  }
+  renderTimeMapOptions(subsectionTimeMapOptions, template.timeMapIds || [], state.tasksTimeMapsCache);
+}
+
+function hasInvalidSubsectionDates() {
+  if (
+    isStartAfterDeadline(subsectionTaskStartFromInput?.value || "", subsectionTaskDeadlineInput?.value || "")
+  ) {
+    alert("Start from cannot be after deadline.");
+    return true;
+  }
+  return false;
+}
+
+function isDuplicateSubsectionName(list, parentId, name, ignoreId = "") {
+  return list.some(
+    (s) =>
+      s.id !== ignoreId &&
+      (s.parentId || "") === (parentId || "") &&
+      s.name &&
+      s.name.toLowerCase() === name.toLowerCase()
+  );
+}
+
+function promptForName(title, currentValue) {
+  const next = prompt(title, currentValue || "");
+  if (next === null) {return null;}
+  return next.trim();
+}
+
+function isValidRename(name, currentName, list, subsectionId, parentId) {
+  if (!name) {return false;}
+  if (name.toLowerCase() === (currentName || "").toLowerCase()) {return false;}
+  return !isDuplicateSubsectionName(list, parentId || "", name, subsectionId);
+}
+
 export function openSubsectionModal(sectionId, parentId = "", existingSubsectionId = "") {
   const { subsectionFormWrap } = domRefs;
   if (!subsectionFormWrap) {return;}
@@ -232,32 +313,8 @@ export function openSubsectionModal(sectionId, parentId = "", existingSubsection
   subsectionSectionIdInput.value = sectionId || "";
   subsectionParentIdInput.value = parentId || existing?.parentId || "";
   subsectionNameInput.value = existing?.name || "";
-  const template = existing?.template || {
-    title: "",
-    link: "",
-    durationMin: 30,
-    minBlockMin: 30,
-    priority: 3,
-    deadline: "",
-    startFrom: "",
-    repeat: { type: "none" },
-    timeMapIds: [],
-    subtaskScheduleMode: "parallel"
-  };
-  subsectionTaskTitleInput.value = template.title || "";
-  subsectionTaskLinkInput.value = template.link || "";
-  subsectionTaskDurationInput.value = template.durationMin || 30;
-  subsectionTaskMinBlockInput.value = template.minBlockMin || 30;
-  subsectionTaskPriorityInput.value = String(template.priority || 3);
-  subsectionTaskDeadlineInput.value = template.deadline ? template.deadline.slice(0, 10) : "";
-  subsectionTaskStartFromInput.value = template.startFrom ? template.startFrom.slice(0, 10) : "";
-  subsectionTaskRepeatSelect.value = template.repeat?.type === "custom" ? "custom" : "none";
-  setRepeatFromSelection(template.repeat || { type: "none" }, "subsection");
-  syncSubsectionRepeatLabel();
-  if (subsectionTaskSubtaskScheduleSelect) {
-    subsectionTaskSubtaskScheduleSelect.value = normalizeSubtaskScheduleMode(template.subtaskScheduleMode);
-  }
-  renderTimeMapOptions(subsectionTimeMapOptions, template.timeMapIds || [], state.tasksTimeMapsCache);
+  const template = resolveSubsectionTemplate(existing);
+  applySubsectionTemplate(template);
   subsectionFormWrap.classList.remove("hidden");
 }
 
@@ -314,44 +371,17 @@ export async function handleRemoveSection(id) {
 export async function handleAddSubsection(sectionId, value, parentSubsectionId = "") {
   const name = value.trim();
   if (!sectionId || !name) {return;}
-  if (
-    isStartAfterDeadline(subsectionTaskStartFromInput?.value || "", subsectionTaskDeadlineInput?.value || "")
-  ) {
-    alert("Start from cannot be after deadline.");
-    return;
-  }
+  if (hasInvalidSubsectionDates()) {return;}
   const subsections = { ...(state.settingsCache.subsections || {}) };
   const list = subsections[sectionId] || [];
   const parentId = parentSubsectionId || "";
-  if (
-    list.some(
-      (s) =>
-        (s.parentId || "") === parentId &&
-        s.name &&
-        s.name.toLowerCase() === name.toLowerCase()
-    )
-  )
-    {return;}
+  if (isDuplicateSubsectionName(list, parentId, name)) {return;}
   const entry = {
     id: uuid(),
     name,
     favorite: false,
     parentId,
-    template: {
-      title: subsectionTaskTitleInput?.value || "",
-      link: subsectionTaskLinkInput?.value || "",
-      durationMin: Number(subsectionTaskDurationInput?.value) || 30,
-      minBlockMin: Number(subsectionTaskMinBlockInput?.value) || 30,
-      priority: Number(subsectionTaskPriorityInput?.value) || 3,
-      deadline: subsectionTaskDeadlineInput?.value || "",
-      repeat:
-        repeatStore.subsectionRepeatSelection?.type && repeatStore.subsectionRepeatSelection.type !== "none"
-          ? repeatStore.subsectionRepeatSelection
-          : { type: "none" },
-      startFrom: subsectionTaskStartFromInput?.value || "",
-      timeMapIds: collectSelectedValues(subsectionTimeMapOptions) || [],
-      subtaskScheduleMode: normalizeSubtaskScheduleMode(subsectionTaskSubtaskScheduleSelect?.value)
-    }
+    template: buildSubsectionTemplateFromInputs()
   };
   subsections[sectionId] = [...list, entry];
   state.settingsCache = { ...state.settingsCache, subsections };
@@ -385,11 +415,9 @@ export async function handleRenameSubsection(sectionId, subsectionId) {
   const list = subsections[sectionId] || [];
   const target = list.find((s) => s.id === subsectionId);
   if (!target) {return;}
-  const next = prompt("Rename subsection", target.name || "");
-  if (next === null) {return;}
-  const name = next.trim();
-  if (!name || name.toLowerCase() === target.name.toLowerCase()) {return;}
-  if (list.some((s) => s.id !== subsectionId && s.name.toLowerCase() === name.toLowerCase())) {return;}
+  const name = promptForName("Rename subsection", target.name || "");
+  if (name === null) {return;}
+  if (!isValidRename(name, target.name, list, subsectionId, target.parentId)) {return;}
   const updatedList = list.map((s) => (s.id === subsectionId ? { ...s, name } : s));
   subsections[sectionId] = updatedList;
   state.settingsCache = { ...state.settingsCache, subsections };
@@ -400,19 +428,9 @@ export async function handleRenameSubsection(sectionId, subsectionId) {
 }
 
 export async function handleRemoveSubsection(sectionId, subsectionId) {
-  if (!sectionId || !subsectionId) {return;}
-  const subsections = { ...(state.settingsCache.subsections || {}) };
-  const list = subsections[sectionId] || [];
-  const target = list.find((s) => s.id === subsectionId);
-  const parentId = target?.parentId || "";
-  const nextList = list
-    .filter((s) => s.id !== subsectionId)
-    .map((s) =>
-      s.parentId === subsectionId
-        ? { ...s, parentId }
-        : s
-    );
-  if (nextList.length === list.length) {return;}
+  const removal = buildSubsectionRemoval(sectionId, subsectionId);
+  if (!removal) {return;}
+  const { subsections, target, parentId, nextList } = removal;
   const confirmRemove = confirm(
     `Delete subsection "${target?.name || "Untitled subsection"}" and move its tasks to the parent subsection?`
   );
@@ -432,6 +450,20 @@ export async function handleRemoveSubsection(sectionId, subsectionId) {
   renderFavoriteShortcuts();
   const { loadTasks } = await import("./tasks/tasks-actions.js");
   await loadTasks();
+}
+
+function buildSubsectionRemoval(sectionId, subsectionId) {
+  if (!sectionId || !subsectionId) {return null;}
+  const subsections = { ...(state.settingsCache.subsections || {}) };
+  const sectionList = subsections[sectionId] || [];
+  const target = sectionList.find((s) => s.id === subsectionId);
+  if (!target) {return null;}
+  const parentId = target.parentId || "";
+  const nextList = sectionList
+    .filter((s) => s.id !== subsectionId)
+    .map((s) => (s.parentId === subsectionId ? { ...s, parentId } : s));
+  if (nextList.length === sectionList.length) {return null;}
+  return { subsections, target, parentId, nextList };
 }
 
 export async function handleToggleSectionFavorite(sectionId) {
@@ -568,49 +600,33 @@ export async function handleSubsectionFormSubmit() {
   const parentId = subsectionParentIdInput.value || "";
   const name = subsectionNameInput.value || "";
   if (!sectionId || !name) {return;}
-  if (
-    isStartAfterDeadline(subsectionTaskStartFromInput?.value || "", subsectionTaskDeadlineInput?.value || "")
-  ) {
-    alert("Start from cannot be after deadline.");
-    return;
-  }
+  if (hasInvalidSubsectionDates()) {return;}
   if (editingSubsectionId) {
-    const subsections = { ...(state.settingsCache.subsections || {}) };
-    const list = subsections[sectionId] || [];
-    const idx = list.findIndex((s) => s.id === editingSubsectionId);
-    if (idx >= 0) {
-      const updated = {
-        ...list[idx],
-        name,
-        parentId,
-        template: {
-          title: subsectionTaskTitleInput?.value || "",
-          link: subsectionTaskLinkInput?.value || "",
-          durationMin: Number(subsectionTaskDurationInput?.value) || 30,
-          minBlockMin: Number(subsectionTaskMinBlockInput?.value) || 30,
-          priority: Number(subsectionTaskPriorityInput?.value) || 3,
-          deadline: subsectionTaskDeadlineInput?.value || "",
-          repeat:
-            repeatStore.subsectionRepeatSelection?.type && repeatStore.subsectionRepeatSelection.type !== "none"
-              ? repeatStore.subsectionRepeatSelection
-              : { type: "none" },
-          startFrom: subsectionTaskStartFromInput?.value || "",
-          timeMapIds: collectSelectedValues(subsectionTimeMapOptions) || [],
-          subtaskScheduleMode: normalizeSubtaskScheduleMode(subsectionTaskSubtaskScheduleSelect?.value)
-        }
-      };
-      list[idx] = updated;
-      subsections[sectionId] = list;
-      state.settingsCache = { ...state.settingsCache, subsections };
-      await saveSettings(state.settingsCache);
-      renderTaskSectionOptions(sectionId);
-      renderFavoriteShortcuts();
-      const { loadTasks } = await import("./tasks/tasks-actions.js");
-      await loadTasks();
-    }
+    await saveEditedSubsection(sectionId, editingSubsectionId, name, parentId);
   } else {
     await handleAddSubsection(sectionId, name, parentId);
   }
   closeSubsectionModal();
+}
+
+async function saveEditedSubsection(sectionId, subsectionId, name, parentId) {
+  const subsections = { ...(state.settingsCache.subsections || {}) };
+  const list = subsections[sectionId] || [];
+  const idx = list.findIndex((s) => s.id === subsectionId);
+  if (idx < 0) {return;}
+  const updated = {
+    ...list[idx],
+    name,
+    parentId,
+    template: buildSubsectionTemplateFromInputs()
+  };
+  list[idx] = updated;
+  subsections[sectionId] = list;
+  state.settingsCache = { ...state.settingsCache, subsections };
+  await saveSettings(state.settingsCache);
+  renderTaskSectionOptions(sectionId);
+  renderFavoriteShortcuts();
+  const { loadTasks } = await import("./tasks/tasks-actions.js");
+  await loadTasks();
 }
 

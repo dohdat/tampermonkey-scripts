@@ -65,11 +65,11 @@ export function findPreviousTaskId(card) {
   return "";
 }
 
-export async function handleTaskSortEnd(evt) {
+function buildSortContext(evt) {
   const movedTaskId = evt.item?.dataset?.taskId;
   const targetZone = evt.to?.closest?.("[data-drop-section]");
-  if (!movedTaskId || !targetZone) {return false;}
-  if (evt.from === evt.to && evt.oldIndex === evt.newIndex) {return false;}
+  if (!movedTaskId || !targetZone) {return null;}
+  if (evt.from === evt.to && evt.oldIndex === evt.newIndex) {return null;}
   const targetSection = (targetZone.dataset.dropSection || "").trim();
   const targetSubsection = (targetZone.dataset.dropSubsection || "").trim();
   const dropBeforeId = getDropBeforeId(evt.item);
@@ -77,27 +77,68 @@ export async function handleTaskSortEnd(evt) {
   const movedTask = state.tasksCache.find((t) => t.id === movedTaskId);
   const dropBeforeTask = dropBeforeId ? state.tasksCache.find((t) => t.id === dropBeforeId) : null;
   const prevTask = prevTaskId ? state.tasksCache.find((t) => t.id === prevTaskId) : null;
+  return {
+    movedTaskId,
+    targetSection,
+    targetSubsection,
+    dropBeforeId,
+    movedTask,
+    dropBeforeTask,
+    prevTask
+  };
+}
+
+function resolveParentId(task, movedSubtreeIds, targetKey) {
+  if (!task) {return { found: false, parentId: null };}
+  let candidateId = task.subtaskParentId || null;
+  while (candidateId && movedSubtreeIds.has(candidateId)) {
+    const ancestor = state.tasksCache.find((t) => t.id === candidateId);
+    candidateId = ancestor?.subtaskParentId || null;
+  }
+  if (!candidateId) {return { found: true, parentId: null };}
+  const candidateTask = state.tasksCache.find((t) => t.id === candidateId);
+  if (!candidateTask) {return { found: true, parentId: null };}
+  const candidateKey = getContainerKey(candidateTask.section, candidateTask.subsection);
+  if (candidateKey !== targetKey) {return { found: true, parentId: null };}
+  return { found: true, parentId: candidateId };
+}
+
+function getDesiredParentId(dropBeforeTask, prevTask, movedSubtreeIds, targetKey) {
+  const parentFromDropBefore = resolveParentId(dropBeforeTask, movedSubtreeIds, targetKey);
+  const parentFromPrev = resolveParentId(prevTask, movedSubtreeIds, targetKey);
+  return parentFromDropBefore.found ? parentFromDropBefore.parentId : parentFromPrev.parentId;
+}
+
+function mergeParentUpdate(updates, movedTaskId, movedTask, desiredParentId) {
+  const existingIndex = updates.findIndex((u) => u.id === movedTaskId);
+  if (!movedTask || desiredParentId === movedTask.subtaskParentId) {
+    return updates;
+  }
+  const base = existingIndex >= 0 ? updates[existingIndex] : movedTask;
+  const updated = { ...base, subtaskParentId: desiredParentId };
+  if (existingIndex >= 0) {
+    updates[existingIndex] = updated;
+  } else {
+    updates.push(updated);
+  }
+  return updates;
+}
+
+export async function handleTaskSortEnd(evt) {
+  const context = buildSortContext(evt);
+  if (!context) {return false;}
+  const {
+    movedTaskId,
+    targetSection,
+    targetSubsection,
+    dropBeforeId,
+    movedTask,
+    dropBeforeTask,
+    prevTask
+  } = context;
   const targetKey = getContainerKey(targetSection, targetSubsection);
   const movedSubtreeIds = new Set(getTaskAndDescendants(movedTaskId, state.tasksCache).map((t) => t.id));
-  const resolveParent = (task) => {
-    if (!task) {return { found: false, parentId: null };}
-    let candidateId = task.subtaskParentId || null;
-    while (candidateId && movedSubtreeIds.has(candidateId)) {
-      const ancestor = state.tasksCache.find((t) => t.id === candidateId);
-      candidateId = ancestor?.subtaskParentId || null;
-    }
-    if (!candidateId) {return { found: true, parentId: null };}
-    const candidateTask = state.tasksCache.find((t) => t.id === candidateId);
-    if (!candidateTask) {return { found: true, parentId: null };}
-    const candidateKey = getContainerKey(candidateTask.section, candidateTask.subsection);
-    if (candidateKey !== targetKey) {return { found: true, parentId: null };}
-    return { found: true, parentId: candidateId };
-  };
-  const parentFromDropBefore = resolveParent(dropBeforeTask);
-  const parentFromPrev = resolveParent(prevTask);
-  const desiredParentId = parentFromDropBefore.found
-    ? parentFromDropBefore.parentId
-    : parentFromPrev.parentId;
+  const desiredParentId = getDesiredParentId(dropBeforeTask, prevTask, movedSubtreeIds, targetKey);
   const reorderResult = computeTaskReorderUpdates(
     state.tasksCache,
     movedTaskId,
@@ -105,17 +146,7 @@ export async function handleTaskSortEnd(evt) {
     targetSubsection,
     dropBeforeId
   );
-  const updates = reorderResult.updates || [];
-  const existingIndex = updates.findIndex((u) => u.id === movedTaskId);
-  if (movedTask && desiredParentId !== movedTask.subtaskParentId) {
-    const base = existingIndex >= 0 ? updates[existingIndex] : movedTask;
-    const updated = { ...base, subtaskParentId: desiredParentId };
-    if (existingIndex >= 0) {
-      updates[existingIndex] = updated;
-    } else {
-      updates.push(updated);
-    }
-  }
+  const updates = mergeParentUpdate(reorderResult.updates || [], movedTaskId, movedTask, desiredParentId);
   const changed = updates.length > 0 || reorderResult.changed;
   if (!changed) {return false;}
   await Promise.all(updates.map((t) => saveTask(t)));
@@ -176,19 +207,7 @@ export async function indentTaskUnderPrevious(card) {
   if (!card) {return;}
   const childId = card.dataset.taskId;
   const childDepth = getTaskDepth(childId, state.tasksCache);
-  let parentId = "";
-  let prev = card.previousElementSibling;
-  while (prev) {
-    const pid = prev.dataset?.taskId;
-    if (pid) {
-      const prevDepth = getTaskDepth(pid, state.tasksCache);
-      if (prevDepth <= childDepth) {
-        parentId = pid;
-        break;
-      }
-    }
-    prev = prev.previousElementSibling;
-  }
+  const parentId = findIndentParentId(card, childDepth);
   if (!childId || !parentId) {return;}
   const childTask = state.tasksCache.find((t) => t.id === childId);
   const parentTask = state.tasksCache.find((t) => t.id === parentId);
@@ -210,36 +229,77 @@ export async function indentTaskUnderPrevious(card) {
   await loadTasks();
 }
 
+function findIndentParentId(card, childDepth) {
+  let prev = card.previousElementSibling;
+  while (prev) {
+    const pid = prev.dataset?.taskId;
+    if (pid) {
+      const prevDepth = getTaskDepth(pid, state.tasksCache);
+      if (prevDepth <= childDepth) {
+        return pid;
+      }
+    }
+    prev = prev.previousElementSibling;
+  }
+  return "";
+}
+
 export async function outdentTask(card) {
-  if (!card) {return;}
+  const context = getOutdentContext(card);
+  if (!context) {return;}
+  const updates = buildOutdentUpdates(context);
+  if (updates.length === 0) {return;}
+  await Promise.all(updates.map((t) => saveTask(t)));
+  const { loadTasks } = await import("./tasks-actions.js");
+  await loadTasks();
+}
+
+function getOutdentContext(card) {
+  if (!card) {return null;}
   const childId = card.dataset.taskId;
   const childTask = state.tasksCache.find((t) => t.id === childId);
-  if (!childTask || !childTask.subtaskParentId) {return;}
+  if (!childTask || !childTask.subtaskParentId) {return null;}
   const parentTask = state.tasksCache.find((t) => t.id === childTask.subtaskParentId);
-  if (!parentTask) {return;}
+  if (!parentTask) {return null;}
   const subtree = getTaskAndDescendants(childId, state.tasksCache);
   const descendantIds = new Set(subtree.filter((t) => t.id !== childId).map((t) => t.id));
-  const oldSection = childTask.section || "";
-  const oldSubsection = childTask.subsection || "";
+  return {
+    childId,
+    childTask,
+    parentTask,
+    descendantIds,
+    oldSection: childTask.section || "",
+    oldSubsection: childTask.subsection || ""
+  };
+}
+
+function buildOutdentUpdates(context) {
+  const data = buildOutdentData(context);
+  return collectOutdentUpdates(data);
+}
+
+function buildOutdentData(context) {
+  const {
+    childId,
+    childTask,
+    parentTask,
+    descendantIds,
+    oldSection,
+    oldSubsection
+  } = context;
   const newParentId = parentTask.subtaskParentId || null;
   const section = parentTask.section || "";
   const subsection = parentTask.subsection || "";
   const sourceKey = getContainerKey(oldSection, oldSubsection);
-  const updates = [];
   const originalById = new Map(state.tasksCache.map((t) => [t.id, t]));
-
-  const adjustedContainerTasks = sortTasksByOrder(
-    state.tasksCache
-      .filter((t) => getContainerKey(t.section, t.subsection) === sourceKey)
-      .filter((t) => t.id !== childId)
-      .map((t) => {
-        if (descendantIds.has(t.id)) {
-          return { ...t, subtaskParentId: parentTask.id, section, subsection };
-        }
-        return t;
-      })
-  );
-
+  const adjustedContainerTasks = buildAdjustedContainerTasks({
+    sourceKey,
+    childId,
+    descendantIds,
+    parentId: parentTask.id,
+    section,
+    subsection
+  });
   const adoptedIds = new Set(
     adjustedContainerTasks.filter((t) => t.subtaskParentId === parentTask.id).map((t) => t.id)
   );
@@ -247,36 +307,83 @@ export async function outdentTask(card) {
     ...adjustedContainerTasks,
     { ...childTask, section, subsection, subtaskParentId: newParentId }
   ];
+  return {
+    childId,
+    parentId: parentTask.id,
+    newParentId,
+    descendantIds,
+    adoptedIds,
+    finalList,
+    originalById
+  };
+}
 
-  finalList.forEach((task, idx) => {
-    const desiredOrder = idx + 1;
-    const desiredSection = task.section || "";
-    const desiredSubsection = task.subsection || "";
-    let desiredParentId = task.subtaskParentId;
-    if (task.id === childId) {
-      desiredParentId = newParentId;
-    } else if (descendantIds.has(task.id) || adoptedIds.has(task.id)) {
-      desiredParentId = parentTask.id;
-    }
-    const original = originalById.get(task.id);
-    const needsUpdate =
-      !original ||
-      original.order !== desiredOrder ||
-      (original.section || "") !== desiredSection ||
-      (original.subsection || "") !== desiredSubsection ||
-      (original.subtaskParentId || "") !== (desiredParentId || "");
-    if (needsUpdate) {
-      updates.push({
-        ...task,
-        section: desiredSection,
-        subsection: desiredSubsection,
-        order: desiredOrder,
-        subtaskParentId: desiredParentId
-      });
+function buildAdjustedContainerTasks({
+  sourceKey,
+  childId,
+  descendantIds,
+  parentId,
+  section,
+  subsection
+}) {
+  return sortTasksByOrder(
+    state.tasksCache
+      .filter((t) => getContainerKey(t.section, t.subsection) === sourceKey)
+      .filter((t) => t.id !== childId)
+      .map((t) =>
+        descendantIds.has(t.id)
+          ? { ...t, subtaskParentId: parentId, section, subsection }
+          : t
+      )
+  );
+}
+
+function computeOutdentParentId(task, childId, newParentId, parentId, descendantIds, adoptedIds) {
+  if (task.id === childId) {return newParentId;}
+  if (descendantIds.has(task.id) || adoptedIds.has(task.id)) {return parentId;}
+  return task.subtaskParentId;
+}
+
+function collectOutdentUpdates(data) {
+  const updates = [];
+  data.finalList.forEach((task, idx) => {
+    const update = buildOutdentUpdate(data, task, idx);
+    if (update) {
+      updates.push(update);
     }
   });
-  if (updates.length === 0) {return;}
-  await Promise.all(updates.map((t) => saveTask(t)));
-  const { loadTasks } = await import("./tasks-actions.js");
-  await loadTasks();
+  return updates;
+}
+
+function buildOutdentUpdate(data, task, idx) {
+  const desiredOrder = idx + 1;
+  const desiredSection = task.section || "";
+  const desiredSubsection = task.subsection || "";
+  const desiredParentId = computeOutdentParentId(
+    task,
+    data.childId,
+    data.newParentId,
+    data.parentId,
+    data.descendantIds,
+    data.adoptedIds
+  );
+  const original = data.originalById.get(task.id);
+  if (!shouldUpdateOutdent(original, desiredOrder, desiredSection, desiredSubsection, desiredParentId)) {
+    return null;
+  }
+  return {
+    ...task,
+    section: desiredSection,
+    subsection: desiredSubsection,
+    order: desiredOrder,
+    subtaskParentId: desiredParentId
+  };
+}
+
+function shouldUpdateOutdent(original, order, section, subsection, parentId) {
+  if (!original) {return true;}
+  if (original.order !== order) {return true;}
+  if ((original.section || "") !== section) {return true;}
+  if ((original.subsection || "") !== subsection) {return true;}
+  return (original.subtaskParentId || "") !== (parentId || "");
 }

@@ -10,6 +10,12 @@ import {
   clampMinutes,
   getMinutesIntoDay
 } from "./calendar-utils.js";
+import {
+  buildScheduleBounds,
+  buildScheduledEvent,
+  parseEventMetaDates,
+  resolveInstanceIndex
+} from "./calendar-helpers.js";
 import { saveTask } from "../data/db.js";
 import {
   initCalendarEventModal,
@@ -42,12 +48,6 @@ function formatEventTimeRange(start, end) {
   return `${startLabel} - ${endLabel}`;
 }
 
-function endOfDay(date) {
-  const d = new Date(date);
-  d.setHours(23, 59, 59, 999);
-  return d;
-}
-
 
 export function getCalendarEventStyles(event, timeMapColorById) {
   const color = timeMapColorById?.get?.(event?.timeMapId || "");
@@ -63,30 +63,18 @@ function getScheduledEvents(tasks) {
   (tasks || []).forEach((task) => {
     if (task.scheduleStatus !== "scheduled") {return;}
     const instances = Array.isArray(task.scheduledInstances) ? task.scheduledInstances : [];
+    if (!instances.length) {return;}
     const completedOccurrences = new Set(task.completedOccurrences || []);
     instances.forEach((instance, index) => {
-      if (!instance?.start || !instance?.end) {return;}
-      const start = new Date(instance.start);
-      const end = new Date(instance.end);
-      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {return;}
-      if (completedOccurrences.size) {
-        const occurrenceIso = endOfDay(start).toISOString();
-        if (completedOccurrences.has(occurrenceIso)) {return;}
+      const event = buildScheduledEvent(task, instance, index, completedOccurrences);
+      if (event) {
+        events.push(event);
       }
-      events.push({
-        taskId: task.id,
-        title: task.title || "Untitled task",
-        link: task.link || "",
-        start,
-        end,
-        timeMapId: instance.timeMapId || "",
-        occurrenceId: instance.occurrenceId || "",
-        instanceIndex: index
-      });
     });
   });
   return events;
 }
+
 
 export function buildUpdatedTaskForDrag(task, eventMeta, newStart, newEnd) {
   if (!task || !eventMeta || !(newStart instanceof Date) || !(newEnd instanceof Date)) {
@@ -96,45 +84,14 @@ export function buildUpdatedTaskForDrag(task, eventMeta, newStart, newEnd) {
     ? task.scheduledInstances.map((instance) => ({ ...instance }))
     : [];
   if (!instances.length) {return null;}
-  let targetIndex = -1;
-  if (eventMeta.occurrenceId) {
-    targetIndex = instances.findIndex(
-      (instance) => instance.occurrenceId === eventMeta.occurrenceId
-    );
-  }
-  if (targetIndex < 0 && Number.isFinite(eventMeta.instanceIndex)) {
-    targetIndex = eventMeta.instanceIndex;
-  }
-  if (targetIndex < 0 && eventMeta.start instanceof Date && eventMeta.end instanceof Date) {
-    const originalStart = eventMeta.start.getTime();
-    const originalEnd = eventMeta.end.getTime();
-    targetIndex = instances.findIndex((instance) => {
-      const start = new Date(instance.start);
-      const end = new Date(instance.end);
-      return start.getTime() === originalStart && end.getTime() === originalEnd;
-    });
-  }
+  const targetIndex = resolveInstanceIndex(instances, eventMeta);
   if (targetIndex < 0 || !instances[targetIndex]) {return null;}
   instances[targetIndex] = {
     ...instances[targetIndex],
     start: newStart.toISOString(),
     end: newEnd.toISOString()
   };
-  const sorted = instances
-    .map((instance) => ({
-      ...instance,
-      startDate: new Date(instance.start),
-      endDate: new Date(instance.end)
-    }))
-    .filter(
-      (instance) =>
-        !Number.isNaN(instance.startDate.getTime()) &&
-        !Number.isNaN(instance.endDate.getTime())
-    )
-    .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-  const scheduledStart = sorted[0]?.startDate?.toISOString() || null;
-  const scheduledEnd = sorted[sorted.length - 1]?.endDate?.toISOString() || null;
-  const scheduledTimeMapId = sorted[0]?.timeMapId || null;
+  const { scheduledStart, scheduledEnd, scheduledTimeMapId } = buildScheduleBounds(instances);
   return {
     ...task,
     scheduledInstances: instances,
@@ -146,27 +103,22 @@ export function buildUpdatedTaskForDrag(task, eventMeta, newStart, newEnd) {
 }
 
 function getEventMetaFromBlock(block) {
-  const taskId = block?.dataset?.eventTaskId || "";
-  const occurrenceId = block?.dataset?.eventOccurrenceId || "";
-  const instanceIndexRaw = block?.dataset?.eventInstanceIndex || "";
-  const timeMapId = block?.dataset?.eventTimeMapId || "";
-  const instanceIndex = Number(instanceIndexRaw);
-  const startIso = block?.dataset?.eventStart || "";
-  const endIso = block?.dataset?.eventEnd || "";
-  const start = new Date(startIso);
-  const end = new Date(endIso);
-  if (!taskId || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-    return null;
-  }
+  const dataset = block?.dataset || {};
+  const taskId = dataset.eventTaskId || "";
+  if (!taskId) {return null;}
+  const { start, end } = parseEventMetaDates(dataset);
+  if (!start || !end) {return null;}
+  const instanceIndex = Number(dataset.eventInstanceIndex || "");
   return {
     taskId,
-    occurrenceId,
+    occurrenceId: dataset.eventOccurrenceId || "",
     instanceIndex: Number.isFinite(instanceIndex) ? instanceIndex : null,
-    timeMapId,
+    timeMapId: dataset.eventTimeMapId || "",
     start,
     end
   };
 }
+
 
 function updateDragTarget(dayCol, block, minutes) {
   const top = (minutes / 60) * HOUR_HEIGHT;
@@ -446,19 +398,20 @@ function scheduleCalendarDrag(event) {
   };
 }
 
-function handleCalendarDragMove(event) {
-  if (pendingDrag && !dragState) {
-    pendingDrag.lastClientX = event.clientX;
-    pendingDrag.lastClientY = event.clientY;
-    const dx = pendingDrag.lastClientX - pendingDrag.startClientX;
-    const dy = pendingDrag.lastClientY - pendingDrag.startClientY;
-    const distance = Math.hypot(dx, dy);
-    if (distance > DRAG_CANCEL_DISTANCE) {
-      clearTimeout(pendingDrag.timer);
-      pendingDrag = null;
-    }
+function updatePendingDrag(event) {
+  if (!pendingDrag || dragState) {return;}
+  pendingDrag.lastClientX = event.clientX;
+  pendingDrag.lastClientY = event.clientY;
+  const dx = pendingDrag.lastClientX - pendingDrag.startClientX;
+  const dy = pendingDrag.lastClientY - pendingDrag.startClientY;
+  const distance = Math.hypot(dx, dy);
+  if (distance > DRAG_CANCEL_DISTANCE) {
+    clearTimeout(pendingDrag.timer);
+    pendingDrag = null;
   }
-  if (!dragState) {return;}
+}
+
+function updateActiveDrag(event) {
   const hovered = document.elementFromPoint(event.clientX, event.clientY);
   const nextDayCol = hovered?.closest?.(".calendar-day-col") || dragState.dayCol;
   if (!nextDayCol || !nextDayCol.dataset.day) {return;}
@@ -480,6 +433,12 @@ function handleCalendarDragMove(event) {
   }
   dragState.minutes = minutes;
   updateDragTarget(nextDayCol, dragState.block, minutes);
+}
+
+function handleCalendarDragMove(event) {
+  updatePendingDrag(event);
+  if (!dragState) {return;}
+  updateActiveDrag(event);
 }
 
 async function handleCalendarDragEnd() {

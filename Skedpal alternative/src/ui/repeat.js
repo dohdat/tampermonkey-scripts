@@ -89,39 +89,116 @@ export function closeRepeatModal() {
   if (repeatModal) {repeatModal.classList.add("hidden");}
 }
 
+function resolveWeeklyDays(repeat, fallback) {
+  if (Array.isArray(repeat.weeklyDays)) {return repeat.weeklyDays;}
+  if (Array.isArray(repeat.byWeekdays)) {return repeat.byWeekdays;}
+  return fallback;
+}
+
+function buildRepeatFrequencyPart(unit, interval) {
+  return `Every ${interval} ${unit}${interval > 1 ? "s" : ""}`;
+}
+
+function buildWeeklySummaryPart(repeat, unit, fallbackDays) {
+  if (unit !== "week") {return "";}
+  const weeklyDays = resolveWeeklyDays(repeat, fallbackDays);
+  if (!weeklyDays.length) {return "";}
+  const labels = weeklyDays.map((d) => getWeekdayShortLabel(d)).filter(Boolean);
+  return labels.length ? `on ${labels.join(", ")}` : "";
+}
+
+function buildMonthlySummaryPart(repeat, unit) {
+  if (unit !== "month") {return "";}
+  if (repeat.monthlyMode === "nth") {
+    const weekdayLabel =
+      dayOptions.find((d) => d.value === repeat.monthlyWeekday)?.label || "";
+    return `on the ${formatOrdinal(repeat.monthlyNth || 1)} ${weekdayLabel}`;
+  }
+  return `on day ${repeat.monthlyDay || 1}`;
+}
+
+function buildYearlySummaryPart(repeat, unit) {
+  if (unit !== "year") {return "";}
+  return `on ${repeat.yearlyMonth || ""}/${repeat.yearlyDay || ""}`;
+}
+
+function buildRepeatEndPart(end) {
+  if (end.type === "on" && end.date) {
+    return `until ${formatDate(end.date)}`;
+  }
+  if (end.type === "after" && end.count) {
+    return `for ${end.count} time${end.count > 1 ? "s" : ""}`;
+  }
+  return "";
+}
+
+function isRepeatDisabled(repeat) {
+  return !repeat || repeat.type === "none";
+}
+
 export function getRepeatSummary(repeat) {
-  if (!repeat || repeat.type === "none") {return "Does not repeat";}
+  if (isRepeatDisabled(repeat)) {return "Does not repeat";}
   const unit = repeat.unit || "week";
   const interval = Math.max(1, Number(repeat.interval) || 1);
   const end = repeat.end || { type: "never" };
-  const parts = [];
-  parts.push(`Every ${interval} ${unit}${interval > 1 ? "s" : ""}`);
-  let weeklyDays = [];
-  if (Array.isArray(repeat.weeklyDays)) {
-    weeklyDays = repeat.weeklyDays;
-  } else if (Array.isArray(repeat.byWeekdays)) {
-    weeklyDays = repeat.byWeekdays;
-  }
-  if (unit === "week" && weeklyDays.length) {
-    const labels = weeklyDays.map((d) => getWeekdayShortLabel(d)).filter(Boolean);
-    if (labels.length) {parts.push(`on ${labels.join(", ")}`);}
-  }
-  if (unit === "month" && repeat.monthlyMode === "nth") {
-    parts.push(
-      `on the ${formatOrdinal(repeat.monthlyNth || 1)} ${dayOptions.find((d) => d.value === repeat.monthlyWeekday)?.label || ""}`
-    );
-  } else if (unit === "month") {
-    parts.push(`on day ${repeat.monthlyDay || 1}`);
-  }
-  if (unit === "year") {
-    parts.push(`on ${repeat.yearlyMonth || ""}/${repeat.yearlyDay || ""}`);
-  }
-  if (end.type === "on" && end.date) {
-    parts.push(`until ${formatDate(end.date)}`);
-  } else if (end.type === "after" && end.count) {
-    parts.push(`for ${end.count} time${end.count > 1 ? "s" : ""}`);
-  }
+  const parts = [
+    buildRepeatFrequencyPart(unit, interval),
+    buildWeeklySummaryPart(repeat, unit, []),
+    buildMonthlySummaryPart(repeat, unit),
+    buildYearlySummaryPart(repeat, unit),
+    buildRepeatEndPart(end)
+  ].filter(Boolean);
   return parts.join(", ") || "Custom repeat";
+}
+
+function syncMonthlyModeText(repeatState) {
+  if (!taskRepeatMonthlyMode) {return;}
+  const dayOpt = taskRepeatMonthlyMode.querySelector('option[value="day"]');
+  const nthOpt = taskRepeatMonthlyMode.querySelector('option[value="nth"]');
+  if (dayOpt) {dayOpt.textContent = `Monthly on day ${repeatState.monthlyDay || 1}`;}
+  if (nthOpt) {
+    nthOpt.textContent = `Monthly on the ${formatOrdinal(repeatState.monthlyNth || 1)} ${dayOptions.find((d) => d.value === repeatState.monthlyWeekday)?.label || "weekday"}`;
+  }
+}
+
+function syncMonthlyModeVisibility(repeatState) {
+  const isDayMode = repeatState.monthlyMode === "day";
+  const isNthMode = repeatState.monthlyMode === "nth";
+  if (taskRepeatMonthlyDay) {taskRepeatMonthlyDay.disabled = !isDayMode;}
+  if (taskRepeatMonthlyNth) {taskRepeatMonthlyNth.disabled = !isNthMode;}
+  if (taskRepeatMonthlyWeekday) {taskRepeatMonthlyWeekday.disabled = !isNthMode;}
+  if (taskRepeatMonthlyDayWrap) {
+    taskRepeatMonthlyDayWrap.classList.toggle("hidden", !isDayMode);
+    taskRepeatMonthlyDayWrap.style.display = isDayMode ? "" : "none";
+  }
+  if (taskRepeatMonthlyNthWrap) {
+    taskRepeatMonthlyNthWrap.classList.toggle("hidden", !isNthMode);
+    taskRepeatMonthlyNthWrap.style.display = isNthMode ? "" : "none";
+  }
+}
+
+function syncRepeatEndControls(repeatState) {
+  const endType = repeatState.end?.type || "never";
+  taskRepeatEndNever.checked = endType === "never";
+  taskRepeatEndOn.checked = endType === "on";
+  taskRepeatEndAfter.checked = endType === "after";
+  taskRepeatEndDate.value = repeatState.end?.date ? repeatState.end.date.slice(0, 10) : "";
+  taskRepeatEndCount.value = repeatState.end?.count ? Number(repeatState.end.count) : 1;
+}
+
+function syncRepeatTargetSelect(target) {
+  if (target === "task") {
+    taskRepeatSelect.value = repeatStore.lastRepeatSelection.type === "custom" ? "custom" : "none";
+    syncRepeatSelectLabel();
+    return;
+  }
+  if (target === "subsection") {
+    if (subsectionTaskRepeatSelect) {
+      subsectionTaskRepeatSelect.value =
+        repeatStore.subsectionRepeatSelection.type === "custom" ? "custom" : "none";
+    }
+    syncSubsectionRepeatLabel();
+  }
 }
 
 export function renderRepeatUI(target = repeatStore.repeatTarget) {
@@ -132,47 +209,80 @@ export function renderRepeatUI(target = repeatStore.repeatTarget) {
   taskRepeatWeeklySection.classList.toggle("hidden", repeatState.unit !== "week");
   taskRepeatMonthlySection.classList.toggle("hidden", repeatState.unit !== "month");
   renderRepeatWeekdayOptions(repeatState.weeklyDays || []);
-  if (taskRepeatMonthlyMode) {taskRepeatMonthlyMode.value = repeatState.monthlyMode || "day";}
-  if (taskRepeatMonthlyDay) {taskRepeatMonthlyDay.value = repeatState.monthlyDay || 1;}
-  if (taskRepeatMonthlyNth) {taskRepeatMonthlyNth.value = String(repeatState.monthlyNth || 1);}
-  if (taskRepeatMonthlyWeekday) {taskRepeatMonthlyWeekday.value = String(repeatState.monthlyWeekday ?? 0);}
-  if (taskRepeatMonthlyMode) {
-    const dayOpt = taskRepeatMonthlyMode.querySelector('option[value="day"]');
-    const nthOpt = taskRepeatMonthlyMode.querySelector('option[value="nth"]');
-    if (dayOpt) {dayOpt.textContent = `Monthly on day ${repeatState.monthlyDay || 1}`;}
-    if (nthOpt) {
-      nthOpt.textContent = `Monthly on the ${formatOrdinal(repeatState.monthlyNth || 1)} ${dayOptions.find((d) => d.value === repeatState.monthlyWeekday)?.label || "weekday"}`;
-    }
+  setInputValue(taskRepeatMonthlyMode, repeatState.monthlyMode || "day");
+  setInputValue(taskRepeatMonthlyDay, repeatState.monthlyDay || 1);
+  setInputValue(taskRepeatMonthlyNth, String(repeatState.monthlyNth || 1));
+  setInputValue(taskRepeatMonthlyWeekday, String(repeatState.monthlyWeekday ?? 0));
+  syncMonthlyModeText(repeatState);
+  syncMonthlyModeVisibility(repeatState);
+  syncRepeatEndControls(repeatState);
+  syncRepeatTargetSelect(target);
+}
+
+function resolveRepeatUnit(repeat) {
+  if (repeat.unit) {return repeat.unit;}
+  const frequencyMap = {
+    daily: "day",
+    weekly: "week",
+    monthly: "month",
+    yearly: "year"
+  };
+  return frequencyMap[repeat.frequency] || "week";
+}
+
+function resolveMonthlyMode(repeat) {
+  if (repeat.monthlyMode) {return repeat.monthlyMode;}
+  if (repeat.bySetPos) {return "nth";}
+  if (repeat.byMonthDay) {return "day";}
+  return "day";
+}
+
+function resolveMonthlyWeekday(repeat, base) {
+  if (repeat.monthlyWeekday !== undefined && repeat.monthlyWeekday !== null) {
+    return repeat.monthlyWeekday;
   }
-  if (taskRepeatMonthlyDay) {taskRepeatMonthlyDay.disabled = repeatState.monthlyMode !== "day";}
-  if (taskRepeatMonthlyNth) {taskRepeatMonthlyNth.disabled = repeatState.monthlyMode !== "nth";}
-  if (taskRepeatMonthlyWeekday) {taskRepeatMonthlyWeekday.disabled = repeatState.monthlyMode !== "nth";}
-  const isDayMode = repeatState.monthlyMode === "day";
-  const isNthMode = repeatState.monthlyMode === "nth";
-  if (taskRepeatMonthlyDayWrap) {
-    taskRepeatMonthlyDayWrap.classList.toggle("hidden", !isDayMode);
-    taskRepeatMonthlyDayWrap.style.display = isDayMode ? "" : "none";
+  if (Array.isArray(repeat.byWeekdays) && repeat.byWeekdays.length) {
+    return repeat.byWeekdays[0];
   }
-  if (taskRepeatMonthlyNthWrap) {
-    taskRepeatMonthlyNthWrap.classList.toggle("hidden", !isNthMode);
-    taskRepeatMonthlyNthWrap.style.display = isNthMode ? "" : "none";
-  }
-  const endType = repeatState.end?.type || "never";
-  taskRepeatEndNever.checked = endType === "never";
-  taskRepeatEndOn.checked = endType === "on";
-  taskRepeatEndAfter.checked = endType === "after";
-  taskRepeatEndDate.value = repeatState.end?.date ? repeatState.end.date.slice(0, 10) : "";
-  taskRepeatEndCount.value = repeatState.end?.count ? Number(repeatState.end.count) : 1;
+  return base.monthlyWeekday;
+}
+
+function resolveRepeatSelectionTarget(target, selection) {
   if (target === "task") {
-    taskRepeatSelect.value = repeatStore.lastRepeatSelection.type === "custom" ? "custom" : "none";
-    syncRepeatSelectLabel();
-  } else if (target === "subsection") {
-    if (subsectionTaskRepeatSelect) {
-      subsectionTaskRepeatSelect.value =
-        repeatStore.subsectionRepeatSelection.type === "custom" ? "custom" : "none";
-    }
-    syncSubsectionRepeatLabel();
+    repeatStore.lastRepeatSelection = selection;
+  } else {
+    repeatStore.subsectionRepeatSelection = selection;
   }
+}
+
+function setInputValue(input, value) {
+  if (input) {
+    input.value = value;
+  }
+}
+
+function resolveRepeatInterval(repeat) {
+  return Math.max(1, Number(repeat.interval) || 1);
+}
+
+function resolveMonthlyDay(repeat, base) {
+  return repeat.monthlyDay || repeat.byMonthDay || base.monthlyDay;
+}
+
+function resolveMonthlyNth(repeat, base) {
+  return repeat.monthlyNth || repeat.bySetPos || base.monthlyNth;
+}
+
+function resolveYearlyMonth(repeat, base) {
+  return repeat.yearlyMonth || repeat.byMonth || base.yearlyMonth;
+}
+
+function resolveYearlyDay(repeat, base) {
+  return repeat.yearlyDay || repeat.byMonthDay || base.yearlyDay;
+}
+
+function resolveRepeatEnd(repeat) {
+  return repeat.end || { type: "never", date: "", count: 1 };
 }
 
 export function setRepeatFromSelection(
@@ -180,66 +290,31 @@ export function setRepeatFromSelection(
   target = repeatStore.repeatTarget || "task"
 ) {
   const base = defaultRepeatState();
-  if (!repeat || repeat.type === "none") {
+  if (isRepeatDisabled(repeat)) {
     repeatStore.repeatState = { ...base, unit: "none" };
-    if (target === "task") {
-      repeatStore.lastRepeatSelection = { type: "none" };
-    } else {
-      repeatStore.subsectionRepeatSelection = { type: "none" };
-    }
+    resolveRepeatSelectionTarget(target, { type: "none" });
     renderRepeatUI(target);
     return;
   }
-  let unit = repeat.unit || "week";
-  if (!repeat.unit) {
-    if (repeat.frequency === "daily") {
-      unit = "day";
-    } else if (repeat.frequency === "weekly") {
-      unit = "week";
-    } else if (repeat.frequency === "monthly") {
-      unit = "month";
-    } else if (repeat.frequency === "yearly") {
-      unit = "year";
-    }
-  }
-  let weeklyDays = base.weeklyDays;
-  if (Array.isArray(repeat.weeklyDays)) {
-    weeklyDays = repeat.weeklyDays;
-  } else if (Array.isArray(repeat.byWeekdays)) {
-    weeklyDays = repeat.byWeekdays;
-  }
-  let monthlyMode = "day";
-  if (repeat.monthlyMode) {
-    monthlyMode = repeat.monthlyMode;
-  } else if (repeat.bySetPos) {
-    monthlyMode = "nth";
-  } else if (repeat.byMonthDay) {
-    monthlyMode = "day";
-  }
+  const unit = resolveRepeatUnit(repeat);
+  const weeklyDays = resolveWeeklyDays(repeat, base.weeklyDays);
+  const monthlyMode = resolveMonthlyMode(repeat);
   repeatStore.repeatState = {
     ...base,
     ...repeat,
     unit,
-    interval: Math.max(1, Number(repeat.interval) || 1),
+    interval: resolveRepeatInterval(repeat),
     weeklyDays,
     monthlyMode,
-    monthlyDay: repeat.monthlyDay || repeat.byMonthDay || base.monthlyDay,
-    monthlyNth: repeat.monthlyNth || repeat.bySetPos || base.monthlyNth,
-    monthlyWeekday:
-      repeat.monthlyWeekday ??
-      (Array.isArray(repeat.byWeekdays) && repeat.byWeekdays.length
-        ? repeat.byWeekdays[0]
-        : base.monthlyWeekday),
-    yearlyMonth: repeat.yearlyMonth || repeat.byMonth || base.yearlyMonth,
-    yearlyDay: repeat.yearlyDay || repeat.byMonthDay || base.yearlyDay,
-    end: repeat.end || { type: "never", date: "", count: 1 }
+    monthlyDay: resolveMonthlyDay(repeat, base),
+    monthlyNth: resolveMonthlyNth(repeat, base),
+    monthlyWeekday: resolveMonthlyWeekday(repeat, base),
+    yearlyMonth: resolveYearlyMonth(repeat, base),
+    yearlyDay: resolveYearlyDay(repeat, base),
+    end: resolveRepeatEnd(repeat)
   };
   const built = buildRepeatFromState();
-  if (target === "task") {
-    repeatStore.lastRepeatSelection = built;
-  } else {
-    repeatStore.subsectionRepeatSelection = built;
-  }
+  resolveRepeatSelectionTarget(target, built);
   renderRepeatUI(target);
 }
 
@@ -275,6 +350,42 @@ export function syncSubsectionRepeatLabel() {
   if (customNewOpt) {customNewOpt.textContent = "Custom...";}
 }
 
+function buildDailyRule(interval) {
+  return `FREQ=DAILY;INTERVAL=${interval}`;
+}
+
+function buildWeeklyRule(repeatState, startDate, interval, byDayCodes) {
+  const days = (repeatState.weeklyDays || [startDate.getDay()]).map((d) => byDayCodes[d]);
+  return `FREQ=WEEKLY;INTERVAL=${interval};BYDAY=${days.join(",")}`;
+}
+
+function buildMonthlyRule(repeatState, startDate, interval, byDayCodes) {
+  if (repeatState.monthlyMode === "nth") {
+    const byday = byDayCodes[repeatState.monthlyWeekday ?? startDate.getDay()];
+    const bysetpos = repeatState.monthlyNth ?? getNthWeekday(startDate).nth;
+    return `FREQ=MONTHLY;INTERVAL=${interval};BYDAY=${byday};BYSETPOS=${bysetpos}`;
+  }
+  const day = repeatState.monthlyDay || startDate.getDate();
+  return `FREQ=MONTHLY;INTERVAL=${interval};BYMONTHDAY=${day}`;
+}
+
+function buildYearlyRule(repeatState, startDate, interval) {
+  const month = repeatState.yearlyMonth || startDate.getMonth() + 1;
+  const day = repeatState.yearlyDay || startDate.getDate();
+  return `FREQ=YEARLY;INTERVAL=${interval};BYMONTH=${month};BYMONTHDAY=${day}`;
+}
+
+function appendRepeatEnd(rule, end) {
+  if (end.type === "after" && end.count) {
+    return `${rule};COUNT=${end.count}`;
+  }
+  if (end.type === "on" && end.date) {
+    const until = formatRRuleDate(end.date);
+    if (until) {return `${rule};UNTIL=${until}`;}
+  }
+  return rule;
+}
+
 export function buildRepeatFromState() {
   const repeatState = repeatStore.repeatState;
   if (!repeatState || repeatState.unit === "none") {return { type: "none" };}
@@ -282,33 +393,15 @@ export function buildRepeatFromState() {
   const unit = repeatState.unit;
   const interval = Math.max(1, Number(repeatState.interval) || 1);
   const end = repeatState.end || { type: "never" };
-  let rule = "";
   const byDayCodes = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
-  if (unit === "day") {
-    rule = `FREQ=DAILY;INTERVAL=${interval}`;
-  } else if (unit === "week") {
-    const days = (repeatState.weeklyDays || [startDate.getDay()]).map((d) => byDayCodes[d]);
-    rule = `FREQ=WEEKLY;INTERVAL=${interval};BYDAY=${days.join(",")}`;
-  } else if (unit === "month") {
-    if (repeatState.monthlyMode === "nth") {
-      const byday = byDayCodes[repeatState.monthlyWeekday ?? startDate.getDay()];
-      const bysetpos = repeatState.monthlyNth ?? getNthWeekday(startDate).nth;
-      rule = `FREQ=MONTHLY;INTERVAL=${interval};BYDAY=${byday};BYSETPOS=${bysetpos}`;
-    } else {
-      const day = repeatState.monthlyDay || startDate.getDate();
-      rule = `FREQ=MONTHLY;INTERVAL=${interval};BYMONTHDAY=${day}`;
-    }
-  } else if (unit === "year") {
-    const month = repeatState.yearlyMonth || startDate.getMonth() + 1;
-    const day = repeatState.yearlyDay || startDate.getDate();
-    rule = `FREQ=YEARLY;INTERVAL=${interval};BYMONTH=${month};BYMONTHDAY=${day}`;
-  }
-  if (end.type === "after" && end.count) {
-    rule += `;COUNT=${end.count}`;
-  } else if (end.type === "on" && end.date) {
-    const until = formatRRuleDate(end.date);
-    if (until) {rule += `;UNTIL=${until}`;}
-  }
+  const ruleBuilders = {
+    day: () => buildDailyRule(interval),
+    week: () => buildWeeklyRule(repeatState, startDate, interval, byDayCodes),
+    month: () => buildMonthlyRule(repeatState, startDate, interval, byDayCodes),
+    year: () => buildYearlyRule(repeatState, startDate, interval)
+  };
+  const ruleBuilder = ruleBuilders[unit];
+  const rule = ruleBuilder ? appendRepeatEnd(ruleBuilder(), end) : "";
   return {
     type: "custom",
     unit,

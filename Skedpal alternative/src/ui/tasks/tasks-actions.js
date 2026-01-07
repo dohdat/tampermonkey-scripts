@@ -349,61 +349,101 @@ export function resetTaskForm(shouldClose = false) {
   }
 }
 
-export function startTaskInSection(sectionId = "", subsectionId = "") {
-  repeatStore.repeatTarget = "task";
-  document.getElementById("task-id").value = "";
-  taskParentIdInput.value = "";
-  const template =
-    subsectionId && sectionId ? getSubsectionTemplate(sectionId, subsectionId) : null;
-  const templateSubtaskScheduleMode = normalizeSubtaskScheduleMode(template?.subtaskScheduleMode);
-  document.getElementById("task-title").value = template?.title || "";
-  taskLinkInput.value = template?.link || "";
+function setTaskFormBasics({
+  id = "",
+  parentId = "",
+  title = "",
+  link = "",
+  durationMin = 30,
+  minBlockMin = 30,
+  priority = 3,
+  deadline = "",
+  startFrom = "",
+  repeat = { type: "none" }
+}) {
+  document.getElementById("task-id").value = id;
+  taskParentIdInput.value = parentId;
+  document.getElementById("task-title").value = title;
+  taskLinkInput.value = link;
   syncTaskLinkClear();
-  document.getElementById("task-duration").value = template?.durationMin || "30";
+  document.getElementById("task-duration").value = durationMin || "30";
   syncTaskDurationHelper();
-  taskMinBlockInput.value = template?.minBlockMin || "30";
-  document.getElementById("task-priority").value = String(template?.priority || 3);
-  taskDeadlineInput.value = template?.deadline ? template.deadline.slice(0, 10) : "";
-  taskStartFromInput.value = template?.startFrom ? template.startFrom.slice(0, 10) : "";
-  setRepeatFromSelection(template?.repeat || { type: "none" }, "task");
+  taskMinBlockInput.value = minBlockMin || "30";
+  document.getElementById("task-priority").value = String(priority || 3);
+  taskDeadlineInput.value = deadline ? deadline.slice(0, 10) : "";
+  taskStartFromInput.value = startFrom ? startFrom.slice(0, 10) : "";
+  setRepeatFromSelection(repeat, "task");
+}
+
+function setTaskFormSectionFields(sectionId = "", subsectionId = "") {
   renderTaskSectionOptions(sectionId);
   renderTaskSubsectionOptions(subsectionId);
-  renderTaskTimeMapOptions(state.tasksTimeMapsCache || [], template?.timeMapIds || []);
+  if (taskSectionSelect) {taskSectionSelect.value = sectionId || "";}
+  if (taskSubsectionSelect) {taskSubsectionSelect.value = subsectionId || "";}
+}
+
+function setTaskSubtaskScheduleMode(mode) {
   if (taskSubtaskScheduleWrap) {
     taskSubtaskScheduleWrap.classList.add("hidden");
   }
   if (taskSubtaskScheduleSelect) {
-    taskSubtaskScheduleSelect.value = templateSubtaskScheduleMode;
+    taskSubtaskScheduleSelect.value = mode;
   }
+}
+
+function resolveSubsectionTemplate(sectionId, subsectionId) {
+  if (!sectionId || !subsectionId) {return null;}
+  return getSubsectionTemplate(sectionId, subsectionId);
+}
+
+function buildTemplateFormValues(template) {
+  return {
+    id: "",
+    parentId: "",
+    title: template?.title || "",
+    link: template?.link || "",
+    durationMin: template?.durationMin || 30,
+    minBlockMin: template?.minBlockMin || 30,
+    priority: template?.priority || 3,
+    deadline: template?.deadline || "",
+    startFrom: template?.startFrom || "",
+    repeat: template?.repeat || { type: "none" }
+  };
+}
+
+function buildSubtaskFormValues(task) {
+  return {
+    id: "",
+    parentId: task.id,
+    title: task.title || "",
+    link: task.link || "",
+    durationMin: task.durationMin || 30,
+    minBlockMin: task.minBlockMin || task.durationMin || 30,
+    priority: task.priority || 3,
+    deadline: task.deadline || "",
+    startFrom: task.startFrom || "",
+    repeat: task.repeat || { type: "none" }
+  };
+}
+
+export function startTaskInSection(sectionId = "", subsectionId = "") {
+  repeatStore.repeatTarget = "task";
+  const template = resolveSubsectionTemplate(sectionId, subsectionId);
+  const templateSubtaskScheduleMode = normalizeSubtaskScheduleMode(template?.subtaskScheduleMode);
+  setTaskFormBasics(buildTemplateFormValues(template));
+  setTaskFormSectionFields(sectionId, subsectionId);
+  renderTaskTimeMapOptions(state.tasksTimeMapsCache || [], template?.timeMapIds || []);
+  setTaskSubtaskScheduleMode(templateSubtaskScheduleMode);
   openTaskForm();
   switchView("tasks");
 }
 
 export function startSubtaskFromTask(task) {
   repeatStore.repeatTarget = "task";
-  document.getElementById("task-id").value = "";
-  taskParentIdInput.value = task.id;
-  document.getElementById("task-title").value = task.title || "";
-  taskLinkInput.value = task.link || "";
-  syncTaskLinkClear();
-  document.getElementById("task-duration").value = task.durationMin || "30";
-  syncTaskDurationHelper();
-  taskMinBlockInput.value = task.minBlockMin || task.durationMin || "30";
-  document.getElementById("task-priority").value = String(task.priority || 3);
-  taskDeadlineInput.value = task.deadline ? task.deadline.slice(0, 10) : "";
-  taskStartFromInput.value = task.startFrom ? task.startFrom.slice(0, 10) : "";
-  setRepeatFromSelection(task.repeat || { type: "none" }, "task");
-  renderTaskSectionOptions(task.section || "");
-  renderTaskSubsectionOptions(task.subsection || "");
-  taskSectionSelect.value = task.section || "";
-  taskSubsectionSelect.value = task.subsection || "";
+  setTaskFormBasics(buildSubtaskFormValues(task));
+  setTaskFormSectionFields(task.section || "", task.subsection || "");
   renderTaskTimeMapOptions(state.tasksTimeMapsCache || [], task.timeMapIds || []);
-  if (taskSubtaskScheduleWrap) {
-    taskSubtaskScheduleWrap.classList.add("hidden");
-  }
-  if (taskSubtaskScheduleSelect) {
-    taskSubtaskScheduleSelect.value = "parallel";
-  }
+  setTaskSubtaskScheduleMode("parallel");
   openTaskForm();
   switchView("tasks");
 }

@@ -58,43 +58,31 @@ function getSubsectionLabel(sectionId, subsectionId) {
   return match?.name || "";
 }
 
+function getTimeMapLabel(timeMapId) {
+  if (!timeMapId) {return "";}
+  const timeMap = (state.tasksTimeMapsCache || []).find((map) => map.id === timeMapId);
+  return timeMap?.name || "";
+}
+
+function pushDetailRow(rows, label, value, extra = {}) {
+  if (!value) {return;}
+  rows.push({ label, value, ...extra });
+}
+
 function buildDetailRows(task, eventMeta) {
   const rows = [];
-  if (eventMeta?.timeMapId) {
-    const timeMap = (state.tasksTimeMapsCache || []).find((map) => map.id === eventMeta.timeMapId);
-    if (timeMap?.name) {
-      rows.push({ label: "TimeMap", value: timeMap.name });
-    }
-  }
-  const sectionLabel = getSectionLabel(task.section);
-  if (sectionLabel) {
-    rows.push({ label: "Section", value: sectionLabel });
-  }
-  const subsectionLabel = getSubsectionLabel(task.section, task.subsection);
-  if (subsectionLabel) {
-    rows.push({ label: "Subsection", value: subsectionLabel });
-  }
-  if (task.durationMin) {
-    rows.push({ label: "Duration", value: `${task.durationMin} min` });
-  }
-  if (task.deadline) {
-    rows.push({
-      label: "Deadline",
-      value: new Date(task.deadline).toLocaleDateString()
-    });
-  }
-  if (task.startFrom) {
-    rows.push({
-      label: "Start from",
-      value: new Date(task.startFrom).toLocaleDateString()
-    });
-  }
-  if (task.priority) {
-    rows.push({ label: "Priority", value: `${task.priority}` });
-  }
-  if (task.link) {
-    rows.push({ label: "Link", value: task.link, isLink: true });
-  }
+  pushDetailRow(rows, "TimeMap", getTimeMapLabel(eventMeta?.timeMapId));
+  pushDetailRow(rows, "Section", getSectionLabel(task.section));
+  pushDetailRow(rows, "Subsection", getSubsectionLabel(task.section, task.subsection));
+  pushDetailRow(rows, "Duration", task.durationMin ? `${task.durationMin} min` : "");
+  pushDetailRow(rows, "Deadline", task.deadline ? new Date(task.deadline).toLocaleDateString() : "");
+  pushDetailRow(
+    rows,
+    "Start from",
+    task.startFrom ? new Date(task.startFrom).toLocaleDateString() : ""
+  );
+  pushDetailRow(rows, "Priority", task.priority ? `${task.priority}` : "");
+  pushDetailRow(rows, "Link", task.link || "", { isLink: true });
   return rows;
 }
 
@@ -207,6 +195,27 @@ function closeCalendarEventModal() {
   activeEventMeta = null;
 }
 
+function setModalText(ref, fallbackId, value) {
+  const node = resolveRef(ref, fallbackId);
+  if (node) {
+    node.textContent = value;
+  }
+}
+
+function setModalValue(ref, fallbackId, value) {
+  const node = resolveRef(ref, fallbackId);
+  if (node) {
+    node.value = value;
+  }
+}
+
+function setModalChecked(ref, fallbackId, checked) {
+  const node = resolveRef(ref, fallbackId);
+  if (node) {
+    node.checked = checked;
+  }
+}
+
 export function openCalendarEventModal(eventMeta) {
   const calendarEventModal = resolveRef(domRefs.calendarEventModal, "calendar-event-modal");
   if (!calendarEventModal || !eventMeta) {return;}
@@ -214,34 +223,24 @@ export function openCalendarEventModal(eventMeta) {
   if (!task) {return;}
   activeTask = task;
   activeEventMeta = eventMeta;
-  const calendarEventModalTitle = resolveRef(
-    domRefs.calendarEventModalTitle,
-    "calendar-event-modal-title"
-  );
-  if (calendarEventModalTitle) {
-    calendarEventModalTitle.textContent = task.title || "Untitled task";
+  setModalText(domRefs.calendarEventModalTitle, "calendar-event-modal-title", task.title || "Untitled task");
+  if (eventMeta.start && eventMeta.end) {
+    setModalText(
+      domRefs.calendarEventModalTime,
+      "calendar-event-modal-time",
+      formatCalendarEventWindow(eventMeta.start, eventMeta.end)
+    );
   }
-  const calendarEventModalTime = resolveRef(
-    domRefs.calendarEventModalTime,
-    "calendar-event-modal-time"
-  );
-  if (calendarEventModalTime && eventMeta.start && eventMeta.end) {
-    calendarEventModalTime.textContent = formatCalendarEventWindow(eventMeta.start, eventMeta.end);
-  }
-  const calendarEventModalComplete = resolveRef(
+  setModalChecked(
     domRefs.calendarEventModalComplete,
-    "calendar-event-modal-complete-checkbox"
+    "calendar-event-modal-complete-checkbox",
+    Boolean(task.completed)
   );
-  if (calendarEventModalComplete) {
-    calendarEventModalComplete.checked = Boolean(task.completed);
-  }
-  const calendarEventModalDeferInput = resolveRef(
+  setModalValue(
     domRefs.calendarEventModalDeferInput,
-    "calendar-event-modal-defer-date"
+    "calendar-event-modal-defer-date",
+    task.startFrom ? task.startFrom.slice(0, 10) : ""
   );
-  if (calendarEventModalDeferInput) {
-    calendarEventModalDeferInput.value = task.startFrom ? task.startFrom.slice(0, 10) : "";
-  }
   renderDetailRows(task, eventMeta);
   if (calendarEventModal?.classList) {
     calendarEventModal.classList.remove("hidden");

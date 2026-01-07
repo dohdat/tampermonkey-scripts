@@ -21,16 +21,12 @@ export function parseZoomFromUrl() {
   const zoom = url.searchParams.get("zoom");
   if (!zoom) {return null;}
   const [type, a, b, c] = zoom.split(":");
-  if (type === "section") {
-    return { type, sectionId: a || "" };
-  }
-  if (type === "subsection") {
-    return { type, sectionId: a || "", subsectionId: b || "" };
-  }
-  if (type === "task") {
-    return { type, taskId: a || "", sectionId: b || "", subsectionId: c || "" };
-  }
-  return null;
+  const handlers = {
+    section: () => ({ type, sectionId: a || "" }),
+    subsection: () => ({ type, sectionId: a || "", subsectionId: b || "" }),
+    task: () => ({ type, taskId: a || "", sectionId: b || "", subsectionId: c || "" })
+  };
+  return handlers[type] ? handlers[type]() : null;
 }
 
 export function updateUrlWithView(view) {
@@ -323,25 +319,46 @@ export function getSectionColorMap(sections = []) {
   return map;
 }
 
-export function resolveTimeMapIdsAfterDelete(task, settings, timeMaps, deletedId) {
-  const remainingIds = new Set((timeMaps || []).map((tm) => tm.id));
-  const initialIds = Array.isArray(task?.timeMapIds) ? task.timeMapIds : [];
-  const filtered = initialIds.filter((id) => id !== deletedId && remainingIds.has(id));
-  if (filtered.length) {return [...new Set(filtered)];}
+function dedupeIds(list) {
+  return [...new Set(list)];
+}
 
+function filterExistingTimeMapIds(ids, remainingIds, deletedId = "") {
+  return (ids || []).filter((id) => id !== deletedId && remainingIds.has(id));
+}
+
+function getTemplateTimeMapIds(task, settings) {
   const sectionId = task?.section || "";
   const subsectionId = task?.subsection || "";
   const subsectionList = settings?.subsections?.[sectionId] || [];
   const subsection = subsectionList.find((sub) => sub.id === subsectionId);
-  const templateIds = Array.isArray(subsection?.template?.timeMapIds)
-    ? subsection.template.timeMapIds
-    : [];
-  const templateFiltered = templateIds.filter((id) => remainingIds.has(id));
-  if (templateFiltered.length) {return [...new Set(templateFiltered)];}
+  return Array.isArray(subsection?.template?.timeMapIds) ? subsection.template.timeMapIds : [];
+}
 
+function getDefaultTimeMapIds(settings, remainingIds) {
   const defaultId = settings?.defaultTimeMapId;
-  if (defaultId && remainingIds.has(defaultId)) {return [defaultId];}
+  if (defaultId && remainingIds.has(defaultId)) {
+    return [defaultId];
+  }
+  return [];
+}
 
+function getFirstAvailableTimeMapIds(remainingIds) {
   const firstAvailable = remainingIds.values().next().value;
   return firstAvailable ? [firstAvailable] : [];
+}
+
+export function resolveTimeMapIdsAfterDelete(task, settings, timeMaps, deletedId) {
+  const remainingIds = new Set((timeMaps || []).map((tm) => tm.id));
+  const initialIds = Array.isArray(task?.timeMapIds) ? task.timeMapIds : [];
+  const filtered = filterExistingTimeMapIds(initialIds, remainingIds, deletedId);
+  if (filtered.length) {return dedupeIds(filtered);}
+
+  const templateIds = filterExistingTimeMapIds(getTemplateTimeMapIds(task, settings), remainingIds);
+  if (templateIds.length) {return dedupeIds(templateIds);}
+
+  const defaults = getDefaultTimeMapIds(settings, remainingIds);
+  if (defaults.length) {return defaults;}
+
+  return getFirstAvailableTimeMapIds(remainingIds);
 }

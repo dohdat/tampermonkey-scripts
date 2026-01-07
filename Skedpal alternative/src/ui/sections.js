@@ -305,12 +305,13 @@ export function openSubsectionModal(sectionId, parentId = "", existingSubsection
   repeatStore.repeatTarget = "subsection";
   const subs = getSubsectionsFor(sectionId);
   const existing = subs.find((s) => s.id === existingSubsectionId);
+  const parent = !existing && parentId ? subs.find((s) => s.id === parentId) : null;
   editingSubsectionId = existing ? existing.id : "";
   editingSectionId = sectionId;
   subsectionSectionIdInput.value = sectionId || "";
   subsectionParentIdInput.value = parentId || existing?.parentId || "";
   subsectionNameInput.value = existing?.name || "";
-  const template = resolveSubsectionTemplate(existing);
+  const template = resolveSubsectionTemplate(existing || parent);
   applySubsectionTemplate(template);
   subsectionFormWrap.classList.remove("hidden");
 }

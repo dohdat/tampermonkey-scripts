@@ -358,6 +358,42 @@ describe("sections ui", () => {
     assert.strictEqual(repeatStore.subsectionRepeatSelection.type, "none");
   });
 
+  it("inherits parent subsection template when adding a child", () => {
+    state.settingsCache.sections = [{ id: "s1", name: "Work" }];
+    state.settingsCache.subsections = {
+      s1: [
+        {
+          id: "parent",
+          name: "Parent",
+          template: {
+            title: "Template task",
+            link: "https://example.com",
+            durationMin: 45,
+            minBlockMin: 60,
+            priority: 1,
+            deadline: "2026-01-05T00:00:00.000Z",
+            startFrom: "2026-01-01T00:00:00.000Z",
+            repeat: { type: "none" },
+            timeMapIds: ["tm-1"],
+            subtaskScheduleMode: "sequential"
+          }
+        }
+      ]
+    };
+    state.tasksTimeMapsCache = [{ id: "tm-1", name: "Focus" }];
+
+    sectionsModule.openSubsectionModal("s1", "parent");
+
+    assert.strictEqual(domRefs.subsectionTaskTitleInput.value, "Template task");
+    assert.strictEqual(domRefs.subsectionTaskLinkInput.value, "https://example.com");
+    assert.strictEqual(domRefs.subsectionTaskDurationInput.value, 45);
+    assert.strictEqual(domRefs.subsectionTaskMinBlockInput.value, 60);
+    assert.strictEqual(domRefs.subsectionTaskPriorityInput.value, "1");
+    assert.strictEqual(domRefs.subsectionTaskDeadlineInput.value, "2026-01-05");
+    assert.strictEqual(domRefs.subsectionTaskStartFromInput.value, "2026-01-01");
+    assert.strictEqual(domRefs.subsectionTaskSubtaskScheduleSelect.value, "sequential");
+  });
+
   it("keeps renamed default section names", async () => {
     state.settingsCache = {
       ...state.settingsCache,

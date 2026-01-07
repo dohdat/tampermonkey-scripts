@@ -184,7 +184,7 @@ export function renderTasks(tasks, timeMaps) {
     const card = document.createElement("div");
     card.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow space-y-3";
     card.dataset.sectionCard = section.id;
-    const isCollapsed = state.zoomFilter ? false : state.collapsedSections.has(section.id);
+    const isCollapsed = state.collapsedSections.has(section.id);
     const header = document.createElement("div");
     header.className = "flex flex-wrap items-center justify-between gap-2";
     const title = document.createElement("div");
@@ -388,7 +388,7 @@ export function renderTasks(tasks, timeMaps) {
       collapseSubBtn.dataset.toggleSubsectionCollapse = sub.id;
       collapseSubBtn.dataset.parentSection = section.id;
       collapseSubBtn.className = "title-icon-btn";
-      const subCollapsed = state.zoomFilter ? false : state.collapsedSubsections.has(sub.id);
+      const subCollapsed = state.collapsedSubsections.has(sub.id);
       collapseSubBtn.title = "Expand/collapse subsection";
       collapseSubBtn.innerHTML = subCollapsed ? caretRightIconSvg : caretDownIconSvg;
       const editSubBtn = document.createElement("button");

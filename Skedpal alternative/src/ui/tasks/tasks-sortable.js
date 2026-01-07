@@ -35,6 +35,7 @@ export function ensureSortableStyles() {
   if (document.getElementById(TASK_SORTABLE_STYLE_ID)) return;
   const style = document.createElement("style");
   style.id = TASK_SORTABLE_STYLE_ID;
+  style.setAttribute("data-test-skedpal", "task-sortable-styles");
   style.textContent = `
 .sortable-ghost { opacity: 0.6; }
 .sortable-drag { opacity: 0.8; }
@@ -43,6 +44,7 @@ export function ensureSortableStyles() {
   outline: 2px solid rgba(74, 222, 128, 0.7);
   outline-offset: 2px;
 }
+.task-drag-hidden { display: none !important; }
 `;
   document.head.appendChild(style);
 }
@@ -115,10 +117,11 @@ export async function handleTaskSortEnd(evt) {
     }
   }
   const changed = updates.length > 0 || reorderResult.changed;
-  if (!changed) return;
+  if (!changed) return false;
   await Promise.all(updates.map((t) => saveTask(t)));
   const { loadTasks } = await import("./tasks-actions.js");
   await loadTasks();
+  return true;
 }
 
 export function setupTaskSortables() {
@@ -139,11 +142,30 @@ export function setupTaskSortables() {
       fallbackOnBody: true,
       onStart: (event) => {
         toggleZoneHighlight(event.from, true);
+        const taskId = event.item?.dataset?.taskId;
+        if (!taskId) return;
+        const hasChildren = state.tasksCache.some((task) => task.subtaskParentId === taskId);
+        if (!hasChildren || state.collapsedTasks.has(taskId)) return;
+        state.collapsedTasks.add(taskId);
+        event.item.dataset.collapsedOnDrag = "1";
+        const descendants = getTaskAndDescendants(taskId, state.tasksCache).slice(1);
+        descendants.forEach((task) => {
+          const node = taskList.querySelector(`[data-task-id="${task.id}"]`);
+          node?.classList.add("task-drag-hidden");
+        });
       },
       onEnd: (event) => {
         toggleZoneHighlight(event.from, false);
         toggleZoneHighlight(event.to, false);
-        handleTaskSortEnd(event).catch((error) => console.error("Task sort failed", error));
+        const collapsedOnDrag = event.item?.dataset?.collapsedOnDrag === "1";
+        handleTaskSortEnd(event)
+          .then(async (changed) => {
+            if (collapsedOnDrag && !changed) {
+              const { loadTasks } = await import("./tasks-actions.js");
+              await loadTasks();
+            }
+          })
+          .catch((error) => console.error("Task sort failed", error));
       }
     });
     state.sortableInstances.push(sortable);

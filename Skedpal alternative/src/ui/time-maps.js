@@ -10,6 +10,7 @@ import { dayOptions, domRefs } from "./constants.js";
 import { normalizeTimeMap, resolveTimeMapIdsAfterDelete, uuid } from "./utils.js";
 import { state } from "./state/page-state.js";
 import { themeColors } from "./theme.js";
+import { pickTimeMapColor } from "./time-map-colors.js";
 
 const getTimeMapList = () => domRefs.timeMapList;
 const getTimeMapDayRows = () => domRefs.timeMapDayRows;
@@ -17,8 +18,16 @@ const getTimeMapFormWrap = () => domRefs.timeMapFormWrap;
 const getTimeMapToggle = () => domRefs.timeMapToggle;
 const getTaskTimeMapOptions = () => domRefs.taskTimeMapOptions;
 const getTimeMapColorInput = () => domRefs.timeMapColorInput;
+const getTimeMapColorSwatch = () => domRefs.timeMapColorSwatch;
 const getTimeMapDaySelect = () => domRefs.timeMapDaySelect;
 const getTimeMapDayAdd = () => domRefs.timeMapDayAdd;
+
+function syncTimeMapColorSwatch(color) {
+  const swatch = getTimeMapColorSwatch();
+  if (!swatch) {return;}
+  swatch.style.backgroundColor = color || themeColors.green500;
+  swatch.style.borderColor = color || themeColors.slate500;
+}
 
 function createDayHeader(day, row) {
   const header = document.createElement("div");
@@ -36,6 +45,7 @@ function createDayHeader(day, row) {
   removeDayBtn.setAttribute("data-test-skedpal", "timemap-day-remove");
   removeDayBtn.addEventListener("click", () => {
     row.remove();
+    syncTimeMapDaySelect();
   });
   header.appendChild(label);
   header.appendChild(removeDayBtn);
@@ -136,6 +146,52 @@ function createDayRow(day, blocks = []) {
   return row;
 }
 
+function sortDayRows(container) {
+  const rows = [...container.children].filter((row) => row.dataset?.dayRow !== undefined);
+  rows.sort((a, b) => Number(a.dataset.dayRow) - Number(b.dataset.dayRow));
+  if (typeof container.removeChild === "function") {
+    rows.forEach((row) => container.appendChild(row));
+    return;
+  }
+  container.children = [];
+  rows.forEach((row) => container.appendChild(row));
+}
+
+function syncTimeMapDaySelect() {
+  const select = getTimeMapDaySelect();
+  const rows = getTimeMapDayRows();
+  if (!select || !rows) {return;}
+  const used = new Set(
+    [...rows.children]
+      .map((row) => Number(row.dataset?.dayRow))
+      .filter((day) => Number.isFinite(day))
+  );
+  const currentValue = select.value;
+  select.innerHTML = "";
+  dayOptions.forEach((day) => {
+    if (used.has(day.value)) {return;}
+    const option = document.createElement("option");
+    option.value = String(day.value);
+    option.textContent = day.label;
+    select.appendChild(option);
+  });
+  if (select.options.length === 0) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "All days added";
+    option.disabled = true;
+    select.appendChild(option);
+    select.value = "";
+    return;
+  }
+  const stillAvailable = [...select.options].some((option) => option.value === currentValue);
+  if (stillAvailable) {
+    select.value = currentValue;
+    return;
+  }
+  select.selectedIndex = 0;
+}
+
 export function renderDayRows(container, rules = []) {
   container.innerHTML = "";
   const rulesMap = new Map();
@@ -144,9 +200,11 @@ export function renderDayRows(container, rules = []) {
     if (!rulesMap.has(day)) {rulesMap.set(day, []);}
     rulesMap.get(day).push({ ...r, day });
   });
-  rulesMap.forEach((blocks, day) => {
-    container.appendChild(createDayRow(day, blocks));
+  const sortedDays = [...rulesMap.keys()].sort((a, b) => a - b);
+  sortedDays.forEach((day) => {
+    container.appendChild(createDayRow(day, rulesMap.get(day)));
   });
+  syncTimeMapDaySelect();
 }
 
 export function renderTimeMaps(timeMaps) {
@@ -323,7 +381,8 @@ export function getTimeMapFormData() {
   const timeMapColorInput = getTimeMapColorInput();
   const timeMapDayRows = getTimeMapDayRows();
   if (!timeMapColorInput || !timeMapDayRows) {return null;}
-  const color = timeMapColorInput.value || themeColors.green500;
+  let color = (timeMapColorInput.value || "").trim();
+  const isPlaceholder = color.toLowerCase() === "#000000";
   const rules = collectTimeMapRules(timeMapDayRows);
   if (rules.length === 0) {
     alert("Select at least one day and a valid time window.");
@@ -334,6 +393,11 @@ export function getTimeMapFormData() {
     return null;
   }
   document.getElementById("timemap-id").value = id;
+  if (!color || isPlaceholder) {
+    color = pickTimeMapColor(state.tasksTimeMapsCache || [], `${id}:${name}`);
+    timeMapColorInput.value = color;
+  }
+  syncTimeMapColorSwatch(color);
   return { id, name, rules, color };
 }
 
@@ -342,9 +406,13 @@ export function addTimeMapDay(day) {
   if (!timeMapDayRows) {return;}
   const parsedDay = Number(day);
   if (!Number.isFinite(parsedDay)) {return;}
-  const exists = timeMapDayRows.querySelector(`[data-day-row="${parsedDay}"]`);
+  const exists = [...timeMapDayRows.children].some(
+    (row) => String(row.dataset?.dayRow) === String(parsedDay)
+  );
   if (exists) {return;}
   timeMapDayRows.appendChild(createDayRow(parsedDay, []));
+  sortDayRows(timeMapDayRows);
+  syncTimeMapDaySelect();
 }
 
 export async function handleTimeMapSubmit(event) {
@@ -374,7 +442,9 @@ export function resetTimeMapForm() {
   const timeMapColorInput = getTimeMapColorInput();
   const timeMapDayRows = getTimeMapDayRows();
   if (timeMapColorInput) {
-    timeMapColorInput.value = themeColors.green500;
+    const nextColor = pickTimeMapColor(state.tasksTimeMapsCache || [], uuid());
+    timeMapColorInput.value = nextColor;
+    syncTimeMapColorSwatch(nextColor);
   }
   if (timeMapDayRows) {
     renderDayRows(timeMapDayRows, []);
@@ -411,7 +481,9 @@ async function handleTimeMapEdit(editId, timeMaps) {
   const timeMapColorInput = getTimeMapColorInput();
   const timeMapDayRows = getTimeMapDayRows();
   if (timeMapColorInput) {
-    timeMapColorInput.value = tm.color || themeColors.green500;
+    const color = tm.color || pickTimeMapColor(timeMaps, `${tm.id}:${tm.name}`);
+    timeMapColorInput.value = color;
+    syncTimeMapColorSwatch(color);
   }
   if (timeMapDayRows) {
     renderDayRows(timeMapDayRows, tm.rules);
@@ -505,6 +577,8 @@ const timeMapColorInput = getTimeMapColorInput();
 if (timeMapColorInput) {
   const current = timeMapColorInput.value || "";
   if (!current || current.toLowerCase() === "#000000") {
-    timeMapColorInput.value = themeColors.green500;
+    const nextColor = pickTimeMapColor(state.tasksTimeMapsCache || [], uuid());
+    timeMapColorInput.value = nextColor;
   }
+  syncTimeMapColorSwatch(timeMapColorInput.value);
 }

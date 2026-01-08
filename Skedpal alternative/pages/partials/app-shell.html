@@ -278,17 +278,23 @@
                 />
               </label>
               <div class="grid gap-3 md:grid-cols-[160px_1fr] md:items-center">
-                <div class="field">
+                <div class="field" data-test-skedpal="timemap-color-field">
                   <span class="field-label">Color</span>
                   <div class="flex items-center gap-3">
                     <input
                       id="timemap-color"
-                      type="color"
+                      type="hidden"
                       value="#a3e635"
-                      class="h-10 w-16 rounded-lg border border-slate-700 bg-slate-900 p-1"
                       data-test-skedpal="timemap-color"
                     />
-                    <span class="text-xs text-slate-400">Pick a tag color</span>
+                    <span
+                      id="timemap-color-swatch"
+                      class="h-10 w-16 rounded-lg border border-slate-700 bg-slate-900"
+                      data-test-skedpal="timemap-color-swatch"
+                    ></span>
+                    <span class="text-xs text-slate-400" data-test-skedpal="timemap-color-note">
+                      Auto-assigned
+                    </span>
                   </div>
                 </div>
                 <div class="flex items-end gap-2">

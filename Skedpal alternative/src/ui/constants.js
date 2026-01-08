@@ -126,6 +126,7 @@ export const domRefs = {
   sectionFormRow: document.getElementById("section-form-row"),
   sectionFormToggle: document.getElementById("section-form-toggle"),
   timeMapColorInput: document.getElementById("timemap-color"),
+  timeMapColorSwatch: document.getElementById("timemap-color-swatch"),
   scheduleStatus: document.getElementById("schedule-status"),
   rescheduleButtons: [...document.querySelectorAll("[data-reschedule-btn]")],
   scheduleSummary: document.getElementById("scheduled-summary"),

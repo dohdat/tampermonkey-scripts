@@ -126,6 +126,7 @@ const elements = new Map();
 elements.set("timemap-id", new FakeElement("input"));
 elements.set("timemap-name", new FakeElement("input"));
 elements.set("timemap-color", new FakeElement("input"));
+elements.set("timemap-color-swatch", new FakeElement("div"));
 elements.set("timemap-day-rows", new FakeElement("div"));
 elements.set("timemap-list", new FakeElement("div"));
 elements.set("timemap-form-wrap", new FakeElement("div"));
@@ -149,6 +150,7 @@ installDomStubs();
 const { domRefs } = await import("../src/ui/constants.js");
 const { state } = await import("../src/ui/state/page-state.js");
 domRefs.timeMapColorInput = elements.get("timemap-color");
+domRefs.timeMapColorSwatch = elements.get("timemap-color-swatch");
 domRefs.timeMapDayRows = elements.get("timemap-day-rows");
 domRefs.timeMapList = elements.get("timemap-list");
 domRefs.timeMapFormWrap = elements.get("timemap-form-wrap");
@@ -173,6 +175,7 @@ describe("time maps", () => {
   beforeEach(() => {
     installDomStubs();
     domRefs.timeMapColorInput = elements.get("timemap-color");
+    domRefs.timeMapColorSwatch = elements.get("timemap-color-swatch");
     domRefs.timeMapDayRows = elements.get("timemap-day-rows");
     domRefs.timeMapList = elements.get("timemap-list");
     domRefs.timeMapFormWrap = elements.get("timemap-form-wrap");
@@ -227,6 +230,7 @@ describe("time maps", () => {
 
     alertMessage = "";
     elements.get("timemap-name").value = "Work";
+    elements.get("timemap-color").value = "#22c55e";
     elements.get("timemap-day-rows").querySelectorAll = () => [
       createRow({
         day: 1,
@@ -258,9 +262,14 @@ describe("time maps", () => {
 
   it("renders day rows and toggles blocks", () => {
     const container = elements.get("timemap-day-rows");
-    renderDayRows(container, [{ day: 1, startTime: "08:00", endTime: "10:00" }]);
+    renderDayRows(container, [
+      { day: 2, startTime: "09:00", endTime: "12:00" },
+      { day: 0, startTime: "08:00", endTime: "10:00" }
+    ]);
     const rows = container.children;
     assert.ok(rows.length > 0);
+    assert.strictEqual(rows[0].dataset.dayRow, "0");
+    assert.strictEqual(rows[1].dataset.dayRow, "2");
     const firstRow = rows[0];
     const blocksContainer = findFirst(firstRow, (child) => child.dataset?.blocksFor !== undefined);
     const addBlockBtn = findFirst(firstRow, (child) => child.tagName === "BUTTON");

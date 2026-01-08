@@ -90,6 +90,21 @@ export function getInheritedSubtaskFields(parentTask) {
   };
 }
 
+export function buildInheritedSubtaskUpdate(childTask, parentTask) {
+  if (!childTask || !parentTask) {return null;}
+  const inherited = getInheritedSubtaskFields(parentTask);
+  return {
+    ...childTask,
+    ...inherited,
+    subtaskParentId: parentTask.id,
+    scheduleStatus: "unscheduled",
+    scheduledStart: null,
+    scheduledEnd: null,
+    scheduledTimeMapId: null,
+    scheduledInstances: []
+  };
+}
+
 export function getLocalDateKey(value) {
   const date = value ? new Date(value) : null;
   if (!date || Number.isNaN(date.getTime())) {return "";}

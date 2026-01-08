@@ -12,6 +12,7 @@ import {
   getNextSubtaskOrder,
   getTaskAndDescendants,
   getTaskDepth,
+  buildInheritedSubtaskUpdate,
   sortTasksByOrder
 } from "../utils.js";
 import { state } from "../state/page-state.js";
@@ -109,13 +110,16 @@ function getDesiredParentId(dropBeforeTask, prevTask, movedSubtreeIds, targetKey
   return parentFromDropBefore.found ? parentFromDropBefore.parentId : parentFromPrev.parentId;
 }
 
-function mergeParentUpdate(updates, movedTaskId, movedTask, desiredParentId) {
+function mergeParentUpdate(updates, movedTaskId, movedTask, desiredParentId, desiredParentTask) {
   const existingIndex = updates.findIndex((u) => u.id === movedTaskId);
   if (!movedTask || desiredParentId === movedTask.subtaskParentId) {
     return updates;
   }
   const base = existingIndex >= 0 ? updates[existingIndex] : movedTask;
-  const updated = { ...base, subtaskParentId: desiredParentId };
+  let updated = { ...base, subtaskParentId: desiredParentId };
+  if (desiredParentTask) {
+    updated = buildInheritedSubtaskUpdate(updated, desiredParentTask) || updated;
+  }
   if (existingIndex >= 0) {
     updates[existingIndex] = updated;
   } else {
@@ -139,6 +143,9 @@ export async function handleTaskSortEnd(evt) {
   const targetKey = getContainerKey(targetSection, targetSubsection);
   const movedSubtreeIds = new Set(getTaskAndDescendants(movedTaskId, state.tasksCache).map((t) => t.id));
   const desiredParentId = getDesiredParentId(dropBeforeTask, prevTask, movedSubtreeIds, targetKey);
+  const desiredParentTask = desiredParentId
+    ? state.tasksCache.find((task) => task.id === desiredParentId)
+    : null;
   const reorderResult = computeTaskReorderUpdates(
     state.tasksCache,
     movedTaskId,
@@ -146,7 +153,13 @@ export async function handleTaskSortEnd(evt) {
     targetSubsection,
     dropBeforeId
   );
-  const updates = mergeParentUpdate(reorderResult.updates || [], movedTaskId, movedTask, desiredParentId);
+  const updates = mergeParentUpdate(
+    reorderResult.updates || [],
+    movedTaskId,
+    movedTask,
+    desiredParentId,
+    desiredParentTask
+  );
   const changed = updates.length > 0 || reorderResult.changed;
   if (!changed) {return false;}
   await Promise.all(updates.map((t) => saveTask(t)));
@@ -224,7 +237,8 @@ export async function indentTaskUnderPrevious(card) {
     subtaskParentId: parentTask.id,
     order: nextOrder
   };
-  await saveTask(updatedChild);
+  const inheritedChild = buildInheritedSubtaskUpdate(updatedChild, parentTask) || updatedChild;
+  await saveTask(inheritedChild);
   const { loadTasks } = await import("./tasks-actions.js");
   await loadTasks();
 }

@@ -28,11 +28,22 @@ class FakeElement {
         names.forEach((name) => current.delete(name));
         this.className = Array.from(current).join(" ");
       },
+      toggle: (name, force) => {
+        const current = new Set(this.className.split(" ").filter(Boolean));
+        const shouldAdd = typeof force === "boolean" ? force : !current.has(name);
+        if (shouldAdd) {
+          current.add(name);
+        } else {
+          current.delete(name);
+        }
+        this.className = Array.from(current).join(" ");
+      },
       contains: (name) => this.className.split(" ").includes(name)
     };
   }
 
   appendChild(child) {
+    child.parentElement = this;
     this.children.push(child);
     return child;
   }
@@ -43,6 +54,20 @@ class FakeElement {
 
   addEventListener(type, handler) {
     this.listeners[type] = handler;
+  }
+
+  closest(selector) {
+    let current = this;
+    while (current) {
+      if (
+        selector === ".calendar-event-modal__panel" &&
+        current.className.split(" ").includes("calendar-event-modal__panel")
+      ) {
+        return current;
+      }
+      current = current.parentElement;
+    }
+    return null;
   }
 
   querySelectorAll() {
@@ -67,12 +92,14 @@ function buildDomRefs() {
   actions[4].dataset.calendarEventAction = "delete";
   return {
     modal,
+    eyebrow: new FakeElement("p"),
     title: new FakeElement("h3"),
     time: new FakeElement("p"),
     details: new FakeElement("div"),
     complete: new FakeElement("input"),
     defer: new FakeElement("input"),
     close: new FakeElement("button"),
+    toolbar: new FakeElement("div"),
     actions
   };
 }
@@ -80,6 +107,7 @@ function buildDomRefs() {
 describe("calendar event modal", () => {
   let refs = null;
   let openCalendarEventModal = null;
+  let openExternalEventModal = null;
   let initCalendarEventModal = null;
   let formatCalendarEventWindow = null;
   let state = null;
@@ -87,10 +115,13 @@ describe("calendar event modal", () => {
 
   beforeEach(async () => {
     refs = buildDomRefs();
+    const documentListeners = {};
     global.document = {
       createElement: (tagName) => new FakeElement(tagName),
       querySelectorAll: () => [],
-      addEventListener: () => {},
+      addEventListener: (type, handler) => {
+        documentListeners[type] = handler;
+      },
       removeEventListener: () => {},
       getElementById: (id) => {
         if (id === "calendar-event-modal") {return refs.modal;}
@@ -122,21 +153,24 @@ describe("calendar event modal", () => {
 
     ({ domRefs } = await import("../src/ui/constants.js"));
     ({ state } = await import("../src/ui/state/page-state.js"));
-    ({ openCalendarEventModal, initCalendarEventModal, formatCalendarEventWindow } =
+    ({ openCalendarEventModal, openExternalEventModal, initCalendarEventModal, formatCalendarEventWindow } =
       await import("../src/ui/calendar-event-modal.js"));
 
     domRefs.calendarEventModal = refs.modal;
+    domRefs.calendarEventModalEyebrow = refs.eyebrow;
     domRefs.calendarEventModalTitle = refs.title;
     domRefs.calendarEventModalTime = refs.time;
     domRefs.calendarEventModalDetails = refs.details;
     domRefs.calendarEventModalComplete = refs.complete;
     domRefs.calendarEventModalDeferInput = refs.defer;
+    domRefs.calendarEventModalToolbar = refs.toolbar;
     domRefs.calendarEventModalCloseButtons = [refs.close];
     domRefs.calendarEventModalActionButtons = refs.actions;
     domRefs.taskList = new FakeElement("div");
     window.__skedpalZoomFromModal = ({ type, sectionId, subsectionId }) => {
       state.zoomFilter = { type, sectionId, subsectionId };
     };
+    refs.documentListeners = documentListeners;
 
     state.tasksCache = [
       {
@@ -396,5 +430,71 @@ describe("calendar event modal", () => {
     assert.strictEqual(panel.style.position, "fixed");
     assert.ok(panel.style.left);
     assert.ok(panel.style.top);
+  });
+
+  it("renders external calendar event details without task actions", () => {
+    const externalEvent = {
+      id: "ext-1",
+      calendarId: "cal-1",
+      title: "External meeting",
+      link: "https://calendar.google.com/event?eid=ext-1",
+      start: new Date(2026, 0, 8, 8, 0, 0),
+      end: new Date(2026, 0, 8, 9, 0, 0)
+    };
+
+    openExternalEventModal(externalEvent);
+
+    assert.strictEqual(refs.eyebrow.textContent, "Google Calendar");
+    assert.ok(refs.toolbar.className.includes("hidden"));
+    assert.strictEqual(refs.title.textContent, "External meeting");
+    assert.ok(refs.details.children.length > 0);
+  });
+
+  it("closes the modal when clicking outside the panel", () => {
+    const panel = new FakeElement("div");
+    panel.className = "calendar-event-modal__panel";
+    refs.modal.querySelector = (selector) =>
+      selector === ".calendar-event-modal__panel" ? panel : null;
+    refs.modal.appendChild(panel);
+    const eventMeta = {
+      taskId: "task-1",
+      timeMapId: "tm-1",
+      start: new Date(2026, 0, 6, 9, 0, 0),
+      end: new Date(2026, 0, 6, 10, 30, 0)
+    };
+
+    initCalendarEventModal();
+    openCalendarEventModal(eventMeta);
+    assert.strictEqual(refs.modal.classList.contains("hidden"), false);
+
+    const outsideTarget = new FakeElement("div");
+    refs.documentListeners.click({ target: outsideTarget });
+
+    assert.strictEqual(refs.modal.classList.contains("hidden"), true);
+  });
+
+  it("keeps the modal open when clicking on another calendar event", () => {
+    const panel = new FakeElement("div");
+    panel.className = "calendar-event-modal__panel";
+    refs.modal.querySelector = (selector) =>
+      selector === ".calendar-event-modal__panel" ? panel : null;
+    refs.modal.appendChild(panel);
+    const eventMeta = {
+      taskId: "task-1",
+      timeMapId: "tm-1",
+      start: new Date(2026, 0, 6, 9, 0, 0),
+      end: new Date(2026, 0, 6, 10, 30, 0)
+    };
+
+    initCalendarEventModal();
+    openCalendarEventModal(eventMeta);
+    assert.strictEqual(refs.modal.classList.contains("hidden"), false);
+
+    const eventTarget = {
+      closest: (selector) => (selector === ".calendar-event" ? {} : null)
+    };
+    refs.documentListeners.click({ target: eventTarget });
+
+    assert.strictEqual(refs.modal.classList.contains("hidden"), false);
   });
 });

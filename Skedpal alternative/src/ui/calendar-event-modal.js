@@ -13,6 +13,8 @@ import { parseLocalDateInput } from "./utils.js";
 let activeTask = null;
 let activeEventMeta = null;
 let calendarEventModalInitializedFor = null;
+const TASK_MODAL_EYEBROW = "Scheduled task";
+const EXTERNAL_MODAL_EYEBROW = "Google Calendar";
 
 function resolveRef(current, id) {
   if (current) {return current;}
@@ -105,6 +107,14 @@ function buildDetailRows(task, eventMeta) {
   return rows;
 }
 
+function buildExternalDetailRows(event) {
+  const rows = [];
+  pushDetailRow(rows, "Calendar", event.calendarId || "");
+  pushDetailRow(rows, "Event ID", event.id || "");
+  pushDetailRow(rows, "Link", event.link || "", { isLink: true });
+  return rows;
+}
+
 async function zoomFromModal(sectionId, subsectionId, type) {
   if (!sectionId) {return;}
   if (typeof window !== "undefined" && typeof window.__skedpalZoomFromModal === "function") {
@@ -182,6 +192,40 @@ function renderDetailRows(task, eventMeta) {
   });
 }
 
+function renderExternalDetailRows(event) {
+  const calendarEventModalDetails = resolveRef(
+    domRefs.calendarEventModalDetails,
+    "calendar-event-modal-details"
+  );
+  if (!calendarEventModalDetails) {return;}
+  calendarEventModalDetails.innerHTML = "";
+  buildExternalDetailRows(event).forEach((row, index) => {
+    const wrap = document.createElement("div");
+    wrap.className = "calendar-event-modal__detail-row";
+    wrap.setAttribute("data-test-skedpal", "calendar-event-modal-detail-row");
+    const label = document.createElement("span");
+    label.className = "calendar-event-modal__detail-label";
+    label.textContent = row.label;
+    label.setAttribute("data-test-skedpal", "calendar-event-modal-detail-label");
+    let value = null;
+    if (row.isLink) {
+      value = document.createElement("a");
+      value.className = "calendar-event-modal__detail-value calendar-event-modal__detail-link";
+      value.href = row.value;
+      value.target = "_blank";
+      value.rel = "noopener noreferrer";
+    } else {
+      value = document.createElement("span");
+      value.className = "calendar-event-modal__detail-value";
+    }
+    value.textContent = row.value || "";
+    value.setAttribute("data-test-skedpal", `calendar-event-modal-detail-value-${index}`);
+    wrap.appendChild(label);
+    wrap.appendChild(value);
+    calendarEventModalDetails.appendChild(wrap);
+  });
+}
+
 function setActionButtonIcons() {
   const calendarEventModalActionButtons = domRefs.calendarEventModalActionButtons || [];
   if (!calendarEventModalActionButtons.length) {return;}
@@ -251,7 +295,6 @@ function resetCalendarModalPosition() {
   panel.style.position = "";
   panel.style.top = "";
   panel.style.left = "";
-  panel.style.transform = "";
 }
 
 function getCalendarEventModalPanel(calendarEventModal) {
@@ -301,7 +344,6 @@ function positionCalendarEventModal(anchorRect) {
   panel.style.position = "fixed";
   panel.style.left = `${Math.round(left)}px`;
   panel.style.top = `${Math.round(top)}px`;
-  panel.style.transform = "none";
 }
 
 function closeCalendarEventModal() {
@@ -337,6 +379,19 @@ function setModalChecked(ref, fallbackId, checked) {
   if (node) {
     node.checked = checked;
   }
+}
+
+function setModalEyebrow(text) {
+  const node = resolveRef(domRefs.calendarEventModalEyebrow, "calendar-event-modal-eyebrow");
+  if (node) {
+    node.textContent = text;
+  }
+}
+
+function setModalToolbarVisibility(visible) {
+  const node = resolveRef(domRefs.calendarEventModalToolbar, "calendar-event-modal-toolbar");
+  if (!node) {return;}
+  node.classList.toggle("hidden", !visible);
 }
 
 function showCalendarEventModal(calendarEventModal) {
@@ -384,6 +439,38 @@ function scheduleModalPosition(anchorEl) {
   schedule(() => positionCalendarEventModal(rect));
 }
 
+function isCalendarModalOpen() {
+  const calendarEventModal = domRefs.calendarEventModal;
+  if (!calendarEventModal?.classList) {return false;}
+  return !calendarEventModal.classList.contains("hidden");
+}
+
+function isClickInsideModal(target, panel) {
+  if (!target || !panel) {return false;}
+  if (typeof target.closest === "function") {
+    return Boolean(target.closest(".calendar-event-modal__panel"));
+  }
+  return target === panel;
+}
+
+function isClickOnCalendarEvent(target) {
+  if (!target) {return false;}
+  if (typeof target.closest === "function") {
+    return Boolean(target.closest(".calendar-event"));
+  }
+  return false;
+}
+
+function handleCalendarModalOutsideClick(event) {
+  if (!isCalendarModalOpen()) {return;}
+  const calendarEventModal = domRefs.calendarEventModal;
+  const panel = getCalendarEventModalPanel(calendarEventModal);
+  if (!panel) {return;}
+  if (isClickInsideModal(event?.target, panel)) {return;}
+  if (isClickOnCalendarEvent(event?.target)) {return;}
+  closeCalendarEventModal();
+}
+
 export function openCalendarEventModal(eventMeta, anchorEl = null) {
   const calendarEventModal = resolveRef(domRefs.calendarEventModal, "calendar-event-modal");
   if (!calendarEventModal || !eventMeta) {return;}
@@ -391,7 +478,33 @@ export function openCalendarEventModal(eventMeta, anchorEl = null) {
   if (!task) {return;}
   activeTask = task;
   activeEventMeta = eventMeta;
+  setModalEyebrow(TASK_MODAL_EYEBROW);
+  setModalToolbarVisibility(true);
   applyCalendarEventModalFields(task, eventMeta);
+  showCalendarEventModal(calendarEventModal);
+  scheduleModalPosition(anchorEl);
+}
+
+export function openExternalEventModal(event, anchorEl = null) {
+  const calendarEventModal = resolveRef(domRefs.calendarEventModal, "calendar-event-modal");
+  if (!calendarEventModal || !event) {return;}
+  activeTask = null;
+  activeEventMeta = null;
+  setModalEyebrow(EXTERNAL_MODAL_EYEBROW);
+  setModalToolbarVisibility(false);
+  setModalText(
+    domRefs.calendarEventModalTitle,
+    "calendar-event-modal-title",
+    event.title || "Calendar event"
+  );
+  if (event.start && event.end) {
+    setModalText(
+      domRefs.calendarEventModalTime,
+      "calendar-event-modal-time",
+      formatCalendarEventWindow(event.start, event.end)
+    );
+  }
+  renderExternalDetailRows(event);
   showCalendarEventModal(calendarEventModal);
   scheduleModalPosition(anchorEl);
 }
@@ -505,4 +618,5 @@ export function initCalendarEventModal() {
   if (calendarEventModalDeferInput) {
     calendarEventModalDeferInput.addEventListener("change", handleDeferChange);
   }
+  document.addEventListener("click", handleCalendarModalOutsideClick);
 }

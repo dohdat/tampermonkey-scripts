@@ -230,7 +230,13 @@
   <div class="task-modal__panel calendar-event-modal__panel">
     <div class="task-modal__header calendar-event-modal__header">
       <div>
-        <p class="task-modal__eyebrow">Scheduled task</p>
+        <p
+          id="calendar-event-modal-eyebrow"
+          class="task-modal__eyebrow"
+          data-test-skedpal="calendar-event-modal-eyebrow"
+        >
+          Scheduled task
+        </p>
         <h3
           id="calendar-event-modal-title"
           class="task-modal__title"
@@ -275,7 +281,11 @@
         class="calendar-event-modal__details"
         data-test-skedpal="calendar-event-modal-details"
       ></div>
-      <div class="calendar-event-modal__toolbar" data-test-skedpal="calendar-event-modal-toolbar">
+      <div
+        id="calendar-event-modal-toolbar"
+        class="calendar-event-modal__toolbar"
+        data-test-skedpal="calendar-event-modal-toolbar"
+      >
         <button
           type="button"
           class="calendar-event-modal__icon-btn"

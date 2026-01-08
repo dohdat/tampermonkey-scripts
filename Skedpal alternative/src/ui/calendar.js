@@ -20,7 +20,8 @@ import {
 import { saveTask } from "../data/db.js";
 import {
   initCalendarEventModal,
-  openCalendarEventModal
+  openCalendarEventModal,
+  openExternalEventModal
 } from "./calendar-event-modal.js";
 import {
   clearCalendarEventFocus,
@@ -449,8 +450,26 @@ function handleCalendarEventClick(event) {
   if (!block) {return;}
   const eventMeta = getEventMetaFromBlock(block);
   if (!eventMeta) {return;}
-  if (eventMeta.source === "external") {return;}
+  if (eventMeta.source === "external") {
+    handleExternalEventClick(eventMeta, block);
+    return;
+  }
   openCalendarEventModal(eventMeta, block);
+}
+
+function handleExternalEventClick(eventMeta, block) {
+  const external = (state.calendarExternalEvents || []).find(
+    (item) => item.id === eventMeta.eventId && item.calendarId === eventMeta.calendarId
+  );
+  const fallback = {
+    id: eventMeta.eventId,
+    calendarId: eventMeta.calendarId,
+    title: block.dataset.eventTitle || "Calendar event",
+    link: block.dataset.eventLink || "",
+    start: eventMeta.start,
+    end: eventMeta.end
+  };
+  openExternalEventModal(external || fallback, block);
 }
 
 function ensureCalendarDragHandlers() {

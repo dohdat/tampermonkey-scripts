@@ -162,6 +162,8 @@ export const domRefs = {
   calendarEventModalDetails: document.getElementById("calendar-event-modal-details"),
   calendarEventModalComplete: document.getElementById("calendar-event-modal-complete-checkbox"),
   calendarEventModalDeferInput: document.getElementById("calendar-event-modal-defer-date"),
+  calendarEventModalEyebrow: document.getElementById("calendar-event-modal-eyebrow"),
+  calendarEventModalToolbar: document.getElementById("calendar-event-modal-toolbar"),
   calendarEventModalActionButtons: [
     ...document.querySelectorAll("[data-calendar-event-action]")
   ],

@@ -144,6 +144,10 @@ body.modal-open{overflow:hidden}
 .calendar-event--external{background:rgba(var(--color-amber-400-rgb), .14);border-color:rgba(var(--color-amber-400-rgb), .5);color:var(--color-amber-300);cursor:default;touch-action:auto}
 .calendar-event--external .calendar-event-time{color:currentColor}
 .calendar-event--external .calendar-event-title-link{color:currentColor}
+.calendar-event--external .calendar-event-title{padding-right:var(--space-1-6)}
+.calendar-event-delete{position:absolute;top:var(--space-0-35);right:var(--space-0-35);display:inline-flex;align-items:center;justify-content:center;width:var(--size-20px);height:var(--size-20px);border-radius:var(--size-9999px);border:var(--size-1px) solid rgba(var(--color-slate-700-rgb), .7);background:rgba(var(--color-slate-900-rgb), .6);color:inherit;opacity:.7;transition:all var(--motion-base) ease}
+.calendar-event-delete svg{width:var(--size-12px);height:var(--size-12px)}
+.calendar-event-delete:hover{opacity:1;border-color:currentColor}
 .calendar-event-title{font-size:var(--font-size-xs);font-weight:var(--font-weight-semibold);line-height:var(--line-height-snug)}
 .calendar-event-icon{display:inline-flex;align-items:center;justify-content:center;width:var(--size-12px);height:var(--size-12px);margin-right:var(--space-0-35);opacity:.85;flex:0 0 auto}
 .calendar-event-icon svg{width:100%;height:100%}

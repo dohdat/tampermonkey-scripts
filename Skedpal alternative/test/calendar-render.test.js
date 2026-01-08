@@ -50,6 +50,12 @@ class FakeElement {
     return child;
   }
 
+  prepend(child) {
+    child.parentElement = this;
+    this.children.unshift(child);
+    return child;
+  }
+
   setAttribute(name, value) {
     this.attributes[name] = value;
   }
@@ -109,6 +115,8 @@ describe("calendar render", () => {
     return installDomStubs().then(({ domRefs, renderCalendar }) => {
       state.calendarViewMode = "day";
       state.calendarAnchorDate = new Date(2026, 0, 6, 0, 0, 0);
+      state.calendarExternalAllowFetch = false;
+      state.calendarExternalEvents = [];
       testRefs = { domRefs, renderCalendar };
     });
   });
@@ -167,6 +175,32 @@ describe("calendar render", () => {
     assert.ok(domRefs.calendarThreeBtn.className.includes("calendar-view-btn--active"));
     assert.strictEqual(domRefs.calendarDayBtn.className.includes("calendar-view-btn--active"), false);
     assert.strictEqual(domRefs.calendarWeekBtn.className.includes("calendar-view-btn--active"), false);
+  });
+
+  it("renders delete action for external calendar events", () => {
+    const { domRefs, renderCalendar } = testRefs;
+    const start = new Date(2026, 0, 6, 13, 0, 0);
+    const end = new Date(2026, 0, 6, 14, 0, 0);
+    state.calendarExternalAllowFetch = false;
+    state.calendarExternalEvents = [
+      {
+        id: "ext-1",
+        calendarId: "cal-1",
+        title: "External block",
+        start,
+        end,
+        source: "external"
+      }
+    ];
+
+    renderCalendar([]);
+
+    const events = findByTestId(domRefs.calendarGrid, "calendar-event");
+    assert.strictEqual(events.length, 1);
+    const deleteButtons = findByTestId(events[0], "calendar-event-external-delete");
+    assert.strictEqual(deleteButtons.length, 1);
+    assert.strictEqual(deleteButtons[0].dataset.eventId, "ext-1");
+    assert.strictEqual(deleteButtons[0].dataset.calendarId, "cal-1");
   });
 
   it("skips scheduled instances that are already completed", () => {

@@ -1,5 +1,6 @@
 import { addCalendarDays, getDayKey } from "./calendar-utils.js";
 import { buildDayEventLayout } from "./calendar-layout.js";
+import { removeIconSvg } from "./constants.js";
 
 export const HOUR_HEIGHT = 120;
 const EVENT_GUTTER = 2;
@@ -131,6 +132,58 @@ function buildCalendarTimeColumn() {
   return timeCol;
 }
 
+function applyEventDataset(block, item) {
+  const source = item.event.source || "task";
+  block.dataset.eventSource = source;
+  if (source === "task") {
+    block.dataset.eventTaskId = item.event.taskId;
+    block.dataset.eventOccurrenceId = item.event.occurrenceId || "";
+    block.dataset.eventTimeMapId = item.event.timeMapId || "";
+    block.dataset.eventStart = item.event.start.toISOString();
+    block.dataset.eventEnd = item.event.end.toISOString();
+    block.dataset.eventInstanceIndex = String(item.event.instanceIndex);
+    return source;
+  }
+  block.classList.add("calendar-event--external");
+  block.dataset.eventExternalId = item.event.id || "";
+  block.dataset.eventCalendarId = item.event.calendarId || "";
+  block.dataset.eventTitle = item.event.title || "";
+  return source;
+}
+
+function buildEventTitle(item) {
+  let title = null;
+  if (item.event.link) {
+    title = document.createElement("a");
+    title.className = "calendar-event-title calendar-event-title-link";
+    title.href = item.event.link;
+    title.target = "_blank";
+    title.rel = "noopener noreferrer";
+    title.textContent = item.event.title;
+    title.setAttribute("data-test-skedpal", "calendar-event-title-link");
+  } else {
+    title = document.createElement("div");
+    title.className = "calendar-event-title";
+    title.textContent = item.event.title;
+    title.setAttribute("data-test-skedpal", "calendar-event-title");
+  }
+  return title;
+}
+
+function buildExternalDeleteButton(event) {
+  const deleteBtn = document.createElement("button");
+  deleteBtn.type = "button";
+  deleteBtn.className = "calendar-event-delete";
+  deleteBtn.innerHTML = removeIconSvg;
+  deleteBtn.title = "Delete from Google Calendar";
+  deleteBtn.dataset.calendarEventDelete = "true";
+  deleteBtn.dataset.eventId = event.id || "";
+  deleteBtn.dataset.calendarId = event.calendarId || "";
+  deleteBtn.dataset.eventTitle = event.title || "";
+  deleteBtn.setAttribute("data-test-skedpal", "calendar-event-external-delete");
+  return deleteBtn;
+}
+
 function buildCalendarEventBlock(item, timeMapColorById) {
   const top = (item.startMinutes / 60) * HOUR_HEIGHT;
   const height = Math.max(20, ((item.endMinutes - item.startMinutes) / 60) * HOUR_HEIGHT);
@@ -148,40 +201,14 @@ function buildCalendarEventBlock(item, timeMapColorById) {
     block.style.left = `${EVENT_EDGE_INSET}px`;
     block.style.right = `${EVENT_EDGE_INSET}px`;
   }
-  const source = item.event.source || "task";
-  block.dataset.eventSource = source;
-  if (source === "task") {
-    block.dataset.eventTaskId = item.event.taskId;
-    block.dataset.eventOccurrenceId = item.event.occurrenceId || "";
-    block.dataset.eventTimeMapId = item.event.timeMapId || "";
-    block.dataset.eventStart = item.event.start.toISOString();
-    block.dataset.eventEnd = item.event.end.toISOString();
-    block.dataset.eventInstanceIndex = String(item.event.instanceIndex);
-  }
-  if (source === "external") {
-    block.classList.add("calendar-event--external");
-  }
+  const source = applyEventDataset(block, item);
   const styles = getCalendarEventStyles(item.event, timeMapColorById);
   if (styles) {
     block.style.backgroundColor = styles.backgroundColor;
     block.style.borderColor = styles.borderColor;
   }
   block.setAttribute("data-test-skedpal", "calendar-event");
-  let title = null;
-  if (item.event.link) {
-    title = document.createElement("a");
-    title.className = "calendar-event-title calendar-event-title-link";
-    title.href = item.event.link;
-    title.target = "_blank";
-    title.rel = "noopener noreferrer";
-    title.textContent = item.event.title;
-    title.setAttribute("data-test-skedpal", "calendar-event-title-link");
-  } else {
-    title = document.createElement("div");
-    title.className = "calendar-event-title";
-    title.textContent = item.event.title;
-    title.setAttribute("data-test-skedpal", "calendar-event-title");
-  }
+  const title = buildEventTitle(item);
   if (source === "external") {
     const icon = buildExternalEventIcon();
     title.prepend(icon);
@@ -191,6 +218,9 @@ function buildCalendarEventBlock(item, timeMapColorById) {
   time.textContent = formatEventTimeRange(item.eventStart, item.eventEnd);
   time.setAttribute("data-test-skedpal", "calendar-event-time");
   block.appendChild(title);
+  if (source === "external") {
+    block.appendChild(buildExternalDeleteButton(item.event));
+  }
   block.appendChild(time);
   return block;
 }

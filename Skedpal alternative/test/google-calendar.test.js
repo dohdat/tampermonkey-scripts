@@ -2,6 +2,7 @@ import assert from "assert";
 import { describe, it } from "mocha";
 
 import {
+  deleteCalendarEvent,
   fetchCalendarEvents,
   fetchCalendarList,
   fetchFreeBusy,
@@ -158,6 +159,21 @@ describe("google calendar helpers", () => {
     assert.strictEqual(calendars[0].id, "cal-1");
     assert.strictEqual(calendars[0].summary, "Primary Calendar");
     assert.strictEqual(calendars[0].backgroundColor, "#123456");
+  });
+
+  it("deletes calendar events", async () => {
+    installChrome();
+    let capturedUrl = "";
+    let capturedMethod = "";
+    globalThis.fetch = async (url, options) => {
+      capturedUrl = url;
+      capturedMethod = options?.method || "";
+      return { ok: true, status: 204, text: async () => "" };
+    };
+    const deleted = await deleteCalendarEvent("cal-1", "evt-1");
+    assert.strictEqual(deleted, true);
+    assert.ok(capturedUrl.includes("/calendars/cal-1/events/evt-1"));
+    assert.strictEqual(capturedMethod, "DELETE");
   });
 
   it("retries freebusy requests after auth errors", async () => {

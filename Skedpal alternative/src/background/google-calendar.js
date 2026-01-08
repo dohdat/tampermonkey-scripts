@@ -187,6 +187,19 @@ export async function fetchCalendarEvents({
   return events;
 }
 
+export async function deleteCalendarEvent(calendarId, eventId) {
+  if (!calendarId || !eventId) {
+    throw new Error("Missing calendarId or eventId");
+  }
+  const url = `${GOOGLE_API_BASE}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`;
+  const response = await fetchWithAuth(url, { method: "DELETE" });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Google Calendar delete error (${response.status}): ${text}`);
+  }
+  return true;
+}
+
 export async function fetchCalendarList() {
   const params = new URLSearchParams({
     minAccessRole: "reader",

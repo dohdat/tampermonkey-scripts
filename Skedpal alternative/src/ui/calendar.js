@@ -43,6 +43,7 @@ let pendingDrag = null;
 let lastDragCompletedAt = 0;
 let lastDragMoved = false;
 let calendarViewInitialized = false;
+let externalDeletePending = false;
 
 function getScheduledEvents(tasks) {
   const events = [];
@@ -90,6 +91,81 @@ export function buildUpdatedTaskForDrag(task, eventMeta, newStart, newEnd) {
 
 function getEventMetaFromBlock(block) {
   return buildEventMetaFromDataset(block?.dataset || null);
+}
+
+function getRuntime() {
+  return globalThis.chrome?.runtime || null;
+}
+
+function getExternalDeletePayload(deleteBtn) {
+  if (!deleteBtn) {return null;}
+  const eventId = deleteBtn.dataset.eventId || "";
+  const calendarId = deleteBtn.dataset.calendarId || "";
+  const title = deleteBtn.dataset.eventTitle || "this event";
+  if (!eventId || !calendarId) {return null;}
+  return { eventId, calendarId, title };
+}
+
+function confirmExternalDelete(title) {
+  if (typeof window === "undefined") {return true;}
+  return window.confirm(`Delete "${title}" from Google Calendar?`);
+}
+
+function setDeleteButtonState(button, disabled) {
+  if (!button) {return;}
+  button.disabled = Boolean(disabled);
+  button.classList.toggle("opacity-60", Boolean(disabled));
+}
+
+async function sendExternalDeleteRequest(payload) {
+  const runtime = getRuntime();
+  if (!runtime?.sendMessage) {
+    throw new Error("Chrome runtime unavailable for calendar deletion.");
+  }
+  return new Promise((resolve, reject) => {
+    runtime.sendMessage(
+      {
+        type: "calendar-delete-event",
+        calendarId: payload.calendarId,
+        eventId: payload.eventId
+      },
+      (resp) => {
+        if (runtime.lastError) {
+          reject(new Error(runtime.lastError.message));
+        } else {
+          resolve(resp);
+        }
+      }
+    );
+  });
+}
+
+function removeExternalEvent(payload) {
+  state.calendarExternalEvents = (state.calendarExternalEvents || []).filter(
+    (event) => !(event.id === payload.eventId && event.calendarId === payload.calendarId)
+  );
+}
+
+async function deleteExternalEvent(deleteBtn) {
+  if (externalDeletePending) {return;}
+  const payload = getExternalDeletePayload(deleteBtn);
+  if (!payload) {return;}
+  if (!confirmExternalDelete(payload.title)) {return;}
+  externalDeletePending = true;
+  setDeleteButtonState(deleteBtn, true);
+  try {
+    const response = await sendExternalDeleteRequest(payload);
+    if (!response?.ok) {
+      throw new Error(response?.error || "Failed to delete calendar event");
+    }
+    removeExternalEvent(payload);
+    renderCalendar();
+  } catch (error) {
+    console.warn("Failed to delete Google Calendar event.", error);
+  } finally {
+    externalDeletePending = false;
+    setDeleteButtonState(deleteBtn, false);
+  }
 }
 
 
@@ -200,6 +276,7 @@ function beginCalendarDrag(pending) {
 
 function scheduleCalendarDrag(event) {
   if (event.target?.closest?.("a")) {return;}
+  if (event.target?.closest?.("[data-calendar-event-delete]")) {return;}
   const target = event.target.closest?.(".calendar-event");
   if (!target || event.button !== 0) {return;}
   const dayCol = target.closest?.(".calendar-day-col");
@@ -291,6 +368,13 @@ async function handleCalendarDragEnd() {
 function handleCalendarEventClick(event) {
   if (event.target?.closest?.("a")) {return;}
   if (lastDragMoved && Date.now() - lastDragCompletedAt < 250) {return;}
+  const deleteBtn = event.target.closest?.("[data-calendar-event-delete]");
+  if (deleteBtn) {
+    event.preventDefault();
+    event.stopPropagation();
+    deleteExternalEvent(deleteBtn);
+    return;
+  }
   const block = event.target.closest?.(".calendar-event");
   if (!block) {return;}
   const eventMeta = getEventMetaFromBlock(block);

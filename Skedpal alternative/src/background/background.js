@@ -9,6 +9,7 @@ import { scheduleTasks, getUpcomingOccurrences } from "../core/scheduler.js";
 import { shouldIncrementMissedCount } from "./schedule-metrics.js";
 import {
   fetchCalendarEvents,
+  deleteCalendarEvent,
   fetchCalendarList,
   fetchFreeBusy,
   clearCachedAuthTokens
@@ -144,49 +145,79 @@ async function runReschedule() {
   };
 }
 
+function handleRescheduleMessage(_message, sendResponse) {
+  runReschedule()
+    .then((result) => sendResponse({ ok: true, ...result }))
+    .catch((error) => sendResponse({ ok: false, error: error.message }));
+  return true;
+}
+
+function handleCalendarEventsMessage(message, sendResponse) {
+  const timeMin = message.timeMin || new Date().toISOString();
+  const timeMax = message.timeMax || null;
+  if (!timeMax) {
+    sendResponse({ ok: false, error: "Missing timeMax for calendar events" });
+    return false;
+  }
+  const calendarIds = Array.isArray(message.calendarIds) ? message.calendarIds : null;
+  fetchCalendarEvents({ timeMin, timeMax, calendarIds })
+    .then((events) => {
+      const payload = events.map((event) => ({
+        ...event,
+        start: event.start.toISOString(),
+        end: event.end.toISOString()
+      }));
+      sendResponse({ ok: true, events: payload });
+    })
+    .catch((error) => sendResponse({ ok: false, error: error.message }));
+  return true;
+}
+
+function handleCalendarListMessage(_message, sendResponse) {
+  fetchCalendarList()
+    .then((calendars) => sendResponse({ ok: true, calendars }))
+    .catch((error) => sendResponse({ ok: false, error: error.message }));
+  return true;
+}
+
+function handleCalendarDeleteMessage(message, sendResponse) {
+  const calendarId = message.calendarId || "";
+  const eventId = message.eventId || "";
+  deleteCalendarEvent(calendarId, eventId)
+    .then(() => sendResponse({ ok: true }))
+    .catch((error) => sendResponse({ ok: false, error: error.message }));
+  return true;
+}
+
+function handleCalendarDisconnectMessage(_message, sendResponse) {
+  clearCachedAuthTokens()
+    .then((cleared) => sendResponse({ ok: true, cleared }))
+    .catch((error) => sendResponse({ ok: false, error: error.message }));
+  return true;
+}
+
+function handlePingMessage(_message, sendResponse) {
+  sendResponse({ ok: true });
+  return false;
+}
+
+const MESSAGE_HANDLERS = {
+  reschedule: handleRescheduleMessage,
+  "calendar-events": handleCalendarEventsMessage,
+  "calendar-list": handleCalendarListMessage,
+  "calendar-delete-event": handleCalendarDeleteMessage,
+  "calendar-disconnect": handleCalendarDisconnectMessage,
+  ping: handlePingMessage
+};
+
+function handleRuntimeMessage(message, sendResponse) {
+  const handler = message?.type ? MESSAGE_HANDLERS[message.type] : null;
+  if (!handler) {return false;}
+  return handler(message, sendResponse);
+}
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message?.type === "reschedule") {
-    runReschedule()
-      .then((result) => sendResponse({ ok: true, ...result }))
-      .catch((error) => sendResponse({ ok: false, error: error.message }));
-    return true;
-  }
-  if (message?.type === "calendar-events") {
-    const timeMin = message.timeMin || new Date().toISOString();
-    const timeMax = message.timeMax || null;
-    if (!timeMax) {
-      sendResponse({ ok: false, error: "Missing timeMax for calendar events" });
-      return undefined;
-    }
-    const calendarIds = Array.isArray(message.calendarIds) ? message.calendarIds : null;
-    fetchCalendarEvents({ timeMin, timeMax, calendarIds })
-      .then((events) => {
-        const payload = events.map((event) => ({
-          ...event,
-          start: event.start.toISOString(),
-          end: event.end.toISOString()
-        }));
-        sendResponse({ ok: true, events: payload });
-      })
-      .catch((error) => sendResponse({ ok: false, error: error.message }));
-    return true;
-  }
-  if (message?.type === "calendar-list") {
-    fetchCalendarList()
-      .then((calendars) => sendResponse({ ok: true, calendars }))
-      .catch((error) => sendResponse({ ok: false, error: error.message }));
-    return true;
-  }
-  if (message?.type === "calendar-disconnect") {
-    clearCachedAuthTokens()
-      .then((cleared) => sendResponse({ ok: true, cleared }))
-      .catch((error) => sendResponse({ ok: false, error: error.message }));
-    return true;
-  }
-  if (message?.type === "ping") {
-    sendResponse({ ok: true });
-  }
-  return undefined;
+  return handleRuntimeMessage(message, sendResponse);
 });
 
 chrome.action.onClicked.addListener(() => {

@@ -18,5 +18,12 @@
     "mocha": "^10.3.0",
     "nyc": "^15.1.0",
     "tailwindcss": "^3.4.19"
+  },
+  "c8": {
+    "exclude": [
+      "node_modules/**",
+      "test/**",
+      "vendor/**"
+    ]
   }
 }

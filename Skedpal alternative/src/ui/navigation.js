@@ -5,8 +5,16 @@ import { renderTasks } from "./tasks/tasks-render.js";
 import { getSectionName, getSubsectionsFor } from "./sections.js";
 import { isTypingTarget } from "./notifications.js";
 import { focusCalendarNow, renderCalendar } from "./calendar.js";
+import { getActiveViewId } from "./navigation-helpers.js";
 
-const { views, navButtons, navBreadcrumb } = domRefs;
+function getViews() {
+  return domRefs.views || [];
+}
+
+function getNavButtons() {
+  return domRefs.navButtons || [];
+}
+
 
 export function pushNavigation(filter) {
   state.navStack = state.navStack.slice(0, state.navIndex + 1);
@@ -17,6 +25,8 @@ export function pushNavigation(filter) {
 
 export function switchView(target, options = {}) {
   const { calendarAnchorDate = null, focusCalendar = true } = options;
+  const navButtons = getNavButtons();
+  const views = getViews();
   const allowedViews = navButtons.map((btn) => btn.dataset.view);
   const resolvedTarget = allowedViews.includes(target) ? target : "tasks";
   if (resolvedTarget !== "tasks" && state.zoomFilter) {
@@ -62,6 +72,9 @@ export function getZoomLabel() {
 
 export function setZoomFilter(filter, options = {}) {
   const { record = true } = options;
+  if (getActiveViewId(getViews()) !== "tasks") {
+    switchView("tasks", { focusCalendar: false });
+  }
   state.zoomFilter = filter;
   updateUrlWithZoom(filter);
   renderTasks(state.tasksCache, state.tasksTimeMapsCache);
@@ -135,9 +148,7 @@ export function zoomOutOneLevel() {
   }
 }
 
-export function renderBreadcrumb() {
-  if (!navBreadcrumb) {return;}
-  navBreadcrumb.innerHTML = "";
+function buildBreadcrumbCrumbs() {
   const crumbs = [];
   const addSectionCrumb = (sectionId) => {
     if (sectionId === undefined || sectionId === null) {return;}
@@ -192,10 +203,21 @@ export function renderBreadcrumb() {
     } else if (state.zoomFilter.type === "task") {
       addSectionCrumb(state.zoomFilter.sectionId);
       addSubsectionCrumb(state.zoomFilter.sectionId, state.zoomFilter.subsectionId);
-      addTaskCrumb(state.zoomFilter.taskId, state.zoomFilter.sectionId, state.zoomFilter.subsectionId);
+      addTaskCrumb(
+        state.zoomFilter.taskId,
+        state.zoomFilter.sectionId,
+        state.zoomFilter.subsectionId
+      );
     }
   }
+  return crumbs;
+}
 
+export function renderBreadcrumb() {
+  const navBreadcrumb = domRefs.navBreadcrumb;
+  if (!navBreadcrumb) {return;}
+  navBreadcrumb.innerHTML = "";
+  const crumbs = buildBreadcrumbCrumbs();
   const wrapper = document.createElement("div");
   wrapper.className = "flex items-center gap-2 text-xs text-slate-300";
   crumbs.forEach((crumb, idx) => {

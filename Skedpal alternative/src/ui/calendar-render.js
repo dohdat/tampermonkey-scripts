@@ -93,10 +93,14 @@ function formatHourLabel(hour) {
   return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
-function buildCalendarHeader(range) {
+function buildCalendarHeader(range, options = {}) {
   const header = document.createElement("div");
   header.className = "calendar-grid-header";
-  header.setAttribute("data-test-skedpal", "calendar-grid-header");
+  if (!options.splitView) {
+    header.setAttribute("data-test-skedpal", "calendar-grid-header");
+  } else {
+    header.removeAttribute("data-test-skedpal");
+  }
   header.style.gridTemplateColumns = `90px repeat(${range.days}, minmax(0, 1fr))`;
   const headerSpacer = document.createElement("div");
   headerSpacer.className = "calendar-grid-spacer";
@@ -266,11 +270,11 @@ function buildCalendarDays(range, events, timeMapColorById) {
   return daysWrap;
 }
 
-export function renderCalendarGrid(range, events, timeMapColorById, calendarGrid) {
+export function renderCalendarGrid(range, events, timeMapColorById, calendarGrid, options = {}) {
   if (!calendarGrid) {return;}
   calendarGrid.innerHTML = "";
   calendarGrid.style.setProperty("--calendar-hour-height", `${HOUR_HEIGHT}px`);
-  const header = buildCalendarHeader(range);
+  const header = options.splitView ? null : buildCalendarHeader(range, options);
   const body = document.createElement("div");
   body.className = "calendar-grid-body";
   body.setAttribute("data-test-skedpal", "calendar-grid-body");
@@ -279,7 +283,9 @@ export function renderCalendarGrid(range, events, timeMapColorById, calendarGrid
   const daysWrap = buildCalendarDays(range, events, timeMapColorById);
   body.appendChild(timeCol);
   body.appendChild(daysWrap);
-  calendarGrid.appendChild(header);
+  if (header) {
+    calendarGrid.appendChild(header);
+  }
   calendarGrid.appendChild(body);
 }
 

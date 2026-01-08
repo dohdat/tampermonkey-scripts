@@ -435,6 +435,10 @@ function updateCalendarTitle(viewMode) {
   calendarTitle.textContent = getCalendarTitle(state.calendarAnchorDate, viewMode);
 }
 
+function getActiveCalendarViewMode() {
+  return isCalendarSplitVisible() ? "day" : (state.calendarViewMode || "week");
+}
+
 function getViewStep(viewMode) {
   if (viewMode === "day") {return 1;}
   if (viewMode === "three") {return 3;}
@@ -446,12 +450,12 @@ function setCalendarViewMode(viewMode) {
   renderCalendar();
 }
 function handleCalendarPrevClick() {
-  const step = -getViewStep(state.calendarViewMode);
+  const step = -getViewStep(getActiveCalendarViewMode());
   state.calendarAnchorDate = addCalendarDays(state.calendarAnchorDate, step);
   renderCalendar();
 }
 function handleCalendarNextClick() {
-  const step = getViewStep(state.calendarViewMode);
+  const step = getViewStep(getActiveCalendarViewMode());
   state.calendarAnchorDate = addCalendarDays(state.calendarAnchorDate, step);
   renderCalendar();
 }
@@ -510,7 +514,7 @@ export function focusCalendarEvent(taskId, options = {}) {
 }
 
 export function renderCalendar(tasks = state.tasksCache) {
-  const viewMode = state.calendarViewMode || "week";
+  const viewMode = getActiveCalendarViewMode();
   const range = getCalendarRange(state.calendarAnchorDate, viewMode);
   const scheduledEvents = getScheduledEvents(tasks);
   const externalEvents = getExternalEventsForRange(range);
@@ -524,7 +528,9 @@ export function renderCalendar(tasks = state.tasksCache) {
   );
   updateCalendarTitle(viewMode);
   updateViewToggle(viewMode);
-  renderCalendarGrid(range, events, timeMapColorById, domRefs.calendarGrid);
+  renderCalendarGrid(range, events, timeMapColorById, domRefs.calendarGrid, {
+    splitView: isCalendarSplitVisible()
+  });
   updateNowIndicator();
   if (!events.length) {
     domRefs.calendarGrid?.appendChild(buildEmptyState());

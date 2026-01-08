@@ -23,10 +23,11 @@ function buildTitleMarkup(task) {
         </a>`;
 }
 
-function applyTaskCardBaseStyles(taskCard, task, depth, timeMapById) {
+function applyTaskCardBaseStyles(taskCard, task, depth, timeMapById, options = {}) {
   const isSubtask = depth > 0;
+  const dataTest = options.dataTest || "task-card";
   taskCard.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow";
-  taskCard.setAttribute("data-test-skedpal", "task-card");
+  taskCard.setAttribute("data-test-skedpal", dataTest);
   taskCard.dataset.taskId = task.id;
   taskCard.dataset.sectionId = task.section || "";
   taskCard.dataset.subsectionId = task.subsection || "";
@@ -37,7 +38,8 @@ function applyTaskCardBaseStyles(taskCard, task, depth, timeMapById) {
     taskCard.style.marginLeft = `${depth * 10}px`;
     taskCard.style.borderStyle = "dashed";
   }
-  const color = timeMapById.get(task.timeMapIds[0])?.color;
+  const timeMapIds = Array.isArray(task.timeMapIds) ? task.timeMapIds : [];
+  const color = timeMapById.get(timeMapIds[0])?.color;
   if (color) {
     taskCard.style.backgroundColor = `${color}1a`;
   }
@@ -307,6 +309,17 @@ function buildTaskScheduleDetails(task) {
   return statusRow;
 }
 
+export function buildTaskCardShell(task, options = {}) {
+  const {
+    depth = 0,
+    timeMapById = new Map(),
+    dataTest = "task-card"
+  } = options;
+  const taskCard = document.createElement("div");
+  applyTaskCardBaseStyles(taskCard, task, depth, timeMapById, { dataTest });
+  return taskCard;
+}
+
 export function renderTaskCard(task, context) {
   const {
     tasks,
@@ -324,8 +337,7 @@ export function renderTaskCard(task, context) {
   const displayDurationMin = hasChildren ? computeTotalDuration(task) : baseDurationMin;
   const timeMapNames = task.timeMapIds.map((id) => timeMapById.get(id)?.name || "Unknown");
   const repeatSummary = getRepeatSummary(task.repeat);
-  const taskCard = document.createElement("div");
-  applyTaskCardBaseStyles(taskCard, task, depth, timeMapById);
+  const taskCard = buildTaskCardShell(task, { depth, timeMapById });
   const titleMarkup = buildTitleMarkup(task);
   const isLongTitle = (task.title || "").length > 60;
   const detailsOpen = expandedTaskDetails.has(task.id);

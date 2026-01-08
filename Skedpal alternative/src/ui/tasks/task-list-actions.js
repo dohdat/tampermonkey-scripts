@@ -202,7 +202,7 @@ function handleCollapseActions(btn, action) {
   return true;
 }
 
-async function handleTaskActions(action) {
+async function handleTaskActions(action, options = {}) {
   const handlers = [
     {
       when: action.addSection !== undefined,
@@ -214,7 +214,7 @@ async function handleTaskActions(action) {
     },
     {
       when: Boolean(action.editId),
-      run: () => openTaskEditById(action.editId, { switchView: true })
+      run: () => openTaskEditById(action.editId, { switchView: options.switchView !== false })
     },
     {
       when: Boolean(action.viewCalendarTaskId),
@@ -226,7 +226,7 @@ async function handleTaskActions(action) {
     },
     {
       when: action.addSubtaskId !== undefined,
-      run: () => handleAddSubtaskAction(action.addSubtaskId)
+      run: () => handleAddSubtaskAction(action.addSubtaskId, options)
     },
     {
       when: Boolean(action.deleteId),
@@ -239,10 +239,10 @@ async function handleTaskActions(action) {
   return true;
 }
 
-function handleAddSubtaskAction(taskId) {
+function handleAddSubtaskAction(taskId, options = {}) {
   const parentTask = state.tasksCache.find((t) => t.id === taskId);
   if (parentTask) {
-    startSubtaskFromTask(parentTask);
+    startSubtaskFromTask(parentTask, { switchView: options.switchView !== false });
   }
 }
 
@@ -260,7 +260,7 @@ async function deleteTaskWithUndo(taskId) {
   });
 }
 
-export async function handleTaskListClick(event) {
+export async function handleTaskListClick(event, options = {}) {
   const btn = event.target.closest("button");
   if (!btn) {return;}
   const action = parseTaskListClick(btn);
@@ -281,5 +281,5 @@ export async function handleTaskListClick(event) {
   if (await handleSectionActions(action)) {return;}
   if (await handleSubsectionActions(action)) {return;}
   if (handleCollapseActions(btn, action)) {return;}
-  await handleTaskActions(action);
+  await handleTaskActions(action, options);
 }

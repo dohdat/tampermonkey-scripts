@@ -82,6 +82,7 @@ const {
   subsectionModalCloseBtns,
   taskList,
   todayList,
+  reportList,
   timeMapList,
   rescheduleButtons,
   repeatCompleteList,
@@ -167,6 +168,9 @@ function registerTaskFormHandlers() {
   });
   todayList?.addEventListener("click", async (event) => {
     await handleTaskListClick(event);
+  });
+  reportList?.addEventListener("click", async (event) => {
+    await handleTaskListClick(event, { switchView: false });
   });
   rescheduleButtons.forEach((btn) => btn.addEventListener("click", handleReschedule));
 }

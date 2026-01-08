@@ -1,6 +1,7 @@
 import { domRefs } from "./constants.js";
 import { state } from "./state/page-state.js";
-import { formatDateTime, renderInBatches } from "./utils.js";
+import { formatDateTime, normalizeTimeMap, renderInBatches } from "./utils.js";
+import { renderTaskCard } from "./tasks/task-card.js";
 let reportRenderToken = 0;
 
 function parseTimeToMinutes(value) {
@@ -60,6 +61,83 @@ function getMissedRate(row) {
     return row.missedLastRun / row.expectedCount;
   }
   return row.missedCount > 0 ? 1 : 0;
+}
+
+function shouldIncludeMissedTask(task, parentIds) {
+  if (task.completed) {return false;}
+  if (parentIds.has(task.id)) {return false;}
+  if (["unscheduled", "ignored"].includes(task.scheduleStatus)) {return true;}
+  const expectedCount = Number(task.expectedCount) || 0;
+  const missedLastRun = Number(task.missedLastRun) || 0;
+  const missedCount = Number(task.missedCount) || 0;
+  if (expectedCount > 0) {
+    return missedLastRun > 0;
+  }
+  return missedCount > 0;
+}
+
+function compareMissedTaskRows(a, b) {
+  const rateDiff = getMissedRate(b) - getMissedRate(a);
+  if (rateDiff) {return rateDiff;}
+  if (a.missedCount !== b.missedCount) {return b.missedCount - a.missedCount;}
+  const statusDiff = getStatusWeight(b.status) - getStatusWeight(a.status);
+  if (statusDiff) {return statusDiff;}
+  if (a.priority !== b.priority) {return b.priority - a.priority;}
+  const deadlineDiff = compareDeadlines(a.deadline, b.deadline);
+  if (deadlineDiff) {return deadlineDiff;}
+  return a.title.localeCompare(b.title);
+}
+
+function getTaskTitle(task) {
+  return task.title || "Untitled task";
+}
+
+function getTaskStatus(task) {
+  return task.scheduleStatus || "unscheduled";
+}
+
+function getTaskNumber(value) {
+  return Number(value) || 0;
+}
+
+function getTaskDeadline(task) {
+  return task.deadline || "";
+}
+
+function getTaskSection(task) {
+  return task.section || "";
+}
+
+function getTaskSubsection(task) {
+  return task.subsection || "";
+}
+
+function getTaskTimeMapIds(task) {
+  return Array.isArray(task.timeMapIds) ? task.timeMapIds : [];
+}
+
+function getMissedFillPercent(row) {
+  if (row.expectedCount > 0) {
+    return Math.min(100, Math.max(0, (row.missedLastRun / row.expectedCount) * 100));
+  }
+  return row.missedCount > 0 ? 100 : 0;
+}
+
+function buildReportTaskContext(rows, timeMaps, expandedTaskDetails) {
+  const timeMapById = new Map(
+    (timeMaps || []).map((timeMap) => [timeMap.id, normalizeTimeMap(timeMap)])
+  );
+  return {
+    tasks: rows,
+    timeMapById,
+    collapsedTasks: new Set(),
+    expandedTaskDetails:
+      expandedTaskDetails instanceof Set ? expandedTaskDetails : new Set(),
+    computeTotalDuration: (task) => getTaskNumber(task.durationMin),
+    getTaskDepthById: () => 0,
+    getSectionName: () => "",
+    getSubsectionName: () => ""
+  };
 }
 
 function formatMissedPercentage(missedCount, expectedCount) {
@@ -151,79 +229,83 @@ export function getMissedTaskRows(tasks = [], settings = state.settingsCache) {
     (tasks || []).filter((task) => task.subtaskParentId).map((task) => task.subtaskParentId)
   );
   return (tasks || [])
-    .filter((task) => {
-      if (task.completed) {return false;}
-      if (parentIds.has(task.id)) {return false;}
-      if (["unscheduled", "ignored"].includes(task.scheduleStatus)) {return true;}
-      const expectedCount = Number(task.expectedCount) || 0;
-      const missedLastRun = Number(task.missedLastRun) || 0;
-      const missedCount = Number(task.missedCount) || 0;
-      if (expectedCount > 0) {
-        return missedLastRun > 0;
-      }
-      return missedCount > 0;
-    })
+    .filter((task) => shouldIncludeMissedTask(task, parentIds))
     .map((task) => {
-      const missedCount = Number(task.missedCount) || 0;
+      const missedCount = getTaskNumber(task.missedCount);
       return {
         id: task.id,
-        title: task.title || "Untitled task",
-        status: task.scheduleStatus || "unscheduled",
+        title: getTaskTitle(task),
+        status: getTaskStatus(task),
         missedCount,
-        expectedCount: Number(task.expectedCount) || 0,
-        missedLastRun: Number(task.missedLastRun) || 0,
-        priority: Number(task.priority) || 0,
-        deadline: task.deadline || "",
+        expectedCount: getTaskNumber(task.expectedCount),
+        missedLastRun: getTaskNumber(task.missedLastRun),
+        priority: getTaskNumber(task.priority),
+        durationMin: getTaskNumber(task.durationMin),
+        minBlockMin: getTaskNumber(task.minBlockMin),
+        deadline: getTaskDeadline(task),
+        startFrom: task.startFrom || "",
+        section: getTaskSection(task),
+        subsection: getTaskSubsection(task),
+        subtaskParentId: task.subtaskParentId || "",
+        link: task.link || "",
+        repeat: task.repeat || null,
+        scheduledStart: task.scheduledStart || "",
+        scheduledEnd: task.scheduledEnd || "",
+        completed: Boolean(task.completed),
         sectionLabel: getSectionLabel(task.section, settings),
-        subsectionLabel: getSubsectionLabel(task.section, task.subsection, settings)
+        subsectionLabel: getSubsectionLabel(task.section, task.subsection, settings),
+        timeMapIds: getTaskTimeMapIds(task)
       };
     })
-    .sort((a, b) => {
-      const rateDiff = getMissedRate(b) - getMissedRate(a);
-      if (rateDiff) {return rateDiff;}
-      if (a.missedCount !== b.missedCount) {return b.missedCount - a.missedCount;}
-      const statusDiff = getStatusWeight(b.status) - getStatusWeight(a.status);
-      if (statusDiff) {return statusDiff;}
-      if (a.priority !== b.priority) {return b.priority - a.priority;}
-      const deadlineDiff = compareDeadlines(a.deadline, b.deadline);
-      if (deadlineDiff) {return deadlineDiff;}
-      return a.title.localeCompare(b.title);
-    });
+    .sort(compareMissedTaskRows);
 }
 
-function buildReportRow(row) {
-  const card = document.createElement("div");
-  card.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow";
+function buildReportRow(row, context) {
+  const card = renderTaskCard(row, context);
   card.setAttribute("data-test-skedpal", "report-missed-row");
-  const title = document.createElement("div");
-  title.className = "text-base font-semibold text-slate-100";
-  title.setAttribute("data-test-skedpal", "report-missed-title");
-  title.textContent = row.title;
-  const meta = document.createElement("div");
-  meta.className = "mt-1 flex flex-wrap gap-2 text-xs text-slate-400";
-  meta.setAttribute("data-test-skedpal", "report-missed-meta");
+  const fillPercent = getMissedFillPercent(row);
+  if (fillPercent > 0) {
+    const fillColor = "rgba(var(--color-orange-500-rgb), 0.18)";
+    card.style.backgroundImage =
+      `linear-gradient(90deg, ${fillColor} ${fillPercent}%, rgba(0, 0, 0, 0) ${fillPercent}%)`;
+  }
   const missedBase = row.expectedCount
     ? `Missed: ${row.missedLastRun} of ${row.expectedCount}${formatMissedPercentage(
         row.missedLastRun,
         row.expectedCount
       )}`
     : `Missed: ${row.missedCount}`;
+  const summaryRow = document.createElement("div");
+  summaryRow.className = "task-summary-row";
+  summaryRow.setAttribute("data-test-skedpal", "report-missed-summary");
+  summaryRow.style.display = "flex";
+  summaryRow.style.alignItems = "center";
+  summaryRow.style.marginLeft = "auto";
+  summaryRow.style.gap = "0.35rem";
+  summaryRow.textContent = missedBase;
+  const actionsWrap = card.querySelector(".task-actions-wrap");
+  if (actionsWrap) {
+    actionsWrap.appendChild(summaryRow);
+  }
   const priorityValue = Number(row.priority) || 0;
   const priorityMarkup = priorityValue
     ? `Priority: <span class="priority-text" data-priority="${priorityValue}" data-test-skedpal="report-missed-priority-value">${priorityValue}</span>`
     : "Priority: 0";
-  meta.innerHTML = `
-    <span data-test-skedpal="report-missed-count">${missedBase}</span>
-    <span data-test-skedpal="report-missed-status">Status: ${row.status}</span>
-    <span data-test-skedpal="report-missed-priority">${priorityMarkup}</span>
-    <span data-test-skedpal="report-missed-deadline">Deadline: ${
-      row.deadline ? formatDateTime(row.deadline) : "None"
-    }</span>
-    <span data-test-skedpal="report-missed-section">Section: ${row.sectionLabel}</span>
-    <span data-test-skedpal="report-missed-subsection">Subsection: ${row.subsectionLabel}</span>
-  `;
-  card.appendChild(title);
-  card.appendChild(meta);
+  if (context?.expandedTaskDetails?.has(row.id)) {
+    const meta = document.createElement("div");
+    meta.className = "mt-2 flex flex-wrap gap-2 text-xs text-slate-400";
+    meta.setAttribute("data-test-skedpal", "report-missed-meta");
+    meta.innerHTML = `
+      <span data-test-skedpal="report-missed-status">Status: ${row.status}</span>
+      <span data-test-skedpal="report-missed-priority">${priorityMarkup}</span>
+      <span data-test-skedpal="report-missed-deadline">Deadline: ${
+        row.deadline ? formatDateTime(row.deadline) : "None"
+      }</span>
+      <span data-test-skedpal="report-missed-section">Section: ${row.sectionLabel}</span>
+      <span data-test-skedpal="report-missed-subsection">Subsection: ${row.subsectionLabel}</span>
+    `;
+    card.appendChild(meta);
+  }
   return card;
 }
 
@@ -325,6 +407,11 @@ export function renderReport(tasks = state.tasksCache) {
   );
   reportList.appendChild(buildTimeMapUsageCard(usageRows));
   const rows = getMissedTaskRows(tasks, state.settingsCache);
+  const reportContext = buildReportTaskContext(
+    rows,
+    state.tasksTimeMapsCache,
+    state.expandedTaskDetails
+  );
   if (reportBadge) {
     reportBadge.textContent = rows.length ? String(rows.length) : "";
     reportBadge.classList.toggle("hidden", rows.length === 0);
@@ -344,7 +431,7 @@ export function renderReport(tasks = state.tasksCache) {
     shouldCancel: () => renderToken !== reportRenderToken,
     renderBatch: (batch) => {
       const fragment = document.createDocumentFragment();
-      batch.forEach((row) => fragment.appendChild(buildReportRow(row)));
+      batch.forEach((row) => fragment.appendChild(buildReportRow(row, reportContext)));
       reportList.appendChild(fragment);
     }
   });

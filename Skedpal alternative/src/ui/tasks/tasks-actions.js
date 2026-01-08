@@ -439,14 +439,16 @@ export function startTaskInSection(sectionId = "", subsectionId = "") {
   switchView("tasks");
 }
 
-export function startSubtaskFromTask(task) {
+export function startSubtaskFromTask(task, options = {}) {
   repeatStore.repeatTarget = "task";
   setTaskFormBasics(buildSubtaskFormValues(task));
   setTaskFormSectionFields(task.section || "", task.subsection || "");
   renderTaskTimeMapOptions(state.tasksTimeMapsCache || [], task.timeMapIds || []);
   setTaskSubtaskScheduleMode("parallel");
   openTaskForm();
-  switchView("tasks");
+  if (options.switchView !== false) {
+    switchView("tasks");
+  }
 }
 
 export function openTaskEdit(task, options = {}) {

@@ -246,9 +246,7 @@ function buildCalendarEventBlock(item, timeMapColorById) {
     block.appendChild(buildExternalDeleteButton(item.event));
   }
   block.appendChild(time);
-  if (source === "task") {
-    block.appendChild(buildResizeHandle());
-  }
+  block.appendChild(buildResizeHandle());
   return block;
 }
 

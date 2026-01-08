@@ -171,7 +171,7 @@ function beginCalendarResize(event, handle) {
   const dayCol = block.closest?.(".calendar-day-col");
   if (!dayCol || !dayCol.dataset.day) {return;}
   const eventMeta = getEventMetaFromBlock(block);
-  if (!eventMeta || eventMeta.source === "external") {return;}
+  if (!eventMeta) {return;}
   const startMinutes = roundMinutesToStep(
     getMinutesIntoDay(eventMeta.start),
     DRAG_STEP_MINUTES
@@ -372,7 +372,48 @@ async function handleCalendarResizeEnd() {
     return;
   }
   const durationMinutes = Math.max(DRAG_STEP_MINUTES, endMinutes - startMinutes);
-  await persistDraggedEvent(eventMeta, dayCol.dataset.day, startMinutes, durationMinutes);
+  if (eventMeta.source === "external") {
+    const payload = buildExternalUpdatePayload(
+      eventMeta,
+      dayCol.dataset.day,
+      startMinutes,
+      durationMinutes
+    );
+    if (!payload) {
+      calendarRenderHandler?.();
+      return;
+    }
+    const previous = {
+      eventId: eventMeta.eventId,
+      calendarId: eventMeta.calendarId,
+      start: eventMeta.start,
+      end: eventMeta.end
+    };
+    showNotificationBanner("Saving...");
+    try {
+      await persistDraggedExternalEvent(payload);
+      calendarRenderHandler?.();
+      showUndoBanner(formatRescheduledMessage(payload.start), async () => {
+        showNotificationBanner("Undoing...");
+        try {
+          await persistDraggedExternalEvent(previous);
+          calendarRenderHandler?.();
+          showNotificationBanner("Changes reverted.", { autoHideMs: 2500 });
+        } catch (error) {
+          console.warn("Failed to undo external calendar update.", error);
+          showNotificationBanner("Unable to undo changes.", { autoHideMs: 3500 });
+        }
+      });
+      return;
+    } catch (error) {
+      console.warn("Failed to update external calendar event.", error);
+      showNotificationBanner("Failed to update Google Calendar event.", {
+        autoHideMs: 3500
+      });
+    }
+  } else {
+    await persistDraggedEvent(eventMeta, dayCol.dataset.day, startMinutes, durationMinutes);
+  }
   calendarRenderHandler?.();
 }
 

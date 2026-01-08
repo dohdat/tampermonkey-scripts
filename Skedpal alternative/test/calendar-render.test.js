@@ -202,7 +202,7 @@ describe("calendar render", () => {
     const deleteButtons = findByTestId(events[0], "calendar-event-external-delete");
     assert.strictEqual(deleteButtons.length, 1);
     const resizeHandles = findByTestId(events[0], "calendar-event-resize-handle");
-    assert.strictEqual(resizeHandles.length, 0);
+    assert.strictEqual(resizeHandles.length, 1);
     assert.strictEqual(deleteButtons[0].dataset.eventId, "ext-1");
     assert.strictEqual(deleteButtons[0].dataset.calendarId, "cal-1");
     assert.ok(events[0].dataset.eventStart);

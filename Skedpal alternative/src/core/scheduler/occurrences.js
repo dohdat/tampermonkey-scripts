@@ -27,14 +27,31 @@ function buildDailyOccurrences({ anchor, interval, limitDate, maxCount, nowStart
 
 function getWeeklyDays(repeat, anchor) {
   if (Array.isArray(repeat.weeklyDays) && repeat.weeklyDays.length > 0) {
-    return repeat.weeklyDays.map((d) => Number(d));
+    return Array.from(new Set(repeat.weeklyDays.map((d) => Number(d)))).sort((a, b) => a - b);
   }
   return [anchor.getDay()];
 }
 
-function buildWeeklyOccurrences({ anchor, interval, limitDate, maxCount, nowStart, horizonEnd, repeat }) {
+function buildWeeklyAnyCandidate(weekStart, weeklyDays, anchor, nowStart, limitDate, horizonEnd) {
+  for (const day of weeklyDays) {
+    const candidate = addDays(weekStart, day);
+    if (candidate < anchor || candidate < nowStart) {continue;}
+    if (candidate > limitDate || candidate > horizonEnd) {continue;}
+    return candidate;
+  }
+  return null;
+}
+
+function buildWeeklyAllOccurrences({
+  anchor,
+  interval,
+  limitDate,
+  maxCount,
+  nowStart,
+  horizonEnd,
+  weeklyDays
+}) {
   const occurrences = [];
-  const weeklyDays = getWeeklyDays(repeat, anchor);
   let weekStart = startOfWeek(anchor);
   let emitted = 0;
   while (weekStart <= limitDate && emitted < maxCount) {
@@ -49,6 +66,60 @@ function buildWeeklyOccurrences({ anchor, interval, limitDate, maxCount, nowStar
     weekStart = addDays(weekStart, 7 * interval);
   }
   return occurrences;
+}
+
+function buildWeeklyAnyOccurrences({
+  anchor,
+  interval,
+  limitDate,
+  maxCount,
+  nowStart,
+  horizonEnd,
+  weeklyDays
+}) {
+  const occurrences = [];
+  let weekStart = startOfWeek(anchor);
+  let emitted = 0;
+  while (weekStart <= limitDate && emitted < maxCount) {
+    const candidate = buildWeeklyAnyCandidate(
+      weekStart,
+      weeklyDays,
+      anchor,
+      nowStart,
+      limitDate,
+      horizonEnd
+    );
+    if (candidate) {
+      occurrences.push(endOfDay(candidate));
+      emitted += 1;
+    }
+    weekStart = addDays(weekStart, 7 * interval);
+  }
+  return occurrences;
+}
+
+function buildWeeklyOccurrences({ anchor, interval, limitDate, maxCount, nowStart, horizonEnd, repeat }) {
+  const weeklyDays = getWeeklyDays(repeat, anchor);
+  if (repeat.weeklyMode === "any") {
+    return buildWeeklyAnyOccurrences({
+      anchor,
+      interval,
+      limitDate,
+      maxCount,
+      nowStart,
+      horizonEnd,
+      weeklyDays
+    });
+  }
+  return buildWeeklyAllOccurrences({
+    anchor,
+    interval,
+    limitDate,
+    maxCount,
+    nowStart,
+    horizonEnd,
+    weeklyDays
+  });
 }
 
 function clampDayInMonth(year, monthIndex, day) {

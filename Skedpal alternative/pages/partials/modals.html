@@ -490,9 +490,57 @@
           </select>
         </div>
       </div>
-      <div class="mt-3 hidden" id="task-repeat-weekly-section">
-        <span class="field-label">Repeat on</span>
-        <div class="flex flex-wrap gap-2" id="task-repeat-weekdays"></div>
+      <div
+        class="mt-3 hidden"
+        id="task-repeat-weekly-section"
+        data-test-skedpal="task-repeat-weekly-section"
+      >
+        <div class="space-y-2">
+          <span class="field-label">Repeat</span>
+          <label
+            class="flex items-start gap-2 text-xs text-slate-200"
+            data-test-skedpal="task-repeat-weekly-mode-any-label"
+          >
+            <input
+              type="radio"
+              name="task-repeat-weekly-mode"
+              id="task-repeat-weekly-mode-any"
+              value="any"
+              data-test-skedpal="task-repeat-weekly-mode-any"
+            />
+            <span>
+              Repeat
+              <span data-test-skedpal="task-repeat-weekly-any-count">1</span>
+              time(s) a week on any selected days
+            </span>
+          </label>
+          <label
+            class="flex items-start gap-2 text-xs text-slate-200"
+            data-test-skedpal="task-repeat-weekly-mode-all-label"
+          >
+            <input
+              type="radio"
+              name="task-repeat-weekly-mode"
+              id="task-repeat-weekly-mode-all"
+              value="all"
+              data-test-skedpal="task-repeat-weekly-mode-all"
+              checked
+            />
+            <span>
+              Repeat
+              <span data-test-skedpal="task-repeat-weekly-all-count">1</span>
+              time(s) on every selected day
+            </span>
+          </label>
+        </div>
+        <div class="mt-4" data-test-skedpal="task-repeat-weekly-days-wrap">
+          <span class="field-label">Repeat on</span>
+          <div
+            class="flex flex-wrap gap-2"
+            id="task-repeat-weekdays"
+            data-test-skedpal="task-repeat-weekdays"
+          ></div>
+        </div>
       </div>
       <div class="mt-3 hidden" id="task-repeat-monthly-section">
         <label class="field">

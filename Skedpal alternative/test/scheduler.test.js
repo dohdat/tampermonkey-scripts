@@ -242,6 +242,46 @@ describe("scheduler", () => {
     assert.ok(result.scheduled.every((slot) => slot.start >= startFrom));
   });
 
+  it("schedules weekly any-mode repeats once per week", () => {
+    const now = new Date(2026, 0, 5, 8, 0, 0, 0); // Monday
+    const timeMaps = [
+      {
+        id: "tm-week-any",
+        rules: [
+          { day: 2, startTime: "09:00", endTime: "11:00" },
+          { day: 4, startTime: "09:00", endTime: "11:00" }
+        ]
+      }
+    ];
+    const tasks = [
+      {
+        id: "weekly-any",
+        title: "Weekly any",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-week-any"],
+        repeat: {
+          type: "custom",
+          unit: "week",
+          interval: 1,
+          weeklyDays: [2, 4],
+          weeklyMode: "any"
+        }
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 14,
+      now
+    });
+
+    assert.strictEqual(result.scheduled.length, 2);
+    assert.ok(result.scheduled.every((slot) => slot.start.getDay() === 2));
+  });
+
   it("schedules yearly range repeats within the window", () => {
     const now = new Date(2026, 0, 1, 8, 0, 0, 0);
     const rangeStart = 5;

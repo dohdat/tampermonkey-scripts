@@ -71,6 +71,14 @@ export const domRefs = {
   taskRepeatUnit: document.getElementById("task-repeat-unit"),
   taskRepeatInterval: document.getElementById("task-repeat-interval"),
   taskRepeatWeekdays: document.getElementById("task-repeat-weekdays"),
+  taskRepeatWeeklyModeAny: document.getElementById("task-repeat-weekly-mode-any"),
+  taskRepeatWeeklyModeAll: document.getElementById("task-repeat-weekly-mode-all"),
+  taskRepeatWeeklyAnyCount: document.querySelector
+    ? document.querySelector("[data-test-skedpal='task-repeat-weekly-any-count']")
+    : null,
+  taskRepeatWeeklyAllCount: document.querySelector
+    ? document.querySelector("[data-test-skedpal='task-repeat-weekly-all-count']")
+    : null,
   taskRepeatMonthlyMode: document.getElementById("task-repeat-monthly-mode"),
   taskRepeatMonthlyDay: document.getElementById("task-repeat-monthly-day"),
   taskRepeatMonthlyNth: document.getElementById("task-repeat-monthly-nth"),

@@ -78,6 +78,10 @@ initRef("taskRepeatCustom", "div");
 initRef("taskRepeatUnit", "select");
 initRef("taskRepeatInterval", "input");
 initRef("taskRepeatWeekdays", "div");
+initRef("taskRepeatWeeklyModeAny", "input");
+initRef("taskRepeatWeeklyModeAll", "input");
+initRef("taskRepeatWeeklyAnyCount", "span");
+initRef("taskRepeatWeeklyAllCount", "span");
 initRef("taskRepeatMonthlyMode", "select");
 initRef("taskRepeatMonthlyDay", "input");
 initRef("taskRepeatMonthlyNth", "select");
@@ -156,6 +160,10 @@ describe("repeat utils", () => {
       "taskRepeatUnit",
       "taskRepeatInterval",
       "taskRepeatWeekdays",
+      "taskRepeatWeeklyModeAny",
+      "taskRepeatWeeklyModeAll",
+      "taskRepeatWeeklyAnyCount",
+      "taskRepeatWeeklyAllCount",
       "taskRepeatMonthlyMode",
       "taskRepeatMonthlyDay",
       "taskRepeatMonthlyNth",
@@ -221,6 +229,16 @@ describe("repeat utils", () => {
     assert.ok(weeklySummary.includes("Every 2 weeks"));
     assert.ok(weeklySummary.includes("on Mon, Wed"));
     assert.ok(weeklySummary.includes("for 3 times"));
+
+    const weeklyAny = {
+      type: "custom",
+      unit: "week",
+      interval: 1,
+      weeklyDays: [2, 4],
+      weeklyMode: "any"
+    };
+    const weeklyAnySummary = getRepeatSummary(weeklyAny);
+    assert.ok(weeklyAnySummary.includes("on any of"));
 
     const monthly = {
       type: "custom",

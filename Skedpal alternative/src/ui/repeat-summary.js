@@ -15,7 +15,11 @@ export function buildWeeklySummaryPart(repeat, unit, fallbackDays) {
   const weeklyDays = resolveWeeklyDays(repeat, fallbackDays);
   if (!weeklyDays.length) {return "";}
   const labels = weeklyDays.map((d) => getWeekdayShortLabel(d)).filter(Boolean);
-  return labels.length ? `on ${labels.join(", ")}` : "";
+  if (!labels.length) {return "";}
+  if (repeat.weeklyMode === "any") {
+    return `on any of ${labels.join(", ")}`;
+  }
+  return `on ${labels.join(", ")}`;
 }
 
 export function buildYearlySummaryPart(repeat, unit) {

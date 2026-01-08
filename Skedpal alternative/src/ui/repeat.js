@@ -1,5 +1,5 @@
-import { dayOptions, domRefs } from "./constants.js";
-import { formatRRuleDate, getLocalDateKey, getNthWeekday, getWeekdayShortLabel } from "./utils.js";
+import { domRefs } from "./constants.js";
+import { formatRRuleDate, getLocalDateKey, getNthWeekday } from "./utils.js";
 import {
   buildMonthlyRule,
   buildMonthlySummaryPart,
@@ -21,12 +21,22 @@ import {
   resolveWeeklyDays
 } from "./repeat-summary.js";
 import { getDateParts, syncYearlyRangeInputs } from "./repeat-yearly.js";
+import {
+  renderRepeatWeekdayOptions,
+  resolveWeeklyMode,
+  syncWeeklyModeInputs,
+  syncWeeklyModeLabels
+} from "./repeat-weekly.js";
 const {
   taskDeadlineInput,
   taskRepeatSelect,
   taskRepeatUnit,
   taskRepeatInterval,
   taskRepeatWeekdays,
+  taskRepeatWeeklyModeAny,
+  taskRepeatWeeklyModeAll,
+  taskRepeatWeeklyAnyCount,
+  taskRepeatWeeklyAllCount,
   taskRepeatMonthlyMode,
   taskRepeatMonthlyDay,
   taskRepeatMonthlyNth,
@@ -53,7 +63,6 @@ export function getStartDate() {
   const date = raw ? new Date(raw) : new Date();
   return Number.isNaN(date) ? new Date() : date;
 }
-
 export function defaultRepeatState(startDate = getStartDate()) {
   const monthDay = startDate.getDate();
   const { nth, weekday } = getNthWeekday(startDate);
@@ -61,6 +70,7 @@ export function defaultRepeatState(startDate = getStartDate()) {
     unit: "none",
     interval: 1,
     weeklyDays: [weekday],
+    weeklyMode: "all",
     monthlyMode: "day",
     monthlyDay: monthDay,
     monthlyNth: nth,
@@ -76,7 +86,6 @@ export function defaultRepeatState(startDate = getStartDate()) {
     end: { type: "never", date: "", count: 1 }
   };
 }
-
 export const repeatStore = {
   repeatState: defaultRepeatState(),
   lastRepeatSelection: { type: "none" },
@@ -85,36 +94,15 @@ export const repeatStore = {
   subsectionRepeatSelection: { type: "none" },
   subsectionRepeatBeforeModal: { type: "none" }
 };
-
-export function renderRepeatWeekdayOptions(selected = []) {
-  if (!taskRepeatWeekdays) {return;}
-  taskRepeatWeekdays.innerHTML = "";
-  dayOptions.forEach((day) => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.dataset.dayValue = String(day.value);
-    btn.className =
-      "rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200";
-    btn.textContent = getWeekdayShortLabel(day.value);
-    if (selected.includes(day.value)) {
-      btn.classList.add("bg-lime-400/10", "border-lime-400", "text-lime-300");
-    }
-    taskRepeatWeekdays.appendChild(btn);
-  });
-}
-
 export function openRepeatModal() {
   if (repeatModal) {repeatModal.classList.remove("hidden");}
 }
-
 export function closeRepeatModal() {
   if (repeatModal) {repeatModal.classList.add("hidden");}
 }
-
 function isRepeatDisabled(repeat) {
   return !repeat || repeat.type === "none";
 }
-
 export function getRepeatSummary(repeat) {
   if (isRepeatDisabled(repeat)) {return "Does not repeat";}
   const unit = repeat.unit || "week";
@@ -129,7 +117,6 @@ export function getRepeatSummary(repeat) {
   ].filter(Boolean);
   return parts.join(", ") || "Custom repeat";
 }
-
 function syncRepeatEndControls(repeatState) {
   const endType = repeatState.end?.type || "never";
   taskRepeatEndNever.checked = endType === "never";
@@ -157,16 +144,16 @@ function syncRepeatTargetSelect(target) {
 export function renderRepeatUI(target = repeatStore.repeatTarget) {
   if (!taskRepeatUnit) {return;}
   const repeatState = repeatStore.repeatState;
-  if (repeatState.monthlyMode === "range") {
-    repeatState.monthlyMode = "day";
-  }
+  if (repeatState.monthlyMode === "range") {repeatState.monthlyMode = "day";}
   normalizeMonthlyRange(repeatState, getStartDate());
   taskRepeatUnit.value = repeatState.unit === "none" ? "week" : repeatState.unit;
   taskRepeatInterval.value = repeatState.interval;
   taskRepeatWeeklySection.classList.toggle("hidden", repeatState.unit !== "week");
   taskRepeatMonthlySection.classList.toggle("hidden", repeatState.unit !== "month");
   taskRepeatYearlySection.classList.toggle("hidden", repeatState.unit !== "year");
-  renderRepeatWeekdayOptions(repeatState.weeklyDays || []);
+  renderRepeatWeekdayOptions(taskRepeatWeekdays, repeatState.weeklyDays || []);
+  syncWeeklyModeInputs(repeatState, taskRepeatWeeklyModeAny, taskRepeatWeeklyModeAll);
+  syncWeeklyModeLabels(repeatState, taskRepeatWeeklyAnyCount, taskRepeatWeeklyAllCount);
   setInputValue(taskRepeatMonthlyMode, repeatState.monthlyMode || "day");
   setInputValue(taskRepeatMonthlyDay, repeatState.monthlyDay || 1);
   setInputValue(taskRepeatMonthlyNth, String(repeatState.monthlyNth || 1));
@@ -189,12 +176,7 @@ export function renderRepeatUI(target = repeatStore.repeatTarget) {
 }
 function resolveRepeatUnit(repeat) {
   if (repeat.unit) {return repeat.unit;}
-  const frequencyMap = {
-    daily: "day",
-    weekly: "week",
-    monthly: "month",
-    yearly: "year"
-  };
+  const frequencyMap = { daily: "day", weekly: "week", monthly: "month", yearly: "year" };
   return frequencyMap[repeat.frequency] || "week";
 }
 function resolveMonthlyWeekday(repeat, base) {
@@ -252,6 +234,7 @@ export function setRepeatFromSelection(
   }
   const unit = resolveRepeatUnit(repeat);
   const weeklyDays = resolveWeeklyDays(repeat, base.weeklyDays);
+  const weeklyMode = resolveWeeklyMode(repeat, base.weeklyMode);
   const monthlyMode = resolveMonthlyMode(repeat);
   repeatStore.repeatState = {
     ...base,
@@ -259,6 +242,7 @@ export function setRepeatFromSelection(
     unit,
     interval: resolveRepeatInterval(repeat),
     weeklyDays,
+    weeklyMode,
     monthlyMode,
     monthlyDay: resolveMonthlyDay(repeat, base),
     monthlyNth: resolveMonthlyNth(repeat, base),
@@ -365,6 +349,7 @@ export function buildRepeatFromState() {
     unit,
     interval,
     weeklyDays: repeatState.weeklyDays,
+    weeklyMode: repeatState.weeklyMode,
     monthlyMode: repeatState.monthlyMode,
     monthlyDay: repeatState.monthlyDay,
     monthlyNth: repeatState.monthlyNth,
@@ -506,6 +491,18 @@ function registerRepeatWeeklyHandlers() {
     if (set.size === 0) {set.add(getStartDate().getDay());}
     repeatStore.repeatState.weeklyDays = Array.from(set);
     renderRepeatUI();
+  });
+  taskRepeatWeeklyModeAny?.addEventListener("change", () => {
+    if (taskRepeatWeeklyModeAny.checked) {
+      repeatStore.repeatState.weeklyMode = "any";
+      renderRepeatUI();
+    }
+  });
+  taskRepeatWeeklyModeAll?.addEventListener("change", () => {
+    if (taskRepeatWeeklyModeAll.checked) {
+      repeatStore.repeatState.weeklyMode = "all";
+      renderRepeatUI();
+    }
   });
 }
 

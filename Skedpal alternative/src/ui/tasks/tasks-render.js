@@ -17,7 +17,7 @@ import {
   renderInBatches
 } from "../utils.js";
 import { state } from "../state/page-state.js";
-import { getSubsectionsFor, getSectionName } from "../sections.js";
+import { getSubsectionsFor, getSectionName } from "../sections-data.js";
 import { destroyTaskSortables, setupTaskSortables } from "./tasks-sortable.js";
 import { themeColors } from "../theme.js";
 import {

@@ -7,6 +7,7 @@ const DEFAULT_SECTIONS = [
 const DEFAULT_SETTINGS = {
   schedulingHorizonDays: 14,
   defaultTimeMapId: null,
+  favoriteGroupExpanded: {},
   sections: DEFAULT_SECTIONS,
   subsections: {
     [DEFAULT_SECTIONS[0].id]: [],

@@ -23,9 +23,9 @@ import {
   renderSections,
   renderTaskSectionOptions,
   renderTaskSubsectionOptions,
-  getSubsectionTemplate,
-  renderFavoriteShortcuts
+  getSubsectionTemplate
 } from "../sections.js";
+import { renderFavoriteShortcuts } from "../sections-favorites.js";
 import { renderTaskTimeMapOptions, collectSelectedValues } from "../time-maps.js";
 import { renderTasks } from "./tasks-render.js";
 import { renderTodayView } from "./today-view.js";

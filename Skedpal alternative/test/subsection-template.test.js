@@ -11,7 +11,7 @@ function installDomStubs() {
 installDomStubs();
 
 const { state } = await import("../src/ui/state/page-state.js");
-const { getSubsectionsFor } = await import("../src/ui/sections.js");
+const { getSubsectionsFor } = await import("../src/ui/sections-data.js");
 
 describe("subsection templates", () => {
   beforeEach(() => {

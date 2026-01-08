@@ -34,9 +34,9 @@ import {
   handleRemoveSection,
   closeSubsectionModal,
   handleSubsectionFormSubmit,
-  handleAddSubsection,
-  updateFavoriteOrder
+  handleAddSubsection
 } from "./sections.js";
+import { updateFavoriteOrder, toggleFavoriteGroup } from "./sections-favorites.js";
 import {
   handleNavigationShortcuts,
   handleNavigationMouseButtons,
@@ -213,7 +213,12 @@ function registerNavigationHandlers() {
 }
 
 function registerFavoritesHandlers() {
-  sidebarFavorites?.addEventListener("click", (event) => {
+  sidebarFavorites?.addEventListener("click", async (event) => {
+    const toggleBtn = event.target.closest("[data-fav-toggle]");
+    if (toggleBtn) {
+      await toggleFavoriteGroup(toggleBtn.dataset.favToggle || "");
+      return;
+    }
     const btn = event.target.closest("[data-fav-jump]");
     if (!btn) {return;}
     const type = btn.dataset.favType;
@@ -231,17 +236,21 @@ function registerFavoritesHandlers() {
     if (!item) {return;}
     const favKey = item.dataset.favKey || "";
     if (!favKey) {return;}
+    const favGroup = item.dataset.favGroup || "";
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", favKey);
     item.classList.add("opacity-60");
     sidebarFavorites.dataset.draggingKey = favKey;
+    sidebarFavorites.dataset.draggingGroup = favGroup;
   });
   sidebarFavorites?.addEventListener("dragover", (event) => {
     event.preventDefault();
     const draggingKey = sidebarFavorites.dataset.draggingKey;
     if (!draggingKey) {return;}
+    const draggingGroup = sidebarFavorites.dataset.draggingGroup;
     const target = event.target.closest("[data-fav-row]");
     if (!target || target.dataset.favKey === draggingKey) {return;}
+    if (draggingGroup && target.dataset.favGroup !== draggingGroup) {return;}
     const rect = target.getBoundingClientRect();
     const after = event.clientY > rect.top + rect.height / 2;
     if (after) {
@@ -269,6 +278,7 @@ function registerFavoritesHandlers() {
       item.classList.remove("opacity-60");
     }
     delete sidebarFavorites.dataset.draggingKey;
+    delete sidebarFavorites.dataset.draggingGroup;
   });
 }
 

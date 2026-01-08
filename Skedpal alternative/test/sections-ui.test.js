@@ -74,6 +74,16 @@ function findByTestAttr(root, value) {
   return null;
 }
 
+function findByDataset(root, key, value) {
+  if (!root) {return null;}
+  if (root.dataset?.[key] === value) {return root;}
+  for (const child of root.children || []) {
+    const found = findByDataset(child, key, value);
+    if (found) {return found;}
+  }
+  return null;
+}
+
 const elementIds = [
   "section-list",
   "section-new-name",
@@ -164,6 +174,8 @@ function wireDomRefs() {
 
 wireDomRefs();
 const sectionsModule = await import("../src/ui/sections.js");
+const favoritesModule = await import("../src/ui/sections-favorites.js");
+const sectionsDataModule = await import("../src/ui/sections-data.js");
 
 describe("sections ui", () => {
   beforeEach(() => {
@@ -179,10 +191,10 @@ describe("sections ui", () => {
 
   it("resolves default and custom section names", () => {
     state.settingsCache.sections = [{ id: "custom", name: "Custom" }];
-    assert.strictEqual(sectionsModule.getSectionName("section-work-default"), "Work");
-    assert.strictEqual(sectionsModule.getSectionName("section-personal-default"), "Personal");
-    assert.strictEqual(sectionsModule.getSectionName("custom"), "Custom");
-    assert.strictEqual(sectionsModule.getSectionName("missing"), "");
+    assert.strictEqual(sectionsDataModule.getSectionName("section-work-default"), "Work");
+    assert.strictEqual(sectionsDataModule.getSectionName("section-personal-default"), "Personal");
+    assert.strictEqual(sectionsDataModule.getSectionName("custom"), "Custom");
+    assert.strictEqual(sectionsDataModule.getSectionName("missing"), "");
   });
 
   it("renders section chips and hides default remove buttons", () => {
@@ -243,7 +255,7 @@ describe("sections ui", () => {
   });
 
   it("renders empty favorites placeholder and favorite rows", () => {
-    sectionsModule.renderFavoriteShortcuts();
+    favoritesModule.renderFavoriteShortcuts();
     const sidebar = elementMap.get("sidebar-favorites");
     const empty = findByTestAttr(sidebar, "sidebar-fav-empty");
     assert.ok(empty);
@@ -256,10 +268,40 @@ describe("sections ui", () => {
       s1: [{ id: "sub1", name: "Deep", favorite: true, favoriteOrder: 3 }]
     };
 
-    sectionsModule.renderFavoriteShortcuts();
-    assert.strictEqual(sidebar.children.length, 3);
-    assert.ok(sidebar.children[0].dataset.favKey);
-    assert.ok(findByTestAttr(sidebar.children[0], "sidebar-fav-button"));
+    favoritesModule.renderFavoriteShortcuts();
+    assert.strictEqual(sidebar.children.length, 2);
+    const group = findByTestAttr(sidebar, "sidebar-fav-group");
+    const row = findByTestAttr(group, "sidebar-fav-row");
+    assert.ok(row);
+    assert.ok(findByTestAttr(row, "sidebar-fav-button"));
+  });
+
+  it("auto-expands the most used favorites group", () => {
+    state.settingsCache.sections = [
+      { id: "s1", name: "Work", favorite: true, favoriteOrder: 2 },
+      { id: "s2", name: "Personal", favorite: true, favoriteOrder: 1 }
+    ];
+    state.settingsCache.subsections = {
+      s1: [],
+      s2: []
+    };
+    state.settingsCache.favoriteGroupExpanded = {};
+    state.tasksCache = [
+      { id: "t1", section: "s2" },
+      { id: "t2", section: "s2" },
+      { id: "t3", section: "s1" }
+    ];
+
+    favoritesModule.renderFavoriteShortcuts();
+
+    const sidebar = elementMap.get("sidebar-favorites");
+    const groupS2 = findByDataset(sidebar, "favGroup", "s2");
+    const groupS1 = findByDataset(sidebar, "favGroup", "s1");
+    const listS2 = findByDataset(groupS2, "favGroupList", "s2");
+    const listS1 = findByDataset(groupS1, "favGroupList", "s1");
+
+    assert.strictEqual(listS2.classList.contains("hidden"), false);
+    assert.strictEqual(listS1.classList.contains("hidden"), true);
   });
 
   it("returns early for invalid section actions", async () => {

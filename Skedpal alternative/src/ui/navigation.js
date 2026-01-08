@@ -2,7 +2,7 @@ import { domRefs, homeIconSvg } from "./constants.js";
 import { state } from "./state/page-state.js";
 import { updateUrlWithView, updateUrlWithZoom } from "./utils.js";
 import { renderTasks } from "./tasks/tasks-render.js";
-import { getSectionName, getSubsectionsFor } from "./sections.js";
+import { getSectionName, getSubsectionsFor } from "./sections-data.js";
 import { isTypingTarget } from "./notifications.js";
 import { focusCalendarNow, renderCalendar } from "./calendar.js";
 import { getActiveViewId } from "./navigation-helpers.js";

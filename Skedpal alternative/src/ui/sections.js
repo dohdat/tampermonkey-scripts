@@ -1,14 +1,8 @@
 import { getAllTasks, saveSettings, saveTask } from "../data/db.js";
 import { domRefs } from "./constants.js";
-import {
-  applyFavoriteOrder,
-  buildFavoriteKey,
-  getNextFavoriteOrder,
-  toggleFavoriteById
-} from "./favorites.js";
+import { getNextFavoriteOrder, toggleFavoriteById } from "./favorites.js";
 import {
   applyPrioritySelectColor,
-  getSectionColorMap,
   isStartAfterDeadline,
   normalizeSubtaskScheduleMode,
   uuid
@@ -16,7 +10,8 @@ import {
 import { state } from "./state/page-state.js";
 import { repeatStore, setRepeatFromSelection, syncSubsectionRepeatLabel } from "./repeat.js";
 import { renderTimeMapOptions, collectSelectedValues } from "./time-maps.js";
-import { themeColors } from "./theme.js";
+import { renderFavoriteShortcuts } from "./sections-favorites.js";
+import { getSectionName, getSubsectionsFor } from "./sections-data.js";
 import {
   DEFAULT_SUBSECTION_TEMPLATE,
   formatTemplateDate,
@@ -44,25 +39,11 @@ const {
   subsectionTaskStartFromInput,
   subsectionTaskRepeatSelect,
   subsectionTaskSubtaskScheduleSelect,
-  subsectionTimeMapOptions,
-  sidebarFavorites
+  subsectionTimeMapOptions
 } = domRefs;
 
 let editingSubsectionId = "";
 let editingSectionId = "";
-
-export function getSectionById(id) {
-  return (state.settingsCache.sections || []).find((s) => s.id === id);
-}
-
-export function getSectionName(id) {
-  if (!id) {return "";}
-  const section = getSectionById(id);
-  if (section?.name) {return section.name;}
-  if (id === "section-work-default") {return "Work";}
-  if (id === "section-personal-default") {return "Personal";}
-  return "";
-}
 
 export async function ensureDefaultSectionsPresent() {
   const defaults = [
@@ -94,33 +75,6 @@ export async function ensureDefaultSectionsPresent() {
     await saveSettings(state.settingsCache);
   }
   return state.settingsCache.sections;
-}
-
-export function getSubsectionsFor(sectionId) {
-  return ((state.settingsCache.subsections || {})[sectionId] || []).map((s) => {
-    const template = {
-      title: "",
-      link: "",
-      durationMin: 30,
-      minBlockMin: 30,
-      priority: 3,
-      deadline: "",
-      startFrom: "",
-      repeat: { type: "none" },
-      timeMapIds: [],
-      subtaskScheduleMode: "parallel",
-      ...(s.template || {})
-    };
-    return {
-      favorite: false,
-      parentId: "",
-      ...s,
-      template: {
-        ...template,
-        subtaskScheduleMode: normalizeSubtaskScheduleMode(template.subtaskScheduleMode)
-      }
-    };
-  });
 }
 
 export function renderSections() {
@@ -496,92 +450,6 @@ export async function handleToggleSubsectionFavorite(sectionId, subsectionId) {
   renderFavoriteShortcuts();
   const { loadTasks } = await import("./tasks/tasks-actions.js");
   await loadTasks();
-}
-
-export function renderFavoriteShortcuts() {
-  if (!sidebarFavorites) {return;}
-  sidebarFavorites.innerHTML = "";
-  sidebarFavorites.classList.remove("hidden");
-  const sections = (state.settingsCache.sections || []).filter((s) => s.favorite);
-  const sectionColorMap = getSectionColorMap(state.settingsCache.sections || []);
-  const fallbackColor = {
-    dot: themeColors.lime400,
-    glow: themeColors.lime400Glow
-  };
-  const subsectionMap = state.settingsCache.subsections || {};
-  const subsectionEntries = Object.entries(subsectionMap).flatMap(([sectionId, list]) =>
-    (list || []).filter((s) => s.favorite).map((s) => ({ ...s, sectionId }))
-  );
-  const items = [
-    ...sections.map((s) => ({
-      type: "section",
-      label: s.name || "Untitled section",
-      sectionId: s.id,
-      favoriteOrder: s.favoriteOrder,
-      ...((sectionColorMap.get(s.id) || fallbackColor) ?? fallbackColor)
-    })),
-    ...subsectionEntries.map((sub) => ({
-      type: "subsection",
-      label: sub.name || "Untitled subsection",
-      sectionId: sub.sectionId || "",
-      subsectionId: sub.id,
-      detail: getSectionName(sub.sectionId) || "No section",
-      favoriteOrder: sub.favoriteOrder,
-      ...((sectionColorMap.get(sub.sectionId) || fallbackColor) ?? fallbackColor)
-    }))
-  ].sort((a, b) => {
-    const aOrder = Number.isFinite(a.favoriteOrder) ? a.favoriteOrder : Number.MAX_SAFE_INTEGER;
-    const bOrder = Number.isFinite(b.favoriteOrder) ? b.favoriteOrder : Number.MAX_SAFE_INTEGER;
-    if (aOrder !== bOrder) {return aOrder - bOrder;}
-    return a.label.localeCompare(b.label);
-  });
-
-  if (!items.length) {
-    const empty = document.createElement("li");
-    empty.className = "sidebar-fav-empty";
-    empty.setAttribute("data-test-skedpal", "sidebar-fav-empty");
-    empty.textContent = "No favorites yet";
-    sidebarFavorites.appendChild(empty);
-    return;
-  }
-
-  items.forEach((item) => {
-    const li = document.createElement("li");
-    li.setAttribute("data-test-skedpal", "sidebar-fav-row");
-    li.setAttribute("data-fav-row", "true");
-    li.dataset.favKey = buildFavoriteKey(item);
-    li.draggable = true;
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "sidebar-fav-item";
-    btn.setAttribute("data-test-skedpal", "sidebar-fav-button");
-    btn.setAttribute("data-fav-button", "true");
-    btn.dataset.favKey = buildFavoriteKey(item);
-    btn.dataset.favJump = "true";
-    btn.dataset.favType = item.type;
-    btn.dataset.sectionId = item.sectionId || "";
-    if (item.subsectionId) {btn.dataset.subsectionId = item.subsectionId;}
-    btn.innerHTML = `
-      <span class="sidebar-fav-dot" aria-hidden="true" data-test-skedpal="sidebar-fav-dot" style="background:${item.dot};box-shadow:0 0 0 2px ${item.glow};"></span>
-      <span class="sidebar-fav-text">
-        <span class="sidebar-fav-label" data-test-skedpal="sidebar-fav-label">${item.label}</span>
-        ${
-          item.detail
-            ? `<span class="sidebar-fav-detail" data-test-skedpal="sidebar-fav-detail">${item.detail}</span>`
-            : ""
-        }
-      </span>
-    `;
-    li.appendChild(btn);
-    sidebarFavorites.appendChild(li);
-  });
-}
-
-export async function updateFavoriteOrder(orderedKeys = []) {
-  const updatedSettings = applyFavoriteOrder(state.settingsCache, orderedKeys);
-  state.settingsCache = updatedSettings;
-  await saveSettings(state.settingsCache);
-  renderFavoriteShortcuts();
 }
 
 export function closeSubsectionModal() {

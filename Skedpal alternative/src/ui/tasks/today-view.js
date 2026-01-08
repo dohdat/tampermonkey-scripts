@@ -1,6 +1,6 @@
 import { domRefs } from "../constants.js";
 import { renderTaskCard } from "./task-card.js";
-import { getSectionName, getSubsectionsFor } from "../sections.js";
+import { getSectionName, getSubsectionsFor } from "../sections-data.js";
 import { normalizeTimeMap } from "../utils.js";
 
 function startOfDay(date) {

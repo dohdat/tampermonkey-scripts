@@ -157,6 +157,78 @@ describe("report", () => {
     assert.strictEqual(rows.length, 0);
   });
 
+  it("includes missed tasks across status fallbacks", () => {
+    const tasks = [
+      {
+        id: "t8",
+        title: "Ignored with misses",
+        scheduleStatus: "ignored",
+        expectedCount: 0,
+        missedCount: 2,
+        missedLastRun: 0
+      },
+      {
+        id: "t9",
+        title: "Scheduled without expected count",
+        scheduleStatus: "scheduled",
+        expectedCount: 0,
+        missedCount: 1,
+        missedLastRun: 0
+      },
+      {
+        id: "t10",
+        title: "Unscheduled no misses",
+        scheduleStatus: "unscheduled",
+        expectedCount: 2,
+        missedCount: 0,
+        missedLastRun: 0
+      }
+    ];
+
+    const rows = getMissedTaskRows(tasks, {});
+
+    const ids = rows.map((row) => row.id);
+    assert.ok(ids.includes("t8"));
+    assert.ok(ids.includes("t9"));
+    assert.ok(!ids.includes("t10"));
+  });
+
+  it("falls back to default section labels", () => {
+    const rows = getMissedTaskRows(
+      [
+        {
+          id: "t11",
+          title: "Untitled",
+          scheduleStatus: "scheduled",
+          missedCount: 1,
+          expectedCount: 0,
+          section: "",
+          subsection: ""
+        }
+      ],
+      {}
+    );
+
+    assert.strictEqual(rows[0].sectionLabel, "No section");
+    assert.strictEqual(rows[0].subsectionLabel, "No subsection");
+  });
+
+  it("excludes completed tasks from missed rows", () => {
+    const rows = getMissedTaskRows(
+      [
+        {
+          id: "t12",
+          title: "Done",
+          scheduleStatus: "unscheduled",
+          missedCount: 3,
+          completed: true
+        }
+      ],
+      {}
+    );
+    assert.strictEqual(rows.length, 0);
+  });
+
   it("builds timemap usage rows from scheduled instances", () => {
     const OriginalDate = Date;
     const fixedNow = new OriginalDate(Date.UTC(2026, 0, 5, 12, 0, 0));
@@ -202,6 +274,102 @@ describe("report", () => {
       assert.strictEqual(rows[0].scheduledMinutes, 60);
       assert.strictEqual(rows[0].capacityMinutes, 120);
       assert.strictEqual(rows[0].percent, 50);
+    } finally {
+      global.Date = OriginalDate;
+    }
+  });
+
+  it("ignores invalid timemap rules and instances", () => {
+    const OriginalDate = Date;
+    const fixedNow = new OriginalDate(Date.UTC(2026, 0, 5, 12, 0, 0));
+    global.Date = class extends OriginalDate {
+      constructor(...args) {
+        if (args.length === 0) {
+          return new OriginalDate(fixedNow.getTime());
+        }
+        return new OriginalDate(...args);
+      }
+      static now() {
+        return fixedNow.getTime();
+      }
+    };
+    try {
+      const timeMaps = [
+        {
+          id: "tm-bad",
+          name: "Bad rules",
+          rules: [{ day: "nope", startTime: "bad", endTime: "bad" }]
+        }
+      ];
+      const tasks = [
+        {
+          id: "t13",
+          scheduleStatus: "scheduled",
+          scheduledInstances: [
+            { start: "bad", end: "bad", timeMapId: "tm-bad" },
+            { start: "2026-01-05T09:00:00.000Z", end: "2026-01-05T09:00:00.000Z", timeMapId: "tm-bad" },
+            { start: "2026-01-05T09:00:00.000Z", end: "2026-01-05T10:00:00.000Z", timeMapId: "" }
+          ]
+        }
+      ];
+      const settings = { schedulingHorizonDays: 1 };
+
+      const rows = getTimeMapUsageRows(tasks, timeMaps, settings);
+
+      assert.strictEqual(rows[0].scheduledMinutes, 0);
+      assert.strictEqual(rows[0].capacityMinutes, 0);
+      assert.strictEqual(rows[0].percent, 0);
+    } finally {
+      global.Date = OriginalDate;
+    }
+  });
+
+  it("ranks oversubscribed timemaps ahead of empty ones", () => {
+    const OriginalDate = Date;
+    const fixedNow = new OriginalDate(Date.UTC(2026, 0, 5, 12, 0, 0));
+    global.Date = class extends OriginalDate {
+      constructor(...args) {
+        if (args.length === 0) {
+          return new OriginalDate(fixedNow.getTime());
+        }
+        return new OriginalDate(...args);
+      }
+      static now() {
+        return fixedNow.getTime();
+      }
+    };
+    try {
+      const timeMaps = [
+        { id: "tm-empty", name: "Empty", rules: [] },
+        {
+          id: "tm-over",
+          name: "Overbooked",
+          color: "#f97316",
+          rules: [{ day: 1, startTime: "09:00", endTime: "10:00" }]
+        }
+      ];
+      const tasks = [
+        {
+          id: "t12",
+          scheduleStatus: "scheduled",
+          scheduledInstances: [
+            {
+              start: "2026-01-05T09:00:00.000Z",
+              end: "2026-01-05T11:00:00.000Z",
+              timeMapId: "tm-over"
+            }
+          ]
+        }
+      ];
+      const settings = { schedulingHorizonDays: 1 };
+
+      const rows = getTimeMapUsageRows(tasks, timeMaps, settings);
+
+      assert.strictEqual(rows[0].id, "tm-over");
+      assert.strictEqual(rows[0].isOverSubscribed, true);
+      assert.strictEqual(rows[1].id, "tm-empty");
+      assert.strictEqual(rows[1].capacityMinutes, 0);
+      assert.strictEqual(rows[1].percent, 0);
     } finally {
       global.Date = OriginalDate;
     }

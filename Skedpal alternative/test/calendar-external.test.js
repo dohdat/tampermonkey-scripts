@@ -32,6 +32,12 @@ describe("calendar external events", () => {
     assert.deepStrictEqual(getExternalEventsForRange(range), []);
   });
 
+  it("returns cached events when fetch is disabled", () => {
+    state.calendarExternalAllowFetch = false;
+    state.calendarExternalEvents = [{ id: "evt-1", title: "Hold" }];
+    assert.deepStrictEqual(getExternalEventsForRange(range), state.calendarExternalEvents);
+  });
+
   it("short-circuits when runtime is unavailable", async () => {
     globalThis.chrome = undefined;
     state.calendarExternalAllowFetch = true;
@@ -83,6 +89,59 @@ describe("calendar external events", () => {
     assert.strictEqual(maxDate.getSeconds(), 59);
     const dayDiff = Math.round((maxDate - minDate) / (24 * 60 * 60 * 1000));
     assert.ok(dayDiff >= 9);
+  });
+
+  it("skips fetch when fetching is disabled", async () => {
+    state.calendarExternalAllowFetch = false;
+    let called = 0;
+    globalThis.chrome = {
+      runtime: {
+        lastError: null,
+        sendMessage: (_msg, cb) => {
+          called += 1;
+          cb({ ok: true, events: [] });
+        }
+      }
+    };
+    const updated = await ensureExternalEvents(range);
+    assert.strictEqual(updated, false);
+    assert.strictEqual(called, 0);
+  });
+
+  it("handles failed responses and clears pending flags", async () => {
+    state.calendarExternalAllowFetch = true;
+    globalThis.chrome = {
+      runtime: {
+        lastError: null,
+        sendMessage: (_msg, cb) => {
+          cb({ ok: false, error: "bad" });
+        }
+      }
+    };
+    const updated = await ensureExternalEvents(range);
+    assert.strictEqual(updated, true);
+    assert.strictEqual(state.calendarExternalAllowFetch, false);
+    assert.strictEqual(state.calendarExternalPendingKey, "");
+    assert.ok(state.calendarExternalRangeKey.length > 0);
+  });
+
+  it("sends null calendarIds when none are selected", async () => {
+    let capturedMessage = null;
+    state.settingsCache = { ...state.settingsCache, googleCalendarIds: null };
+    state.calendarExternalAllowFetch = true;
+    globalThis.chrome = {
+      runtime: {
+        lastError: null,
+        sendMessage: (msg, cb) => {
+          capturedMessage = msg;
+          cb({ ok: true, events: [] });
+        }
+      }
+    };
+    const updated = await ensureExternalEvents(range);
+    assert.strictEqual(updated, true);
+    assert.ok(capturedMessage);
+    assert.strictEqual(capturedMessage.calendarIds, null);
   });
 
   it("invalidates the cached range and events", () => {

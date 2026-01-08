@@ -70,6 +70,7 @@ describe("db", () => {
     const settings = await getSettings();
     assert.strictEqual(settings.schedulingHorizonDays, DEFAULT_SETTINGS.schedulingHorizonDays);
     assert.strictEqual(settings.defaultTimeMapId, DEFAULT_SETTINGS.defaultTimeMapId);
+    assert.deepStrictEqual(settings.googleCalendarIds, DEFAULT_SETTINGS.googleCalendarIds);
     assert.deepStrictEqual(settings.sections, DEFAULT_SETTINGS.sections);
     assert.deepStrictEqual(settings.subsections, DEFAULT_SETTINGS.subsections);
   });
@@ -79,6 +80,7 @@ describe("db", () => {
     const settings = await getSettings();
     assert.strictEqual(settings.schedulingHorizonDays, 7);
     assert.strictEqual(settings.defaultTimeMapId, "tm-1");
+    assert.deepStrictEqual(settings.googleCalendarIds, DEFAULT_SETTINGS.googleCalendarIds);
     assert.deepStrictEqual(settings.sections, DEFAULT_SETTINGS.sections);
     assert.deepStrictEqual(settings.subsections, DEFAULT_SETTINGS.subsections);
   });

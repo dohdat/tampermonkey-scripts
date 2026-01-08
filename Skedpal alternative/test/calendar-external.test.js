@@ -42,7 +42,11 @@ describe("calendar external events", () => {
 
   it("stores events returned from the background runtime", async () => {
     const now = new Date();
-    state.settingsCache = { ...state.settingsCache, schedulingHorizonDays: 10 };
+    state.settingsCache = {
+      ...state.settingsCache,
+      schedulingHorizonDays: 10,
+      googleCalendarIds: ["calendar-1"]
+    };
     let capturedMessage = null;
     globalThis.chrome = {
       runtime: {
@@ -72,6 +76,7 @@ describe("calendar external events", () => {
     assert.ok(state.calendarExternalEvents[0].start instanceof Date);
     const minDate = new Date(capturedMessage.timeMin);
     const maxDate = new Date(capturedMessage.timeMax);
+    assert.deepStrictEqual(capturedMessage.calendarIds, ["calendar-1"]);
     assert.ok(minDate.getTime() >= now.getTime() - 2000);
     assert.strictEqual(maxDate.getHours(), 23);
     assert.strictEqual(maxDate.getMinutes(), 59);

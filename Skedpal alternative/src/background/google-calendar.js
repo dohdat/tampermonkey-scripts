@@ -67,8 +67,8 @@ export function normalizeBusyBlocks(calendarId, busyRanges = []) {
 }
 
 function getCalendarIds(overrides) {
-  if (Array.isArray(overrides) && overrides.length) {
-    return overrides.filter(Boolean);
+  if (overrides !== null && overrides !== undefined) {
+    return Array.isArray(overrides) ? overrides.filter(Boolean) : [];
   }
   return DEFAULT_CALENDAR_IDS;
 }
@@ -102,6 +102,22 @@ function removeCachedToken(token) {
   const identity = getIdentityApi();
   if (!identity?.removeCachedAuthToken || !token) {return;}
   identity.removeCachedAuthToken({ token }, () => {});
+}
+
+async function clearCachedAuthTokens() {
+  const identity = getIdentityApi();
+  if (!identity) {return false;}
+  if (typeof identity.clearAllCachedAuthTokens === "function") {
+    await new Promise((resolve) => identity.clearAllCachedAuthTokens(() => resolve()));
+    return true;
+  }
+  try {
+    const token = await getAuthToken(false);
+    removeCachedToken(token);
+    return true;
+  } catch (error) {
+    return false;
+  }
 }
 
 async function fetchWithAuth(url, options = {}) {
@@ -171,6 +187,30 @@ export async function fetchCalendarEvents({
   return events;
 }
 
+export async function fetchCalendarList() {
+  const params = new URLSearchParams({
+    minAccessRole: "reader",
+    showHidden: "false"
+  });
+  const response = await fetchWithAuth(
+    `${GOOGLE_API_BASE}/users/me/calendarList?${params}`,
+    { method: "GET" }
+  );
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Google Calendar list error (${response.status}): ${text}`);
+  }
+  const data = await response.json();
+  return (data.items || []).map((entry) => ({
+    id: entry.id || "",
+    summary: entry.summary || "",
+    primary: Boolean(entry.primary),
+    accessRole: entry.accessRole || "",
+    backgroundColor: entry.backgroundColor || "",
+    foregroundColor: entry.foregroundColor || ""
+  }));
+}
+
 export async function fetchFreeBusy({
   timeMin,
   timeMax,
@@ -199,4 +239,4 @@ export async function fetchFreeBusy({
   return busy;
 }
 
-export { DEFAULT_CALENDAR_IDS };
+export { DEFAULT_CALENDAR_IDS, clearCachedAuthTokens };

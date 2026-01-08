@@ -8,6 +8,7 @@ const DEFAULT_SCHEDULING_HORIZON_DAYS = 14;
 const DEFAULT_SETTINGS = {
   schedulingHorizonDays: DEFAULT_SCHEDULING_HORIZON_DAYS,
   defaultTimeMapId: null,
+  googleCalendarIds: [],
   favoriteGroupExpanded: {},
   sections: DEFAULT_SECTIONS,
   subsections: {

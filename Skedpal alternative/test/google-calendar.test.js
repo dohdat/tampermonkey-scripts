@@ -3,6 +3,7 @@ import { describe, it } from "mocha";
 
 import {
   fetchCalendarEvents,
+  fetchCalendarList,
   fetchFreeBusy,
   normalizeBusyBlocks,
   normalizeGoogleEvent,
@@ -132,6 +133,31 @@ describe("google calendar helpers", () => {
     assert.strictEqual(events.length, 1);
     assert.strictEqual(events[0].title, "Block 1");
     assert.strictEqual(events[0].colorHex, "");
+  });
+
+  it("fetches calendar list entries", async () => {
+    installChrome();
+    globalThis.fetch = async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        items: [
+          {
+            id: "cal-1",
+            summary: "Primary Calendar",
+            primary: true,
+            accessRole: "owner",
+            backgroundColor: "#123456",
+            foregroundColor: "#ffffff"
+          }
+        ]
+      })
+    });
+    const calendars = await fetchCalendarList();
+    assert.strictEqual(calendars.length, 1);
+    assert.strictEqual(calendars[0].id, "cal-1");
+    assert.strictEqual(calendars[0].summary, "Primary Calendar");
+    assert.strictEqual(calendars[0].backgroundColor, "#123456");
   });
 
   it("retries freebusy requests after auth errors", async () => {

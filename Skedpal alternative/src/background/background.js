@@ -7,7 +7,12 @@ import {
 } from "../data/db.js";
 import { scheduleTasks, getUpcomingOccurrences } from "../core/scheduler.js";
 import { shouldIncrementMissedCount } from "./schedule-metrics.js";
-import { fetchCalendarEvents, fetchFreeBusy } from "./google-calendar.js";
+import {
+  fetchCalendarEvents,
+  fetchCalendarList,
+  fetchFreeBusy,
+  clearCachedAuthTokens
+} from "./google-calendar.js";
 
 function resolveScheduleStatus(task, parentIds, ignored, taskPlacements) {
   if (parentIds.has(task.id)) {return null;}
@@ -100,17 +105,23 @@ async function runReschedule() {
   }
 
   let busy = [];
+  const calendarIds = Array.isArray(settings.googleCalendarIds)
+    ? settings.googleCalendarIds
+    : null;
   const horizonDays = Number(settings.schedulingHorizonDays) || DEFAULT_SCHEDULING_HORIZON_DAYS;
   const horizonEnd = new Date(now.getTime());
   horizonEnd.setDate(horizonEnd.getDate() + horizonDays);
   horizonEnd.setHours(23, 59, 59, 999);
-  try {
-    busy = await fetchFreeBusy({
-      timeMin: now.toISOString(),
-      timeMax: horizonEnd.toISOString()
-    });
-  } catch (error) {
-    console.warn("Failed to load Google Calendar busy blocks.", error);
+  if (!Array.isArray(calendarIds) || calendarIds.length) {
+    try {
+      busy = await fetchFreeBusy({
+        timeMin: now.toISOString(),
+        timeMax: horizonEnd.toISOString(),
+        calendarIds
+      });
+    } catch (error) {
+      console.warn("Failed to load Google Calendar busy blocks.", error);
+    }
   }
 
   const { scheduled, unscheduled, ignored } = scheduleTasks({
@@ -147,7 +158,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       sendResponse({ ok: false, error: "Missing timeMax for calendar events" });
       return undefined;
     }
-    fetchCalendarEvents({ timeMin, timeMax })
+    const calendarIds = Array.isArray(message.calendarIds) ? message.calendarIds : null;
+    fetchCalendarEvents({ timeMin, timeMax, calendarIds })
       .then((events) => {
         const payload = events.map((event) => ({
           ...event,
@@ -156,6 +168,18 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         }));
         sendResponse({ ok: true, events: payload });
       })
+      .catch((error) => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+  if (message?.type === "calendar-list") {
+    fetchCalendarList()
+      .then((calendars) => sendResponse({ ok: true, calendars }))
+      .catch((error) => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+  if (message?.type === "calendar-disconnect") {
+    clearCachedAuthTokens()
+      .then((cleared) => sendResponse({ ok: true, cleared }))
       .catch((error) => sendResponse({ ok: false, error: error.message }));
     return true;
   }

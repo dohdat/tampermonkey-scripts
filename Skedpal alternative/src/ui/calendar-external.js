@@ -40,6 +40,12 @@ function getFetchRange(range) {
   return state.calendarExternalAllowFetch ? buildHorizonRange() : range;
 }
 
+function getSelectedCalendarIds() {
+  return Array.isArray(state.settingsCache?.googleCalendarIds)
+    ? state.settingsCache.googleCalendarIds
+    : null;
+}
+
 function shouldSkipFetch(key) {
   return (
     !key ||
@@ -95,7 +101,8 @@ export async function ensureExternalEvents(range) {
         {
           type: "calendar-events",
           timeMin: effectiveRange.start.toISOString(),
-          timeMax: effectiveRange.end.toISOString()
+          timeMax: effectiveRange.end.toISOString(),
+          calendarIds: getSelectedCalendarIds()
         },
         (resp) => {
           if (runtime.lastError) {

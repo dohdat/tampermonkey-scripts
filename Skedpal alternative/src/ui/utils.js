@@ -44,6 +44,23 @@ export function parseViewFromUrl(defaultView = "tasks") {
   return url.searchParams.get("view") || defaultView;
 }
 
+export function updateUrlWithCalendarView(viewMode) {
+  const url = new URL(window.location.href);
+  if (viewMode) {
+    url.searchParams.set("calendarView", viewMode);
+  } else {
+    url.searchParams.delete("calendarView");
+  }
+  history.replaceState({}, "", url.toString());
+}
+
+export function parseCalendarViewFromUrl(defaultView = "day") {
+  const url = new URL(window.location.href);
+  const view = url.searchParams.get("calendarView") || "";
+  const allowed = new Set(["day", "three", "week"]);
+  return allowed.has(view) ? view : defaultView;
+}
+
 export function uuid() {
   return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
 }

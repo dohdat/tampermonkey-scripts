@@ -23,9 +23,15 @@ function clampDate(value) {
 
 export function getCalendarRange(anchorDate, viewMode) {
   const anchor = clampDate(anchorDate);
-  const start =
-    viewMode === "day" ? startOfDay(anchor) : getWeekStartSunday(anchor);
-  const days = viewMode === "day" ? 1 : 7;
+  let start = getWeekStartSunday(anchor);
+  let days = 7;
+  if (viewMode === "day") {
+    start = startOfDay(anchor);
+    days = 1;
+  } else if (viewMode === "three") {
+    start = startOfDay(anchor);
+    days = 3;
+  }
   const end = addDays(start, days);
   return { start, end, days };
 }
@@ -39,6 +45,20 @@ export function getCalendarTitle(anchorDate, viewMode) {
       day: "numeric",
       year: "numeric"
     });
+  }
+  if (viewMode === "three") {
+    const { start } = getCalendarRange(anchor, "three");
+    const end = addDays(start, 2);
+    const startLabel = start.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric"
+    });
+    const endLabel = end.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric"
+    });
+    return `${startLabel} - ${endLabel}`;
   }
   return anchor.toLocaleDateString(undefined, { month: "long", year: "numeric" });
 }

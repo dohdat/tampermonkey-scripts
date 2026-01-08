@@ -6,6 +6,8 @@ const {
   parseZoomFromUrl,
   updateUrlWithView,
   parseViewFromUrl,
+  updateUrlWithCalendarView,
+  parseCalendarViewFromUrl,
   normalizeTimeMap,
   formatDateTime,
   formatDate,
@@ -98,6 +100,26 @@ describe("utils url helpers", () => {
 
     updateUrlWithView("");
     assert.strictEqual(parseViewFromUrl("tasks"), "tasks");
+  });
+
+  it("updates and reads calendar view params", () => {
+    global.window = {
+      location: { href: "https://example.com/app?view=calendar&calendarView=day" }
+    };
+    global.history = {
+      replaceState: (_state, _title, url) => {
+        global.window.location.href = url;
+      }
+    };
+
+    updateUrlWithCalendarView("three");
+    assert.strictEqual(parseCalendarViewFromUrl("day"), "three");
+
+    updateUrlWithCalendarView("week");
+    assert.strictEqual(parseCalendarViewFromUrl("day"), "week");
+
+    updateUrlWithCalendarView("");
+    assert.strictEqual(parseCalendarViewFromUrl("day"), "day");
   });
 });
 

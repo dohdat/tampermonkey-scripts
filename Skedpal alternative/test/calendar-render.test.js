@@ -98,6 +98,7 @@ async function installDomStubs() {
   domRefs.calendarGrid = new FakeElement("div");
   domRefs.calendarTitle = new FakeElement("h3");
   domRefs.calendarDayBtn = new FakeElement("button");
+  domRefs.calendarThreeBtn = new FakeElement("button");
   domRefs.calendarWeekBtn = new FakeElement("button");
   return { domRefs, renderCalendar };
 }
@@ -154,6 +155,18 @@ describe("calendar render", () => {
 
     const empty = findByTestId(domRefs.calendarGrid, "calendar-empty");
     assert.strictEqual(empty.length, 1);
+  });
+
+  it("marks three day view as active", () => {
+    const { domRefs, renderCalendar } = testRefs;
+    state.calendarViewMode = "three";
+    state.tasksTimeMapsCache = [];
+
+    renderCalendar([]);
+
+    assert.ok(domRefs.calendarThreeBtn.className.includes("calendar-view-btn--active"));
+    assert.strictEqual(domRefs.calendarDayBtn.className.includes("calendar-view-btn--active"), false);
+    assert.strictEqual(domRefs.calendarWeekBtn.className.includes("calendar-view-btn--active"), false);
   });
 
   it("skips scheduled instances that are already completed", () => {

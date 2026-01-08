@@ -10,6 +10,7 @@ import {
   clampMinutes,
   getMinutesIntoDay
 } from "./calendar-utils.js";
+import { parseCalendarViewFromUrl, updateUrlWithCalendarView } from "./utils.js";
 import {
   buildScheduleBounds,
   buildScheduledEvent,
@@ -497,10 +498,28 @@ function updateCalendarTitle(viewMode) {
   calendarTitle.textContent = getCalendarTitle(state.calendarAnchorDate, viewMode);
 }
 
+function getViewStep(viewMode) {
+  if (viewMode === "day") {return 1;}
+  if (viewMode === "three") {return 3;}
+  return 7;
+}
+
+function setCalendarViewMode(viewMode) {
+  state.calendarViewMode = viewMode;
+  updateUrlWithCalendarView(viewMode);
+  renderCalendar();
+}
+
 function updateViewToggle(viewMode) {
-  const { calendarDayBtn, calendarWeekBtn } = domRefs;
+  const { calendarDayBtn, calendarThreeBtn, calendarWeekBtn } = domRefs;
   if (calendarDayBtn) {
     calendarDayBtn.classList.toggle("calendar-view-btn--active", viewMode === "day");
+  }
+  if (calendarThreeBtn) {
+    calendarThreeBtn.classList.toggle(
+      "calendar-view-btn--active",
+      viewMode === "three"
+    );
   }
   if (calendarWeekBtn) {
     calendarWeekBtn.classList.toggle("calendar-view-btn--active", viewMode === "week");
@@ -558,24 +577,26 @@ export function initCalendarView() {
     return;
   }
   calendarViewInitialized = true;
+  state.calendarViewMode = parseCalendarViewFromUrl(state.calendarViewMode || "day");
   const {
     calendarPrevBtn,
     calendarNextBtn,
     calendarTodayBtn,
     calendarDayBtn,
+    calendarThreeBtn,
     calendarWeekBtn
   } = domRefs;
 
   if (calendarPrevBtn) {
     calendarPrevBtn.addEventListener("click", () => {
-      const step = state.calendarViewMode === "day" ? -1 : -7;
+      const step = -getViewStep(state.calendarViewMode);
       state.calendarAnchorDate = addCalendarDays(state.calendarAnchorDate, step);
       renderCalendar();
     });
   }
   if (calendarNextBtn) {
     calendarNextBtn.addEventListener("click", () => {
-      const step = state.calendarViewMode === "day" ? 1 : 7;
+      const step = getViewStep(state.calendarViewMode);
       state.calendarAnchorDate = addCalendarDays(state.calendarAnchorDate, step);
       renderCalendar();
     });
@@ -589,14 +610,17 @@ export function initCalendarView() {
   }
   if (calendarDayBtn) {
     calendarDayBtn.addEventListener("click", () => {
-      state.calendarViewMode = "day";
-      renderCalendar();
+      setCalendarViewMode("day");
+    });
+  }
+  if (calendarThreeBtn) {
+    calendarThreeBtn.addEventListener("click", () => {
+      setCalendarViewMode("three");
     });
   }
   if (calendarWeekBtn) {
     calendarWeekBtn.addEventListener("click", () => {
-      state.calendarViewMode = "week";
-      renderCalendar();
+      setCalendarViewMode("week");
     });
   }
   if (nowIndicatorTimer) {

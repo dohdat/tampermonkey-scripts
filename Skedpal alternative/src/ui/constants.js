@@ -132,6 +132,7 @@ export const domRefs = {
   calendarNextBtn: document.getElementById("calendar-next"),
   calendarTodayBtn: document.getElementById("calendar-today"),
   calendarDayBtn: document.getElementById("calendar-view-day"),
+  calendarThreeBtn: document.getElementById("calendar-view-three"),
   calendarWeekBtn: document.getElementById("calendar-view-week"),
   calendarEventModal: document.getElementById("calendar-event-modal"),
   calendarEventModalTitle: document.getElementById("calendar-event-modal-title"),

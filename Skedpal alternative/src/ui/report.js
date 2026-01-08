@@ -133,6 +133,7 @@ function buildReportTaskContext(rows, timeMaps, expandedTaskDetails) {
     collapsedTasks: new Set(),
     expandedTaskDetails:
       expandedTaskDetails instanceof Set ? expandedTaskDetails : new Set(),
+    hideSummaryRow: true,
     computeTotalDuration: (task) => getTaskNumber(task.durationMin),
     getTaskDepthById: () => 0,
     getSectionName: () => "",

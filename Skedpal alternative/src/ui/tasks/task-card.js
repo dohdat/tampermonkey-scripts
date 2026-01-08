@@ -246,9 +246,11 @@ function buildTaskHeader(task, options) {
   } else {
     actionsWrap.appendChild(durationPill);
   }
-  const summaryRow = buildTaskSummaryRow(task);
-  if (summaryRow) {
-    actionsWrap.appendChild(summaryRow);
+  if (!options.hideSummaryRow) {
+    const summaryRow = buildTaskSummaryRow(task);
+    if (summaryRow) {
+      actionsWrap.appendChild(summaryRow);
+    }
   }
   header.appendChild(titleWrap);
   header.appendChild(actionsWrap);
@@ -327,7 +329,8 @@ export function renderTaskCard(task, context) {
     collapsedTasks,
     expandedTaskDetails,
     computeTotalDuration,
-    getTaskDepthById
+    getTaskDepthById,
+    hideSummaryRow
   } = context;
   const childTasks = tasks.filter((t) => t.subtaskParentId === task.id);
   const hasChildren = childTasks.length > 0;
@@ -348,7 +351,8 @@ export function renderTaskCard(task, context) {
     isSubtask: depth > 0,
     titleMarkup,
     detailsOpen,
-    displayDurationMin
+    displayDurationMin,
+    hideSummaryRow
   });
   taskCard.appendChild(header);
   if (detailsOpen) {

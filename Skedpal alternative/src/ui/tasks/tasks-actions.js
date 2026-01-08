@@ -192,10 +192,10 @@ export async function loadTasks() {
   state.settingsCache = { ...state.settingsCache, ...normalizedSettings };
   await ensureDefaultSectionsPresent();
   renderSections();
-  renderFavoriteShortcuts();
   const timeMaps = timeMapsRaw.map(normalizeTimeMap);
   state.tasksTimeMapsCache = timeMaps;
   state.tasksCache = tasks;
+  renderFavoriteShortcuts();
   renderTaskSectionOptions();
   renderTaskTimeMapOptions(timeMaps);
   renderTimeMapsAndTasks(timeMaps);

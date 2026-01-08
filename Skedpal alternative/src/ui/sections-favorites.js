@@ -1,7 +1,7 @@
 import { saveSettings } from "../data/db.js";
 import { buildFavoriteKey, applyFavoriteOrder } from "./favorites.js";
 import { getSectionName } from "./sections-data.js";
-import { getSectionColorMap } from "./utils.js";
+import { getSectionColorMap, getSubsectionDescendantIds } from "./utils.js";
 import { state } from "./state/page-state.js";
 import { themeColors } from "./theme.js";
 import { domRefs } from "./constants.js";
@@ -126,6 +126,20 @@ function resolveExpandedGroups(groups) {
   return { [topSectionId]: true };
 }
 
+function getTaskCountForFavorite(item, tasks) {
+  if (!item || !Array.isArray(tasks)) {return 0;}
+  const visibleTasks = tasks.filter((task) => !task.completed);
+  if (item.type === "subsection") {
+    const subsectionList = state.settingsCache.subsections?.[item.sectionId] || [];
+    const descendantIds = getSubsectionDescendantIds(subsectionList, item.subsectionId);
+    if (!descendantIds.size) {return 0;}
+    return visibleTasks.filter(
+      (task) => task.section === item.sectionId && descendantIds.has(task.subsection)
+    ).length;
+  }
+  return visibleTasks.filter((task) => task.section === item.sectionId).length;
+}
+
 function buildFavoriteRow(item) {
   const li = document.createElement("li");
   li.setAttribute("data-test-skedpal", "sidebar-fav-row");
@@ -143,11 +157,13 @@ function buildFavoriteRow(item) {
   btn.dataset.favType = item.type;
   btn.dataset.sectionId = item.sectionId || "";
   if (item.subsectionId) {btn.dataset.subsectionId = item.subsectionId;}
+  const count = getTaskCountForFavorite(item, state.tasksCache || []);
   btn.innerHTML = `
       <span class="sidebar-fav-dot" aria-hidden="true" data-test-skedpal="sidebar-fav-dot" style="background:${item.dot};box-shadow:0 0 0 2px ${item.glow};"></span>
       <span class="sidebar-fav-text">
         <span class="sidebar-fav-label" data-test-skedpal="sidebar-fav-label">${item.label}</span>
       </span>
+      <span class="sidebar-fav-count" data-test-skedpal="sidebar-fav-count">${count}</span>
     `;
   li.appendChild(btn);
   return li;

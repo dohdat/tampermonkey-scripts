@@ -114,6 +114,7 @@ body.modal-open{overflow:hidden}
 .sidebar-fav-dot{width:var(--size-10px);height:var(--size-10px);border-radius:var(--size-9999px);background:var(--color-lime-400);box-shadow:0 0 0 var(--size-2px) rgba(var(--color-lime-400-rgb), .18)}
 .sidebar-fav-text{display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-0-1)}
 .sidebar-fav-label{line-height:var(--line-height-tight)}
+.sidebar-fav-count{margin-left:auto;padding:var(--space-0-1) var(--space-0-35);border-radius:var(--size-12px);border:var(--size-1px) solid rgba(var(--color-slate-700-rgb), .7);background:rgba(var(--color-slate-900-rgb), .6);font-size:var(--font-size-xxs);color:var(--color-slate-400);font-weight:var(--font-weight-bold)}
 .sidebar-fav-empty{padding:var(--space-0-4) var(--space-0-6);font-size:var(--font-size-sm-plus);color:var(--color-slate-400);background:rgba(var(--color-slate-800-rgb), .25);border-radius:var(--size-12px);border:var(--size-1px) dashed var(--color-slate-700)}
 @media (max-width:900px){.sidebar{width:var(--size-210px)}.app-main{margin-left:var(--size-210px)}}
 

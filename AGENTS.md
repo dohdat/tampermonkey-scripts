@@ -21,7 +21,6 @@
 ## Testing & Validation
 - Add unit tests for any new features or logic changes to prevent regressions.
 - After any code changes, always run `npm run test:coverage` to confirm functionality and prevent regressions.
-- Give me a quick short/commit message summary of what you changed.
 - Ensure single injection guard, external libs load with fallbacks, and UI still usable with slow networks.
 - Scheduler extension: load unpacked, exercise Tasks/TimeMaps/Schedule tabs, run **Reschedule Now**, and confirm events respect deadlines, priorities, and allowed TimeMaps within the 14-day horizon.
 - Storage changes: verify IndexedDB migrations keep existing user data; avoid destructive schema tweaks without migration steps.
@@ -38,3 +37,9 @@
 - Metadata/version updated for user scripts; manifest and permissions remain minimal.
 - Scheduling changes keep deadline/priority/TimeMap rules intact; background service worker remains lightweight.
 - Tailwind rebuilt when HTML changes affect styles; generated CSS not edited by hand.
+
+## Commit message requirement
+If the response includes any code changes, always end the response with exactly one short commit message example (imperative, ≤ 72 characters).
+Format it as:
+Commit message: <text>
+Do not include multiple options or explanations.

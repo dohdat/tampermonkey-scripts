@@ -305,7 +305,7 @@ function buildUngroupedZone(context, options, renderToken) {
 
 function buildSubsectionHeader(sub, section, isNoSection) {
   const subHeader = document.createElement("div");
-  subHeader.className = "flex items-center justify-between text-sm font-semibold text-slate-200";
+  subHeader.className = "flex items-center justify-between text-base font-semibold text-slate-200";
   subHeader.setAttribute("data-test-skedpal", "subsection-header");
   const subTitle = document.createElement("div");
   subTitle.className = "title-hover-group flex items-center gap-2";

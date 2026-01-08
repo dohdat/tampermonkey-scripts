@@ -2,7 +2,6 @@
 - Project mixes standalone Tampermonkey user scripts and a Chrome MV3 extension (`Skedpal alternative`); keep instructions lean and practical.
 
 ## Guardrails
-- Keep every source file under ~600 lines; split modules or extract helpers before crossing the limit.
 - Stick to plain JS/HTML/CSS already in use; avoid new build pipelines, bundlers, or frameworks.
 - Maintain accurate Tampermonkey metadata blocks (name, namespace, version, match/grant). Bump `@version` when behavior changes.
 - For the extension, preserve MV3 module service worker behavior; avoid persistent globals and keep background work minimal.
@@ -33,7 +32,6 @@
 - Images/assets live in `icons/`; vendorized libraries belong in `vendor/` and should be versioned.
 
 ## Quick Review Checklist
-- Files stay <600 lines; complex additions are split into focused modules.
 - Metadata/version updated for user scripts; manifest and permissions remain minimal.
 - Scheduling changes keep deadline/priority/TimeMap rules intact; background service worker remains lightweight.
 - Tailwind rebuilt when HTML changes affect styles; generated CSS not edited by hand.

@@ -95,14 +95,17 @@ async function hydrate() {
   renderDayRows(timeMapDayRows);
   await initSettings();
   await loadTimeMaps();
+  const initialZoom = parseZoomFromUrl();
+  if (initialZoom) {
+    state.zoomFilter = initialZoom;
+  }
   await loadTasks();
   const refreshedExternal = await primeExternalEventsOnLoad();
   if (refreshedExternal) {
     renderCalendar();
   }
-  const initialZoom = parseZoomFromUrl();
   if (initialZoom) {
-    setZoomFilter(initialZoom);
+    pushNavigation(initialZoom);
   } else {
     pushNavigation(null);
   }

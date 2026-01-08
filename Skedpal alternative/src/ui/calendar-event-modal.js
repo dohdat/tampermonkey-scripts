@@ -170,9 +170,8 @@ function renderDetailRows(task, eventMeta) {
       value.dataset.zoomType = row.zoomType;
       value.dataset.zoomSection = row.sectionId || "";
       value.dataset.zoomSubsection = row.subsectionId || "";
-      value.addEventListener("click", () =>
-        zoomFromModal(row.sectionId || "", row.subsectionId || "", row.zoomType)
-      );
+      const zoomHandler = handleModalZoomClick.bind(value);
+      value.addEventListener("click", zoomHandler);
     } else {
       value = document.createElement("span");
       value.className = "calendar-event-modal__detail-value";
@@ -188,8 +187,20 @@ function renderDetailRows(task, eventMeta) {
     }
     wrap.appendChild(label);
     wrap.appendChild(value);
-    calendarEventModalDetails.appendChild(wrap);
+  calendarEventModalDetails.appendChild(wrap);
   });
+}
+
+function handleModalZoomClick(event) {
+  const target = event?.currentTarget || this;
+  if (!target?.dataset) {return;}
+  const zoomType = target.dataset.zoomType || "";
+  if (!zoomType) {return;}
+  zoomFromModal(
+    target.dataset.zoomSection || "",
+    target.dataset.zoomSubsection || "",
+    zoomType
+  );
 }
 
 function renderExternalDetailRows(event) {
@@ -570,6 +581,22 @@ function handleDeferChange(event) {
   closeCalendarEventModal();
 }
 
+function handleCalendarEventActionClick(event) {
+  const btn = event?.currentTarget || this;
+  const action = btn?.dataset?.calendarEventAction;
+  if (action === "complete") {
+    handleCompleteAction();
+  } else if (action === "zoom") {
+    handleZoomAction();
+  } else if (action === "defer") {
+    handleDeferAction();
+  } else if (action === "edit") {
+    handleEditAction();
+  } else if (action === "delete") {
+    handleDeleteAction();
+  }
+}
+
 export function initCalendarEventModal() {
   const calendarEventModal = resolveRef(domRefs.calendarEventModal, "calendar-event-modal");
   if (!calendarEventModal) {return;}
@@ -591,20 +618,8 @@ export function initCalendarEventModal() {
     btn.addEventListener("click", closeCalendarEventModal);
   });
   calendarEventModalActionButtons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const action = btn.dataset.calendarEventAction;
-      if (action === "complete") {
-        handleCompleteAction();
-      } else if (action === "zoom") {
-        handleZoomAction();
-      } else if (action === "defer") {
-        handleDeferAction();
-      } else if (action === "edit") {
-        handleEditAction();
-      } else if (action === "delete") {
-        handleDeleteAction();
-      }
-    });
+    const actionHandler = handleCalendarEventActionClick.bind(btn);
+    btn.addEventListener("click", actionHandler);
   });
   if (calendarEventModalComplete) {
     calendarEventModalComplete.addEventListener("change", handleCompleteAction);

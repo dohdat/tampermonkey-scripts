@@ -29,7 +29,36 @@ function syncTimeMapColorSwatch(color) {
   swatch.style.borderColor = color || themeColors.slate500;
 }
 
-function createDayHeader(day, row) {
+function handleRemoveDayClick(event) {
+  const row = event?.currentTarget?.closest?.("[data-day-row]");
+  if (!row) {return;}
+  row.remove();
+  syncTimeMapDaySelect();
+}
+
+function handleRemoveBlockClick(event) {
+  const blockRow = event?.currentTarget?.closest?.("[data-block]");
+  if (!blockRow) {return;}
+  blockRow.remove();
+}
+
+function handleAddBlockClick(event) {
+  const btn = event?.currentTarget;
+  const day = btn?.dataset?.day;
+  if (!day) {return;}
+  const row = btn.closest?.("[data-day-row]");
+  const blocksContainer = row?.querySelector?.(`[data-blocks-for="${day}"]`);
+  if (!blocksContainer) {return;}
+  blocksContainer.appendChild(createTimeBlock(day));
+}
+
+function handleTimeMapDayAddClick() {
+  const timeMapDaySelect = getTimeMapDaySelect();
+  if (!timeMapDaySelect) {return;}
+  addTimeMapDay(timeMapDaySelect.value);
+}
+
+function createDayHeader(day) {
   const header = document.createElement("div");
   header.className = "flex items-center justify-between gap-2";
   header.setAttribute("data-test-skedpal", "timemap-day-header");
@@ -43,10 +72,7 @@ function createDayHeader(day, row) {
     "rounded-lg border border-slate-700 px-2 py-1 text-xs font-semibold text-slate-300 hover:border-orange-400 hover:text-orange-300";
   removeDayBtn.textContent = "Remove";
   removeDayBtn.setAttribute("data-test-skedpal", "timemap-day-remove");
-  removeDayBtn.addEventListener("click", () => {
-    row.remove();
-    syncTimeMapDaySelect();
-  });
+  removeDayBtn.addEventListener("click", handleRemoveDayClick);
   header.appendChild(label);
   header.appendChild(removeDayBtn);
   return header;
@@ -96,9 +122,7 @@ function createTimeBlock(day, block = { startTime: "09:00", endTime: "12:00" }) 
       <span class="sr-only" data-test-skedpal="modal-close-label">Remove block</span>
     `;
   removeBtn.setAttribute("data-test-skedpal", "timemap-block-remove");
-  removeBtn.addEventListener("click", () => {
-    wrapper.remove();
-  });
+  removeBtn.addEventListener("click", handleRemoveBlockClick);
   wrapper.appendChild(start);
   wrapper.appendChild(document.createTextNode("to"));
   wrapper.appendChild(end);
@@ -119,16 +143,15 @@ function createBlocksContainer(day, blocks) {
   return blocksContainer;
 }
 
-function createAddBlockButton(day, blocksContainer) {
+function createAddBlockButton(day) {
   const addBlockBtn = document.createElement("button");
   addBlockBtn.type = "button";
   addBlockBtn.textContent = "Add time range";
   addBlockBtn.className =
     "mt-2 w-fit rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
   addBlockBtn.setAttribute("data-test-skedpal", "timemap-block-add");
-  addBlockBtn.addEventListener("click", () => {
-    blocksContainer.appendChild(createTimeBlock(day));
-  });
+  addBlockBtn.dataset.day = String(day);
+  addBlockBtn.addEventListener("click", handleAddBlockClick);
   return addBlockBtn;
 }
 
@@ -137,9 +160,9 @@ function createDayRow(day, blocks = []) {
   row.dataset.dayRow = String(day);
   row.className = "rounded-xl border border-slate-700 bg-slate-900/60 p-3";
   row.setAttribute("data-test-skedpal", "timemap-day-row");
-  const header = createDayHeader(day, row);
+  const header = createDayHeader(day);
   const blocksContainer = createBlocksContainer(day, blocks);
-  const addBlockBtn = createAddBlockButton(day, blocksContainer);
+  const addBlockBtn = createAddBlockButton(day);
   row.appendChild(header);
   row.appendChild(blocksContainer);
   row.appendChild(addBlockBtn);
@@ -569,9 +592,7 @@ export async function handleTimeMapListClick(event, timeMaps) {
 const timeMapDayAdd = getTimeMapDayAdd();
 const timeMapDaySelect = getTimeMapDaySelect();
 if (timeMapDayAdd && typeof timeMapDayAdd.addEventListener === "function" && timeMapDaySelect) {
-  timeMapDayAdd.addEventListener("click", () => {
-    addTimeMapDay(timeMapDaySelect.value);
-  });
+  timeMapDayAdd.addEventListener("click", handleTimeMapDayAddClick);
 }
 const timeMapColorInput = getTimeMapColorInput();
 if (timeMapColorInput) {

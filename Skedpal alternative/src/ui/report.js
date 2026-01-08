@@ -169,13 +169,13 @@ function getTimeMapCapacityMinutes(timeMap, horizonStart, horizonEnd) {
   for (let cursor = new Date(horizonStart); cursor <= horizonEnd; cursor = addDays(cursor, 1)) {
     const dayRules = rulesByDay.get(cursor.getDay());
     if (!dayRules) {continue;}
-    dayRules.forEach((rule) => {
+    for (const rule of dayRules) {
       const startMinutes = parseTimeToMinutes(rule.startTime);
       const endMinutes = parseTimeToMinutes(rule.endTime);
       if (endMinutes > startMinutes) {
         totalMinutes += endMinutes - startMinutes;
       }
-    });
+    }
   }
   return totalMinutes;
 }

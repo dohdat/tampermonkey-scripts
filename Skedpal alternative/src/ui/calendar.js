@@ -52,7 +52,6 @@ let lastDragCompletedAt = 0;
 let lastDragMoved = false;
 let calendarViewInitialized = false;
 let externalDeletePending = false;
-
 function getScheduledEvents(tasks) {
   const events = [];
   (tasks || []).forEach((task) => {
@@ -69,8 +68,6 @@ function getScheduledEvents(tasks) {
   });
   return events;
 }
-
-
 export function buildUpdatedTaskForDrag(task, eventMeta, newStart, newEnd) {
   if (!task || !eventMeta || !(newStart instanceof Date) || !(newEnd instanceof Date)) {
     return null;
@@ -495,12 +492,29 @@ function getViewStep(viewMode) {
   if (viewMode === "three") {return 3;}
   return 7;
 }
-
 function setCalendarViewMode(viewMode) {
   state.calendarViewMode = viewMode;
   updateUrlWithCalendarView(viewMode);
   renderCalendar();
 }
+function handleCalendarPrevClick() {
+  const step = -getViewStep(state.calendarViewMode);
+  state.calendarAnchorDate = addCalendarDays(state.calendarAnchorDate, step);
+  renderCalendar();
+}
+function handleCalendarNextClick() {
+  const step = getViewStep(state.calendarViewMode);
+  state.calendarAnchorDate = addCalendarDays(state.calendarAnchorDate, step);
+  renderCalendar();
+}
+function handleCalendarTodayClick() {
+  state.calendarAnchorDate = new Date();
+  renderCalendar();
+  focusCalendarNow({ behavior: "auto" });
+}
+function handleCalendarDayClick() { setCalendarViewMode("day"); }
+function handleCalendarThreeClick() { setCalendarViewMode("three"); }
+function handleCalendarWeekClick() { setCalendarViewMode("week"); }
 
 function updateViewToggle(viewMode) {
   const { calendarDayBtn, calendarThreeBtn, calendarWeekBtn } = domRefs;
@@ -591,45 +605,27 @@ export function initCalendarView() {
   } = domRefs;
 
   if (calendarPrevBtn) {
-    calendarPrevBtn.addEventListener("click", () => {
-      const step = -getViewStep(state.calendarViewMode);
-      state.calendarAnchorDate = addCalendarDays(state.calendarAnchorDate, step);
-      renderCalendar();
-    });
+    calendarPrevBtn.addEventListener("click", handleCalendarPrevClick);
   }
   if (calendarNextBtn) {
-    calendarNextBtn.addEventListener("click", () => {
-      const step = getViewStep(state.calendarViewMode);
-      state.calendarAnchorDate = addCalendarDays(state.calendarAnchorDate, step);
-      renderCalendar();
-    });
+    calendarNextBtn.addEventListener("click", handleCalendarNextClick);
   }
   if (calendarTodayBtn) {
-    calendarTodayBtn.addEventListener("click", () => {
-      state.calendarAnchorDate = new Date();
-      renderCalendar();
-      focusCalendarNow({ behavior: "auto" });
-    });
+    calendarTodayBtn.addEventListener("click", handleCalendarTodayClick);
   }
   if (calendarDayBtn) {
-    calendarDayBtn.addEventListener("click", () => {
-      setCalendarViewMode("day");
-    });
+    calendarDayBtn.addEventListener("click", handleCalendarDayClick);
   }
   if (calendarThreeBtn) {
-    calendarThreeBtn.addEventListener("click", () => {
-      setCalendarViewMode("three");
-    });
+    calendarThreeBtn.addEventListener("click", handleCalendarThreeClick);
   }
   if (calendarWeekBtn) {
-    calendarWeekBtn.addEventListener("click", () => {
-      setCalendarViewMode("week");
-    });
+    calendarWeekBtn.addEventListener("click", handleCalendarWeekClick);
   }
   if (nowIndicatorTimer) {
     clearInterval(nowIndicatorTimer);
   }
-  nowIndicatorTimer = setInterval(updateNowIndicator, 60 * 1000);
+  nowIndicatorTimer = window.setInterval(updateNowIndicator, 60 * 1000);
   renderCalendar();
   ensureCalendarDragHandlers();
   initCalendarEventModal();

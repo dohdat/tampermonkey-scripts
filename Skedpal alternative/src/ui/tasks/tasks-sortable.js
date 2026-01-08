@@ -66,6 +66,11 @@ export function findPreviousTaskId(card) {
   return "";
 }
 
+function findTaskById(id) {
+  if (!id) {return null;}
+  return state.tasksCache.find((task) => task.id === id) || null;
+}
+
 function buildSortContext(evt) {
   const movedTaskId = evt.item?.dataset?.taskId;
   const targetZone = evt.to?.closest?.("[data-drop-section]");
@@ -93,11 +98,11 @@ function resolveParentId(task, movedSubtreeIds, targetKey) {
   if (!task) {return { found: false, parentId: null };}
   let candidateId = task.subtaskParentId || null;
   while (candidateId && movedSubtreeIds.has(candidateId)) {
-    const ancestor = state.tasksCache.find((t) => t.id === candidateId);
+    const ancestor = findTaskById(candidateId);
     candidateId = ancestor?.subtaskParentId || null;
   }
   if (!candidateId) {return { found: true, parentId: null };}
-  const candidateTask = state.tasksCache.find((t) => t.id === candidateId);
+  const candidateTask = findTaskById(candidateId);
   if (!candidateTask) {return { found: true, parentId: null };}
   const candidateKey = getContainerKey(candidateTask.section, candidateTask.subsection);
   if (candidateKey !== targetKey) {return { found: true, parentId: null };}

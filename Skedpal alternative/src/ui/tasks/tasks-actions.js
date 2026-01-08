@@ -553,6 +553,8 @@ export async function handleReschedule() {
   }
 }
 
-window.addEventListener("skedpal:tasks-updated", () => {
+function handleTasksUpdated() {
   loadTasks().then(updateScheduleSummary);
-});
+}
+
+window.addEventListener("skedpal:tasks-updated", handleTasksUpdated);

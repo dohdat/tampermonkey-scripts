@@ -236,6 +236,7 @@ export function renderBreadcrumb() {
   if (!navBreadcrumb) {return;}
   navBreadcrumb.innerHTML = "";
   const crumbs = buildBreadcrumbCrumbs();
+  navBreadcrumb.__crumbs = crumbs;
   const wrapper = document.createElement("div");
   wrapper.className = "flex items-center gap-2 text-xs text-slate-300";
   crumbs.forEach((crumb, idx) => {
@@ -250,15 +251,22 @@ export function renderBreadcrumb() {
     btn.className =
       "flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:text-lime-300";
     btn.innerHTML = crumb.icon ? `${crumb.icon}<span>${crumb.label}</span>` : crumb.label;
-    btn.addEventListener("click", (e) => {
-      e.preventDefault();
-      crumb.onClick?.();
-    });
+    btn.dataset.crumbIndex = String(idx);
+    btn.setAttribute("data-test-skedpal", "breadcrumb-link");
+    btn.addEventListener("click", handleBreadcrumbClick);
     wrapper.appendChild(btn);
   });
   navBreadcrumb.appendChild(wrapper);
 }
 
+function handleBreadcrumbClick(event) {
+  event.preventDefault();
+  const btn = event.currentTarget;
+  const navBreadcrumb = domRefs.navBreadcrumb;
+  const index = Number(btn?.dataset?.crumbIndex);
+  const crumb = navBreadcrumb?.__crumbs?.[index];
+  crumb?.onClick?.();
+}
 
 export function applyNavigationFromUrl() {
   const view = parseViewFromUrl("tasks");

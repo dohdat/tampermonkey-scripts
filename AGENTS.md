@@ -13,10 +13,29 @@
 - Use theme.js colors and Tailwind classes consistently for UI elements; avoid hardcoded colors or styles.
 - Favor small, single-purpose functions and composable helpers; keep shared utilities in `src/ui/utils.js` or nearby.
 - Be defensive with DOM access (null checks, stable selectors). Avoid brittle selectors tied to cosmetic changes on target sites.
-- Keep comments short and only where intent is non-obvious (especially around scheduling logic and Calendar API calls).
 - For CSS, edit `styles/tailwind.input.css` and rebuild `styles/tailwind.css` with  
   `npm run build:css`.
+- Any code that adds an event listener **must also define explicit cleanup**.
+- Do not add event listeners without a clear removal path.
+- Prefer patterns where adding a listener returns a cleanup function.
+- Avoid anonymous functions in `addEventListener`, handlers must be named so they can be removed.
+- Clean up listeners on:
+  - DOM removal
+  - feature teardown
+  - navigation or reinjection
+  - extension service worker shutdown paths
 
+### Preferred pattern
+
+```js
+function setupResizeListener() {
+  window.addEventListener("resize", onResize);
+
+  return () => {
+    window.removeEventListener("resize", onResize);
+  };
+}
+```
 ## Testing & Validation
 - Add unit tests for any new features or logic changes to prevent regressions.
 - After any code changes, always run `npm run test:coverage` to confirm functionality and prevent regressions.
@@ -36,8 +55,3 @@
 - Scheduling changes keep deadline/priority/TimeMap rules intact; background service worker remains lightweight.
 - Tailwind rebuilt when HTML changes affect styles; generated CSS not edited by hand.
 
-## Commit message requirement
-If the response includes any code changes, always end the response with exactly one short commit message example (imperative, ≤ 72 characters).
-Format it as:
-Commit message: <text>
-Do not include multiple options or explanations.

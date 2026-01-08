@@ -125,7 +125,6 @@ function syncRepeatEndControls(repeatState) {
   taskRepeatEndDate.value = repeatState.end?.date ? repeatState.end.date.slice(0, 10) : "";
   taskRepeatEndCount.value = repeatState.end?.count ? Number(repeatState.end.count) : 1;
 }
-
 function syncRepeatTargetSelect(target) {
   if (target === "task") {
     taskRepeatSelect.value = repeatStore.lastRepeatSelection.type === "custom" ? "custom" : "none";
@@ -140,7 +139,6 @@ function syncRepeatTargetSelect(target) {
     syncSubsectionRepeatLabel();
   }
 }
-
 export function renderRepeatUI(target = repeatStore.repeatTarget) {
   if (!taskRepeatUnit) {return;}
   const repeatState = repeatStore.repeatState;
@@ -200,27 +198,22 @@ function setInputValue(input, value) {
     input.value = value;
   }
 }
-
 function resolveRepeatInterval(repeat) {
   return Math.max(1, Number(repeat.interval) || 1);
 }
-
 function resolveYearlyMonth(repeat, base) {
   const rangeParts = getDateParts(repeat.yearlyRangeEndDate);
   if (rangeParts) {return rangeParts.month;}
   return repeat.yearlyMonth || repeat.byMonth || base.yearlyMonth;
 }
-
 function resolveYearlyDay(repeat, base) {
   const rangeParts = getDateParts(repeat.yearlyRangeEndDate);
   if (rangeParts) {return rangeParts.day;}
   return repeat.yearlyDay || repeat.byMonthDay || base.yearlyDay;
 }
-
 function resolveRepeatEnd(repeat) {
   return repeat.end || { type: "never", date: "", count: 1 };
 }
-
 export function setRepeatFromSelection(
   repeat = { type: "none" },
   target = repeatStore.repeatTarget || "task"
@@ -261,7 +254,6 @@ export function setRepeatFromSelection(
   resolveRepeatSelectionTarget(target, built);
   renderRepeatUI(target);
 }
-
 export function syncRepeatSelectLabel() {
   if (!taskRepeatSelect) {return;}
   const noneOpt = taskRepeatSelect.querySelector('option[value="none"]');
@@ -278,7 +270,6 @@ export function syncRepeatSelectLabel() {
     customNewOpt.textContent = "Custom...";
   }
 }
-
 export function syncSubsectionRepeatLabel() {
   if (!subsectionTaskRepeatSelect) {return;}
   const noneOpt = subsectionTaskRepeatSelect.querySelector('option[value="none"]');
@@ -293,22 +284,18 @@ export function syncSubsectionRepeatLabel() {
   }
   if (customNewOpt) {customNewOpt.textContent = "Custom...";}
 }
-
 function buildDailyRule(interval) {
   return `FREQ=DAILY;INTERVAL=${interval}`;
 }
-
 function buildWeeklyRule(repeatState, startDate, interval, byDayCodes) {
   const days = (repeatState.weeklyDays || [startDate.getDay()]).map((d) => byDayCodes[d]);
   return `FREQ=WEEKLY;INTERVAL=${interval};BYDAY=${days.join(",")}`;
 }
-
 function buildYearlyRule(repeatState, startDate, interval) {
   const month = repeatState.yearlyMonth || startDate.getMonth() + 1;
   const day = repeatState.yearlyDay || startDate.getDate();
   return `FREQ=YEARLY;INTERVAL=${interval};BYMONTH=${month};BYMONTHDAY=${day}`;
 }
-
 function appendRepeatEnd(rule, end) {
   if (end.type === "after" && end.count) {
     return `${rule};COUNT=${end.count}`;
@@ -319,7 +306,6 @@ function appendRepeatEnd(rule, end) {
   }
   return rule;
 }
-
 export function buildRepeatFromState() {
   const repeatState = repeatStore.repeatState;
   if (!repeatState || repeatState.unit === "none") {return { type: "none" };}
@@ -366,7 +352,6 @@ export function buildRepeatFromState() {
     rrule: rule
   };
 }
-
 export function enableDeadlinePicker() {
   const openPicker = (event) => {
     if (!event?.isTrusted) {return;}
@@ -388,195 +373,208 @@ export function enableDeadlinePicker() {
   taskDeadlineInput.addEventListener("click", openPicker);
   taskDeadlineInput.addEventListener("keydown", handleKeyDown);
 }
-
+function handleTaskRepeatSelectChange() {
+  const value = taskRepeatSelect.value;
+  const baseSelection =
+    repeatStore.lastRepeatSelection?.type === "custom"
+      ? repeatStore.lastRepeatSelection
+      : { type: "none" };
+  if (value === "custom" || value === "custom-new") {
+    repeatStore.repeatTarget = "task";
+    repeatStore.repeatSelectionBeforeModal = baseSelection;
+    openRepeatModal();
+    const initial =
+      repeatStore.lastRepeatSelection?.type === "custom"
+        ? repeatStore.lastRepeatSelection
+        : {
+          type: "custom",
+          unit: repeatStore.repeatState.unit === "none" ? "week" : repeatStore.repeatState.unit
+        };
+    setRepeatFromSelection(initial);
+  } else {
+    setRepeatFromSelection({ type: "none" });
+  }
+}
+function handleSubsectionRepeatSelectChange() {
+  const value = subsectionTaskRepeatSelect.value;
+  const baseSelection =
+    repeatStore.subsectionRepeatSelection?.type === "custom"
+      ? repeatStore.subsectionRepeatSelection
+      : { type: "none" };
+  if (value === "custom" || value === "custom-new") {
+    repeatStore.repeatTarget = "subsection";
+    repeatStore.subsectionRepeatBeforeModal = baseSelection;
+    openRepeatModal();
+    const initial =
+      repeatStore.subsectionRepeatSelection?.type === "custom"
+        ? repeatStore.subsectionRepeatSelection
+        : {
+          type: "custom",
+          unit: repeatStore.repeatState.unit === "none" ? "week" : repeatStore.repeatState.unit
+        };
+    setRepeatFromSelection(initial, "subsection");
+  } else {
+    repeatStore.repeatTarget = "subsection";
+    setRepeatFromSelection({ type: "none" }, "subsection");
+    syncSubsectionRepeatLabel();
+  }
+}
+function handleRepeatUnitChange() {
+  const unit = taskRepeatUnit.value || "week";
+  repeatStore.repeatState.unit = unit;
+  if (unit === "week" && (!repeatStore.repeatState.weeklyDays || repeatStore.repeatState.weeklyDays.length === 0)) {
+    repeatStore.repeatState.weeklyDays = [getStartDate().getDay()];
+  }
+  if (unit === "month") {
+    const start = getStartDate();
+    repeatStore.repeatState.monthlyDay = start.getDate();
+    const { nth, weekday } = getNthWeekday(start);
+    repeatStore.repeatState.monthlyNth = nth;
+    repeatStore.repeatState.monthlyWeekday = weekday;
+    repeatStore.repeatState.monthlyRangeStart = start.getDate();
+    repeatStore.repeatState.monthlyRangeEnd = start.getDate();
+    repeatStore.repeatState.monthlyRangeStartDate = "";
+    repeatStore.repeatState.monthlyRangeEndDate = "";
+  }
+  if (unit === "year") {
+    const start = getStartDate();
+    repeatStore.repeatState.yearlyMonth = start.getMonth() + 1;
+    repeatStore.repeatState.yearlyDay = start.getDate();
+    const fallback = getLocalDateKey(start);
+    repeatStore.repeatState.yearlyRangeStartDate = fallback;
+    repeatStore.repeatState.yearlyRangeEndDate = fallback;
+  }
+  renderRepeatUI();
+}
+function handleRepeatIntervalInput() { const parsed = Math.max(1, Number(taskRepeatInterval.value) || 1); repeatStore.repeatState.interval = parsed; taskRepeatInterval.value = parsed; }
+function handleRepeatWeekdaysClick(event) {
+  const btn = event.target.closest("button[data-day-value]");
+  if (!btn) {return;}
+  const day = Number(btn.dataset.dayValue);
+  const set = new Set(repeatStore.repeatState.weeklyDays || []);
+  if (set.has(day)) {
+    set.delete(day);
+  } else {
+    set.add(day);
+  }
+  if (set.size === 0) {set.add(getStartDate().getDay());}
+  repeatStore.repeatState.weeklyDays = Array.from(set);
+  renderRepeatUI();
+}
+function handleRepeatWeeklyModeAnyChange() { if (taskRepeatWeeklyModeAny.checked) { repeatStore.repeatState.weeklyMode = "any"; renderRepeatUI(); } }
+function handleRepeatWeeklyModeAllChange() { if (taskRepeatWeeklyModeAll.checked) { repeatStore.repeatState.weeklyMode = "all"; renderRepeatUI(); } }
+function handleRepeatMonthlyModeChange() { repeatStore.repeatState.monthlyMode = taskRepeatMonthlyMode.value || "day"; renderRepeatUI(); }
+function handleRepeatMonthlyDayInput() { const val = Math.min(31, Math.max(1, Number(taskRepeatMonthlyDay.value) || 1)); repeatStore.repeatState.monthlyDay = val; taskRepeatMonthlyDay.value = val; }
+function handleRepeatMonthlyNthChange() { repeatStore.repeatState.monthlyNth = Number(taskRepeatMonthlyNth.value) || 1; }
+function handleRepeatMonthlyWeekdayChange() { repeatStore.repeatState.monthlyWeekday = Number(taskRepeatMonthlyWeekday.value) || 0; }
+function handleRepeatYearlyRangeStartInput() {
+  const baseDate = getStartDate();
+  repeatStore.repeatState.yearlyRangeStartDate =
+    taskRepeatYearlyRangeStart.value || getLocalDateKey(baseDate);
+  syncYearlyRangeInputs(
+    repeatStore.repeatState,
+    baseDate,
+    taskRepeatYearlyRangeStart,
+    taskRepeatYearlyRangeEnd
+  );
+}
+function handleRepeatYearlyRangeEndInput() {
+  const baseDate = getStartDate();
+  const endValue = taskRepeatYearlyRangeEnd.value || getLocalDateKey(baseDate);
+  repeatStore.repeatState.yearlyRangeEndDate = endValue;
+  const parts = getDateParts(endValue);
+  if (parts) {
+    repeatStore.repeatState.yearlyMonth = parts.month;
+    repeatStore.repeatState.yearlyDay = parts.day;
+  }
+  syncYearlyRangeInputs(
+    repeatStore.repeatState,
+    baseDate,
+    taskRepeatYearlyRangeStart,
+    taskRepeatYearlyRangeEnd
+  );
+}
+function updateRepeatEnd() {
+  if (taskRepeatEndAfter.checked) {
+    repeatStore.repeatState.end = {
+      type: "after",
+      count: Math.max(1, Number(taskRepeatEndCount.value) || 1)
+    };
+  } else if (taskRepeatEndOn.checked) {
+    repeatStore.repeatState.end = { type: "on", date: taskRepeatEndDate.value };
+  } else {
+    repeatStore.repeatState.end = { type: "never", date: "", count: 1 };
+  }
+}
+function handleRepeatEndCountInput() { taskRepeatEndCount.value = Math.max(1, Number(taskRepeatEndCount.value) || 1); updateRepeatEnd(); }
+function handleRepeatModalCloseClick() {
+  closeRepeatModal();
+  if (repeatStore.repeatTarget === "subsection") {
+    setRepeatFromSelection(repeatStore.subsectionRepeatBeforeModal || { type: "none" }, "subsection");
+    const prev = repeatStore.subsectionRepeatBeforeModal || { type: "none" };
+    subsectionTaskRepeatSelect.value = prev.type === "custom" ? "custom" : "none";
+    syncSubsectionRepeatLabel();
+  } else {
+    setRepeatFromSelection(repeatStore.repeatSelectionBeforeModal || { type: "none" }, "task");
+    const prev = repeatStore.repeatSelectionBeforeModal || { type: "none" };
+    taskRepeatSelect.value = prev.type === "custom" ? "custom" : "none";
+    syncRepeatSelectLabel();
+  }
+  repeatStore.repeatTarget = "task";
+}
+function handleRepeatModalSaveClick() {
+  const repeat = buildRepeatFromState();
+  if (repeatStore.repeatTarget === "subsection") {
+    repeatStore.subsectionRepeatSelection = repeat;
+    setRepeatFromSelection(repeat, "subsection");
+    subsectionTaskRepeatSelect.value = "custom";
+    syncSubsectionRepeatLabel();
+  } else {
+    repeatStore.lastRepeatSelection = repeat;
+    setRepeatFromSelection(repeat, "task");
+    taskRepeatSelect.value = "custom";
+    syncRepeatSelectLabel();
+  }
+  closeRepeatModal();
+  repeatStore.repeatTarget = "task";
+}
 export function registerRepeatEventHandlers() {
   registerRepeatSelectHandlers();
   registerRepeatStateHandlers();
   registerRepeatModalHandlers();
 }
-
 function registerRepeatSelectHandlers() {
-  taskRepeatSelect?.addEventListener("change", () => {
-    const value = taskRepeatSelect.value;
-    const baseSelection =
-      repeatStore.lastRepeatSelection?.type === "custom"
-        ? repeatStore.lastRepeatSelection
-        : { type: "none" };
-    if (value === "custom" || value === "custom-new") {
-      repeatStore.repeatTarget = "task";
-      repeatStore.repeatSelectionBeforeModal = baseSelection;
-      openRepeatModal();
-      const initial =
-        repeatStore.lastRepeatSelection?.type === "custom"
-          ? repeatStore.lastRepeatSelection
-          : { type: "custom", unit: repeatStore.repeatState.unit === "none" ? "week" : repeatStore.repeatState.unit };
-      setRepeatFromSelection(initial);
-    } else {
-      setRepeatFromSelection({ type: "none" });
-    }
-  });
-
-  subsectionTaskRepeatSelect?.addEventListener("change", () => {
-    const value = subsectionTaskRepeatSelect.value;
-    const baseSelection =
-      repeatStore.subsectionRepeatSelection?.type === "custom"
-        ? repeatStore.subsectionRepeatSelection
-        : { type: "none" };
-    if (value === "custom" || value === "custom-new") {
-      repeatStore.repeatTarget = "subsection";
-      repeatStore.subsectionRepeatBeforeModal = baseSelection;
-      openRepeatModal();
-      const initial =
-        repeatStore.subsectionRepeatSelection?.type === "custom"
-          ? repeatStore.subsectionRepeatSelection
-          : { type: "custom", unit: repeatStore.repeatState.unit === "none" ? "week" : repeatStore.repeatState.unit };
-      setRepeatFromSelection(initial, "subsection");
-    } else {
-      repeatStore.repeatTarget = "subsection";
-      setRepeatFromSelection({ type: "none" }, "subsection");
-      syncSubsectionRepeatLabel();
-    }
-  });
+  taskRepeatSelect?.addEventListener("change", handleTaskRepeatSelectChange);
+  subsectionTaskRepeatSelect?.addEventListener("change", handleSubsectionRepeatSelectChange);
 }
-
 function registerRepeatUnitHandlers() {
-  taskRepeatUnit?.addEventListener("change", () => {
-    const unit = taskRepeatUnit.value || "week";
-    repeatStore.repeatState.unit = unit;
-    if (unit === "week" && (!repeatStore.repeatState.weeklyDays || repeatStore.repeatState.weeklyDays.length === 0)) {
-      repeatStore.repeatState.weeklyDays = [getStartDate().getDay()];
-    }
-    if (unit === "month") {
-      const start = getStartDate();
-      repeatStore.repeatState.monthlyDay = start.getDate();
-      const { nth, weekday } = getNthWeekday(start);
-      repeatStore.repeatState.monthlyNth = nth;
-      repeatStore.repeatState.monthlyWeekday = weekday;
-      repeatStore.repeatState.monthlyRangeStart = start.getDate();
-      repeatStore.repeatState.monthlyRangeEnd = start.getDate();
-      repeatStore.repeatState.monthlyRangeStartDate = "";
-      repeatStore.repeatState.monthlyRangeEndDate = "";
-    }
-    if (unit === "year") {
-      const start = getStartDate();
-      repeatStore.repeatState.yearlyMonth = start.getMonth() + 1;
-      repeatStore.repeatState.yearlyDay = start.getDate();
-      const fallback = getLocalDateKey(start);
-      repeatStore.repeatState.yearlyRangeStartDate = fallback;
-      repeatStore.repeatState.yearlyRangeEndDate = fallback;
-    }
-    renderRepeatUI();
-  });
+  taskRepeatUnit?.addEventListener("change", handleRepeatUnitChange);
 }
-
 function registerRepeatIntervalHandlers() {
-  taskRepeatInterval?.addEventListener("input", () => {
-    const parsed = Math.max(1, Number(taskRepeatInterval.value) || 1);
-    repeatStore.repeatState.interval = parsed;
-    taskRepeatInterval.value = parsed;
-  });
+  taskRepeatInterval?.addEventListener("input", handleRepeatIntervalInput);
 }
-
 function registerRepeatWeeklyHandlers() {
-  taskRepeatWeekdays?.addEventListener("click", (event) => {
-    const btn = event.target.closest("button[data-day-value]");
-    if (!btn) {return;}
-    const day = Number(btn.dataset.dayValue);
-    const set = new Set(repeatStore.repeatState.weeklyDays || []);
-    if (set.has(day)) {
-      set.delete(day);
-    } else {
-      set.add(day);
-    }
-    if (set.size === 0) {set.add(getStartDate().getDay());}
-    repeatStore.repeatState.weeklyDays = Array.from(set);
-    renderRepeatUI();
-  });
-  taskRepeatWeeklyModeAny?.addEventListener("change", () => {
-    if (taskRepeatWeeklyModeAny.checked) {
-      repeatStore.repeatState.weeklyMode = "any";
-      renderRepeatUI();
-    }
-  });
-  taskRepeatWeeklyModeAll?.addEventListener("change", () => {
-    if (taskRepeatWeeklyModeAll.checked) {
-      repeatStore.repeatState.weeklyMode = "all";
-      renderRepeatUI();
-    }
-  });
+  taskRepeatWeekdays?.addEventListener("click", handleRepeatWeekdaysClick);
+  taskRepeatWeeklyModeAny?.addEventListener("change", handleRepeatWeeklyModeAnyChange);
+  taskRepeatWeeklyModeAll?.addEventListener("change", handleRepeatWeeklyModeAllChange);
 }
-
 function registerRepeatMonthlyHandlers() {
-  taskRepeatMonthlyMode?.addEventListener("change", () => {
-    repeatStore.repeatState.monthlyMode = taskRepeatMonthlyMode.value || "day";
-    renderRepeatUI();
-  });
-  taskRepeatMonthlyDay?.addEventListener("input", () => {
-    const val = Math.min(31, Math.max(1, Number(taskRepeatMonthlyDay.value) || 1));
-    repeatStore.repeatState.monthlyDay = val;
-    taskRepeatMonthlyDay.value = val;
-  });
-  taskRepeatMonthlyNth?.addEventListener("change", () => {
-    repeatStore.repeatState.monthlyNth = Number(taskRepeatMonthlyNth.value) || 1;
-  });
-  taskRepeatMonthlyWeekday?.addEventListener("change", () => {
-    repeatStore.repeatState.monthlyWeekday = Number(taskRepeatMonthlyWeekday.value) || 0;
-  });
+  taskRepeatMonthlyMode?.addEventListener("change", handleRepeatMonthlyModeChange);
+  taskRepeatMonthlyDay?.addEventListener("input", handleRepeatMonthlyDayInput);
+  taskRepeatMonthlyNth?.addEventListener("change", handleRepeatMonthlyNthChange);
+  taskRepeatMonthlyWeekday?.addEventListener("change", handleRepeatMonthlyWeekdayChange);
 }
-
 function registerRepeatYearlyHandlers() {
-  taskRepeatYearlyRangeStart?.addEventListener("input", () => {
-    const baseDate = getStartDate();
-    repeatStore.repeatState.yearlyRangeStartDate =
-      taskRepeatYearlyRangeStart.value || getLocalDateKey(baseDate);
-    syncYearlyRangeInputs(
-      repeatStore.repeatState,
-      baseDate,
-      taskRepeatYearlyRangeStart,
-      taskRepeatYearlyRangeEnd
-    );
-  });
-  taskRepeatYearlyRangeEnd?.addEventListener("input", () => {
-    const baseDate = getStartDate();
-    const endValue = taskRepeatYearlyRangeEnd.value || getLocalDateKey(baseDate);
-    repeatStore.repeatState.yearlyRangeEndDate = endValue;
-    const parts = getDateParts(endValue);
-    if (parts) {
-      repeatStore.repeatState.yearlyMonth = parts.month;
-      repeatStore.repeatState.yearlyDay = parts.day;
-    }
-    syncYearlyRangeInputs(
-      repeatStore.repeatState,
-      baseDate,
-      taskRepeatYearlyRangeStart,
-      taskRepeatYearlyRangeEnd
-    );
-  });
+  taskRepeatYearlyRangeStart?.addEventListener("input", handleRepeatYearlyRangeStartInput);
+  taskRepeatYearlyRangeEnd?.addEventListener("input", handleRepeatYearlyRangeEndInput);
 }
-
 function registerRepeatEndHandlers() {
-  const updateRepeatEnd = () => {
-    if (taskRepeatEndAfter.checked) {
-      repeatStore.repeatState.end = {
-        type: "after",
-        count: Math.max(1, Number(taskRepeatEndCount.value) || 1)
-      };
-    } else if (taskRepeatEndOn.checked) {
-      repeatStore.repeatState.end = { type: "on", date: taskRepeatEndDate.value };
-    } else {
-      repeatStore.repeatState.end = { type: "never", date: "", count: 1 };
-    }
-  };
   taskRepeatEndNever?.addEventListener("change", updateRepeatEnd);
   taskRepeatEndOn?.addEventListener("change", updateRepeatEnd);
   taskRepeatEndAfter?.addEventListener("change", updateRepeatEnd);
   taskRepeatEndDate?.addEventListener("input", updateRepeatEnd);
-  taskRepeatEndCount?.addEventListener("input", () => {
-    taskRepeatEndCount.value = Math.max(1, Number(taskRepeatEndCount.value) || 1);
-    updateRepeatEnd();
-  });
+  taskRepeatEndCount?.addEventListener("input", handleRepeatEndCountInput);
 }
-
 function registerRepeatStateHandlers() {
   registerRepeatUnitHandlers();
   registerRepeatIntervalHandlers();
@@ -585,39 +583,9 @@ function registerRepeatStateHandlers() {
   registerRepeatYearlyHandlers();
   registerRepeatEndHandlers();
 }
-
 function registerRepeatModalHandlers() {
   repeatModalCloseBtns.forEach((btn) =>
-    btn.addEventListener("click", () => {
-      closeRepeatModal();
-      if (repeatStore.repeatTarget === "subsection") {
-        setRepeatFromSelection(repeatStore.subsectionRepeatBeforeModal || { type: "none" }, "subsection");
-        const prev = repeatStore.subsectionRepeatBeforeModal || { type: "none" };
-        subsectionTaskRepeatSelect.value = prev.type === "custom" ? "custom" : "none";
-        syncSubsectionRepeatLabel();
-      } else {
-        setRepeatFromSelection(repeatStore.repeatSelectionBeforeModal || { type: "none" }, "task");
-        const prev = repeatStore.repeatSelectionBeforeModal || { type: "none" };
-        taskRepeatSelect.value = prev.type === "custom" ? "custom" : "none";
-        syncRepeatSelectLabel();
-      }
-      repeatStore.repeatTarget = "task";
-    })
+    btn.addEventListener("click", handleRepeatModalCloseClick)
   );
-  repeatModalSaveBtn?.addEventListener("click", () => {
-    const repeat = buildRepeatFromState();
-    if (repeatStore.repeatTarget === "subsection") {
-      repeatStore.subsectionRepeatSelection = repeat;
-      setRepeatFromSelection(repeat, "subsection");
-      subsectionTaskRepeatSelect.value = "custom";
-      syncSubsectionRepeatLabel();
-    } else {
-      repeatStore.lastRepeatSelection = repeat;
-      setRepeatFromSelection(repeat, "task");
-      taskRepeatSelect.value = "custom";
-      syncRepeatSelectLabel();
-    }
-    closeRepeatModal();
-    repeatStore.repeatTarget = "task";
-  });
+  repeatModalSaveBtn?.addEventListener("click", handleRepeatModalSaveClick);
 }

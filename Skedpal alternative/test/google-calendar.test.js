@@ -3,6 +3,7 @@ import { describe, it } from "mocha";
 
 import {
   deleteCalendarEvent,
+  updateCalendarEvent,
   fetchCalendarEvents,
   fetchCalendarList,
   fetchFreeBusy,
@@ -174,6 +175,29 @@ describe("google calendar helpers", () => {
     assert.strictEqual(deleted, true);
     assert.ok(capturedUrl.includes("/calendars/cal-1/events/evt-1"));
     assert.strictEqual(capturedMethod, "DELETE");
+  });
+
+  it("updates calendar events", async () => {
+    installChrome();
+    let capturedUrl = "";
+    let capturedMethod = "";
+    let capturedBody = "";
+    globalThis.fetch = async (url, options) => {
+      capturedUrl = url;
+      capturedMethod = options?.method || "";
+      capturedBody = options?.body || "";
+      return { ok: true, status: 200, text: async () => "" };
+    };
+    const updated = await updateCalendarEvent(
+      "cal-1",
+      "evt-1",
+      "2026-01-07T10:00:00Z",
+      "2026-01-07T11:00:00Z"
+    );
+    assert.strictEqual(updated, true);
+    assert.ok(capturedUrl.includes("/calendars/cal-1/events/evt-1"));
+    assert.strictEqual(capturedMethod, "PATCH");
+    assert.ok(capturedBody.includes("\"dateTime\":\"2026-01-07T10:00:00Z\""));
   });
 
   it("retries freebusy requests after auth errors", async () => {

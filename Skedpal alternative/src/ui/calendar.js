@@ -28,6 +28,12 @@ import {
 } from "./calendar-focus.js";
 import { ensureExternalEvents, getExternalEventsForRange } from "./calendar-external.js";
 import {
+  buildExternalEventMeta,
+  getUpdatedExternalEvents,
+  sendExternalDeleteRequest,
+  sendExternalUpdateRequest
+} from "./calendar-external-events.js";
+import {
   HOUR_HEIGHT,
   buildEmptyState,
   formatEventTimeRange,
@@ -90,7 +96,11 @@ export function buildUpdatedTaskForDrag(task, eventMeta, newStart, newEnd) {
 }
 
 function getEventMetaFromBlock(block) {
-  return buildEventMetaFromDataset(block?.dataset || null);
+  if (!block?.dataset) {return null;}
+  if (block.dataset.eventSource === "external") {
+    return buildExternalEventMeta(block.dataset);
+  }
+  return buildEventMetaFromDataset(block.dataset || null);
 }
 
 function getRuntime() {
@@ -117,35 +127,36 @@ function setDeleteButtonState(button, disabled) {
   button.classList.toggle("opacity-60", Boolean(disabled));
 }
 
-async function sendExternalDeleteRequest(payload) {
-  const runtime = getRuntime();
-  if (!runtime?.sendMessage) {
-    throw new Error("Chrome runtime unavailable for calendar deletion.");
-  }
-  return new Promise((resolve, reject) => {
-    runtime.sendMessage(
-      {
-        type: "calendar-delete-event",
-        calendarId: payload.calendarId,
-        eventId: payload.eventId
-      },
-      (resp) => {
-        if (runtime.lastError) {
-          reject(new Error(runtime.lastError.message));
-        } else {
-          resolve(resp);
-        }
-      }
-    );
-  });
-}
-
 function removeExternalEvent(payload) {
   state.calendarExternalEvents = (state.calendarExternalEvents || []).filter(
     (event) => !(event.id === payload.eventId && event.calendarId === payload.calendarId)
   );
 }
 
+function updateExternalEventInState(payload) {
+  state.calendarExternalEvents = getUpdatedExternalEvents(
+    state.calendarExternalEvents || [],
+    payload
+  );
+}
+
+async function persistDraggedExternalEvent(eventMeta, dayKey, minutes, durationMinutes) {
+  const startDate = getDateFromDayKey(dayKey);
+  if (!startDate) {return;}
+  startDate.setMinutes(minutes, 0, 0);
+  const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
+  const payload = {
+    eventId: eventMeta.eventId,
+    calendarId: eventMeta.calendarId,
+    start: startDate,
+    end: endDate
+  };
+  const response = await sendExternalUpdateRequest(getRuntime(), payload);
+  if (!response?.ok) {
+    throw new Error(response?.error || "Failed to update calendar event");
+  }
+  updateExternalEventInState(payload);
+}
 async function deleteExternalEvent(deleteBtn) {
   if (externalDeletePending) {return;}
   const payload = getExternalDeletePayload(deleteBtn);
@@ -154,7 +165,7 @@ async function deleteExternalEvent(deleteBtn) {
   externalDeletePending = true;
   setDeleteButtonState(deleteBtn, true);
   try {
-    const response = await sendExternalDeleteRequest(payload);
+    const response = await sendExternalDeleteRequest(getRuntime(), payload);
     if (!response?.ok) {
       throw new Error(response?.error || "Failed to delete calendar event");
     }
@@ -361,7 +372,20 @@ async function handleCalendarDragEnd() {
     renderCalendar();
     return;
   }
-  await persistDraggedEvent(eventMeta, dayCol.dataset.day, minutes, durationMinutes);
+  if (eventMeta.source === "external") {
+    try {
+      await persistDraggedExternalEvent(
+        eventMeta,
+        dayCol.dataset.day,
+        minutes,
+        durationMinutes
+      );
+    } catch (error) {
+      console.warn("Failed to update external calendar event.", error);
+    }
+  } else {
+    await persistDraggedEvent(eventMeta, dayCol.dataset.day, minutes, durationMinutes);
+  }
   renderCalendar();
 }
 
@@ -379,6 +403,7 @@ function handleCalendarEventClick(event) {
   if (!block) {return;}
   const eventMeta = getEventMetaFromBlock(block);
   if (!eventMeta) {return;}
+  if (eventMeta.source === "external") {return;}
   openCalendarEventModal(eventMeta);
 }
 

@@ -201,6 +201,8 @@ describe("calendar render", () => {
     assert.strictEqual(deleteButtons.length, 1);
     assert.strictEqual(deleteButtons[0].dataset.eventId, "ext-1");
     assert.strictEqual(deleteButtons[0].dataset.calendarId, "cal-1");
+    assert.ok(events[0].dataset.eventStart);
+    assert.ok(events[0].dataset.eventEnd);
   });
 
   it("skips scheduled instances that are already completed", () => {

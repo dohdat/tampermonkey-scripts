@@ -10,6 +10,7 @@ import { shouldIncrementMissedCount } from "./schedule-metrics.js";
 import {
   fetchCalendarEvents,
   deleteCalendarEvent,
+  updateCalendarEvent,
   fetchCalendarList,
   fetchFreeBusy,
   clearCachedAuthTokens
@@ -189,6 +190,17 @@ function handleCalendarDeleteMessage(message, sendResponse) {
   return true;
 }
 
+function handleCalendarUpdateMessage(message, sendResponse) {
+  const calendarId = message.calendarId || "";
+  const eventId = message.eventId || "";
+  const start = message.start || "";
+  const end = message.end || "";
+  updateCalendarEvent(calendarId, eventId, start, end)
+    .then(() => sendResponse({ ok: true }))
+    .catch((error) => sendResponse({ ok: false, error: error.message }));
+  return true;
+}
+
 function handleCalendarDisconnectMessage(_message, sendResponse) {
   clearCachedAuthTokens()
     .then((cleared) => sendResponse({ ok: true, cleared }))
@@ -206,6 +218,7 @@ const MESSAGE_HANDLERS = {
   "calendar-events": handleCalendarEventsMessage,
   "calendar-list": handleCalendarListMessage,
   "calendar-delete-event": handleCalendarDeleteMessage,
+  "calendar-update-event": handleCalendarUpdateMessage,
   "calendar-disconnect": handleCalendarDisconnectMessage,
   ping: handlePingMessage
 };

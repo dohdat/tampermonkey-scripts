@@ -148,6 +148,8 @@ function applyEventDataset(block, item) {
   block.dataset.eventExternalId = item.event.id || "";
   block.dataset.eventCalendarId = item.event.calendarId || "";
   block.dataset.eventTitle = item.event.title || "";
+  block.dataset.eventStart = item.event.start.toISOString();
+  block.dataset.eventEnd = item.event.end.toISOString();
   return source;
 }
 

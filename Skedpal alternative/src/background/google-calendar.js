@@ -200,6 +200,26 @@ export async function deleteCalendarEvent(calendarId, eventId) {
   return true;
 }
 
+export async function updateCalendarEvent(calendarId, eventId, start, end) {
+  if (!calendarId || !eventId || !start || !end) {
+    throw new Error("Missing calendar update data");
+  }
+  const url = `${GOOGLE_API_BASE}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`;
+  const response = await fetchWithAuth(url, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      start: { dateTime: start },
+      end: { dateTime: end }
+    })
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Google Calendar update error (${response.status}): ${text}`);
+  }
+  return true;
+}
+
 export async function fetchCalendarList() {
   const params = new URLSearchParams({
     minAccessRole: "reader",

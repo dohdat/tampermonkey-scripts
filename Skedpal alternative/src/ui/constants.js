@@ -138,6 +138,7 @@ export const domRefs = {
   notificationBanner: document.getElementById("notification-banner"),
   notificationMessage: document.getElementById("notification-message"),
   notificationUndoButton: document.getElementById("notification-undo"),
+  notificationCloseButton: document.getElementById("notification-close"),
   googleCalendarConnectBtn: document.getElementById("google-calendar-connect"),
   googleCalendarRefreshBtn: document.getElementById("google-calendar-refresh"),
   googleCalendarDisconnectBtn: document.getElementById("google-calendar-disconnect"),

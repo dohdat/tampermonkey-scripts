@@ -6,7 +6,11 @@ global.document = {
   getElementById: () => null
 };
 
-const { buildUpdatedTaskForDrag } = await import("../src/ui/calendar.js");
+const {
+  buildUpdatedTaskForDrag,
+  buildExternalUpdatePayload,
+  formatRescheduledMessage
+} = await import("../src/ui/calendar.js");
 
 describe("calendar drag updates", () => {
   it("updates the matching instance and recomputes schedule bounds", () => {
@@ -84,5 +88,30 @@ describe("calendar drag updates", () => {
     assert.ok(updated);
     assert.strictEqual(updated.scheduledInstances[1].start, newStart.toISOString());
     assert.strictEqual(updated.scheduledInstances[1].end, newEnd.toISOString());
+  });
+
+  it("builds an external update payload from day and minutes", () => {
+    const eventMeta = {
+      eventId: "evt-9",
+      calendarId: "cal-9"
+    };
+    const payload = buildExternalUpdatePayload(eventMeta, "2026-01-08", 240, 90);
+    assert.ok(payload);
+    assert.strictEqual(payload.eventId, "evt-9");
+    assert.strictEqual(payload.calendarId, "cal-9");
+    assert.strictEqual(payload.start.getFullYear(), 2026);
+    assert.strictEqual(payload.start.getMonth(), 0);
+    assert.strictEqual(payload.start.getDate(), 8);
+    assert.strictEqual(payload.start.getHours(), 4);
+    assert.strictEqual(payload.start.getMinutes(), 0);
+    assert.strictEqual(payload.end.getHours(), 5);
+    assert.strictEqual(payload.end.getMinutes(), 30);
+  });
+
+  it("formats reschedule messages defensively", () => {
+    const message = formatRescheduledMessage(new Date("2026-01-08T16:00:00"));
+    assert.ok(message.startsWith("Event rescheduled to "));
+    assert.ok(message.includes(","));
+    assert.strictEqual(formatRescheduledMessage(null), "Event rescheduled.");
   });
 });

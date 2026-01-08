@@ -5,7 +5,8 @@ function getNotificationNodes() {
   return {
     banner: document.getElementById("notification-banner") || domRefs.notificationBanner,
     message: document.getElementById("notification-message") || domRefs.notificationMessage,
-    undoButton: document.getElementById("notification-undo") || domRefs.notificationUndoButton
+    undoButton: document.getElementById("notification-undo") || domRefs.notificationUndoButton,
+    closeButton: document.getElementById("notification-close") || domRefs.notificationCloseButton
   };
 }
 
@@ -28,22 +29,35 @@ export function hideNotificationBanner() {
     clearTimeout(state.notificationHideTimeout);
     state.notificationHideTimeout = null;
   }
-  const { banner, undoButton } = getNotificationNodes();
+  const { banner, undoButton, closeButton } = getNotificationNodes();
   banner?.classList?.add("hidden");
   if (undoButton) {
     undoButton.disabled = false;
+    undoButton.classList?.remove("hidden");
+    undoButton.onclick = null;
+  }
+  if (closeButton) {
+    closeButton.classList?.add("hidden");
+    closeButton.onclick = null;
   }
   state.notificationUndoHandler = null;
 }
 
 export function showUndoBanner(message, undoHandler) {
-  const { banner, message: messageNode, undoButton } = getNotificationNodes();
+  const { banner, message: messageNode, undoButton, closeButton } = getNotificationNodes();
   if (!banner || !messageNode || !undoButton) {return;}
   hideNotificationBanner();
   messageNode.textContent = message;
   state.notificationUndoHandler = undoHandler;
   banner.classList?.remove("hidden");
+  undoButton.classList?.remove("hidden");
   undoButton.disabled = false;
+  if (closeButton) {
+    closeButton.classList?.remove("hidden");
+    closeButton.onclick = () => {
+      hideNotificationBanner();
+    };
+  }
   undoButton.onclick = async () => {
     undoButton.disabled = true;
     try {
@@ -56,4 +70,29 @@ export function showUndoBanner(message, undoHandler) {
   state.notificationHideTimeout = window.setTimeout(() => {
     hideNotificationBanner();
   }, 6500);
+}
+
+export function showNotificationBanner(message, options = {}) {
+  const { autoHideMs = 0 } = options;
+  const { banner, message: messageNode, undoButton, closeButton } = getNotificationNodes();
+  if (!banner || !messageNode) {return;}
+  hideNotificationBanner();
+  messageNode.textContent = message;
+  if (undoButton) {
+    undoButton.classList?.add("hidden");
+    undoButton.disabled = true;
+    undoButton.onclick = null;
+  }
+  if (closeButton) {
+    closeButton.classList?.remove("hidden");
+    closeButton.onclick = () => {
+      hideNotificationBanner();
+    };
+  }
+  banner.classList?.remove("hidden");
+  if (autoHideMs > 0) {
+    state.notificationHideTimeout = window.setTimeout(() => {
+      hideNotificationBanner();
+    }, autoHideMs);
+  }
 }

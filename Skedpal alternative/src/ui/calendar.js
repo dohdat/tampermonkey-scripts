@@ -26,6 +26,7 @@ import {
   clearCalendarEventFocus,
   focusCalendarEventBlock
 } from "./calendar-focus.js";
+import { showNotificationBanner, showUndoBanner } from "./notifications.js";
 import { ensureExternalEvents, getExternalEventsForRange } from "./calendar-external.js";
 import {
   buildExternalEventMeta,
@@ -140,22 +141,39 @@ function updateExternalEventInState(payload) {
   );
 }
 
-async function persistDraggedExternalEvent(eventMeta, dayKey, minutes, durationMinutes) {
+export function buildExternalUpdatePayload(eventMeta, dayKey, minutes, durationMinutes) {
   const startDate = getDateFromDayKey(dayKey);
-  if (!startDate) {return;}
+  if (!startDate) {return null;}
   startDate.setMinutes(minutes, 0, 0);
   const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
-  const payload = {
+  return {
     eventId: eventMeta.eventId,
     calendarId: eventMeta.calendarId,
     start: startDate,
     end: endDate
   };
+}
+
+async function persistDraggedExternalEvent(payload) {
+  if (!payload) {return;}
   const response = await sendExternalUpdateRequest(getRuntime(), payload);
   if (!response?.ok) {
     throw new Error(response?.error || "Failed to update calendar event");
   }
   updateExternalEventInState(payload);
+}
+
+export function formatRescheduledMessage(startDate) {
+  if (!(startDate instanceof Date)) {return "Event rescheduled.";}
+  const dateLabel = startDate.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric"
+  });
+  const timeLabel = startDate.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit"
+  });
+  return `Event rescheduled to ${dateLabel}, ${timeLabel}`;
 }
 async function deleteExternalEvent(deleteBtn) {
   if (externalDeletePending) {return;}
@@ -373,15 +391,43 @@ async function handleCalendarDragEnd() {
     return;
   }
   if (eventMeta.source === "external") {
+    const payload = buildExternalUpdatePayload(
+      eventMeta,
+      dayCol.dataset.day,
+      minutes,
+      durationMinutes
+    );
+    if (!payload) {
+      renderCalendar();
+      return;
+    }
+    const previous = {
+      eventId: eventMeta.eventId,
+      calendarId: eventMeta.calendarId,
+      start: eventMeta.start,
+      end: eventMeta.end
+    };
+    showNotificationBanner("Saving...");
     try {
-      await persistDraggedExternalEvent(
-        eventMeta,
-        dayCol.dataset.day,
-        minutes,
-        durationMinutes
-      );
+      await persistDraggedExternalEvent(payload);
+      renderCalendar();
+      showUndoBanner(formatRescheduledMessage(payload.start), async () => {
+        showNotificationBanner("Undoing...");
+        try {
+          await persistDraggedExternalEvent(previous);
+          renderCalendar();
+          showNotificationBanner("Changes reverted.", { autoHideMs: 2500 });
+        } catch (error) {
+          console.warn("Failed to undo external calendar update.", error);
+          showNotificationBanner("Unable to undo changes.", { autoHideMs: 3500 });
+        }
+      });
+      return;
     } catch (error) {
       console.warn("Failed to update external calendar event.", error);
+      showNotificationBanner("Failed to update Google Calendar event.", {
+        autoHideMs: 3500
+      });
     }
   } else {
     await persistDraggedEvent(eventMeta, dayCol.dataset.day, minutes, durationMinutes);

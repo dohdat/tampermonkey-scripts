@@ -59,6 +59,7 @@ const elements = new Map();
 elements.set("notification-banner", new FakeElement("div"));
 elements.set("notification-message", new FakeElement("div"));
 elements.set("notification-undo", new FakeElement("button"));
+elements.set("notification-close", new FakeElement("button"));
 
 function installDomStubs() {
   global.document = {
@@ -82,7 +83,8 @@ function installDomStubs() {
 installDomStubs();
 
 const notifications = await import("../src/ui/notifications.js");
-const { isTypingTarget, hideNotificationBanner, showUndoBanner } = notifications;
+const { isTypingTarget, hideNotificationBanner, showNotificationBanner, showUndoBanner } =
+  notifications;
 const { state } = await import("../src/ui/state/page-state.js");
 
 describe("notifications", () => {
@@ -114,10 +116,12 @@ describe("notifications", () => {
     const banner = elements.get("notification-banner");
     const message = elements.get("notification-message");
     const undoButton = elements.get("notification-undo");
+    const closeButton = elements.get("notification-close");
 
     assert.strictEqual(message.textContent, "Saved!");
     assert.strictEqual(banner.classList.contains("hidden"), false);
     assert.ok(state.notificationHideTimeout);
+    assert.strictEqual(closeButton.classList.contains("hidden"), false);
 
     await undoButton.onclick();
     assert.strictEqual(undoCalled, 1);
@@ -125,6 +129,32 @@ describe("notifications", () => {
     assert.strictEqual(banner.classList.contains("hidden"), true);
 
     hideNotificationBanner();
+    assert.strictEqual(banner.classList.contains("hidden"), true);
+  });
+
+  it("shows a status banner without undo", () => {
+    showNotificationBanner("Saving...", { autoHideMs: 2000 });
+
+    const banner = elements.get("notification-banner");
+    const message = elements.get("notification-message");
+    const undoButton = elements.get("notification-undo");
+    const closeButton = elements.get("notification-close");
+
+    assert.strictEqual(message.textContent, "Saving...");
+    assert.strictEqual(banner.classList.contains("hidden"), false);
+    assert.strictEqual(undoButton.classList.contains("hidden"), true);
+    assert.strictEqual(undoButton.disabled, true);
+    assert.strictEqual(closeButton.classList.contains("hidden"), false);
+    assert.ok(state.notificationHideTimeout);
+  });
+
+  it("closes the banner when the close button is clicked", () => {
+    showNotificationBanner("Saved", { autoHideMs: 0 });
+    const banner = elements.get("notification-banner");
+    const closeButton = elements.get("notification-close");
+
+    assert.strictEqual(banner.classList.contains("hidden"), false);
+    closeButton.onclick();
     assert.strictEqual(banner.classList.contains("hidden"), true);
   });
 });

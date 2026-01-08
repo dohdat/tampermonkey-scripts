@@ -265,17 +265,21 @@ function buildTaskMeta(task, timeMapNames, repeatSummary) {
         task.startFrom
       )}</span>`
     : "";
-  const minBlockMarkup = task.minBlockMin
-    ? `<span data-test-skedpal="task-min-block">Min block: ${task.minBlockMin}m</span>`
-    : "";
-  meta.innerHTML = `
-          ${deadlineMarkup}
-          ${startFromMarkup}
-          ${minBlockMarkup}
-          <span data-test-skedpal="task-priority">Priority: ${task.priority}</span>
-          <span data-test-skedpal="task-timemaps">TimeMaps: ${timeMapNames.join(", ")}</span>
-          <span data-test-skedpal="task-repeat">Repeat: ${repeatSummary}</span>
-        `;
+    const minBlockMarkup = task.minBlockMin
+      ? `<span data-test-skedpal="task-min-block">Min block: ${task.minBlockMin}m</span>`
+      : "";
+    const priorityValue = Number(task.priority) || 0;
+    const priorityMarkup = priorityValue
+      ? `Priority: <span class="priority-text" data-priority="${priorityValue}" data-test-skedpal="task-priority-value">${priorityValue}</span>`
+      : "Priority: 0";
+    meta.innerHTML = `
+            ${deadlineMarkup}
+            ${startFromMarkup}
+            ${minBlockMarkup}
+            <span data-test-skedpal="task-priority">${priorityMarkup}</span>
+            <span data-test-skedpal="task-timemaps">TimeMaps: ${timeMapNames.join(", ")}</span>
+            <span data-test-skedpal="task-repeat">Repeat: ${repeatSummary}</span>
+          `;
   return meta;
 }
 

@@ -103,10 +103,14 @@ function buildReportRow(row) {
         row.expectedCount
       )}`
     : `Missed: ${row.missedCount}`;
+  const priorityValue = Number(row.priority) || 0;
+  const priorityMarkup = priorityValue
+    ? `Priority: <span class="priority-text" data-priority="${priorityValue}" data-test-skedpal="report-missed-priority-value">${priorityValue}</span>`
+    : "Priority: 0";
   meta.innerHTML = `
     <span data-test-skedpal="report-missed-count">${missedBase}</span>
     <span data-test-skedpal="report-missed-status">Status: ${row.status}</span>
-    <span data-test-skedpal="report-missed-priority">Priority: ${row.priority}</span>
+    <span data-test-skedpal="report-missed-priority">${priorityMarkup}</span>
     <span data-test-skedpal="report-missed-deadline">Deadline: ${
       row.deadline ? formatDateTime(row.deadline) : "None"
     }</span>

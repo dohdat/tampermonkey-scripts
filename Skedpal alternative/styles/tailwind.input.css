@@ -144,6 +144,22 @@ body.modal-open{overflow:hidden}
 .calendar-event-modal__detail-link:hover{color:var(--color-blue-300)}
 .calendar-event-modal__detail-link--zoom{display:inline-flex;align-items:center;gap:var(--space-0-25);padding:var(--space-0-15) var(--space-0-55);border-radius:var(--size-999px);border:var(--size-1px) solid rgba(var(--color-slate-600-rgb),.6);background:rgba(var(--color-slate-800-rgb),.6);color:var(--color-slate-100);text-decoration:none}
 .calendar-event-modal__detail-link--zoom:hover{color:var(--color-lime-300);border-color:var(--color-lime-400);background:rgba(var(--color-slate-800-rgb),.85)}
+.priority-text{font-weight:var(--font-weight-semibold)}
+.priority-text[data-priority="1"]{color:var(--color-priority-1)}
+.priority-text[data-priority="2"]{color:var(--color-priority-2)}
+.priority-text[data-priority="3"]{color:var(--color-priority-3)}
+.priority-text[data-priority="4"]{color:var(--color-priority-4)}
+.priority-text[data-priority="5"]{color:var(--color-priority-5)}
+.priority-select[data-priority="1"]{color:var(--color-priority-1)}
+.priority-select[data-priority="2"]{color:var(--color-priority-2)}
+.priority-select[data-priority="3"]{color:var(--color-priority-3)}
+.priority-select[data-priority="4"]{color:var(--color-priority-4)}
+.priority-select[data-priority="5"]{color:var(--color-priority-5)}
+.priority-select option[value="1"]{color:var(--color-priority-1)}
+.priority-select option[value="2"]{color:var(--color-priority-2)}
+.priority-select option[value="3"]{color:var(--color-priority-3)}
+.priority-select option[value="4"]{color:var(--color-priority-4)}
+.priority-select option[value="5"]{color:var(--color-priority-5)}
 .calendar-event-modal__toolbar{display:flex;align-items:center;gap:var(--space-0-5);margin-top:var(--space-0-75)}
 .calendar-event-modal__icon-btn{display:inline-flex;align-items:center;justify-content:center;width:var(--size-26px);height:var(--size-26px);border-radius:var(--size-9999px);border:var(--size-1px) solid var(--color-slate-600);background:var(--color-slate-800);color:var(--color-slate-300);transition:all var(--motion-base) ease}
 .calendar-event-modal__icon-btn:hover{border-color:var(--color-sky-400);color:var(--color-slate-200)}

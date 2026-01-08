@@ -56,6 +56,7 @@ export const domRefs = {
   taskDeadlineInput: document.getElementById("task-deadline"),
   taskStartFromInput: document.getElementById("task-start-from"),
   taskLinkInput: document.getElementById("task-link"),
+  taskPriorityInput: document.getElementById("task-priority"),
   taskLinkClearBtn: document.querySelector
     ? document.querySelector("[data-test-skedpal='task-link-clear']")
     : null,

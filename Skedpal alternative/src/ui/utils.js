@@ -105,6 +105,16 @@ export function buildInheritedSubtaskUpdate(childTask, parentTask) {
   };
 }
 
+export function applyPrioritySelectColor(select) {
+  if (!select) {return;}
+  const value = Number(select.value);
+  if (!Number.isFinite(value)) {
+    select.dataset.priority = "";
+    return;
+  }
+  select.dataset.priority = String(value);
+}
+
 export function getLocalDateKey(value) {
   const date = value ? new Date(value) : null;
   if (!date || Number.isNaN(date.getTime())) {return "";}

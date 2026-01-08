@@ -12,6 +12,7 @@ import {
   getLocalDateKey,
   normalizeTimeMap,
   normalizeSubtaskScheduleMode,
+  applyPrioritySelectColor,
   toggleClearButtonVisibility,
   uuid,
   parseLocalDateInput
@@ -53,6 +54,7 @@ const {
   taskDurationInput,
   taskDurationHelper,
   taskMinBlockInput,
+  taskPriorityInput,
   taskParentIdInput,
   taskSectionSelect,
   taskSubsectionSelect,
@@ -360,6 +362,7 @@ export function resetTaskForm(shouldClose = false) {
   syncTaskDurationHelper();
   taskMinBlockInput.value = "30";
   document.getElementById("task-priority").value = "3";
+  applyPrioritySelectColor(taskPriorityInput);
   taskDeadlineInput.value = "";
   taskStartFromInput.value = "";
   setRepeatFromSelection({ type: "none" }, "task");
@@ -397,6 +400,7 @@ function setTaskFormBasics({
   syncTaskDurationHelper();
   taskMinBlockInput.value = minBlockMin || "30";
   document.getElementById("task-priority").value = String(priority || 3);
+  applyPrioritySelectColor(taskPriorityInput);
   taskDeadlineInput.value = deadline ? deadline.slice(0, 10) : "";
   taskStartFromInput.value = startFrom ? startFrom.slice(0, 10) : "";
   setRepeatFromSelection(repeat, "task");
@@ -457,6 +461,7 @@ export function openTaskEdit(task, options = {}) {
   syncTaskDurationHelper();
   taskMinBlockInput.value = task.minBlockMin || "30";
   document.getElementById("task-priority").value = String(task.priority);
+  applyPrioritySelectColor(taskPriorityInput);
   taskDeadlineInput.value = task.deadline ? task.deadline.slice(0, 10) : "";
   taskStartFromInput.value = task.startFrom ? task.startFrom.slice(0, 10) : "";
   taskParentIdInput.value = task.subtaskParentId || "";

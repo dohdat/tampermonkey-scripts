@@ -2,6 +2,7 @@ import assert from "assert";
 import { describe, it } from "mocha";
 
 import {
+  applyPrioritySelectColor,
   getInheritedSubtaskFields,
   getLocalDateKey,
   normalizeHorizonDays,
@@ -104,5 +105,19 @@ describe("normalizeHorizonDays", () => {
 
   it("falls back for invalid values", () => {
     assert.strictEqual(normalizeHorizonDays("nope", 1, 60, 14), 14);
+  });
+});
+
+describe("applyPrioritySelectColor", () => {
+  it("sets a data priority based on the select value", () => {
+    const select = { value: "4", dataset: {} };
+    applyPrioritySelectColor(select);
+    assert.strictEqual(select.dataset.priority, "4");
+  });
+
+  it("clears the data priority for invalid values", () => {
+    const select = { value: "nope", dataset: {} };
+    applyPrioritySelectColor(select);
+    assert.strictEqual(select.dataset.priority, "");
   });
 });

@@ -98,7 +98,9 @@ function buildDetailRows(task, eventMeta) {
     "Start from",
     task.startFrom ? new Date(task.startFrom).toLocaleDateString() : ""
   );
-  pushDetailRow(rows, "Priority", task.priority ? `${task.priority}` : "");
+  pushDetailRow(rows, "Priority", task.priority ? `${task.priority}` : "", {
+    priorityValue: Number(task.priority) || 0
+  });
   pushDetailRow(rows, "Link", task.link || "", { isLink: true });
   return rows;
 }
@@ -165,11 +167,15 @@ function renderDetailRows(task, eventMeta) {
       value = document.createElement("span");
       value.className = "calendar-event-modal__detail-value";
     }
+    value.textContent = row.value;
+    value.setAttribute("data-test-skedpal", `calendar-event-modal-detail-value-${index}`);
+    if (row.priorityValue) {
+      value.classList.add("priority-text");
+      value.dataset.priority = String(row.priorityValue);
+    }
     if (row.textColor) {
       value.style.color = row.textColor;
     }
-    value.textContent = row.value;
-    value.setAttribute("data-test-skedpal", `calendar-event-modal-detail-value-${index}`);
     wrap.appendChild(label);
     wrap.appendChild(value);
     calendarEventModalDetails.appendChild(wrap);

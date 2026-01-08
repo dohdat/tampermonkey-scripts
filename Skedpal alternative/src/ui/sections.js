@@ -6,7 +6,13 @@ import {
   getNextFavoriteOrder,
   toggleFavoriteById
 } from "./favorites.js";
-import { getSectionColorMap, isStartAfterDeadline, normalizeSubtaskScheduleMode, uuid } from "./utils.js";
+import {
+  applyPrioritySelectColor,
+  getSectionColorMap,
+  isStartAfterDeadline,
+  normalizeSubtaskScheduleMode,
+  uuid
+} from "./utils.js";
 import { state } from "./state/page-state.js";
 import { repeatStore, setRepeatFromSelection, syncSubsectionRepeatLabel } from "./repeat.js";
 import { renderTimeMapOptions, collectSelectedValues } from "./time-maps.js";
@@ -255,6 +261,7 @@ function applySubsectionTemplate(template) {
   setInputValue(subsectionTaskDurationInput, template.durationMin || 30);
   setInputValue(subsectionTaskMinBlockInput, template.minBlockMin || 30);
   setInputValue(subsectionTaskPriorityInput, String(template.priority || 3));
+  applyPrioritySelectColor(subsectionTaskPriorityInput);
   setInputValue(subsectionTaskDeadlineInput, formatTemplateDate(template.deadline));
   setInputValue(subsectionTaskStartFromInput, formatTemplateDate(template.startFrom));
   const repeat = template.repeat || { type: "none" };

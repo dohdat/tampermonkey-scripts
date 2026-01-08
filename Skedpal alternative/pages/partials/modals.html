@@ -110,7 +110,11 @@
         </label>
         <label class="field">
           <span class="field-label">Priority (1 low – 5 high)</span>
-          <select id="task-priority" class="field-input">
+          <select
+            id="task-priority"
+            class="field-input priority-select"
+            data-test-skedpal="task-priority-select"
+          >
             <option value="5">5</option>
             <option value="4">4</option>
             <option value="3" selected>3</option>
@@ -377,7 +381,11 @@
         </label>
         <label class="field">
           <span class="field-label">Default priority</span>
-          <select id="subsection-task-priority" class="field-input">
+          <select
+            id="subsection-task-priority"
+            class="field-input priority-select"
+            data-test-skedpal="subsection-task-priority-select"
+          >
             <option value="5">5</option>
             <option value="4">4</option>
             <option value="3" selected>3</option>

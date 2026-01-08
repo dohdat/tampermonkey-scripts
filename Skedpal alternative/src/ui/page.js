@@ -46,7 +46,12 @@ import {
   switchView,
   goHome
 } from "./navigation.js";
-import { parseZoomFromUrl, parseViewFromUrl, toggleClearButtonVisibility } from "./utils.js";
+import {
+  applyPrioritySelectColor,
+  parseZoomFromUrl,
+  parseViewFromUrl,
+  toggleClearButtonVisibility
+} from "./utils.js";
 import { closeTaskForm } from "./ui.js";
 import { indentTaskUnderPrevious, outdentTask } from "./tasks/tasks-sortable.js";
 import { state } from "./state/page-state.js";
@@ -64,6 +69,7 @@ const {
   taskLinkInput,
   taskLinkClearBtn,
   taskDurationInput,
+  taskPriorityInput,
   sectionAddBtn,
   sectionFormToggle,
   sectionInput,
@@ -79,7 +85,8 @@ const {
   timeMapList,
   rescheduleButtons,
   repeatCompleteList,
-  repeatCompleteCloseBtns
+  repeatCompleteCloseBtns,
+  subsectionTaskPriorityInput
 } = domRefs;
 
 async function hydrate() {
@@ -146,6 +153,11 @@ function registerTaskFormHandlers() {
   if (taskDurationInput) {
     taskDurationInput.addEventListener("input", syncTaskDurationHelper);
     syncTaskDurationHelper();
+  }
+  if (taskPriorityInput) {
+    const applyPriority = () => applyPrioritySelectColor(taskPriorityInput);
+    taskPriorityInput.addEventListener("change", applyPriority);
+    applyPriority();
   }
   taskToggle?.addEventListener("click", () => {
     startTaskInSection();
@@ -258,6 +270,11 @@ function registerFavoritesHandlers() {
 
 function registerListHandlers() {
   subsectionModalCloseBtns.forEach((btn) => btn.addEventListener("click", closeSubsectionModal));
+  if (subsectionTaskPriorityInput) {
+    const applyPriority = () => applyPrioritySelectColor(subsectionTaskPriorityInput);
+    subsectionTaskPriorityInput.addEventListener("change", applyPriority);
+    applyPriority();
+  }
   subsectionForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     await handleSubsectionFormSubmit();

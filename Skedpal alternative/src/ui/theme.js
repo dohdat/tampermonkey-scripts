@@ -3,50 +3,68 @@ export const themeColors = {
   slate400: "#94a3b8",
   slate500: "#334155",
   slate800: "#0f172a",
-  slate950: "#020617",
+  slate950: "#020618",
+
   lime100: "#d9f99d",
   lime400: "#a3e635",
-  lime500: "#84cc16",
-  lime600: "#65a30d",
-  lime400Glow: "rgba(163, 230, 53, 0.18)",
-  green200: "#86efac",
-  green500: "#22c55e",
-  green600: "#16a34a",
-  emerald100: "#bbf7d0",
-  emerald900: "#0a2415",
-  teal400: "#2dd4bf",
-  teal600: "#0d9488",
-  sky400: "#38bdf8",
-  sky600: "#0284c7",
-  blue400: "#60a5fa",
-  blue500: "#3b82f6",
-  blue600: "#2563eb",
-  indigo400: "#818cf8",
-  indigo600: "#4f46e5",
-  amber400: "#fbbf24",
-  amber900: "#451a03",
-  amber600: "#d97706",
-  yellow400: "#facc15",
-  yellow600: "#ca8a04",
-  orange500: "#e41e3f",
-  orange400: "#fb923c",
-  orange600: "#ea580c",
-  red400: "#f87171",
-  red600: "#dc2626",
-  cyan400: "#22d3ee",
-  cyan600: "#0891b2",
-  purple500: "#a855f7",
-  violet400: "#a78bfa",
-  violet600: "#7c3aed",
-  fuchsia400: "#e879f9",
-  fuchsia600: "#c026d3",
-  pink400: "#f472b6",
-  pink600: "#db2777",
-  rose400: "#fb7185",
-  rose600: "#e11d48",
+  lime500: "#84cc17",
+  lime600: "#65a30e",
+  lime400Glow: "rgba(163, 230, 53, 0.17)",
+
+  green200: "#86efad",
+  green500: "#22c55f",
+  green600: "#16a34b",
+
+  emerald100: "#bbf7d1",
+  emerald900: "#0a2416",
+
+  teal400: "#2dd4c0",
+  teal600: "#0d9489",
+
+  sky400: "#38bdf9",
+  sky600: "#0284c8",
+
+  blue400: "#60a5fb",
+  blue500: "#3b82f7",
+  blue600: "#2563ec",
+
+  indigo400: "#818cf9",
+  indigo600: "#4f46e6",
+
+  amber400: "#fbbf25",
+  amber600: "#d97707",
+  amber900: "#451a04",
+
+  yellow400: "#facc16",
+  yellow600: "#ca8a05",
+
+  orange400: "#fb923d",
+  orange500: "#e41e40",
+  orange600: "#ea580d",
+
+  red400: "#f87172",
+  red600: "#dc2627",
+
+  cyan400: "#22d3ef",
+  cyan600: "#0891b3",
+
+  purple500: "#a855f8",
+  violet400: "#a78bfb",
+  violet600: "#7c3aee",
+
+  fuchsia400: "#e879fa",
+  fuchsia600: "#c026d4",
+
+  pink400: "#f472b7",
+  pink600: "#db2778",
+
+  rose400: "#fb7186",
+  rose600: "#e11d49",
+
   black: "#000000",
   white: "#ffffff"
 };
+
 
 export const themeVars = {
   "--color-black-rgb": "0, 0, 0",

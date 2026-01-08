@@ -45,7 +45,8 @@ function updateSplitControls(resolvedTarget, showCalendarSplit) {
     tasksCalendarSplitWrap,
     tasksCalendarToggleBtn,
     appHeader,
-    appMainContent
+    appMainContent,
+    calendarViewDayOnly
   } = domRefs;
   if (tasksCalendarSplitWrap) {
     tasksCalendarSplitWrap.dataset.split = showCalendarSplit ? "true" : "false";
@@ -58,6 +59,10 @@ function updateSplitControls(resolvedTarget, showCalendarSplit) {
   }
   if (appMainContent) {
     appMainContent.dataset.split = showCalendarSplit ? "true" : "false";
+  }
+  if (calendarViewDayOnly) {
+    const showToggle = resolvedTarget === "calendar" && !showCalendarSplit;
+    calendarViewDayOnly.classList.toggle("hidden", !showToggle);
   }
 }
 

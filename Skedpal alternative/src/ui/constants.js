@@ -149,6 +149,9 @@ export const domRefs = {
   appMainContent: document.querySelector
     ? document.querySelector("[data-test-skedpal='app-main-content']")
     : null,
+  calendarViewDayOnly: document.querySelector
+    ? document.querySelector("[data-test-skedpal='calendar-view-day-only']")
+    : null,
   googleCalendarConnectBtn: document.getElementById("google-calendar-connect"),
   googleCalendarRefreshBtn: document.getElementById("google-calendar-refresh"),
   googleCalendarDisconnectBtn: document.getElementById("google-calendar-disconnect"),

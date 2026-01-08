@@ -38,6 +38,7 @@ import {
 } from "./sections.js";
 import { updateFavoriteOrder, toggleFavoriteGroup } from "./sections-favorites.js";
 import {
+  applyNavigationFromUrl,
   handleNavigationShortcuts,
   handleNavigationMouseButtons,
   initViewFromUrl,
@@ -221,6 +222,7 @@ function registerNavigationHandlers() {
     });
   });
   settingsToggleBtn?.addEventListener("click", () => switchView("settings"));
+  window.addEventListener("popstate", applyNavigationFromUrl);
 }
 
 function registerFavoritesHandlers() {

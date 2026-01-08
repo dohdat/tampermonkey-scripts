@@ -1,20 +1,28 @@
 import { SUBTASK_ORDER_OFFSET } from "./constants.js";
 import { DEFAULT_SCHEDULING_HORIZON_DAYS } from "../data/db.js";
 
-export function updateUrlWithZoom(filter) {
+function buildZoomParam(filter) {
+  if (!filter) {return "";}
+  const byType = {
+    section: ["section", filter.sectionId || ""],
+    subsection: ["subsection", filter.sectionId || "", filter.subsectionId || ""],
+    task: ["task", filter.taskId || "", filter.sectionId || "", filter.subsectionId || ""]
+  };
+  const parts = byType[filter.type] || byType.task;
+  return parts.join(":");
+}
+
+export function updateUrlWithZoom(filter, options = {}) {
+  const { replace = true } = options;
   const url = new URL(window.location.href);
-  if (!filter) {
-    url.searchParams.delete("zoom");
+  const zoomValue = buildZoomParam(filter);
+  if (zoomValue) {
+    url.searchParams.set("zoom", zoomValue);
   } else {
-    let parts = ["task", filter.taskId || "", filter.sectionId || "", filter.subsectionId || ""];
-    if (filter.type === "section") {
-      parts = ["section", filter.sectionId || ""];
-    } else if (filter.type === "subsection") {
-      parts = ["subsection", filter.sectionId || "", filter.subsectionId || ""];
-    }
-    url.searchParams.set("zoom", parts.join(":"));
+    url.searchParams.delete("zoom");
   }
-  history.replaceState({}, "", url.toString());
+  const action = replace ? "replaceState" : "pushState";
+  history[action]({}, "", url.toString());
 }
 
 export function parseZoomFromUrl() {
@@ -30,14 +38,16 @@ export function parseZoomFromUrl() {
   return handlers[type] ? handlers[type]() : null;
 }
 
-export function updateUrlWithView(view) {
+export function updateUrlWithView(view, options = {}) {
+  const { replace = true } = options;
   const url = new URL(window.location.href);
   if (view) {
     url.searchParams.set("view", view);
   } else {
     url.searchParams.delete("view");
   }
-  history.replaceState({}, "", url.toString());
+  const action = replace ? "replaceState" : "pushState";
+  history[action]({}, "", url.toString());
 }
 
 export function parseViewFromUrl(defaultView = "tasks") {
@@ -45,14 +55,16 @@ export function parseViewFromUrl(defaultView = "tasks") {
   return url.searchParams.get("view") || defaultView;
 }
 
-export function updateUrlWithCalendarView(viewMode) {
+export function updateUrlWithCalendarView(viewMode, options = {}) {
+  const { replace = true } = options;
   const url = new URL(window.location.href);
   if (viewMode) {
     url.searchParams.set("calendarView", viewMode);
   } else {
     url.searchParams.delete("calendarView");
   }
-  history.replaceState({}, "", url.toString());
+  const action = replace ? "replaceState" : "pushState";
+  history[action]({}, "", url.toString());
 }
 
 export function parseCalendarViewFromUrl(defaultView = "day") {

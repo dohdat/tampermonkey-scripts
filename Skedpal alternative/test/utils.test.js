@@ -102,6 +102,30 @@ describe("utils url helpers", () => {
     assert.strictEqual(parseViewFromUrl("tasks"), "tasks");
   });
 
+  it("pushes history entries when replace is false", () => {
+    global.window = { location: { href: "https://example.com/app?view=tasks" } };
+    let pushed = 0;
+    let replaced = 0;
+    global.history = {
+      pushState: (_state, _title, url) => {
+        pushed += 1;
+        global.window.location.href = url;
+      },
+      replaceState: (_state, _title, url) => {
+        replaced += 1;
+        global.window.location.href = url;
+      }
+    };
+
+    updateUrlWithView("calendar", { replace: false });
+    assert.strictEqual(pushed, 1);
+    assert.strictEqual(replaced, 0);
+
+    updateUrlWithZoom({ type: "section", sectionId: "s1" }, { replace: false });
+    assert.strictEqual(pushed, 2);
+    assert.strictEqual(parseViewFromUrl(), "calendar");
+  });
+
   it("updates and reads calendar view params", () => {
     global.window = {
       location: { href: "https://example.com/app?view=calendar&calendarView=day" }

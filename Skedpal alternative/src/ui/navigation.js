@@ -1,6 +1,12 @@
 import { domRefs, homeIconSvg } from "./constants.js";
 import { state } from "./state/page-state.js";
-import { updateUrlWithView, updateUrlWithZoom } from "./utils.js";
+import {
+  parseCalendarViewFromUrl,
+  parseViewFromUrl,
+  parseZoomFromUrl,
+  updateUrlWithView,
+  updateUrlWithZoom
+} from "./utils.js";
 import { renderTasks } from "./tasks/tasks-render.js";
 import { getSectionName, getSubsectionsFor } from "./sections-data.js";
 import { isTypingTarget } from "./notifications.js";
@@ -24,13 +30,19 @@ export function pushNavigation(filter) {
 }
 
 export function switchView(target, options = {}) {
-  const { calendarAnchorDate = null, focusCalendar = true } = options;
+  const {
+    calendarAnchorDate = null,
+    focusCalendar = true,
+    updateUrl = true,
+    historyMode = "push"
+  } = options;
   const navButtons = getNavButtons();
   const views = getViews();
   const allowedViews = navButtons.map((btn) => btn.dataset.view);
   const resolvedTarget = allowedViews.includes(target) ? target : "tasks";
+  const currentView = getActiveViewId(views);
   if (resolvedTarget !== "tasks" && state.zoomFilter) {
-    clearZoomFilter({ record: false });
+    clearZoomFilter({ record: false, updateUrl, historyMode: "replace" });
   }
   views.forEach((view) => {
     const active = view.id === resolvedTarget;
@@ -41,7 +53,9 @@ export function switchView(target, options = {}) {
     btn.classList.toggle("is-active", active);
     btn.setAttribute("aria-current", active ? "page" : "false");
   });
-  updateUrlWithView(resolvedTarget);
+  if (updateUrl && currentView !== resolvedTarget) {
+    updateUrlWithView(resolvedTarget, { replace: historyMode === "replace" });
+  }
   if (resolvedTarget === "calendar") {
     state.calendarAnchorDate = calendarAnchorDate ? new Date(calendarAnchorDate) : new Date();
     renderCalendar();
@@ -71,21 +85,25 @@ export function getZoomLabel() {
 }
 
 export function setZoomFilter(filter, options = {}) {
-  const { record = true } = options;
+  const { record = true, updateUrl = true, historyMode = "push" } = options;
   if (getActiveViewId(getViews()) !== "tasks") {
-    switchView("tasks", { focusCalendar: false });
+    switchView("tasks", { focusCalendar: false, updateUrl, historyMode });
   }
   state.zoomFilter = filter;
-  updateUrlWithZoom(filter);
+  if (updateUrl) {
+    updateUrlWithZoom(filter, { replace: historyMode === "replace" });
+  }
   renderTasks(state.tasksCache, state.tasksTimeMapsCache);
   renderBreadcrumb();
   if (record) {pushNavigation(filter);}
 }
 
 export function clearZoomFilter(options = {}) {
-  const { record = true } = options;
+  const { record = true, updateUrl = true, historyMode = "push" } = options;
   state.zoomFilter = null;
-  updateUrlWithZoom(null);
+  if (updateUrl) {
+    updateUrlWithZoom(null, { replace: historyMode === "replace" });
+  }
   renderTasks(state.tasksCache, state.tasksTimeMapsCache);
   renderBreadcrumb();
   if (record) {pushNavigation(null);}
@@ -98,10 +116,10 @@ export function goHome() {
 
 export function applyNavEntry(entry) {
   if (!entry) {
-    clearZoomFilter({ record: false });
+    clearZoomFilter({ record: false, historyMode: "replace" });
     return;
   }
-  setZoomFilter(entry, { record: false });
+  setZoomFilter(entry, { record: false, historyMode: "replace" });
 }
 
 export function goBackInNavigation() {
@@ -241,6 +259,26 @@ export function renderBreadcrumb() {
   navBreadcrumb.appendChild(wrapper);
 }
 
+
+export function applyNavigationFromUrl() {
+  const view = parseViewFromUrl("tasks");
+  const calendarView = parseCalendarViewFromUrl(state.calendarViewMode || "day");
+  if (view === "calendar" && calendarView !== state.calendarViewMode) {
+    state.calendarViewMode = calendarView;
+  }
+  switchView(view, { focusCalendar: false, updateUrl: false, historyMode: "replace" });
+  if (view === "tasks") {
+    const zoom = parseZoomFromUrl();
+    if (zoom) {
+      setZoomFilter(zoom, { record: false, updateUrl: false, historyMode: "replace" });
+    } else {
+      clearZoomFilter({ record: false, updateUrl: false, historyMode: "replace" });
+    }
+  } else if (state.zoomFilter) {
+    clearZoomFilter({ record: false, updateUrl: false, historyMode: "replace" });
+  }
+}
+
 export function handleNavigationShortcuts(event) {
   if (isTypingTarget(event.target)) {return;}
   const key = event.key;
@@ -265,5 +303,5 @@ export function handleNavigationMouseButtons(event) {
 
 export function initViewFromUrl(parseViewFromUrl) {
   const initialView = parseViewFromUrl("tasks");
-  switchView(initialView);
+  switchView(initialView, { historyMode: "replace" });
 }

@@ -1,10 +1,19 @@
 import { domRefs } from "./constants.js";
 
-const { taskFormWrap, taskToggle } = domRefs;
+function getTaskFormRefs() {
+  return {
+    taskFormWrap: domRefs.taskFormWrap,
+    taskToggle: domRefs.taskToggle
+  };
+}
 
 export function openTaskForm() {
+  const { taskFormWrap, taskToggle } = getTaskFormRefs();
+  if (!taskFormWrap) {return;}
   taskFormWrap.classList.remove("hidden");
-  taskToggle.textContent = "Add task";
+  if (taskToggle) {
+    taskToggle.textContent = "Add task";
+  }
   document.body.classList.add("modal-open");
   setTimeout(() => {
     document.getElementById("task-title")?.focus();
@@ -12,7 +21,11 @@ export function openTaskForm() {
 }
 
 export function closeTaskForm() {
+  const { taskFormWrap, taskToggle } = getTaskFormRefs();
+  if (!taskFormWrap) {return;}
   taskFormWrap.classList.add("hidden");
-  taskToggle.textContent = "Add task";
+  if (taskToggle) {
+    taskToggle.textContent = "Add task";
+  }
   document.body.classList.remove("modal-open");
 }

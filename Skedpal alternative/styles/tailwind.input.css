@@ -126,6 +126,11 @@ body.modal-open{overflow:hidden}
 .sidebar-fav-label{line-height:var(--line-height-tight)}
 .sidebar-fav-count{margin-left:auto;padding:var(--space-0-1) var(--space-0-35);border-radius:var(--size-12px);border:var(--size-1px) solid rgba(var(--color-slate-700-rgb), .7);background:rgba(var(--color-slate-900-rgb), .6);font-size:var(--font-size-xxs);color:var(--color-slate-400);font-weight:var(--font-weight-bold)}
 .sidebar-fav-empty{padding:var(--space-0-4) var(--space-0-6);font-size:var(--font-size-sm-plus);color:var(--color-slate-400);background:rgba(var(--color-slate-800-rgb), .25);border-radius:var(--size-12px);border:var(--size-1px) dashed var(--color-slate-700)}
+.sidebar-fav-sub-list{display:grid;gap:var(--space-0-25);padding-left:var(--space-0-5)}
+.sidebar-fav-sub-list.hidden{display:none}
+.sidebar-fav-sub-toggle{display:flex;align-items:center;justify-content:center;flex:0 0 var(--size-16px);height:var(--size-16px);color:var(--color-slate-400)}
+.sidebar-fav-sub-chevron{display:flex;align-items:center;justify-content:center;transition:transform var(--motion-fast) ease}
+.sidebar-fav-item.is-collapsed .sidebar-fav-sub-chevron{transform:rotate(-90deg)}
 @media (max-width:900px){.sidebar{width:var(--size-210px)}.app-main{margin-left:var(--size-210px)}}
 
 /* Calendar view */

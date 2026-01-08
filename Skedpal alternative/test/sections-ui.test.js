@@ -276,6 +276,30 @@ describe("sections ui", () => {
     assert.ok(findByTestAttr(row, "sidebar-fav-button"));
   });
 
+  it("renders collapsible favorite subsections", () => {
+    state.settingsCache.sections = [
+      { id: "s1", name: "Work", favorite: true, favoriteOrder: 1 }
+    ];
+    state.settingsCache.subsections = {
+      s1: [
+        { id: "sub1", name: "Parent", favorite: true, favoriteOrder: 1, parentId: "" },
+        { id: "sub2", name: "Child", favorite: true, favoriteOrder: 2, parentId: "sub1" }
+      ]
+    };
+    state.settingsCache.favoriteSubsectionExpanded = { sub1: false };
+
+    favoritesModule.renderFavoriteShortcuts();
+
+    const sidebar = elementMap.get("sidebar-favorites");
+    const subList = findByTestAttr(sidebar, "sidebar-fav-sub-list");
+    const row = findByDataset(sidebar, "favKey", "subsection:s1:sub1");
+    const button = findByTestAttr(row, "sidebar-fav-button");
+
+    assert.ok(subList);
+    assert.strictEqual(subList.classList.contains("hidden"), true);
+    assert.strictEqual(button.classList.contains("is-collapsed"), true);
+  });
+
   it("auto-expands the most used favorites group", () => {
     state.settingsCache.sections = [
       { id: "s1", name: "Work", favorite: true, favoriteOrder: 2 },

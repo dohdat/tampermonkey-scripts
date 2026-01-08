@@ -36,7 +36,11 @@ import {
   handleSubsectionFormSubmit,
   handleAddSubsection
 } from "./sections.js";
-import { updateFavoriteOrder, toggleFavoriteGroup } from "./sections-favorites.js";
+import {
+  updateFavoriteOrder,
+  toggleFavoriteGroup,
+  toggleFavoriteSubsection
+} from "./sections-favorites.js";
 import {
   applyNavigationFromUrl,
   handleNavigationShortcuts,
@@ -217,6 +221,11 @@ async function handleFavoritesClick(event) {
   const toggleBtn = event.target.closest("[data-fav-toggle]");
   if (toggleBtn) {
     await toggleFavoriteGroup(toggleBtn.dataset.favToggle || "");
+    return;
+  }
+  const subToggleBtn = event.target.closest("[data-fav-sub-toggle]");
+  if (subToggleBtn) {
+    await toggleFavoriteSubsection(subToggleBtn.dataset.favSubToggle || "");
     return;
   }
   const btn = event.target.closest("[data-fav-jump]");

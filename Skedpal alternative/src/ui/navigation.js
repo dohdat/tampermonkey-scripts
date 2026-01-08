@@ -21,6 +21,16 @@ function getNavButtons() {
   return domRefs.navButtons || [];
 }
 
+function setSplitFlag(node, isSplit) {
+  if (!node) {return;}
+  node.dataset.split = isSplit ? "true" : "false";
+}
+
+function setHidden(node, hidden) {
+  if (!node) {return;}
+  node.classList.toggle("hidden", Boolean(hidden));
+}
+
 function shouldShowCalendarSplit(resolvedTarget) {
   return resolvedTarget === "tasks" && state.tasksCalendarSplit;
 }
@@ -46,24 +56,15 @@ function updateSplitControls(resolvedTarget, showCalendarSplit) {
     tasksCalendarToggleBtn,
     appHeader,
     appMainContent,
-    calendarViewDayOnly
+    calendarViewDayOnly,
+    floatingActions
   } = domRefs;
-  if (tasksCalendarSplitWrap) {
-    tasksCalendarSplitWrap.dataset.split = showCalendarSplit ? "true" : "false";
-  }
-  if (tasksCalendarToggleBtn) {
-    tasksCalendarToggleBtn.classList.toggle("hidden", resolvedTarget !== "tasks");
-  }
-  if (appHeader) {
-    appHeader.dataset.split = showCalendarSplit ? "true" : "false";
-  }
-  if (appMainContent) {
-    appMainContent.dataset.split = showCalendarSplit ? "true" : "false";
-  }
-  if (calendarViewDayOnly) {
-    const showToggle = resolvedTarget === "calendar" && !showCalendarSplit;
-    calendarViewDayOnly.classList.toggle("hidden", !showToggle);
-  }
+  setSplitFlag(tasksCalendarSplitWrap, showCalendarSplit);
+  setHidden(tasksCalendarToggleBtn, resolvedTarget !== "tasks");
+  setSplitFlag(appHeader, showCalendarSplit);
+  setSplitFlag(appMainContent, showCalendarSplit);
+  setHidden(calendarViewDayOnly, !(resolvedTarget === "calendar" && !showCalendarSplit));
+  setSplitFlag(floatingActions, showCalendarSplit);
 }
 
 function updateSplitToggleLabel() {
@@ -81,7 +82,8 @@ function applyCalendarView(resolvedTarget, showCalendarSplit, calendarAnchorDate
   }
   renderCalendar();
   if (focusCalendar) {
-    focusCalendarNow({ behavior: "auto" });
+    const block = showCalendarSplit ? "start" : "center";
+    focusCalendarNow({ behavior: "auto", block });
   }
 }
 

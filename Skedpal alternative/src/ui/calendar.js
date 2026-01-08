@@ -510,7 +510,8 @@ function handleCalendarNextClick() {
 function handleCalendarTodayClick() {
   state.calendarAnchorDate = new Date();
   renderCalendar();
-  focusCalendarNow({ behavior: "auto" });
+  const block = state.tasksCalendarSplit ? "start" : "center";
+  focusCalendarNow({ behavior: "auto", block });
 }
 function handleCalendarDayClick() { setCalendarViewMode("day"); }
 function handleCalendarThreeClick() { setCalendarViewMode("three"); }
@@ -533,14 +534,14 @@ function updateViewToggle(viewMode) {
 }
 
 export function focusCalendarNow(options = {}) {
-  const { behavior = "auto" } = options;
+  const { behavior = "auto", block = "center" } = options;
   const calendarGrid = domRefs.calendarGrid || document.getElementById("calendar-grid");
   if (!calendarGrid) {return false;}
   const indicator = calendarGrid.querySelector(
     '[data-test-skedpal="calendar-now-indicator"]'
   );
   if (!indicator || typeof indicator.scrollIntoView !== "function") {return false;}
-  indicator.scrollIntoView({ block: "center", inline: "nearest", behavior });
+  indicator.scrollIntoView({ block, inline: "nearest", behavior });
   return true;
 }
 

@@ -46,6 +46,7 @@ import {
   switchView,
   goHome
 } from "./navigation.js";
+import { invalidateExternalEventsCache, primeExternalEventsOnLoad } from "./calendar-external.js";
 import {
   applyPrioritySelectColor,
   parseZoomFromUrl,
@@ -55,7 +56,7 @@ import {
 import { closeTaskForm } from "./ui.js";
 import { indentTaskUnderPrevious, outdentTask } from "./tasks/tasks-sortable.js";
 import { state } from "./state/page-state.js";
-import { initCalendarView } from "./calendar.js";
+import { initCalendarView, renderCalendar } from "./calendar.js";
 import { applyTheme } from "./theme.js";
 
 const {
@@ -95,6 +96,10 @@ async function hydrate() {
   await initSettings();
   await loadTimeMaps();
   await loadTasks();
+  const refreshedExternal = await primeExternalEventsOnLoad();
+  if (refreshedExternal) {
+    renderCalendar();
+  }
   const initialZoom = parseZoomFromUrl();
   if (initialZoom) {
     setZoomFilter(initialZoom);
@@ -205,6 +210,9 @@ function registerNavigationHandlers() {
       if (btn.dataset.view === "tasks") {
         goHome();
         return;
+      }
+      if (btn.dataset.view === "calendar") {
+        invalidateExternalEventsCache();
       }
       switchView(btn.dataset.view);
     });

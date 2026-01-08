@@ -19,5 +19,6 @@ export const state = {
   calendarAnchorDate: new Date(),
   calendarExternalEvents: [],
   calendarExternalRangeKey: "",
-  calendarExternalPendingKey: ""
+  calendarExternalPendingKey: "",
+  calendarExternalAllowFetch: false
 };

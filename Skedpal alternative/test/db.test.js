@@ -7,18 +7,21 @@ import {
   deleteTimeMap,
   getAllTasks,
   getAllTimeMaps,
+  getLatestBackup,
   getSettings,
+  restoreBackup,
+  saveBackup,
   saveSettings,
   saveTask,
   saveTimeMap
 } from "../src/data/db.js";
 
 const DB_NAME = "personal-skedpal";
-const STORES = ["tasks", "timemaps", "settings"];
+const STORES = ["tasks", "timemaps", "settings", "backups"];
 
 function openRawDb() {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1);
+    const request = indexedDB.open(DB_NAME, 2);
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
@@ -83,5 +86,45 @@ describe("db", () => {
     assert.deepStrictEqual(settings.googleCalendarIds, DEFAULT_SETTINGS.googleCalendarIds);
     assert.deepStrictEqual(settings.sections, DEFAULT_SETTINGS.sections);
     assert.deepStrictEqual(settings.subsections, DEFAULT_SETTINGS.subsections);
+  });
+
+  it("saveBackup stores and returns the latest snapshot", async () => {
+    const snapshot = {
+      createdAt: "2026-01-08T12:00:00.000Z",
+      tasks: [{ id: "task-1", title: "Backup task" }],
+      timeMaps: [{ id: "tm-1", name: "Backup map" }],
+      settings: { ...DEFAULT_SETTINGS, schedulingHorizonDays: 21 }
+    };
+    await saveBackup(snapshot);
+    const latest = await getLatestBackup();
+    assert.ok(latest);
+    assert.strictEqual(latest.createdAt, snapshot.createdAt);
+    assert.deepStrictEqual(latest.tasks, snapshot.tasks);
+    assert.deepStrictEqual(latest.timeMaps, snapshot.timeMaps);
+    assert.strictEqual(latest.settings.schedulingHorizonDays, 21);
+  });
+
+  it("restoreBackup replaces tasks, timemaps, and settings", async () => {
+    await saveTask({ id: "task-old", title: "Old task" });
+    await saveTimeMap({ id: "tm-old", name: "Old map" });
+    await saveSettings({ schedulingHorizonDays: 5, defaultTimeMapId: "tm-old" });
+    const snapshot = {
+      createdAt: "2026-01-08T14:00:00.000Z",
+      tasks: [{ id: "task-new", title: "New task" }],
+      timeMaps: [{ id: "tm-new", name: "New map" }],
+      settings: {
+        ...DEFAULT_SETTINGS,
+        schedulingHorizonDays: 30,
+        defaultTimeMapId: "tm-new",
+        googleCalendarIds: ["cal-1"]
+      }
+    };
+    await restoreBackup(snapshot);
+    assert.deepStrictEqual(await getAllTasks(), snapshot.tasks);
+    assert.deepStrictEqual(await getAllTimeMaps(), snapshot.timeMaps);
+    const settings = await getSettings();
+    assert.strictEqual(settings.schedulingHorizonDays, 30);
+    assert.strictEqual(settings.defaultTimeMapId, "tm-new");
+    assert.deepStrictEqual(settings.googleCalendarIds, ["cal-1"]);
   });
 });

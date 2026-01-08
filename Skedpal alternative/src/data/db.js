@@ -1,5 +1,5 @@
 const DB_NAME = "personal-skedpal";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const DEFAULT_SECTIONS = [
   { id: "section-work-default", name: "Work" },
   { id: "section-personal-default", name: "Personal" }
@@ -30,6 +30,9 @@ function openDb() {
       }
       if (!db.objectStoreNames.contains("settings")) {
         db.createObjectStore("settings", { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains("backups")) {
+        db.createObjectStore("backups", { keyPath: "id" });
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -107,6 +110,49 @@ export async function getSettings() {
 
 export async function saveSettings(value) {
   return putItem("settings", { id: "settings", value });
+}
+
+export async function saveBackup(snapshot) {
+  return putItem("backups", { id: "latest", ...snapshot });
+}
+
+export async function getLatestBackup() {
+  const store = await getStore("backups");
+  return new Promise((resolve, reject) => {
+    const req = store.get("latest");
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function restoreBackup(snapshot) {
+  if (!snapshot) {
+    throw new Error("No backup available.");
+  }
+  const db = await openDb();
+  const tx = db.transaction(["tasks", "timemaps", "settings"], "readwrite");
+  const tasksStore = tx.objectStore("tasks");
+  const timeMapsStore = tx.objectStore("timemaps");
+  const settingsStore = tx.objectStore("settings");
+  tasksStore.clear();
+  timeMapsStore.clear();
+  settingsStore.clear();
+  (snapshot.tasks || []).forEach((task) => {
+    tasksStore.put(task);
+  });
+  (snapshot.timeMaps || []).forEach((timeMap) => {
+    timeMapsStore.put(timeMap);
+  });
+  settingsStore.put({
+    id: "settings",
+    value: snapshot.settings || DEFAULT_SETTINGS
+  });
+  await new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error("Restore aborted"));
+  });
+  db.close();
 }
 
 export { DEFAULT_SETTINGS, DEFAULT_SCHEDULING_HORIZON_DAYS };

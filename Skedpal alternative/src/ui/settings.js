@@ -1,5 +1,10 @@
 import {
+  getAllTasks,
+  getAllTimeMaps,
   getSettings,
+  saveBackup,
+  getLatestBackup,
+  restoreBackup,
   saveSettings,
   DEFAULT_SETTINGS,
   DEFAULT_SCHEDULING_HORIZON_DAYS
@@ -8,6 +13,7 @@ import { domRefs } from "./constants.js";
 import { state } from "./state/page-state.js";
 import { normalizeHorizonDays } from "./utils.js";
 import { invalidateExternalEventsCache } from "./calendar-external.js";
+import { loadTasks, updateScheduleSummary } from "./tasks/tasks-actions.js";
 
 const {
   horizonInput,
@@ -15,7 +21,10 @@ const {
   googleCalendarRefreshBtn,
   googleCalendarDisconnectBtn,
   googleCalendarStatus,
-  googleCalendarList
+  googleCalendarList,
+  backupNowBtn,
+  backupRestoreBtn,
+  backupStatus
 } = domRefs;
 
 function getRuntime() {
@@ -25,6 +34,50 @@ function getRuntime() {
 function setCalendarStatus(message) {
   if (!googleCalendarStatus) {return;}
   googleCalendarStatus.textContent = message;
+}
+
+function updateCalendarStatusFromSettings() {
+  const ids = Array.isArray(state.settingsCache.googleCalendarIds)
+    ? state.settingsCache.googleCalendarIds
+    : [];
+  if (ids.length) {
+    setCalendarStatus(`Selected ${ids.length} calendar(s).`);
+    return;
+  }
+  setCalendarStatus("Connect to load your calendars.");
+}
+
+function setBackupStatus(message) {
+  if (!backupStatus) {return;}
+  backupStatus.textContent = message;
+}
+
+function setBackupButtonsState(disabled) {
+  if (backupNowBtn) {
+    backupNowBtn.disabled = Boolean(disabled);
+    backupNowBtn.classList.toggle("opacity-60", Boolean(disabled));
+  }
+  if (backupRestoreBtn) {
+    backupRestoreBtn.disabled = Boolean(disabled);
+    backupRestoreBtn.classList.toggle("opacity-60", Boolean(disabled));
+  }
+}
+
+function formatBackupTimestamp(value) {
+  if (!value) {return "Unknown date";}
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {return "Unknown date";}
+  return date.toLocaleString();
+}
+
+function updateHorizonInputValue() {
+  if (!horizonInput) {return;}
+  const min = Number(horizonInput.min) || 1;
+  const max = Number(horizonInput.max) || 60;
+  const fallback = DEFAULT_SCHEDULING_HORIZON_DAYS;
+  horizonInput.value = String(
+    normalizeHorizonDays(state.settingsCache.schedulingHorizonDays, min, max, fallback)
+  );
 }
 
 function formatCalendarMeta(entry) {
@@ -251,10 +304,95 @@ function initGoogleCalendarSettings(persistSettingsSafely) {
   googleCalendarDisconnectBtn?.addEventListener("click", handleCalendarDisconnect);
 }
 
+function initBackupSettings() {
+  const refreshBackupStatus = async () => {
+    try {
+      const latest = await getLatestBackup();
+      if (!latest) {
+        setBackupStatus("No backups yet.");
+        if (backupRestoreBtn) {backupRestoreBtn.disabled = true;}
+        return null;
+      }
+      setBackupStatus(`Latest backup: ${formatBackupTimestamp(latest.createdAt)}.`);
+      if (backupRestoreBtn) {backupRestoreBtn.disabled = false;}
+      return latest;
+    } catch (error) {
+      console.warn("Failed to read latest backup.", error);
+      setBackupStatus("Unable to read backups.");
+      if (backupRestoreBtn) {backupRestoreBtn.disabled = true;}
+      return null;
+    }
+  };
+
+  const handleBackupNow = async () => {
+    setBackupButtonsState(true);
+    setBackupStatus("Saving backup...");
+    try {
+      const [tasks, timeMaps, settings] = await Promise.all([
+        getAllTasks(),
+        getAllTimeMaps(),
+        getSettings()
+      ]);
+      const snapshot = {
+        createdAt: new Date().toISOString(),
+        tasks,
+        timeMaps,
+        settings
+      };
+      await saveBackup(snapshot);
+      setBackupStatus(`Backup saved ${formatBackupTimestamp(snapshot.createdAt)}.`);
+      if (backupRestoreBtn) {backupRestoreBtn.disabled = false;}
+    } catch (error) {
+      console.warn("Failed to save backup.", error);
+      setBackupStatus("Failed to save backup.");
+    } finally {
+      setBackupButtonsState(false);
+    }
+  };
+
+  const handleRestoreLatest = async () => {
+    setBackupButtonsState(true);
+    setBackupStatus("Restoring backup...");
+    try {
+      const latest = await getLatestBackup();
+      if (!latest) {
+        setBackupStatus("No backup available.");
+        return;
+      }
+      if (typeof window !== "undefined") {
+        const confirmed = window.confirm("Restore the latest backup? This will replace current data.");
+        if (!confirmed) {
+          setBackupStatus("Restore canceled.");
+          return;
+        }
+      }
+      await restoreBackup(latest);
+      state.settingsCache = { ...DEFAULT_SETTINGS, ...(latest.settings || {}) };
+      updateHorizonInputValue();
+      updateCalendarStatusFromSettings();
+      invalidateExternalEventsCache();
+      await loadTasks();
+      await updateScheduleSummary();
+      setBackupStatus(`Restored backup from ${formatBackupTimestamp(latest.createdAt)}.`);
+    } catch (error) {
+      console.warn("Failed to restore backup.", error);
+      setBackupStatus("Failed to restore backup.");
+    } finally {
+      setBackupButtonsState(false);
+      await refreshBackupStatus();
+    }
+  };
+
+  backupNowBtn?.addEventListener("click", handleBackupNow);
+  backupRestoreBtn?.addEventListener("click", handleRestoreLatest);
+  void refreshBackupStatus();
+}
+
 export async function initSettings(prefetchedSettings) {
   const settings = prefetchedSettings || (await getSettings());
   state.settingsCache = { ...DEFAULT_SETTINGS, ...settings };
   const { persistSettings, persistSettingsSafely } = createSettingsPersistor();
   initHorizonSettings(persistSettings);
   initGoogleCalendarSettings(persistSettingsSafely);
+  initBackupSettings();
 }

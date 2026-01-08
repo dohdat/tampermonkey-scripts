@@ -271,8 +271,10 @@ function buildFavoriteGroup(group, expanded, expandedSubsections) {
   const header = document.createElement("button");
   header.type = "button";
   header.className = "sidebar-fav-group-header";
-  header.dataset.favToggle = group.sectionId;
   header.setAttribute("data-test-skedpal", "sidebar-fav-group-toggle");
+  header.dataset.favJump = "true";
+  header.dataset.favType = "section";
+  header.dataset.sectionId = group.sectionId || "";
   header.innerHTML = `
       <span class="sidebar-fav-group-title" data-test-skedpal="sidebar-fav-group-title">
         ${group.label}
@@ -280,7 +282,9 @@ function buildFavoriteGroup(group, expanded, expandedSubsections) {
       <span class="sidebar-fav-group-meta" data-test-skedpal="sidebar-fav-group-count">
         ${group.items.length}
       </span>
-      <span class="sidebar-fav-group-chevron" data-test-skedpal="sidebar-fav-group-chevron" aria-hidden="true">
+      <span class="sidebar-fav-group-chevron" data-test-skedpal="sidebar-fav-group-chevron" data-fav-toggle="${
+        group.sectionId
+      }" aria-hidden="true">
         <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6">
           <path d="m6 8 4 4 4-4" stroke-linecap="round" stroke-linejoin="round"></path>
         </svg>

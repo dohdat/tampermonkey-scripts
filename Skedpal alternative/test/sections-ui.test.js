@@ -300,6 +300,22 @@ describe("sections ui", () => {
     assert.strictEqual(button.classList.contains("is-collapsed"), true);
   });
 
+  it("adds zoom metadata to favorite group headers", () => {
+    state.settingsCache.sections = [
+      { id: "s1", name: "Work", favorite: true, favoriteOrder: 1 }
+    ];
+    state.settingsCache.subsections = { s1: [] };
+
+    favoritesModule.renderFavoriteShortcuts();
+
+    const sidebar = elementMap.get("sidebar-favorites");
+    const header = findByTestAttr(sidebar, "sidebar-fav-group-toggle");
+    assert.ok(header);
+    assert.strictEqual(header.dataset.favJump, "true");
+    assert.strictEqual(header.dataset.favType, "section");
+    assert.strictEqual(header.dataset.sectionId, "s1");
+  });
+
   it("auto-expands the most used favorites group", () => {
     state.settingsCache.sections = [
       { id: "s1", name: "Work", favorite: true, favoriteOrder: 2 },

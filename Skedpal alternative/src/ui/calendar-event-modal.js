@@ -244,6 +244,66 @@ async function fallbackDefer(dateValue) {
   emitTasksUpdated();
 }
 
+function resetCalendarModalPosition() {
+  const calendarEventModal = domRefs.calendarEventModal;
+  const panel = getCalendarEventModalPanel(calendarEventModal);
+  if (!panel) {return;}
+  panel.style.position = "";
+  panel.style.top = "";
+  panel.style.left = "";
+  panel.style.transform = "";
+}
+
+function getCalendarEventModalPanel(calendarEventModal) {
+  if (!calendarEventModal || typeof calendarEventModal.querySelector !== "function") {return null;}
+  return calendarEventModal.querySelector(".calendar-event-modal__panel");
+}
+
+function resolveViewportSize() {
+  return {
+    width: window.innerWidth || document.documentElement.clientWidth || 0,
+    height: window.innerHeight || document.documentElement.clientHeight || 0
+  };
+}
+
+function computeModalLeft(anchorRect, panelWidth, viewportWidth, margin) {
+  let left = anchorRect.right + margin;
+  if (left + panelWidth > viewportWidth - margin) {
+    left = anchorRect.left - panelWidth - margin;
+  }
+  if (left < margin) {
+    left = Math.min(Math.max(margin, left), viewportWidth - panelWidth - margin);
+  }
+  return left;
+}
+
+function computeModalTop(anchorRect, panelHeight, viewportHeight, margin) {
+  let top = anchorRect.top;
+  if (top + panelHeight > viewportHeight - margin) {
+    top = viewportHeight - panelHeight - margin;
+  }
+  if (top < margin) {
+    top = margin;
+  }
+  return top;
+}
+
+function positionCalendarEventModal(anchorRect) {
+  const calendarEventModal = domRefs.calendarEventModal;
+  if (!calendarEventModal || !anchorRect) {return;}
+  const panel = getCalendarEventModalPanel(calendarEventModal);
+  if (!panel) {return;}
+  const margin = 12;
+  const viewport = resolveViewportSize();
+  const panelRect = panel.getBoundingClientRect();
+  const left = computeModalLeft(anchorRect, panelRect.width, viewport.width, margin);
+  const top = computeModalTop(anchorRect, panelRect.height, viewport.height, margin);
+  panel.style.position = "fixed";
+  panel.style.left = `${Math.round(left)}px`;
+  panel.style.top = `${Math.round(top)}px`;
+  panel.style.transform = "none";
+}
+
 function closeCalendarEventModal() {
   const calendarEventModal = domRefs.calendarEventModal;
   if (!calendarEventModal) {return;}
@@ -253,6 +313,7 @@ function closeCalendarEventModal() {
   if (document.body?.classList) {
     document.body.classList.remove("modal-open");
   }
+  resetCalendarModalPosition();
   activeTask = null;
   activeEventMeta = null;
 }
@@ -278,14 +339,21 @@ function setModalChecked(ref, fallbackId, checked) {
   }
 }
 
-export function openCalendarEventModal(eventMeta) {
-  const calendarEventModal = resolveRef(domRefs.calendarEventModal, "calendar-event-modal");
-  if (!calendarEventModal || !eventMeta) {return;}
-  const task = state.tasksCache.find((entry) => entry.id === eventMeta.taskId);
-  if (!task) {return;}
-  activeTask = task;
-  activeEventMeta = eventMeta;
-  setModalText(domRefs.calendarEventModalTitle, "calendar-event-modal-title", task.title || "Untitled task");
+function showCalendarEventModal(calendarEventModal) {
+  if (calendarEventModal?.classList) {
+    calendarEventModal.classList.remove("hidden");
+  }
+  if (document.body?.classList) {
+    document.body.classList.add("modal-open");
+  }
+}
+
+function applyCalendarEventModalFields(task, eventMeta) {
+  setModalText(
+    domRefs.calendarEventModalTitle,
+    "calendar-event-modal-title",
+    task.title || "Untitled task"
+  );
   if (eventMeta.start && eventMeta.end) {
     setModalText(
       domRefs.calendarEventModalTime,
@@ -304,12 +372,28 @@ export function openCalendarEventModal(eventMeta) {
     task.startFrom ? task.startFrom.slice(0, 10) : ""
   );
   renderDetailRows(task, eventMeta);
-  if (calendarEventModal?.classList) {
-    calendarEventModal.classList.remove("hidden");
+}
+
+function scheduleModalPosition(anchorEl) {
+  if (!anchorEl?.getBoundingClientRect) {
+    resetCalendarModalPosition();
+    return;
   }
-  if (document.body?.classList) {
-    document.body.classList.add("modal-open");
-  }
+  const rect = anchorEl.getBoundingClientRect();
+  const schedule = globalThis.requestAnimationFrame || ((cb) => cb());
+  schedule(() => positionCalendarEventModal(rect));
+}
+
+export function openCalendarEventModal(eventMeta, anchorEl = null) {
+  const calendarEventModal = resolveRef(domRefs.calendarEventModal, "calendar-event-modal");
+  if (!calendarEventModal || !eventMeta) {return;}
+  const task = state.tasksCache.find((entry) => entry.id === eventMeta.taskId);
+  if (!task) {return;}
+  activeTask = task;
+  activeEventMeta = eventMeta;
+  applyCalendarEventModalFields(task, eventMeta);
+  showCalendarEventModal(calendarEventModal);
+  scheduleModalPosition(anchorEl);
 }
 
 function handleCompleteAction() {

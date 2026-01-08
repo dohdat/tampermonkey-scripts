@@ -105,7 +105,13 @@ describe("calendar event modal", () => {
     };
     global.document.body = new FakeElement("body");
     global.document.head = new FakeElement("head");
-    global.window = { dispatchEvent: () => {}, location: { href: "https://example.com" } };
+    global.window = {
+      dispatchEvent: () => {},
+      location: { href: "https://example.com" },
+      innerWidth: 900,
+      innerHeight: 700
+    };
+    global.requestAnimationFrame = (cb) => cb();
     global.history = { replaceState: () => {} };
     global.CustomEvent = class CustomEvent {
       constructor(type, init) {
@@ -367,5 +373,28 @@ describe("calendar event modal", () => {
     openCalendarEventModal(eventMeta);
 
     assert.strictEqual(refs.title.textContent, "");
+  });
+
+  it("positions the modal when an anchor element is provided", () => {
+    const panel = new FakeElement("div");
+    panel.getBoundingClientRect = () => ({ width: 320, height: 240 });
+    panel.style = {};
+    refs.modal.querySelector = (selector) =>
+      selector === ".calendar-event-modal__panel" ? panel : null;
+    const anchorEl = {
+      getBoundingClientRect: () => ({ top: 120, left: 160, right: 260 })
+    };
+    const eventMeta = {
+      taskId: "task-1",
+      timeMapId: "tm-1",
+      start: new Date(2026, 0, 6, 9, 0, 0),
+      end: new Date(2026, 0, 6, 10, 30, 0)
+    };
+
+    openCalendarEventModal(eventMeta, anchorEl);
+
+    assert.strictEqual(panel.style.position, "fixed");
+    assert.ok(panel.style.left);
+    assert.ok(panel.style.top);
   });
 });

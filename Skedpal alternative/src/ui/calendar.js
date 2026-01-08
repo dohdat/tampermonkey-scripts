@@ -450,7 +450,7 @@ function handleCalendarEventClick(event) {
   const eventMeta = getEventMetaFromBlock(block);
   if (!eventMeta) {return;}
   if (eventMeta.source === "external") {return;}
-  openCalendarEventModal(eventMeta);
+  openCalendarEventModal(eventMeta, block);
 }
 
 function ensureCalendarDragHandlers() {

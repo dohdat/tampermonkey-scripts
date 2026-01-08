@@ -84,8 +84,19 @@ export function formatDateTime(value) {
 }
 
 export function formatDate(value) {
-  const date = value ? new Date(value) : null;
-  return date && !Number.isNaN(date) ? date.toLocaleDateString() : "";
+  if (!value) {return "";}
+  if (typeof value === "string") {
+    const dateOnlyMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (dateOnlyMatch) {
+      const year = Number(dateOnlyMatch[1]);
+      const month = Number(dateOnlyMatch[2]);
+      const day = Number(dateOnlyMatch[3]);
+      const localDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+      return Number.isNaN(localDate.getTime()) ? "Invalid Date" : localDate.toLocaleDateString();
+    }
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "Invalid Date" : date.toLocaleDateString();
 }
 
 export function normalizeHorizonDays(value, min = 1, max = 60, fallback = 14) {

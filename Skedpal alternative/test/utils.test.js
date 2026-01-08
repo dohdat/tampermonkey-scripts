@@ -141,6 +141,10 @@ describe("utils formatting helpers", () => {
     assert.strictEqual(formatDateTime(""), "No date");
     assert.strictEqual(formatDateTime("bad"), "Invalid Date");
     assert.strictEqual(formatDate("bad"), "Invalid Date");
+    assert.strictEqual(
+      formatDate("2026-11-01"),
+      new Date(2026, 10, 1).toLocaleDateString()
+    );
     assert.ok(formatRRuleDate("2026-01-07T00:00:00").startsWith("2026"));
     assert.strictEqual(formatRRuleDate("bad"), "");
   });

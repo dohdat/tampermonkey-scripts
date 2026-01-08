@@ -1,4 +1,9 @@
-import { getAllTasks, getAllTimeMaps, saveTask } from "../../data/db.js";
+import {
+  getAllTasks,
+  getAllTimeMaps,
+  saveTask,
+  DEFAULT_SCHEDULING_HORIZON_DAYS
+} from "../../data/db.js";
 import { getUpcomingOccurrences } from "../../core/scheduler.js";
 import { domRefs } from "../constants.js";
 import {
@@ -94,7 +99,8 @@ export function closeRepeatCompleteModal() {
 export function openRepeatCompleteModal(task) {
   if (!repeatCompleteModal || !repeatCompleteList) {return;}
   repeatCompleteList.innerHTML = "";
-  const horizonDays = Number(state.settingsCache?.schedulingHorizonDays) || 14;
+  const horizonDays =
+    Number(state.settingsCache?.schedulingHorizonDays) || DEFAULT_SCHEDULING_HORIZON_DAYS;
   const now = new Date();
   const horizonEnd = new Date(now.getTime());
   horizonEnd.setDate(horizonEnd.getDate() + horizonDays);

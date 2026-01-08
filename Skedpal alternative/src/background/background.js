@@ -2,7 +2,8 @@ import {
   getAllTasks,
   getAllTimeMaps,
   getSettings,
-  saveTask
+  saveTask,
+  DEFAULT_SCHEDULING_HORIZON_DAYS
 } from "../data/db.js";
 import { scheduleTasks, getUpcomingOccurrences } from "../core/scheduler.js";
 import { shouldIncrementMissedCount } from "./schedule-metrics.js";
@@ -99,7 +100,7 @@ async function runReschedule() {
   }
 
   let busy = [];
-  const horizonDays = Number(settings.schedulingHorizonDays) || 14;
+  const horizonDays = Number(settings.schedulingHorizonDays) || DEFAULT_SCHEDULING_HORIZON_DAYS;
   const horizonEnd = new Date(now.getTime());
   horizonEnd.setDate(horizonEnd.getDate() + horizonDays);
   horizonEnd.setHours(23, 59, 59, 999);

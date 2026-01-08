@@ -1,4 +1,5 @@
 import { state } from "./state/page-state.js";
+import { DEFAULT_SCHEDULING_HORIZON_DAYS } from "../data/db.js";
 
 function buildRangeKey(range) {
   if (!range?.start || !range?.end) {return "";}
@@ -27,7 +28,8 @@ function getRuntime() {
 
 function buildHorizonRange() {
   const now = new Date();
-  const horizonDays = Number(state.settingsCache?.schedulingHorizonDays) || 14;
+  const horizonDays =
+    Number(state.settingsCache?.schedulingHorizonDays) || DEFAULT_SCHEDULING_HORIZON_DAYS;
   const end = new Date(now.getTime());
   end.setDate(end.getDate() + horizonDays);
   end.setHours(23, 59, 59, 999);

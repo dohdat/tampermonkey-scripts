@@ -1,4 +1,5 @@
 import { domRefs } from "./constants.js";
+import { DEFAULT_SCHEDULING_HORIZON_DAYS } from "../data/db.js";
 import { state } from "./state/page-state.js";
 import { formatDateTime, normalizeTimeMap, renderInBatches } from "./utils.js";
 import { renderTaskCard } from "./tasks/task-card.js";
@@ -200,7 +201,8 @@ function buildScheduledMinutesByTimeMap(tasks, horizonStart, horizonEnd) {
 }
 
 export function getTimeMapUsageRows(tasks = [], timeMaps = [], settings = state.settingsCache) {
-  const horizonDays = Number(settings?.schedulingHorizonDays) || 14;
+  const horizonDays =
+    Number(settings?.schedulingHorizonDays) || DEFAULT_SCHEDULING_HORIZON_DAYS;
   const horizonStart = startOfDay(new Date());
   const horizonEnd = endOfDay(addDays(horizonStart, horizonDays));
   const scheduledByTimeMap = buildScheduledMinutesByTimeMap(tasks, horizonStart, horizonEnd);

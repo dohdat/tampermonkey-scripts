@@ -4,8 +4,9 @@ const DEFAULT_SECTIONS = [
   { id: "section-work-default", name: "Work" },
   { id: "section-personal-default", name: "Personal" }
 ];
+const DEFAULT_SCHEDULING_HORIZON_DAYS = 14;
 const DEFAULT_SETTINGS = {
-  schedulingHorizonDays: 14,
+  schedulingHorizonDays: DEFAULT_SCHEDULING_HORIZON_DAYS,
   defaultTimeMapId: null,
   favoriteGroupExpanded: {},
   sections: DEFAULT_SECTIONS,
@@ -107,4 +108,4 @@ export async function saveSettings(value) {
   return putItem("settings", { id: "settings", value });
 }
 
-export { DEFAULT_SETTINGS };
+export { DEFAULT_SETTINGS, DEFAULT_SCHEDULING_HORIZON_DAYS };

@@ -1,4 +1,5 @@
 import { SUBTASK_ORDER_OFFSET } from "./constants.js";
+import { DEFAULT_SCHEDULING_HORIZON_DAYS } from "../data/db.js";
 
 export function updateUrlWithZoom(filter) {
   const url = new URL(window.location.href);
@@ -99,7 +100,12 @@ export function formatDate(value) {
   return Number.isNaN(date.getTime()) ? "Invalid Date" : date.toLocaleDateString();
 }
 
-export function normalizeHorizonDays(value, min = 1, max = 60, fallback = 14) {
+export function normalizeHorizonDays(
+  value,
+  min = 1,
+  max = 60,
+  fallback = DEFAULT_SCHEDULING_HORIZON_DAYS
+) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) {return fallback;}
   return Math.min(max, Math.max(min, parsed));

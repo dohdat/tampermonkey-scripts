@@ -1,4 +1,9 @@
-import { getSettings, saveSettings, DEFAULT_SETTINGS } from "../data/db.js";
+import {
+  getSettings,
+  saveSettings,
+  DEFAULT_SETTINGS,
+  DEFAULT_SCHEDULING_HORIZON_DAYS
+} from "../data/db.js";
 import { domRefs } from "./constants.js";
 import { state } from "./state/page-state.js";
 import { normalizeHorizonDays } from "./utils.js";
@@ -11,7 +16,7 @@ export async function initSettings(prefetchedSettings) {
   if (horizonInput) {
     const min = Number(horizonInput.min) || 1;
     const max = Number(horizonInput.max) || 60;
-    const fallback = 14;
+    const fallback = DEFAULT_SCHEDULING_HORIZON_DAYS;
     const normalizeHorizonInput = () => {
       const days = normalizeHorizonDays(horizonInput.value, min, max, fallback);
       horizonInput.value = String(days);

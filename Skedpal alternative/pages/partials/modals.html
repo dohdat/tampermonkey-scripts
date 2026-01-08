@@ -1,6 +1,9 @@
 <div id="task-form-wrap" class="task-modal hidden">
-  <div class="task-modal__panel">
-    <div class="task-modal__header">
+  <div
+    class="task-modal__panel task-modal__panel--task"
+    data-test-skedpal="task-modal-panel"
+  >
+    <div class="task-modal__header task-modal__header--task" data-test-skedpal="task-modal-header">
       <div>
         <p class="task-modal__eyebrow">Task intake</p>
         <h3 class="task-modal__title">Plan a new task</h3>
@@ -31,17 +34,18 @@
         <span class="sr-only" data-test-skedpal="modal-close-label">Close modal</span>
       </button>
     </div>
-    <form id="task-form" class="task-modal__form">
+    <form id="task-form" class="task-modal__form task-modal__form--task" data-test-skedpal="task-modal-form">
       <input type="hidden" id="task-id" />
       <input type="hidden" id="task-parent-id" />
-      <div class="task-form-grid">
-        <label class="field">
+      <div class="task-form-grid task-form-grid--task" data-test-skedpal="task-form-grid">
+        <label class="field task-form-grid__full" data-test-skedpal="task-title-field">
           <span class="field-label">Title</span>
           <input
             id="task-title"
             required
             placeholder="Write a short task title"
             class="field-input"
+            data-test-skedpal="task-title-input"
           />
         </label>
         <label class="field">

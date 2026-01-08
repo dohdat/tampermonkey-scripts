@@ -130,6 +130,16 @@ body.modal-open{overflow:hidden}
 
 /* Calendar view */
 .calendar-grid{--calendar-toolbar-height:var(--size-60px);display:flex;flex-direction:column;gap:0;border-radius:var(--size-16px);border:var(--size-1px) solid rgba(var(--color-slate-600-rgb), .6);overflow:visible}
+[data-test-skedpal="tasks-calendar-split"][data-split="true"]{display:grid;gap:var(--space-1);align-items:start}
+[data-test-skedpal="tasks-calendar-split"][data-split="true"] [data-test-skedpal="calendar-shell"]{display:flex;flex-direction:column;max-height:calc(100vh - var(--space-6))}
+[data-test-skedpal="tasks-calendar-split"][data-split="true"] [data-test-skedpal="calendar-grid"]{flex:1;overflow-y:auto}
+[data-test-skedpal="calendar-grid"]{scrollbar-width:none;-ms-overflow-style:none}
+[data-test-skedpal="calendar-grid"]::-webkit-scrollbar{width:0;height:0}
+[data-test-skedpal="tasks-calendar-split"][data-split="true"] [data-test-skedpal="calendar-shell"][data-view-mode="day"]{max-width:100%}
+[data-test-skedpal="app-header"][data-split="true"]{max-width:100%}
+[data-test-skedpal="app-main-content"][data-split="true"]{max-width:100%}
+[data-test-skedpal="calendar-shell"][data-view-mode="day"]{max-width:var(--space-55);margin-left:auto;margin-right:auto}
+[data-test-skedpal="tasks-calendar-split"][data-split="true"] [data-test-skedpal="calendar-view"]{margin-top:calc(var(--space-0-75) * -1)}
 .calendar-grid-header{position:sticky;top:var(--calendar-toolbar-height);z-index:calc(var(--z-toolbar) + 1);display:grid;grid-template-columns:var(--size-90px) repeat(7,minmax(0,1fr));border-bottom:var(--size-1px) solid rgba(var(--color-slate-600-rgb), .5);background:var(--color-slate-900)}
 .calendar-toolbar{position:sticky;top:0;z-index:var(--z-toolbar);background:rgba(var(--color-slate-800-rgb), .92);backdrop-filter:blur(var(--blur-calendar));padding:var(--size-8px) 0}
 .calendar-grid-spacer{border-right:var(--size-1px) solid rgba(var(--color-slate-600-rgb), .5)}
@@ -200,6 +210,7 @@ body.modal-open{overflow:hidden}
 .calendar-view-btn:hover{color:var(--color-slate-200)}
 .calendar-view-btn--active{background:rgba(var(--color-lime-400-rgb), .2);color:var(--color-lime-200)}
 @media (max-width:768px){.calendar-grid{--calendar-toolbar-height:var(--size-90px)}.calendar-grid-header{grid-template-columns:var(--size-70px) repeat(7,minmax(0,1fr))}.calendar-grid-body{grid-template-columns:var(--size-70px) 1fr}}
+@media (min-width:768px){[data-test-skedpal="tasks-calendar-split"][data-split="true"]{grid-template-columns:minmax(0,7fr) minmax(0,3fr)}}
 
 /* Theme utility overrides */
 .text-slate-100{color:var(--color-slate-100)}

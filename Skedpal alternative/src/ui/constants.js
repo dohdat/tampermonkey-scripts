@@ -139,6 +139,16 @@ export const domRefs = {
   notificationMessage: document.getElementById("notification-message"),
   notificationUndoButton: document.getElementById("notification-undo"),
   notificationCloseButton: document.getElementById("notification-close"),
+  tasksCalendarSplitWrap: document.getElementById("tasks-calendar-split"),
+  tasksCalendarToggleBtn: document.querySelector
+    ? document.querySelector("[data-test-skedpal='view-calendar-btn']")
+    : null,
+  appHeader: document.querySelector
+    ? document.querySelector("[data-test-skedpal='app-header']")
+    : null,
+  appMainContent: document.querySelector
+    ? document.querySelector("[data-test-skedpal='app-main-content']")
+    : null,
   googleCalendarConnectBtn: document.getElementById("google-calendar-connect"),
   googleCalendarRefreshBtn: document.getElementById("google-calendar-refresh"),
   googleCalendarDisconnectBtn: document.getElementById("google-calendar-disconnect"),

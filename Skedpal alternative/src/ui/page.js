@@ -52,7 +52,8 @@ import {
   applyPrioritySelectColor,
   parseZoomFromUrl,
   parseViewFromUrl,
-  toggleClearButtonVisibility
+  toggleClearButtonVisibility,
+  updateUrlWithCalendarView
 } from "./utils.js";
 import { closeTaskForm } from "./ui.js";
 import { indentTaskUnderPrevious, outdentTask } from "./tasks/tasks-sortable.js";
@@ -181,6 +182,21 @@ function handleTaskSectionSelectChange() {
 function handleNavButtonClick(event) {
   const btn = event.currentTarget;
   const view = btn?.dataset?.view;
+  const action = btn?.dataset?.action;
+  if (action === "toggle-calendar-split") {
+    state.tasksCalendarSplit = !state.tasksCalendarSplit;
+    if (state.tasksCalendarSplit) {
+      state.calendarViewMode = "day";
+      state.calendarAnchorDate = new Date();
+      updateUrlWithCalendarView("day");
+    }
+    switchView("tasks", {
+      focusCalendar: state.tasksCalendarSplit,
+      updateUrl: false,
+      historyMode: "replace"
+    });
+    return;
+  }
   if (view === "tasks") {
     goHome();
     return;

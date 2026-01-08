@@ -21,6 +21,65 @@ function getNavButtons() {
   return domRefs.navButtons || [];
 }
 
+function shouldShowCalendarSplit(resolvedTarget) {
+  return resolvedTarget === "tasks" && state.tasksCalendarSplit;
+}
+
+function applyViewVisibility(views, resolvedTarget, showCalendarSplit) {
+  views.forEach((view) => {
+    const active = view.id === resolvedTarget || (showCalendarSplit && view.id === "calendar");
+    view.classList.toggle("hidden", !active);
+  });
+}
+
+function updateNavButtonState(navButtons, resolvedTarget) {
+  navButtons.forEach((btn) => {
+    const active = btn.dataset.view === resolvedTarget;
+    btn.classList.toggle("is-active", active);
+    btn.setAttribute("aria-current", active ? "page" : "false");
+  });
+}
+
+function updateSplitControls(resolvedTarget, showCalendarSplit) {
+  const {
+    tasksCalendarSplitWrap,
+    tasksCalendarToggleBtn,
+    appHeader,
+    appMainContent
+  } = domRefs;
+  if (tasksCalendarSplitWrap) {
+    tasksCalendarSplitWrap.dataset.split = showCalendarSplit ? "true" : "false";
+  }
+  if (tasksCalendarToggleBtn) {
+    tasksCalendarToggleBtn.classList.toggle("hidden", resolvedTarget !== "tasks");
+  }
+  if (appHeader) {
+    appHeader.dataset.split = showCalendarSplit ? "true" : "false";
+  }
+  if (appMainContent) {
+    appMainContent.dataset.split = showCalendarSplit ? "true" : "false";
+  }
+}
+
+function updateSplitToggleLabel() {
+  const { tasksCalendarToggleBtn } = domRefs;
+  if (!tasksCalendarToggleBtn) {return;}
+  tasksCalendarToggleBtn.textContent = state.tasksCalendarSplit ? "Hide calendar" : "Show calendar";
+}
+
+function applyCalendarView(resolvedTarget, showCalendarSplit, calendarAnchorDate, focusCalendar) {
+  if (!showCalendarSplit && resolvedTarget !== "calendar") {return;}
+  if (calendarAnchorDate) {
+    state.calendarAnchorDate = new Date(calendarAnchorDate);
+  } else if (resolvedTarget === "calendar") {
+    state.calendarAnchorDate = new Date();
+  }
+  renderCalendar();
+  if (focusCalendar) {
+    focusCalendarNow({ behavior: "auto" });
+  }
+}
+
 
 export function pushNavigation(filter) {
   state.navStack = state.navStack.slice(0, state.navIndex + 1);
@@ -40,29 +99,19 @@ export function switchView(target, options = {}) {
   const views = getViews();
   const allowedViews = navButtons.map((btn) => btn.dataset.view);
   const resolvedTarget = allowedViews.includes(target) ? target : "tasks";
+  const isCalendarSplit = shouldShowCalendarSplit(resolvedTarget);
   const currentView = getActiveViewId(views);
   if (resolvedTarget !== "tasks" && state.zoomFilter) {
     clearZoomFilter({ record: false, updateUrl, historyMode: "replace" });
   }
-  views.forEach((view) => {
-    const active = view.id === resolvedTarget;
-    view.classList.toggle("hidden", !active);
-  });
-  navButtons.forEach((btn) => {
-    const active = btn.dataset.view === resolvedTarget;
-    btn.classList.toggle("is-active", active);
-    btn.setAttribute("aria-current", active ? "page" : "false");
-  });
+  applyViewVisibility(views, resolvedTarget, isCalendarSplit);
+  updateNavButtonState(navButtons, resolvedTarget);
   if (updateUrl && currentView !== resolvedTarget) {
     updateUrlWithView(resolvedTarget, { replace: historyMode === "replace" });
   }
-  if (resolvedTarget === "calendar") {
-    state.calendarAnchorDate = calendarAnchorDate ? new Date(calendarAnchorDate) : new Date();
-    renderCalendar();
-    if (focusCalendar) {
-      focusCalendarNow({ behavior: "auto" });
-    }
-  }
+  updateSplitControls(resolvedTarget, isCalendarSplit);
+  updateSplitToggleLabel();
+  applyCalendarView(resolvedTarget, isCalendarSplit, calendarAnchorDate, focusCalendar);
 }
 
 export function getZoomLabel() {

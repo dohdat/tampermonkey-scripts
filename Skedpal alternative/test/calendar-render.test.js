@@ -205,6 +205,58 @@ describe("calendar render", () => {
     assert.ok(events[0].dataset.eventEnd);
   });
 
+  it("prefers title URLs over event links and strips UID", () => {
+    const { domRefs, renderCalendar } = testRefs;
+    const start = new Date(2026, 0, 6, 12, 0, 0);
+    const end = new Date(2026, 0, 6, 13, 0, 0);
+    state.calendarExternalAllowFetch = false;
+    state.calendarExternalEvents = [
+      {
+        id: "ext-2",
+        calendarId: "cal-2",
+        title: "Join https://cisco.webex.com #UID:abc123",
+        link: "https://calendar.google.com/event?eid=ext-2",
+        start,
+        end,
+        source: "external"
+      }
+    ];
+
+    renderCalendar([]);
+
+    const events = findByTestId(domRefs.calendarGrid, "calendar-event");
+    assert.strictEqual(events.length, 1);
+    const links = findByTestId(events[0], "calendar-event-title-link");
+    assert.strictEqual(links.length, 1);
+    assert.strictEqual(links[0].href, "https://cisco.webex.com");
+    assert.strictEqual(links[0].textContent, "Join");
+  });
+
+  it("strips UID from titles without links", () => {
+    const { domRefs, renderCalendar } = testRefs;
+    const start = new Date(2026, 0, 6, 15, 0, 0);
+    const end = new Date(2026, 0, 6, 16, 0, 0);
+    state.calendarExternalAllowFetch = false;
+    state.calendarExternalEvents = [
+      {
+        id: "ext-3",
+        calendarId: "cal-3",
+        title: "Focus time #UID:xyz789",
+        start,
+        end,
+        source: "external"
+      }
+    ];
+
+    renderCalendar([]);
+
+    const events = findByTestId(domRefs.calendarGrid, "calendar-event");
+    assert.strictEqual(events.length, 1);
+    const titles = findByTestId(events[0], "calendar-event-title");
+    assert.strictEqual(titles.length, 1);
+    assert.strictEqual(titles[0].textContent, "Focus time");
+  });
+
   it("skips scheduled instances that are already completed", () => {
     const { domRefs, renderCalendar } = testRefs;
     const start = new Date(2026, 0, 6, 9, 0, 0);

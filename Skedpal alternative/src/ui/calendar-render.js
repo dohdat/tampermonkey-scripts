@@ -6,6 +6,8 @@ export const HOUR_HEIGHT = 120;
 const EVENT_GUTTER = 2;
 const EVENT_EDGE_INSET = 8;
 const EVENT_OVERLAP_INSET = 4;
+const URL_PATTERN = /https?:\/\/\S+/;
+const UID_PATTERN = /#?UID:[^\s]+/;
 
 export function formatEventTimeRange(start, end) {
   const startLabel = start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
@@ -154,21 +156,28 @@ function applyEventDataset(block, item) {
 }
 
 function buildEventTitle(item) {
-  let title = null;
-  if (item.event.link) {
-    title = document.createElement("a");
+  const titleText = item.event.title || "";
+  const cleanedTitle = titleText.replace(UID_PATTERN, "").trim();
+  const urlMatch = cleanedTitle.match(URL_PATTERN);
+  const urlFromTitle = urlMatch ? urlMatch[0] : "";
+  const displayText = urlFromTitle
+    ? cleanedTitle.replace(URL_PATTERN, "").trim()
+    : cleanedTitle;
+  const linkUrl = urlFromTitle || item.event.link || "";
+  if (linkUrl) {
+    const title = document.createElement("a");
     title.className = "calendar-event-title calendar-event-title-link";
-    title.href = item.event.link;
+    title.href = linkUrl;
     title.target = "_blank";
     title.rel = "noopener noreferrer";
-    title.textContent = item.event.title;
+    title.textContent = displayText || linkUrl;
     title.setAttribute("data-test-skedpal", "calendar-event-title-link");
-  } else {
-    title = document.createElement("div");
-    title.className = "calendar-event-title";
-    title.textContent = item.event.title;
-    title.setAttribute("data-test-skedpal", "calendar-event-title");
+    return title;
   }
+  const title = document.createElement("div");
+  title.className = "calendar-event-title";
+  title.textContent = cleanedTitle;
+  title.setAttribute("data-test-skedpal", "calendar-event-title");
   return title;
 }
 

@@ -182,5 +182,13 @@ export const domRefs = {
   ],
   calendarEventModalCloseButtons: [
     ...document.querySelectorAll("[data-calendar-event-close]")
-  ]
+  ],
+  calendarCreateModal: document.getElementById("calendar-create-modal"),
+  calendarCreateForm: document.getElementById("calendar-create-form"),
+  calendarCreateTitle: document.getElementById("calendar-create-title"),
+  calendarCreateDate: document.getElementById("calendar-create-date"),
+  calendarCreateTime: document.getElementById("calendar-create-time"),
+  calendarCreateDuration: document.getElementById("calendar-create-duration"),
+  calendarCreateCalendarSelect: document.getElementById("calendar-create-calendar"),
+  calendarCreateCloseButtons: [...document.querySelectorAll("[data-calendar-create-close]")]
 };

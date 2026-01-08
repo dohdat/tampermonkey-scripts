@@ -178,6 +178,109 @@
     </form>
   </div>
 </div>
+<div
+  id="calendar-create-modal"
+  class="task-modal calendar-create-modal hidden"
+  data-test-skedpal="calendar-create-modal"
+>
+  <div class="task-modal__panel task-modal__panel--task" data-test-skedpal="calendar-create-panel">
+    <div class="task-modal__header task-modal__header--task">
+      <div>
+        <div class="task-modal__eyebrow" data-test-skedpal="calendar-create-eyebrow">
+          Google Calendar
+        </div>
+        <h3 class="task-modal__title" data-test-skedpal="calendar-create-title-text">
+          New event
+        </h3>
+        <p class="task-modal__subtitle" data-test-skedpal="calendar-create-subtitle">
+          Add an event to Google Calendar.
+        </p>
+      </div>
+      <button
+        type="button"
+        class="modal-close-btn modal-close-btn--sm"
+        data-calendar-create-close
+        data-test-skedpal="calendar-create-close"
+        aria-label="Close create event modal"
+      >
+        <svg class="modal-close-icon modal-close-icon--sm" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+        </svg>
+      </button>
+    </div>
+    <form id="calendar-create-form" class="task-modal__form" data-test-skedpal="calendar-create-form">
+      <div class="task-form-grid task-form-grid--task" data-test-skedpal="calendar-create-grid">
+        <label class="field task-form-grid__full" data-test-skedpal="calendar-create-title-field">
+          <span class="field-label">Title</span>
+          <input
+            id="calendar-create-title"
+            class="field-input"
+            type="text"
+            placeholder="Add title"
+            autocomplete="off"
+            data-test-skedpal="calendar-create-title-input"
+          />
+        </label>
+        <label class="field task-form-grid__full" data-test-skedpal="calendar-create-calendar-field">
+          <span class="field-label">Calendar</span>
+          <select
+            id="calendar-create-calendar"
+            class="field-input"
+            data-test-skedpal="calendar-create-calendar-select"
+          ></select>
+        </label>
+        <label class="field" data-test-skedpal="calendar-create-date-field">
+          <span class="field-label">Date</span>
+          <input
+            id="calendar-create-date"
+            class="field-input"
+            type="date"
+            data-test-skedpal="calendar-create-date-input"
+          />
+        </label>
+        <label class="field" data-test-skedpal="calendar-create-time-field">
+          <span class="field-label">Start</span>
+          <input
+            id="calendar-create-time"
+            class="field-input"
+            type="time"
+            step="900"
+            data-test-skedpal="calendar-create-time-input"
+          />
+        </label>
+        <label class="field" data-test-skedpal="calendar-create-duration-field">
+          <span class="field-label">Duration (min)</span>
+          <input
+            id="calendar-create-duration"
+            class="field-input"
+            type="number"
+            min="15"
+            step="15"
+            value="60"
+            data-test-skedpal="calendar-create-duration-input"
+          />
+        </label>
+      </div>
+      <div class="task-modal__actions" data-test-skedpal="calendar-create-actions">
+        <button
+          type="button"
+          class="btn muted"
+          data-calendar-create-close
+          data-test-skedpal="calendar-create-cancel"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          class="btn primary"
+          data-test-skedpal="calendar-create-submit"
+        >
+          Create event
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
 <div id="repeat-complete-modal" class="task-modal hidden" data-test-skedpal="repeat-complete-modal">
   <div class="task-modal__panel">
     <div class="task-modal__header">

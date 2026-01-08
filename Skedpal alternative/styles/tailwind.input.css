@@ -24,6 +24,9 @@ body.modal-open{overflow:hidden}
 .calendar-event-modal__panel{animation:calendarModalIn .18s ease-out}
 .task-modal__panel{width:min(var(--size-900px),100%);max-height:calc(100vh - var(--space-2-5));background:linear-gradient(135deg,var(--color-slate-800),var(--color-slate-900));border:var(--size-1px) solid var(--color-slate-700);border-radius:var(--size-18px);box-shadow:var(--shadow-modal);color:var(--color-slate-200);overflow:hidden;overflow-y:auto}
 .task-modal__panel--task{width:min(var(--space-55),100%)}
+.calendar-create-modal{justify-content:flex-end;align-items:stretch}
+.calendar-create-modal .task-modal__panel{height:100%;max-height:100%;width:min(420px,100%);border-radius:var(--size-18px) 0 0 var(--size-18px);animation:calendarCreateSlideIn .2s ease-out}
+@keyframes calendarCreateSlideIn{0%{opacity:0;transform:translateX(40px)}100%{opacity:1;transform:translateX(0)}}
 .task-modal__header{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-1);padding:var(--space-1-25) var(--space-1-25) var(--space-0-75) var(--space-1-25);border-bottom:var(--size-1px) solid var(--color-slate-700)}
 .task-modal__header--task{padding:var(--space-1) var(--space-1) var(--space-0-65) var(--space-1)}
 .task-modal__eyebrow{text-transform:uppercase;letter-spacing:var(--letter-spacing-wide);font-size:var(--font-size-xxs);font-weight:var(--font-weight-bold);color:var(--color-lime-400)}
@@ -167,6 +170,8 @@ body.modal-open{overflow:hidden}
 .calendar-event--external .calendar-event-time{color:currentColor}
 .calendar-event--external .calendar-event-title-link{color:currentColor}
 .calendar-event--external .calendar-event-title{padding-right:var(--space-1-6)}
+.calendar-event--draft{background:rgba(var(--color-lime-400-rgb), .18);border-color:rgba(var(--color-lime-400-rgb), .6);color:var(--color-lime-200);cursor:pointer}
+.calendar-event--draft .calendar-event-time{color:var(--color-lime-200)}
 .calendar-event--resizing{cursor:ns-resize}
 .calendar-event-resize-handle{position:absolute;left:var(--size-6px);right:var(--size-6px);bottom:var(--size-4px);height:var(--size-6px);border-radius:var(--size-999px);background:rgba(var(--color-slate-200-rgb), .22);cursor:ns-resize}
 .calendar-event-resize-handle:hover{background:rgba(var(--color-lime-400-rgb), .35)}

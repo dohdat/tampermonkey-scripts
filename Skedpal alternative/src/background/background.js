@@ -11,6 +11,7 @@ import {
   fetchCalendarEvents,
   deleteCalendarEvent,
   updateCalendarEvent,
+  createCalendarEvent,
   fetchCalendarList,
   fetchFreeBusy,
   clearCachedAuthTokens
@@ -201,6 +202,30 @@ function handleCalendarUpdateMessage(message, sendResponse) {
   return true;
 }
 
+function handleCalendarCreateMessage(message, sendResponse) {
+  const calendarId = message.calendarId || "";
+  const title = message.title || "";
+  const start = message.start || "";
+  const end = message.end || "";
+  createCalendarEvent(calendarId, title, start, end)
+    .then((event) => {
+      if (!event) {
+        sendResponse({ ok: false, error: "Calendar event creation failed." });
+        return;
+      }
+      sendResponse({
+        ok: true,
+        event: {
+          ...event,
+          start: event.start.toISOString(),
+          end: event.end.toISOString()
+        }
+      });
+    })
+    .catch((error) => sendResponse({ ok: false, error: error.message }));
+  return true;
+}
+
 function handleCalendarDisconnectMessage(_message, sendResponse) {
   clearCachedAuthTokens()
     .then((cleared) => sendResponse({ ok: true, cleared }))
@@ -219,6 +244,7 @@ const MESSAGE_HANDLERS = {
   "calendar-list": handleCalendarListMessage,
   "calendar-delete-event": handleCalendarDeleteMessage,
   "calendar-update-event": handleCalendarUpdateMessage,
+  "calendar-create-event": handleCalendarCreateMessage,
   "calendar-disconnect": handleCalendarDisconnectMessage,
   ping: handlePingMessage
 };

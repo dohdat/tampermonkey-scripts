@@ -168,6 +168,7 @@ function buildEventTitle(item) {
   const displayText = urlFromTitle
     ? cleanedTitle.replace(URL_PATTERN, "").trim()
     : cleanedTitle;
+  const fallbackTitle = displayText || "(No title)";
   const linkUrl = urlFromTitle || item.event.link || "";
   if (linkUrl) {
     const title = document.createElement("a");
@@ -175,13 +176,13 @@ function buildEventTitle(item) {
     title.href = linkUrl;
     title.target = "_blank";
     title.rel = "noopener noreferrer";
-    title.textContent = displayText || linkUrl;
+    title.textContent = displayText || linkUrl || fallbackTitle;
     title.setAttribute("data-test-skedpal", "calendar-event-title-link");
     return title;
   }
   const title = document.createElement("div");
   title.className = "calendar-event-title";
-  title.textContent = cleanedTitle;
+  title.textContent = fallbackTitle;
   title.setAttribute("data-test-skedpal", "calendar-event-title");
   return title;
 }

@@ -24,6 +24,7 @@ import {
 } from "./calendar-focus.js";
 import { ensureExternalEvents, getExternalEventsForRange } from "./calendar-external.js";
 import { ensureCalendarDragHandlers } from "./calendar-drag.js";
+import { initCalendarCreateModal, openCalendarCreateFromClick } from "./calendar-create-event.js";
 import {
   buildExternalEventMeta,
   sendExternalDeleteRequest
@@ -170,6 +171,15 @@ function handleExternalEventClick(eventMeta, block) {
     end: eventMeta.end
   };
   openExternalEventModal(external || fallback, block);
+}
+
+function handleCalendarGridClick(event) {
+  const block = event.target.closest?.(".calendar-event");
+  if (block) {
+    handleCalendarEventClick(event);
+    return;
+  }
+  openCalendarCreateFromClick(event);
 }
 
 function updateCalendarTitle(viewMode) {
@@ -330,7 +340,8 @@ export function initCalendarView() {
   renderCalendar();
   ensureCalendarDragHandlers({
     onRender: renderCalendar,
-    onEventClick: handleCalendarEventClick
+    onEventClick: handleCalendarGridClick
   });
+  initCalendarCreateModal({ onRender: renderCalendar });
   initCalendarEventModal();
 }

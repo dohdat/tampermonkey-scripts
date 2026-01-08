@@ -220,6 +220,28 @@ export async function updateCalendarEvent(calendarId, eventId, start, end) {
   return true;
 }
 
+export async function createCalendarEvent(calendarId, title, start, end) {
+  if (!calendarId || !start || !end) {
+    throw new Error("Missing calendar create data");
+  }
+  const url = `${GOOGLE_API_BASE}/calendars/${encodeURIComponent(calendarId)}/events`;
+  const response = await fetchWithAuth(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      summary: title || "",
+      start: { dateTime: start },
+      end: { dateTime: end }
+    })
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Google Calendar create error (${response.status}): ${text}`);
+  }
+  const data = await response.json();
+  return normalizeGoogleEvent(data, calendarId);
+}
+
 export async function fetchCalendarList() {
   const params = new URLSearchParams({
     minAccessRole: "reader",

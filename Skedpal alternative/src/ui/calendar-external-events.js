@@ -73,3 +73,27 @@ export async function sendExternalDeleteRequest(runtime, payload) {
     );
   });
 }
+
+export async function sendExternalCreateRequest(runtime, payload) {
+  if (!runtime?.sendMessage) {
+    throw new Error("Chrome runtime unavailable for calendar creation.");
+  }
+  return new Promise((resolve, reject) => {
+    runtime.sendMessage(
+      {
+        type: "calendar-create-event",
+        calendarId: payload.calendarId,
+        title: payload.title || "",
+        start: payload.start.toISOString(),
+        end: payload.end.toISOString()
+      },
+      (resp) => {
+        if (runtime.lastError) {
+          reject(new Error(runtime.lastError.message));
+        } else {
+          resolve(resp);
+        }
+      }
+    );
+  });
+}

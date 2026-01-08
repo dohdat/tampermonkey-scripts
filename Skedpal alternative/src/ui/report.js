@@ -263,20 +263,33 @@ function buildTimeMapUsageCard(rows) {
   rows.forEach((row) => {
     const item = document.createElement("div");
     item.className =
-      "rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2 text-xs text-slate-200";
+      "relative overflow-hidden rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2 text-xs text-slate-200";
     item.setAttribute("data-test-skedpal", "report-timemap-row");
     if (row.color) {
       item.style.borderColor = row.color;
     }
+    const fillPercent = Math.min(100, Math.max(0, row.percent || 0));
+    const fillColor = row.color || "var(--color-green-500)";
+    item.style.background = `linear-gradient(90deg, ${fillColor}33 ${fillPercent}%, rgba(2, 6, 23, 0.5) ${fillPercent}%)`;
     const name = document.createElement("div");
-    name.className = "flex items-center gap-2 text-sm font-semibold text-slate-100";
+    name.className = "relative flex items-center gap-2 text-sm font-semibold text-slate-100";
     name.setAttribute("data-test-skedpal", "report-timemap-name");
     name.textContent = row.name;
     if (row.color) {
       name.style.color = row.color;
     }
+    const meterWrap = document.createElement("div");
+    meterWrap.className = "relative mt-2 h-2 w-full overflow-hidden rounded-full";
+    meterWrap.setAttribute("data-test-skedpal", "report-timemap-meter");
+    const meterFill = document.createElement("div");
+    meterFill.className = "h-full rounded-full";
+    meterFill.setAttribute("data-test-skedpal", "report-timemap-meter-fill");
+    meterFill.style.width = `${fillPercent}%`;
+    const trackColor = row.color ? `${row.color}33` : "rgba(148, 163, 184, 0.3)";
+    meterWrap.style.backgroundColor = trackColor;
+    meterFill.style.backgroundColor = fillColor;
     const meta = document.createElement("div");
-    meta.className = "mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400";
+    meta.className = "relative mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400";
     meta.setAttribute("data-test-skedpal", "report-timemap-meta");
     const percentLabel = row.capacityMinutes
       ? `${Math.min(999, Math.max(0, row.percent))}%`
@@ -290,6 +303,8 @@ function buildTimeMapUsageCard(rows) {
       ${row.isOverSubscribed ? '<span class="text-orange-400" data-test-skedpal="report-timemap-over">Over-subscribed</span>' : ""}
     `;
     item.appendChild(name);
+    meterWrap.appendChild(meterFill);
+    item.appendChild(meterWrap);
     item.appendChild(meta);
     list.appendChild(item);
   });

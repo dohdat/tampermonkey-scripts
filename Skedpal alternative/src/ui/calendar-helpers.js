@@ -30,7 +30,8 @@ export function buildScheduledEvent(task, instance, index, completedOccurrences)
     end: dates.end,
     timeMapId: instance.timeMapId || "",
     occurrenceId: instance.occurrenceId || "",
-    instanceIndex: index
+    instanceIndex: index,
+    source: "task"
   };
 }
 
@@ -77,12 +78,36 @@ export function buildScheduleBounds(instances) {
 }
 
 export function parseEventMetaDates(dataset) {
-  const startIso = dataset.eventStart || "";
-  const endIso = dataset.eventEnd || "";
+  const startIso = safeDatasetString(dataset.eventStart);
+  const endIso = safeDatasetString(dataset.eventEnd);
   const start = new Date(startIso);
   const end = new Date(endIso);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
     return { start: null, end: null };
   }
   return { start, end };
+}
+
+function safeDatasetString(value) {
+  return typeof value === "string" ? value : "";
+}
+
+export function buildEventMetaFromDataset(dataset) {
+  if (!dataset) {return null;}
+  const source = safeDatasetString(dataset.eventSource);
+  if (source && source !== "task") {return null;}
+  const taskId = safeDatasetString(dataset.eventTaskId);
+  if (!taskId) {return null;}
+  const { start, end } = parseEventMetaDates(dataset);
+  if (!start || !end) {return null;}
+  const instanceIndex = Number(dataset.eventInstanceIndex);
+  const resolvedInstanceIndex = Number.isFinite(instanceIndex) ? instanceIndex : null;
+  return {
+    taskId,
+    occurrenceId: safeDatasetString(dataset.eventOccurrenceId),
+    instanceIndex: resolvedInstanceIndex,
+    timeMapId: safeDatasetString(dataset.eventTimeMapId),
+    start,
+    end
+  };
 }

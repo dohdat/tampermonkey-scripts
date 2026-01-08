@@ -6,7 +6,7 @@ global.document = {
   getElementById: () => null
 };
 
-const { getCalendarEventStyles } = await import("../src/ui/calendar.js");
+const { getCalendarEventStyles } = await import("../src/ui/calendar-render.js");
 
 describe("calendar event styles", () => {
   it("returns null when no matching timemap color", () => {
@@ -21,5 +21,16 @@ describe("calendar event styles", () => {
       backgroundColor: "#22c55e1a",
       borderColor: "#22c55e"
     });
+  });
+
+  it("assigns consistent styles for external calendar events", () => {
+    const styles = getCalendarEventStyles(
+      { source: "external", calendarId: "calendar-1", colorHex: "#16a34a" },
+      new Map()
+    );
+    assert.ok(styles);
+    assert.ok(String(styles.backgroundColor).includes("rgba("));
+    assert.strictEqual(styles.borderColor, "#16a34a");
+    assert.strictEqual(styles.color, "#16a34a");
   });
 });

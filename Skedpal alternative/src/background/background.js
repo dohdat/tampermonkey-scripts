@@ -6,6 +6,7 @@ import {
 } from "../data/db.js";
 import { scheduleTasks, getUpcomingOccurrences } from "../core/scheduler.js";
 import { shouldIncrementMissedCount } from "./schedule-metrics.js";
+import { fetchCalendarEvents, fetchFreeBusy } from "./google-calendar.js";
 
 function resolveScheduleStatus(task, parentIds, ignored, taskPlacements) {
   if (parentIds.has(task.id)) {return null;}
@@ -85,7 +86,6 @@ async function runReschedule() {
     getSettings()
   ]);
 
-  // Temporarily disable Google Calendar sync to avoid OAuth errors.
   const deleted = 0;
 
   if (timeMaps.length === 0 || tasks.length === 0) {
@@ -98,13 +98,25 @@ async function runReschedule() {
     };
   }
 
-  const busy = [];
+  let busy = [];
+  const horizonDays = Number(settings.schedulingHorizonDays) || 14;
+  const horizonEnd = new Date(now.getTime());
+  horizonEnd.setDate(horizonEnd.getDate() + horizonDays);
+  horizonEnd.setHours(23, 59, 59, 999);
+  try {
+    busy = await fetchFreeBusy({
+      timeMin: now.toISOString(),
+      timeMax: horizonEnd.toISOString()
+    });
+  } catch (error) {
+    console.warn("Failed to load Google Calendar busy blocks.", error);
+  }
 
   const { scheduled, unscheduled, ignored } = scheduleTasks({
     tasks,
     timeMaps,
     busy,
-    schedulingHorizonDays: settings.schedulingHorizonDays,
+    schedulingHorizonDays: horizonDays,
     now
   });
 
@@ -124,6 +136,25 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === "reschedule") {
     runReschedule()
       .then((result) => sendResponse({ ok: true, ...result }))
+      .catch((error) => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+  if (message?.type === "calendar-events") {
+    const timeMin = message.timeMin || new Date().toISOString();
+    const timeMax = message.timeMax || null;
+    if (!timeMax) {
+      sendResponse({ ok: false, error: "Missing timeMax for calendar events" });
+      return undefined;
+    }
+    fetchCalendarEvents({ timeMin, timeMax })
+      .then((events) => {
+        const payload = events.map((event) => ({
+          ...event,
+          start: event.start.toISOString(),
+          end: event.end.toISOString()
+        }));
+        sendResponse({ ok: true, events: payload });
+      })
       .catch((error) => sendResponse({ ok: false, error: error.message }));
     return true;
   }

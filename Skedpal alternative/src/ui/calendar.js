@@ -14,7 +14,7 @@ import { parseCalendarViewFromUrl, updateUrlWithCalendarView } from "./utils.js"
 import {
   buildScheduleBounds,
   buildScheduledEvent,
-  parseEventMetaDates,
+  buildEventMetaFromDataset,
   resolveInstanceIndex
 } from "./calendar-helpers.js";
 import { saveTask } from "../data/db.js";
@@ -22,47 +22,27 @@ import {
   initCalendarEventModal,
   openCalendarEventModal
 } from "./calendar-event-modal.js";
-import { buildDayEventLayout } from "./calendar-layout.js";
 import {
   clearCalendarEventFocus,
   focusCalendarEventBlock
 } from "./calendar-focus.js";
+import { ensureExternalEvents, getExternalEventsForRange } from "./calendar-external.js";
+import {
+  HOUR_HEIGHT,
+  buildEmptyState,
+  formatEventTimeRange,
+  renderCalendarGrid
+} from "./calendar-render.js";
 
-const HOUR_HEIGHT = 120;
 const DRAG_STEP_MINUTES = 15;
 const DRAG_ACTIVATION_DELAY = 80;
 const DRAG_CANCEL_DISTANCE = 8;
-const EVENT_GUTTER = 2;
-const EVENT_EDGE_INSET = 8;
-const EVENT_OVERLAP_INSET = 4;
 let nowIndicatorTimer = null;
 let dragState = null;
 let pendingDrag = null;
 let lastDragCompletedAt = 0;
 let lastDragMoved = false;
 let calendarViewInitialized = false;
-
-function formatHourLabel(hour) {
-  const d = new Date();
-  d.setHours(hour, 0, 0, 0);
-  return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-}
-
-function formatEventTimeRange(start, end) {
-  const startLabel = start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-  const endLabel = end.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-  return `${startLabel} - ${endLabel}`;
-}
-
-
-export function getCalendarEventStyles(event, timeMapColorById) {
-  const color = timeMapColorById?.get?.(event?.timeMapId || "");
-  if (!color) {return null;}
-  return {
-    backgroundColor: `${color}1a`,
-    borderColor: color
-  };
-}
 
 function getScheduledEvents(tasks) {
   const events = [];
@@ -109,20 +89,7 @@ export function buildUpdatedTaskForDrag(task, eventMeta, newStart, newEnd) {
 }
 
 function getEventMetaFromBlock(block) {
-  const dataset = block?.dataset || {};
-  const taskId = dataset.eventTaskId || "";
-  if (!taskId) {return null;}
-  const { start, end } = parseEventMetaDates(dataset);
-  if (!start || !end) {return null;}
-  const instanceIndex = Number(dataset.eventInstanceIndex || "");
-  return {
-    taskId,
-    occurrenceId: dataset.eventOccurrenceId || "",
-    instanceIndex: Number.isFinite(instanceIndex) ? instanceIndex : null,
-    timeMapId: dataset.eventTimeMapId || "",
-    start,
-    end
-  };
+  return buildEventMetaFromDataset(block?.dataset || null);
 }
 
 
@@ -151,14 +118,6 @@ async function persistDraggedEvent(eventMeta, dayKey, minutes, durationMinutes) 
   if (!updated) {return;}
   await saveTask(updated);
   state.tasksCache = state.tasksCache.map((item) => (item.id === updated.id ? updated : item));
-}
-
-function buildEmptyState() {
-  const empty = document.createElement("div");
-  empty.className = "calendar-empty";
-  empty.textContent = "No scheduled tasks in this range.";
-  empty.setAttribute("data-test-skedpal", "calendar-empty");
-  return empty;
 }
 
 function buildNowIndicator() {
@@ -198,147 +157,6 @@ function updateNowIndicator() {
   const indicator = buildNowIndicator();
   positionNowIndicator(indicator, now);
   todayCol.appendChild(indicator);
-}
-
-function buildCalendarHeader(range) {
-  const header = document.createElement("div");
-  header.className = "calendar-grid-header";
-  header.setAttribute("data-test-skedpal", "calendar-grid-header");
-  header.style.gridTemplateColumns = `90px repeat(${range.days}, minmax(0, 1fr))`;
-  const headerSpacer = document.createElement("div");
-  headerSpacer.className = "calendar-grid-spacer";
-  headerSpacer.setAttribute("data-test-skedpal", "calendar-grid-spacer");
-  header.appendChild(headerSpacer);
-  for (let i = 0; i < range.days; i += 1) {
-    const day = addCalendarDays(range.start, i);
-    const dayLabel = document.createElement("div");
-    dayLabel.className = "calendar-day-header";
-    dayLabel.setAttribute("data-test-skedpal", "calendar-day-header");
-    dayLabel.textContent = day.toLocaleDateString(undefined, {
-      weekday: "short",
-      month: "short",
-      day: "numeric"
-    });
-    if (getDayKey(day) === getDayKey(new Date())) {
-      dayLabel.classList.add("calendar-day-header--today");
-    }
-    header.appendChild(dayLabel);
-  }
-  return header;
-}
-
-function buildCalendarTimeColumn() {
-  const timeCol = document.createElement("div");
-  timeCol.className = "calendar-time-col";
-  timeCol.setAttribute("data-test-skedpal", "calendar-time-col");
-  for (let hour = 0; hour < 24; hour += 1) {
-    const label = document.createElement("div");
-    label.className = "calendar-time-label";
-    label.textContent = formatHourLabel(hour);
-    label.setAttribute("data-test-skedpal", "calendar-time-label");
-    timeCol.appendChild(label);
-  }
-  return timeCol;
-}
-
-function buildCalendarEventBlock(item, timeMapColorById) {
-  const top = (item.startMinutes / 60) * HOUR_HEIGHT;
-  const height = Math.max(20, ((item.endMinutes - item.startMinutes) / 60) * HOUR_HEIGHT);
-  const block = document.createElement("div");
-  block.className = "calendar-event";
-  block.style.top = `${top}px`;
-  block.style.height = `${height}px`;
-  if (item.columnCount > 1) {
-    const inset = EVENT_OVERLAP_INSET;
-    const totalGutter = EVENT_GUTTER * (item.columnCount - 1);
-    block.style.width = `calc((100% - ${totalGutter}px) / ${item.columnCount} - ${inset * 2}px)`;
-    block.style.left = `calc(${item.columnIndex} * ((100% - ${totalGutter}px) / ${item.columnCount}) + ${item.columnIndex * EVENT_GUTTER}px + ${inset}px)`;
-    block.style.right = "auto";
-  } else {
-    block.style.left = `${EVENT_EDGE_INSET}px`;
-    block.style.right = `${EVENT_EDGE_INSET}px`;
-  }
-  block.dataset.eventTaskId = item.event.taskId;
-  block.dataset.eventOccurrenceId = item.event.occurrenceId || "";
-  block.dataset.eventTimeMapId = item.event.timeMapId || "";
-  block.dataset.eventStart = item.event.start.toISOString();
-  block.dataset.eventEnd = item.event.end.toISOString();
-  block.dataset.eventInstanceIndex = String(item.event.instanceIndex);
-  const styles = getCalendarEventStyles(item.event, timeMapColorById);
-  if (styles) {
-    block.style.backgroundColor = styles.backgroundColor;
-    block.style.borderColor = styles.borderColor;
-  }
-  block.setAttribute("data-test-skedpal", "calendar-event");
-  let title = null;
-  if (item.event.link) {
-    title = document.createElement("a");
-    title.className = "calendar-event-title calendar-event-title-link";
-    title.href = item.event.link;
-    title.target = "_blank";
-    title.rel = "noopener noreferrer";
-    title.textContent = item.event.title;
-    title.setAttribute("data-test-skedpal", "calendar-event-title-link");
-  } else {
-    title = document.createElement("div");
-    title.className = "calendar-event-title";
-    title.textContent = item.event.title;
-    title.setAttribute("data-test-skedpal", "calendar-event-title");
-  }
-  const time = document.createElement("div");
-  time.className = "calendar-event-time";
-  time.textContent = formatEventTimeRange(item.eventStart, item.eventEnd);
-  time.setAttribute("data-test-skedpal", "calendar-event-time");
-  block.appendChild(title);
-  block.appendChild(time);
-  return block;
-}
-
-function buildCalendarDays(range, events, timeMapColorById) {
-  const daysWrap = document.createElement("div");
-  daysWrap.className = "calendar-days";
-  daysWrap.setAttribute("data-test-skedpal", "calendar-days");
-  daysWrap.style.gridTemplateColumns = `repeat(${range.days}, minmax(0, 1fr))`;
-  const eventsByDay = new Map();
-  events.forEach((event) => {
-    const key = getDayKey(event.start);
-    if (!eventsByDay.has(key)) {eventsByDay.set(key, []);}
-    eventsByDay.get(key).push(event);
-  });
-  for (let i = 0; i < range.days; i += 1) {
-    const day = addCalendarDays(range.start, i);
-    const dayKey = getDayKey(day);
-    const col = document.createElement("div");
-    col.className = "calendar-day-col";
-    col.setAttribute("data-test-skedpal", "calendar-day-col");
-    col.dataset.day = dayKey;
-    const dayEvents = eventsByDay.get(dayKey) || [];
-    const layout = buildDayEventLayout(dayEvents, day);
-    layout.forEach((item) => {
-      const block = buildCalendarEventBlock(item, timeMapColorById);
-      col.appendChild(block);
-    });
-    daysWrap.appendChild(col);
-  }
-  return daysWrap;
-}
-
-function renderCalendarGrid(range, events, timeMapColorById) {
-  const { calendarGrid } = domRefs;
-  if (!calendarGrid) {return;}
-  calendarGrid.innerHTML = "";
-  calendarGrid.style.setProperty("--calendar-hour-height", `${HOUR_HEIGHT}px`);
-  const header = buildCalendarHeader(range);
-  const body = document.createElement("div");
-  body.className = "calendar-grid-body";
-  body.setAttribute("data-test-skedpal", "calendar-grid-body");
-  body.style.gridTemplateColumns = "90px 1fr";
-  const timeCol = buildCalendarTimeColumn();
-  const daysWrap = buildCalendarDays(range, events, timeMapColorById);
-  body.appendChild(timeCol);
-  body.appendChild(daysWrap);
-  calendarGrid.appendChild(header);
-  calendarGrid.appendChild(body);
 }
 
 function clearDragState() {
@@ -554,7 +372,9 @@ export function focusCalendarEvent(taskId, options = {}) {
 export function renderCalendar(tasks = state.tasksCache) {
   const viewMode = state.calendarViewMode || "week";
   const range = getCalendarRange(state.calendarAnchorDate, viewMode);
-  const events = getScheduledEvents(tasks).filter(
+  const scheduledEvents = getScheduledEvents(tasks);
+  const externalEvents = getExternalEventsForRange(range);
+  const events = [...scheduledEvents, ...externalEvents].filter(
     (event) => event.end > range.start && event.start < range.end
   );
   const timeMapColorById = new Map(
@@ -564,11 +384,20 @@ export function renderCalendar(tasks = state.tasksCache) {
   );
   updateCalendarTitle(viewMode);
   updateViewToggle(viewMode);
-  renderCalendarGrid(range, events, timeMapColorById);
+  renderCalendarGrid(range, events, timeMapColorById, domRefs.calendarGrid);
   updateNowIndicator();
   if (!events.length) {
     domRefs.calendarGrid?.appendChild(buildEmptyState());
   }
+  ensureExternalEvents(range)
+    .then((updated) => {
+      if (updated) {
+        renderCalendar(tasks);
+      }
+    })
+    .catch((error) => {
+      console.warn("Failed to refresh external calendar events.", error);
+    });
 }
 
 export function initCalendarView() {

@@ -16,5 +16,8 @@ export const state = {
   navIndex: -1,
   sortableInstances: [],
   calendarViewMode: "day",
-  calendarAnchorDate: new Date()
+  calendarAnchorDate: new Date(),
+  calendarExternalEvents: [],
+  calendarExternalRangeKey: "",
+  calendarExternalPendingKey: ""
 };

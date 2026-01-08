@@ -306,17 +306,22 @@ function buildUngroupedZone(context, options, renderToken) {
 function buildSubsectionHeader(sub, section, isNoSection) {
   const subHeader = document.createElement("div");
   subHeader.className = "flex items-center justify-between text-sm font-semibold text-slate-200";
+  subHeader.setAttribute("data-test-skedpal", "subsection-header");
   const subTitle = document.createElement("div");
   subTitle.className = "title-hover-group flex items-center gap-2";
+  subTitle.setAttribute("data-test-skedpal", "subsection-title");
   const subTitleText = document.createElement("span");
   subTitleText.textContent = sub.name;
+  subTitleText.setAttribute("data-test-skedpal", "subsection-title-text");
   const subTitleActions = document.createElement("div");
   subTitleActions.className = "title-actions";
+  subTitleActions.setAttribute("data-test-skedpal", "subsection-title-actions");
   const collapseSubBtn = document.createElement("button");
   collapseSubBtn.type = "button";
   collapseSubBtn.dataset.toggleSubsectionCollapse = sub.id;
   collapseSubBtn.dataset.parentSection = section.id;
   collapseSubBtn.className = "title-icon-btn";
+  collapseSubBtn.setAttribute("data-test-skedpal", "subsection-collapse-btn");
   const subCollapsed = state.collapsedSubsections.has(sub.id);
   collapseSubBtn.title = "Expand/collapse subsection";
   collapseSubBtn.innerHTML = subCollapsed ? caretRightIconSvg : caretDownIconSvg;
@@ -366,12 +371,12 @@ function buildSubsectionHeader(sub, section, isNoSection) {
   addChildSubBtn.className =
     "rounded-lg border border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-200 hover:border-lime-400";
   addChildSubBtn.textContent = "Add subsection";
-  subTitleActions.appendChild(collapseSubBtn);
-  subTitleActions.appendChild(editSubBtn);
+  subTitle.appendChild(collapseSubBtn);
   subTitleActions.appendChild(zoomSubBtn);
   subTitleActions.appendChild(favoriteSubBtn);
   subTitleActions.appendChild(addChildSubBtn);
   subTitleActions.appendChild(addSubTaskBtn);
+  subTitleActions.appendChild(editSubBtn);
   subTitleActions.appendChild(removeSubBtn);
   subTitle.appendChild(subTitleText);
   subTitle.appendChild(subTitleActions);

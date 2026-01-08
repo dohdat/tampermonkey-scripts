@@ -2,6 +2,32 @@ import { domRefs } from "./constants.js";
 import { state } from "./state/page-state.js";
 import { formatDateTime } from "./utils.js";
 
+function parseTimeToMinutes(value) {
+  if (!value || typeof value !== "string") {return 0;}
+  const parts = value.split(":").map((part) => Number(part));
+  if (parts.length !== 2 || parts.some((part) => !Number.isFinite(part))) {return 0;}
+  const [hours, minutes] = parts;
+  return Math.max(0, Math.min(24 * 60, hours * 60 + minutes));
+}
+
+function startOfDay(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function endOfDay(date) {
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
+function addDays(date, days) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
 function getSectionLabel(sectionId, settings) {
   if (!sectionId) {return "No section";}
   const section = (settings?.sections || []).find((s) => s.id === sectionId);
@@ -39,6 +65,84 @@ function formatMissedPercentage(missedCount, expectedCount) {
   if (!expectedCount || expectedCount <= 0) {return "";}
   const ratio = Math.min(1, Math.max(0, missedCount / expectedCount));
   return ` (${Math.round(ratio * 100)}%)`;
+}
+
+function buildTimeMapRulesByDay(timeMap) {
+  const rules = Array.isArray(timeMap?.rules) ? timeMap.rules : [];
+  return rules.reduce((map, rule) => {
+    const day = Number(rule.day);
+    if (!Number.isFinite(day)) {return map;}
+    if (!map.has(day)) {map.set(day, []);}
+    map.get(day).push(rule);
+    return map;
+  }, new Map());
+}
+
+function getTimeMapCapacityMinutes(timeMap, horizonStart, horizonEnd) {
+  const rulesByDay = buildTimeMapRulesByDay(timeMap);
+  if (!rulesByDay.size) {return 0;}
+  let totalMinutes = 0;
+  for (let cursor = new Date(horizonStart); cursor <= horizonEnd; cursor = addDays(cursor, 1)) {
+    const dayRules = rulesByDay.get(cursor.getDay());
+    if (!dayRules) {continue;}
+    dayRules.forEach((rule) => {
+      const startMinutes = parseTimeToMinutes(rule.startTime);
+      const endMinutes = parseTimeToMinutes(rule.endTime);
+      if (endMinutes > startMinutes) {
+        totalMinutes += endMinutes - startMinutes;
+      }
+    });
+  }
+  return totalMinutes;
+}
+
+function buildScheduledMinutesByTimeMap(tasks, horizonStart, horizonEnd) {
+  const usage = new Map();
+  (tasks || []).forEach((task) => {
+    const instances = Array.isArray(task.scheduledInstances) ? task.scheduledInstances : [];
+    instances.forEach((instance) => {
+      if (!instance?.timeMapId) {return;}
+      const start = new Date(instance.start);
+      const end = new Date(instance.end);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {return;}
+      const clampedStart = start < horizonStart ? horizonStart : start;
+      const clampedEnd = end > horizonEnd ? horizonEnd : end;
+      if (clampedEnd <= clampedStart) {return;}
+      const minutes = Math.round((clampedEnd.getTime() - clampedStart.getTime()) / 60000);
+      if (minutes <= 0) {return;}
+      usage.set(instance.timeMapId, (usage.get(instance.timeMapId) || 0) + minutes);
+    });
+  });
+  return usage;
+}
+
+export function getTimeMapUsageRows(tasks = [], timeMaps = [], settings = state.settingsCache) {
+  const horizonDays = Number(settings?.schedulingHorizonDays) || 14;
+  const horizonStart = startOfDay(new Date());
+  const horizonEnd = endOfDay(addDays(horizonStart, horizonDays));
+  const scheduledByTimeMap = buildScheduledMinutesByTimeMap(tasks, horizonStart, horizonEnd);
+  return (timeMaps || []).map((timeMap) => {
+    const capacityMinutes = getTimeMapCapacityMinutes(timeMap, horizonStart, horizonEnd);
+    const scheduledMinutes = scheduledByTimeMap.get(timeMap.id) || 0;
+    const percent = capacityMinutes > 0
+      ? Math.round((scheduledMinutes / capacityMinutes) * 100)
+      : 0;
+    return {
+      id: timeMap.id,
+      name: timeMap.name || "Untitled TimeMap",
+      color: timeMap.color || "",
+      scheduledMinutes,
+      capacityMinutes,
+      percent,
+      isOverSubscribed: capacityMinutes > 0 && scheduledMinutes > capacityMinutes
+    };
+  }).sort((a, b) => {
+    if (a.isOverSubscribed !== b.isOverSubscribed) {
+      return a.isOverSubscribed ? -1 : 1;
+    }
+    if (b.percent !== a.percent) {return b.percent - a.percent;}
+    return a.name.localeCompare(b.name);
+  });
 }
 
 export function getMissedTaskRows(tasks = [], settings = state.settingsCache) {
@@ -122,10 +226,87 @@ function buildReportRow(row) {
   return card;
 }
 
+function formatMinutesSummary(scheduledMinutes, capacityMinutes) {
+  if (!capacityMinutes) {
+    return `Used: ${scheduledMinutes} min`;
+  }
+  return `Used: ${scheduledMinutes} of ${capacityMinutes} min`;
+}
+
+function buildTimeMapUsageCard(rows) {
+  const card = document.createElement("div");
+  card.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow";
+  card.setAttribute("data-test-skedpal", "report-timemap-card");
+  const header = document.createElement("div");
+  header.className = "text-base font-semibold text-slate-100";
+  header.setAttribute("data-test-skedpal", "report-timemap-title");
+  header.textContent = "TimeMap usage";
+  const subtitle = document.createElement("div");
+  subtitle.className = "mt-1 text-xs text-slate-400";
+  subtitle.setAttribute("data-test-skedpal", "report-timemap-subtitle");
+  subtitle.textContent = "Scheduled minutes vs availability in the current horizon.";
+  card.appendChild(header);
+  card.appendChild(subtitle);
+
+  if (!rows.length) {
+    const empty = document.createElement("div");
+    empty.className = "mt-3 text-sm text-slate-400";
+    empty.setAttribute("data-test-skedpal", "report-timemap-empty");
+    empty.textContent = "No TimeMaps available.";
+    card.appendChild(empty);
+    return card;
+  }
+
+  const list = document.createElement("div");
+  list.className = "mt-3 grid gap-2";
+  list.setAttribute("data-test-skedpal", "report-timemap-list");
+  rows.forEach((row) => {
+    const item = document.createElement("div");
+    item.className =
+      "rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2 text-xs text-slate-200";
+    item.setAttribute("data-test-skedpal", "report-timemap-row");
+    if (row.color) {
+      item.style.borderColor = row.color;
+    }
+    const name = document.createElement("div");
+    name.className = "flex items-center gap-2 text-sm font-semibold text-slate-100";
+    name.setAttribute("data-test-skedpal", "report-timemap-name");
+    name.textContent = row.name;
+    if (row.color) {
+      name.style.color = row.color;
+    }
+    const meta = document.createElement("div");
+    meta.className = "mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400";
+    meta.setAttribute("data-test-skedpal", "report-timemap-meta");
+    const percentLabel = row.capacityMinutes
+      ? `${Math.min(999, Math.max(0, row.percent))}%`
+      : "No availability";
+    meta.innerHTML = `
+      <span data-test-skedpal="report-timemap-percent">Used: ${percentLabel}</span>
+      <span data-test-skedpal="report-timemap-minutes">${formatMinutesSummary(
+        row.scheduledMinutes,
+        row.capacityMinutes
+      )}</span>
+      ${row.isOverSubscribed ? '<span class="text-orange-400" data-test-skedpal="report-timemap-over">Over-subscribed</span>' : ""}
+    `;
+    item.appendChild(name);
+    item.appendChild(meta);
+    list.appendChild(item);
+  });
+  card.appendChild(list);
+  return card;
+}
+
 export function renderReport(tasks = state.tasksCache) {
   const { reportList, reportBadge } = domRefs;
   if (!reportList) {return;}
   reportList.innerHTML = "";
+  const usageRows = getTimeMapUsageRows(
+    tasks,
+    state.tasksTimeMapsCache,
+    state.settingsCache
+  );
+  reportList.appendChild(buildTimeMapUsageCard(usageRows));
   const rows = getMissedTaskRows(tasks, state.settingsCache);
   if (reportBadge) {
     reportBadge.textContent = rows.length ? String(rows.length) : "";

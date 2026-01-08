@@ -1,6 +1,6 @@
 import assert from "assert";
 import { describe, it } from "mocha";
-import { getMissedTaskRows } from "../src/ui/report.js";
+import { getMissedTaskRows, getTimeMapUsageRows } from "../src/ui/report.js";
 
 describe("report", () => {
   it("ranks missed tasks by missed percentage then priority", () => {
@@ -138,5 +138,55 @@ describe("report", () => {
 
     assert.strictEqual(rows.length, 1);
     assert.strictEqual(rows[0].id, "child");
+  });
+
+  it("builds timemap usage rows from scheduled instances", () => {
+    const OriginalDate = Date;
+    const fixedNow = new OriginalDate(Date.UTC(2026, 0, 5, 12, 0, 0));
+    global.Date = class extends OriginalDate {
+      constructor(...args) {
+        if (args.length === 0) {
+          return new OriginalDate(fixedNow.getTime());
+        }
+        return new OriginalDate(...args);
+      }
+      static now() {
+        return fixedNow.getTime();
+      }
+    };
+    try {
+      const timeMaps = [
+        {
+          id: "tm-1",
+          name: "Focus",
+          color: "#22c55e",
+          rules: [{ day: 1, startTime: "09:00", endTime: "11:00" }]
+        }
+      ];
+      const tasks = [
+        {
+          id: "t1",
+          scheduleStatus: "scheduled",
+          scheduledInstances: [
+            {
+              start: "2026-01-05T09:00:00.000Z",
+              end: "2026-01-05T10:00:00.000Z",
+              timeMapId: "tm-1"
+            }
+          ]
+        }
+      ];
+      const settings = { schedulingHorizonDays: 1 };
+
+      const rows = getTimeMapUsageRows(tasks, timeMaps, settings);
+
+      assert.strictEqual(rows.length, 1);
+      assert.strictEqual(rows[0].id, "tm-1");
+      assert.strictEqual(rows[0].scheduledMinutes, 60);
+      assert.strictEqual(rows[0].capacityMinutes, 120);
+      assert.strictEqual(rows[0].percent, 50);
+    } finally {
+      global.Date = OriginalDate;
+    }
   });
 });

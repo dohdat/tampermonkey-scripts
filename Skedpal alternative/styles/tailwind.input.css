@@ -18,7 +18,8 @@
 body.modal-open{overflow:hidden}
 .task-modal{position:fixed;inset:0;z-index:var(--z-modal);display:flex;align-items:center;justify-content:center;padding:var(--space-1-25);background:rgba(var(--color-slate-980-rgb), .78);backdrop-filter:blur(var(--blur-modal))}
 .task-modal.hidden{display:none!important}
-.calendar-event-modal-overlay{background:transparent;backdrop-filter:none}
+.calendar-event-modal-overlay{background:transparent;backdrop-filter:none;pointer-events:none}
+.calendar-event-modal__panel{pointer-events:auto}
 .task-modal__panel{width:min(var(--size-900px),100%);max-height:calc(100vh - var(--space-2-5));background:linear-gradient(135deg,var(--color-slate-800),var(--color-slate-900));border:var(--size-1px) solid var(--color-slate-700);border-radius:var(--size-18px);box-shadow:var(--shadow-modal);color:var(--color-slate-200);overflow:hidden;overflow-y:auto}
 .task-modal__panel--task{width:min(var(--space-55),100%)}
 .task-modal__header{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-1);padding:var(--space-1-25) var(--space-1-25) var(--space-0-75) var(--space-1-25);border-bottom:var(--size-1px) solid var(--color-slate-700)}

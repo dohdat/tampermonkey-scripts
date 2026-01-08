@@ -28,6 +28,7 @@ body.modal-open{overflow:hidden}
 .task-modal__header--task{padding:var(--space-1) var(--space-1) var(--space-0-65) var(--space-1)}
 .task-modal__eyebrow{text-transform:uppercase;letter-spacing:var(--letter-spacing-wide);font-size:var(--font-size-xxs);font-weight:var(--font-weight-bold);color:var(--color-lime-400)}
 .task-modal__title{font-size:var(--font-size-lg);font-weight:var(--font-weight-bold);margin:var(--space-0-15) 0 var(--space-0-25)}
+.calendar-event-modal__header .task-modal__title{overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .task-modal__subtitle{color:var(--color-slate-400);font-size:var(--font-size-base);max-width:var(--space-34)}
 .modal-close-btn{margin-left:auto;height:var(--space-2-25);width:var(--space-2-25);border-radius:var(--size-9999px);border:var(--size-1px) solid var(--color-slate-700);background:transparent;color:var(--color-slate-300);display:inline-flex;align-items:center;justify-content:center;transition:all var(--motion-base) ease}
 .modal-close-btn:hover{border-color:var(--color-slate-600);background:var(--color-slate-850);color:var(--color-slate-100)}

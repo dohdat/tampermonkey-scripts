@@ -352,9 +352,6 @@ function closeCalendarEventModal() {
   if (calendarEventModal.classList) {
     calendarEventModal.classList.add("hidden");
   }
-  if (document.body?.classList) {
-    document.body.classList.remove("modal-open");
-  }
   resetCalendarModalPosition();
   activeTask = null;
   activeEventMeta = null;
@@ -397,9 +394,6 @@ function setModalToolbarVisibility(visible) {
 function showCalendarEventModal(calendarEventModal) {
   if (calendarEventModal?.classList) {
     calendarEventModal.classList.remove("hidden");
-  }
-  if (document.body?.classList) {
-    document.body.classList.add("modal-open");
   }
 }
 

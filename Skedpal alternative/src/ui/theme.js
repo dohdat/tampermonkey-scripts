@@ -203,6 +203,7 @@ export const themeVars = {
   "--size-240px": "240px",
   "--size-260px": "260px",
   "--size-520px": "520px",
+  "--size-640px": "640px",
   "--size-900px": "900px",
   "--size-999px": "999px",
   "--size-9999px": "9999px",

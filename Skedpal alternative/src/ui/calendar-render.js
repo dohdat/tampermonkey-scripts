@@ -200,6 +200,14 @@ function buildExternalDeleteButton(event) {
   return deleteBtn;
 }
 
+function buildResizeHandle() {
+  const handle = document.createElement("div");
+  handle.className = "calendar-event-resize-handle";
+  handle.dataset.calendarEventResize = "true";
+  handle.setAttribute("data-test-skedpal", "calendar-event-resize-handle");
+  return handle;
+}
+
 function buildCalendarEventBlock(item, timeMapColorById) {
   const top = (item.startMinutes / 60) * HOUR_HEIGHT;
   const height = Math.max(20, ((item.endMinutes - item.startMinutes) / 60) * HOUR_HEIGHT);
@@ -238,6 +246,9 @@ function buildCalendarEventBlock(item, timeMapColorById) {
     block.appendChild(buildExternalDeleteButton(item.event));
   }
   block.appendChild(time);
+  if (source === "task") {
+    block.appendChild(buildResizeHandle());
+  }
   return block;
 }
 

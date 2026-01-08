@@ -151,6 +151,8 @@ describe("calendar render", () => {
     assert.strictEqual(events.length, 1);
     assert.strictEqual(events[0].dataset.eventTaskId, "task-1");
     assert.strictEqual(events[0].dataset.eventOccurrenceId, "occ-1");
+    const resizeHandles = findByTestId(events[0], "calendar-event-resize-handle");
+    assert.strictEqual(resizeHandles.length, 1);
     const links = findByTestId(events[0], "calendar-event-title-link");
     assert.strictEqual(links.length, 1);
     assert.strictEqual(links[0].target, "_blank");
@@ -199,6 +201,8 @@ describe("calendar render", () => {
     assert.strictEqual(events.length, 1);
     const deleteButtons = findByTestId(events[0], "calendar-event-external-delete");
     assert.strictEqual(deleteButtons.length, 1);
+    const resizeHandles = findByTestId(events[0], "calendar-event-resize-handle");
+    assert.strictEqual(resizeHandles.length, 0);
     assert.strictEqual(deleteButtons[0].dataset.eventId, "ext-1");
     assert.strictEqual(deleteButtons[0].dataset.calendarId, "cal-1");
     assert.ok(events[0].dataset.eventStart);

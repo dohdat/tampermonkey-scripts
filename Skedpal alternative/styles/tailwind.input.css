@@ -167,6 +167,9 @@ body.modal-open{overflow:hidden}
 .calendar-event--external .calendar-event-time{color:currentColor}
 .calendar-event--external .calendar-event-title-link{color:currentColor}
 .calendar-event--external .calendar-event-title{padding-right:var(--space-1-6)}
+.calendar-event--resizing{cursor:ns-resize}
+.calendar-event-resize-handle{position:absolute;left:var(--size-6px);right:var(--size-6px);bottom:var(--size-4px);height:var(--size-6px);border-radius:var(--size-999px);background:rgba(var(--color-slate-200-rgb), .22);cursor:ns-resize}
+.calendar-event-resize-handle:hover{background:rgba(var(--color-lime-400-rgb), .35)}
 .calendar-event-delete{position:absolute;top:var(--space-0-35);right:var(--space-0-35);display:inline-flex;align-items:center;justify-content:center;width:var(--size-20px);height:var(--size-20px);border-radius:var(--size-9999px);border:var(--size-1px) solid rgba(var(--color-slate-700-rgb), .7);background:rgba(var(--color-slate-900-rgb), .6);color:inherit;opacity:.7;transition:all var(--motion-base) ease}
 .calendar-event-delete svg{width:var(--size-12px);height:var(--size-12px)}
 .calendar-event-delete:hover{opacity:1;border-color:currentColor}

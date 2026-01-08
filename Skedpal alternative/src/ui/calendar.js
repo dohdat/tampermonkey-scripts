@@ -4,21 +4,15 @@ import {
   addCalendarDays,
   getCalendarRange,
   getCalendarTitle,
-  getDayKey,
-  getDateFromDayKey,
-  roundMinutesToStep,
-  clampMinutes,
-  getMinutesIntoDay
+  getDayKey
 } from "./calendar-utils.js";
 import { parseCalendarViewFromUrl, updateUrlWithCalendarView } from "./utils.js";
 import {
   buildEventMetaFromDataset,
-  buildUpdatedTaskForDrag,
-  formatRescheduledMessage,
   getScheduledEvents
 } from "./calendar-helpers.js";
 export { buildUpdatedTaskForDrag, formatRescheduledMessage } from "./calendar-helpers.js";
-import { saveTask } from "../data/db.js";
+export { buildExternalUpdatePayload } from "./calendar-drag.js";
 import {
   initCalendarEventModal,
   openCalendarEventModal,
@@ -28,29 +22,19 @@ import {
   clearCalendarEventFocus,
   focusCalendarEventBlock
 } from "./calendar-focus.js";
-import { showNotificationBanner, showUndoBanner } from "./notifications.js";
 import { ensureExternalEvents, getExternalEventsForRange } from "./calendar-external.js";
+import { ensureCalendarDragHandlers } from "./calendar-drag.js";
 import {
   buildExternalEventMeta,
-  getUpdatedExternalEvents,
-  sendExternalDeleteRequest,
-  sendExternalUpdateRequest
+  sendExternalDeleteRequest
 } from "./calendar-external-events.js";
 import {
   HOUR_HEIGHT,
   buildEmptyState,
-  formatEventTimeRange,
   renderCalendarGrid
 } from "./calendar-render.js";
 
-const DRAG_STEP_MINUTES = 15;
-const DRAG_ACTIVATION_DELAY = 80;
-const DRAG_CANCEL_DISTANCE = 8;
 let nowIndicatorTimer = null;
-let dragState = null;
-let pendingDrag = null;
-let lastDragCompletedAt = 0;
-let lastDragMoved = false;
 let calendarViewInitialized = false;
 let externalDeletePending = false;
 
@@ -92,35 +76,6 @@ function removeExternalEvent(payload) {
   );
 }
 
-function updateExternalEventInState(payload) {
-  state.calendarExternalEvents = getUpdatedExternalEvents(
-    state.calendarExternalEvents || [],
-    payload
-  );
-}
-
-export function buildExternalUpdatePayload(eventMeta, dayKey, minutes, durationMinutes) {
-  const startDate = getDateFromDayKey(dayKey);
-  if (!startDate) {return null;}
-  startDate.setMinutes(minutes, 0, 0);
-  const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
-  return {
-    eventId: eventMeta.eventId,
-    calendarId: eventMeta.calendarId,
-    start: startDate,
-    end: endDate
-  };
-}
-
-async function persistDraggedExternalEvent(payload) {
-  if (!payload) {return;}
-  const response = await sendExternalUpdateRequest(getRuntime(), payload);
-  if (!response?.ok) {
-    throw new Error(response?.error || "Failed to update calendar event");
-  }
-  updateExternalEventInState(payload);
-}
-
 async function deleteExternalEvent(deleteBtn) {
   if (externalDeletePending) {return;}
   const payload = getExternalDeletePayload(deleteBtn);
@@ -141,34 +96,6 @@ async function deleteExternalEvent(deleteBtn) {
     externalDeletePending = false;
     setDeleteButtonState(deleteBtn, false);
   }
-}
-
-
-function updateDragTarget(dayCol, block, minutes) {
-  const top = (minutes / 60) * HOUR_HEIGHT;
-  block.style.top = `${top}px`;
-  const timeLabel = block.querySelector('[data-test-skedpal="calendar-event-time"]');
-  if (timeLabel && dragState?.eventMeta) {
-    const start = getDateFromDayKey(dayCol.dataset.day);
-    if (start) {
-      start.setMinutes(minutes, 0, 0);
-      const end = new Date(start.getTime() + dragState.durationMinutes * 60000);
-      timeLabel.textContent = formatEventTimeRange(start, end);
-    }
-  }
-}
-
-async function persistDraggedEvent(eventMeta, dayKey, minutes, durationMinutes) {
-  const task = state.tasksCache.find((candidate) => candidate.id === eventMeta.taskId);
-  if (!task) {return;}
-  const startDate = getDateFromDayKey(dayKey);
-  if (!startDate) {return;}
-  startDate.setMinutes(minutes, 0, 0);
-  const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
-  const updated = buildUpdatedTaskForDrag(task, eventMeta, startDate, endDate);
-  if (!updated) {return;}
-  await saveTask(updated);
-  state.tasksCache = state.tasksCache.map((item) => (item.id === updated.id ? updated : item));
 }
 
 function buildNowIndicator() {
@@ -210,180 +137,8 @@ function updateNowIndicator() {
   todayCol.appendChild(indicator);
 }
 
-function clearDragState() {
-  if (!dragState) {return;}
-  dragState.block?.classList?.remove("calendar-event--dragging");
-  dragState.dayCol?.classList?.remove("calendar-day-col--drag-target");
-  dragState = null;
-}
-
-function beginCalendarDrag(pending) {
-  if (!pending || pending !== pendingDrag) {return;}
-  const { block, dayCol, eventMeta, pointerId, lastClientY } = pending;
-  if (!block || !dayCol || !eventMeta) {return;}
-  const rect = dayCol.getBoundingClientRect();
-  const y = clampMinutes(lastClientY - rect.top, 0, rect.height);
-  const pointerMinutes = (y / rect.height) * 24 * 60;
-  const startMinutes = getMinutesIntoDay(eventMeta.start);
-  const grabOffsetMinutes = pointerMinutes - startMinutes;
-  const durationMinutes = Math.max(
-    DRAG_STEP_MINUTES,
-    Math.round((eventMeta.end.getTime() - eventMeta.start.getTime()) / 60000)
-  );
-  dragState = {
-    block,
-    dayCol,
-    eventMeta,
-    durationMinutes,
-    originDayKey: dayCol.dataset.day,
-    originMinutes: roundMinutesToStep(getMinutesIntoDay(eventMeta.start), DRAG_STEP_MINUTES),
-    minutes: roundMinutesToStep(getMinutesIntoDay(eventMeta.start), DRAG_STEP_MINUTES),
-    moved: false,
-    grabOffsetMinutes
-  };
-  pendingDrag = null;
-  block.classList.add("calendar-event--dragging");
-  dayCol.classList.add("calendar-day-col--drag-target");
-  if (typeof block.setPointerCapture === "function") {
-    block.setPointerCapture(pointerId);
-  }
-}
-
-function scheduleCalendarDrag(event) {
-  if (event.target?.closest?.("a")) {return;}
-  if (event.target?.closest?.("[data-calendar-event-delete]")) {return;}
-  const target = event.target.closest?.(".calendar-event");
-  if (!target || event.button !== 0) {return;}
-  const dayCol = target.closest?.(".calendar-day-col");
-  if (!dayCol || !dayCol.dataset.day) {return;}
-  const eventMeta = getEventMetaFromBlock(target);
-  if (!eventMeta) {return;}
-  if (pendingDrag?.timer) {
-    clearTimeout(pendingDrag.timer);
-  }
-  pendingDrag = {
-    block: target,
-    dayCol,
-    eventMeta,
-    pointerId: event.pointerId,
-    startClientX: event.clientX,
-    startClientY: event.clientY,
-    lastClientX: event.clientX,
-    lastClientY: event.clientY,
-    timer: setTimeout(() => beginCalendarDrag(pendingDrag), DRAG_ACTIVATION_DELAY)
-  };
-}
-
-function updatePendingDrag(event) {
-  if (!pendingDrag || dragState) {return;}
-  pendingDrag.lastClientX = event.clientX;
-  pendingDrag.lastClientY = event.clientY;
-  const dx = pendingDrag.lastClientX - pendingDrag.startClientX;
-  const dy = pendingDrag.lastClientY - pendingDrag.startClientY;
-  const distance = Math.hypot(dx, dy);
-  if (distance > DRAG_CANCEL_DISTANCE) {
-    clearTimeout(pendingDrag.timer);
-    pendingDrag = null;
-  }
-}
-
-function updateActiveDrag(event) {
-  const hovered = document.elementFromPoint(event.clientX, event.clientY);
-  const nextDayCol = hovered?.closest?.(".calendar-day-col") || dragState.dayCol;
-  if (!nextDayCol || !nextDayCol.dataset.day) {return;}
-  if (nextDayCol !== dragState.dayCol) {
-    dragState.dayCol?.classList?.remove("calendar-day-col--drag-target");
-    nextDayCol.classList.add("calendar-day-col--drag-target");
-    nextDayCol.appendChild(dragState.block);
-    dragState.dayCol = nextDayCol;
-  }
-  const rect = nextDayCol.getBoundingClientRect();
-  const y = clampMinutes(event.clientY - rect.top, 0, rect.height);
-  const pointerMinutes = (y / rect.height) * 24 * 60;
-  const adjustedMinutes = pointerMinutes - (dragState.grabOffsetMinutes || 0);
-  const roundedMinutes = roundMinutesToStep(adjustedMinutes, DRAG_STEP_MINUTES);
-  const maxStart = Math.max(0, 24 * 60 - dragState.durationMinutes);
-  const minutes = clampMinutes(roundedMinutes, 0, maxStart);
-  if (minutes !== dragState.minutes) {
-    dragState.moved = true;
-  }
-  dragState.minutes = minutes;
-  updateDragTarget(nextDayCol, dragState.block, minutes);
-}
-
-function handleCalendarDragMove(event) {
-  updatePendingDrag(event);
-  if (!dragState) {return;}
-  updateActiveDrag(event);
-}
-
-async function handleCalendarDragEnd() {
-  if (pendingDrag?.timer) {
-    clearTimeout(pendingDrag.timer);
-    pendingDrag = null;
-  }
-  if (!dragState) {return;}
-  const { eventMeta, dayCol, minutes, durationMinutes, originDayKey, originMinutes } =
-    dragState;
-  lastDragCompletedAt = Date.now();
-  lastDragMoved = Boolean(dragState.moved);
-  clearDragState();
-  if (!dayCol || !dayCol.dataset.day) {
-    renderCalendar();
-    return;
-  }
-  if (dayCol.dataset.day === originDayKey && minutes === originMinutes) {
-    renderCalendar();
-    return;
-  }
-  if (eventMeta.source === "external") {
-    const payload = buildExternalUpdatePayload(
-      eventMeta,
-      dayCol.dataset.day,
-      minutes,
-      durationMinutes
-    );
-    if (!payload) {
-      renderCalendar();
-      return;
-    }
-    const previous = {
-      eventId: eventMeta.eventId,
-      calendarId: eventMeta.calendarId,
-      start: eventMeta.start,
-      end: eventMeta.end
-    };
-    showNotificationBanner("Saving...");
-    try {
-      await persistDraggedExternalEvent(payload);
-      renderCalendar();
-      showUndoBanner(formatRescheduledMessage(payload.start), async () => {
-        showNotificationBanner("Undoing...");
-        try {
-          await persistDraggedExternalEvent(previous);
-          renderCalendar();
-          showNotificationBanner("Changes reverted.", { autoHideMs: 2500 });
-        } catch (error) {
-          console.warn("Failed to undo external calendar update.", error);
-          showNotificationBanner("Unable to undo changes.", { autoHideMs: 3500 });
-        }
-      });
-      return;
-    } catch (error) {
-      console.warn("Failed to update external calendar event.", error);
-      showNotificationBanner("Failed to update Google Calendar event.", {
-        autoHideMs: 3500
-      });
-    }
-  } else {
-    await persistDraggedEvent(eventMeta, dayCol.dataset.day, minutes, durationMinutes);
-  }
-  renderCalendar();
-}
-
 function handleCalendarEventClick(event) {
   if (event.target?.closest?.("a")) {return;}
-  if (lastDragMoved && Date.now() - lastDragCompletedAt < 250) {return;}
   const deleteBtn = event.target.closest?.("[data-calendar-event-delete]");
   if (deleteBtn) {
     event.preventDefault();
@@ -415,18 +170,6 @@ function handleExternalEventClick(eventMeta, block) {
     end: eventMeta.end
   };
   openExternalEventModal(external || fallback, block);
-}
-
-function ensureCalendarDragHandlers() {
-  const { calendarGrid } = domRefs;
-  if (!calendarGrid || calendarGrid.dataset.dragReady === "true") {return;}
-  calendarGrid.dataset.dragReady = "true";
-  calendarGrid.setAttribute("data-test-skedpal", "calendar-grid");
-  calendarGrid.addEventListener("pointerdown", scheduleCalendarDrag);
-  calendarGrid.addEventListener("click", handleCalendarEventClick);
-  window.addEventListener("pointermove", handleCalendarDragMove);
-  window.addEventListener("pointerup", handleCalendarDragEnd);
-  window.addEventListener("pointercancel", handleCalendarDragEnd);
 }
 
 function updateCalendarTitle(viewMode) {
@@ -585,6 +328,9 @@ export function initCalendarView() {
   }
   nowIndicatorTimer = window.setInterval(updateNowIndicator, 60 * 1000);
   renderCalendar();
-  ensureCalendarDragHandlers();
+  ensureCalendarDragHandlers({
+    onRender: renderCalendar,
+    onEventClick: handleCalendarEventClick
+  });
   initCalendarEventModal();
 }

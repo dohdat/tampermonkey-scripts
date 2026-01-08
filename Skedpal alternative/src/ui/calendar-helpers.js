@@ -77,6 +77,62 @@ export function buildScheduleBounds(instances) {
   };
 }
 
+export function getScheduledEvents(tasks) {
+  const events = [];
+  (tasks || []).forEach((task) => {
+    if (task.scheduleStatus !== "scheduled") {return;}
+    const instances = Array.isArray(task.scheduledInstances) ? task.scheduledInstances : [];
+    if (!instances.length) {return;}
+    const completedOccurrences = new Set(task.completedOccurrences || []);
+    instances.forEach((instance, index) => {
+      const event = buildScheduledEvent(task, instance, index, completedOccurrences);
+      if (event) {
+        events.push(event);
+      }
+    });
+  });
+  return events;
+}
+
+export function buildUpdatedTaskForDrag(task, eventMeta, newStart, newEnd) {
+  if (!task || !eventMeta || !(newStart instanceof Date) || !(newEnd instanceof Date)) {
+    return null;
+  }
+  const instances = Array.isArray(task.scheduledInstances)
+    ? task.scheduledInstances.map((instance) => ({ ...instance }))
+    : [];
+  if (!instances.length) {return null;}
+  const targetIndex = resolveInstanceIndex(instances, eventMeta);
+  if (targetIndex < 0 || !instances[targetIndex]) {return null;}
+  instances[targetIndex] = {
+    ...instances[targetIndex],
+    start: newStart.toISOString(),
+    end: newEnd.toISOString()
+  };
+  const { scheduledStart, scheduledEnd, scheduledTimeMapId } = buildScheduleBounds(instances);
+  return {
+    ...task,
+    scheduledInstances: instances,
+    scheduledStart,
+    scheduledEnd,
+    scheduledTimeMapId,
+    scheduleStatus: task.scheduleStatus || "scheduled"
+  };
+}
+
+export function formatRescheduledMessage(startDate) {
+  if (!(startDate instanceof Date)) {return "Event rescheduled.";}
+  const dateLabel = startDate.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric"
+  });
+  const timeLabel = startDate.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit"
+  });
+  return `Event rescheduled to ${dateLabel}, ${timeLabel}`;
+}
+
 export function parseEventMetaDates(dataset) {
   const startIso = safeDatasetString(dataset.eventStart);
   const endIso = safeDatasetString(dataset.eventEnd);

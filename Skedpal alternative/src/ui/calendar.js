@@ -12,11 +12,12 @@ import {
 } from "./calendar-utils.js";
 import { parseCalendarViewFromUrl, updateUrlWithCalendarView } from "./utils.js";
 import {
-  buildScheduleBounds,
-  buildScheduledEvent,
   buildEventMetaFromDataset,
-  resolveInstanceIndex
+  buildUpdatedTaskForDrag,
+  formatRescheduledMessage,
+  getScheduledEvents
 } from "./calendar-helpers.js";
+export { buildUpdatedTaskForDrag, formatRescheduledMessage } from "./calendar-helpers.js";
 import { saveTask } from "../data/db.js";
 import {
   initCalendarEventModal,
@@ -52,47 +53,6 @@ let lastDragCompletedAt = 0;
 let lastDragMoved = false;
 let calendarViewInitialized = false;
 let externalDeletePending = false;
-function getScheduledEvents(tasks) {
-  const events = [];
-  (tasks || []).forEach((task) => {
-    if (task.scheduleStatus !== "scheduled") {return;}
-    const instances = Array.isArray(task.scheduledInstances) ? task.scheduledInstances : [];
-    if (!instances.length) {return;}
-    const completedOccurrences = new Set(task.completedOccurrences || []);
-    instances.forEach((instance, index) => {
-      const event = buildScheduledEvent(task, instance, index, completedOccurrences);
-      if (event) {
-        events.push(event);
-      }
-    });
-  });
-  return events;
-}
-export function buildUpdatedTaskForDrag(task, eventMeta, newStart, newEnd) {
-  if (!task || !eventMeta || !(newStart instanceof Date) || !(newEnd instanceof Date)) {
-    return null;
-  }
-  const instances = Array.isArray(task.scheduledInstances)
-    ? task.scheduledInstances.map((instance) => ({ ...instance }))
-    : [];
-  if (!instances.length) {return null;}
-  const targetIndex = resolveInstanceIndex(instances, eventMeta);
-  if (targetIndex < 0 || !instances[targetIndex]) {return null;}
-  instances[targetIndex] = {
-    ...instances[targetIndex],
-    start: newStart.toISOString(),
-    end: newEnd.toISOString()
-  };
-  const { scheduledStart, scheduledEnd, scheduledTimeMapId } = buildScheduleBounds(instances);
-  return {
-    ...task,
-    scheduledInstances: instances,
-    scheduledStart,
-    scheduledEnd,
-    scheduledTimeMapId,
-    scheduleStatus: task.scheduleStatus || "scheduled"
-  };
-}
 
 function getEventMetaFromBlock(block) {
   if (!block?.dataset) {return null;}
@@ -161,18 +121,6 @@ async function persistDraggedExternalEvent(payload) {
   updateExternalEventInState(payload);
 }
 
-export function formatRescheduledMessage(startDate) {
-  if (!(startDate instanceof Date)) {return "Event rescheduled.";}
-  const dateLabel = startDate.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric"
-  });
-  const timeLabel = startDate.toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit"
-  });
-  return `Event rescheduled to ${dateLabel}, ${timeLabel}`;
-}
 async function deleteExternalEvent(deleteBtn) {
   if (externalDeletePending) {return;}
   const payload = getExternalDeletePayload(deleteBtn);
@@ -507,10 +455,13 @@ function handleCalendarNextClick() {
   state.calendarAnchorDate = addCalendarDays(state.calendarAnchorDate, step);
   renderCalendar();
 }
+function isCalendarSplitVisible() {
+  return domRefs.tasksCalendarSplitWrap?.dataset?.split === "true";
+}
 function handleCalendarTodayClick() {
   state.calendarAnchorDate = new Date();
   renderCalendar();
-  const block = state.tasksCalendarSplit ? "start" : "center";
+  const block = isCalendarSplitVisible() ? "start" : "center";
   focusCalendarNow({ behavior: "auto", block });
 }
 function handleCalendarDayClick() { setCalendarViewMode("day"); }

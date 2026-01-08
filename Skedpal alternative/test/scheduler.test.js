@@ -242,6 +242,46 @@ describe("scheduler", () => {
     assert.ok(result.scheduled.every((slot) => slot.start >= startFrom));
   });
 
+  it("schedules yearly range repeats within the window", () => {
+    const now = new Date(2026, 0, 1, 8, 0, 0, 0);
+    const rangeStart = 5;
+    const startDate = new Date(2026, 0, rangeStart, 0, 0, 0, 0);
+    const timeMaps = [
+      {
+        id: "tm-range",
+        rules: [{ day: startDate.getDay(), startTime: "09:00", endTime: "11:00" }]
+      }
+    ];
+    const tasks = [
+      {
+        id: "yearly-range",
+        title: "Yearly range",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-range"],
+        repeat: {
+          type: "custom",
+          unit: "year",
+          interval: 1,
+          yearlyRangeStartDate: "2026-01-05",
+          yearlyRangeEndDate: "2026-01-10"
+        }
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 15,
+      now
+    });
+
+    assert.strictEqual(result.scheduled.length, 1);
+    assert.strictEqual(result.scheduled[0].start.getDate(), rangeStart);
+    assert.ok(result.scheduled[0].start >= startDate);
+  });
+
   it("marks unscheduled and ignored tasks", () => {
     const now = nextWeekday(new Date(2026, 0, 1), 1);
     const timeMaps = [

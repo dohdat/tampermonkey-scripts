@@ -132,6 +132,42 @@ function buildSubtaskOrderMap(tasks) {
   return orderMap;
 }
 
+function clampDayInMonth(year, monthIndex, day) {
+  const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+  return Math.min(lastDay, Math.max(1, day));
+}
+
+function parseDateParts(value) {
+  if (!value) {return null;}
+  if (typeof value === "string") {
+    const [datePart] = value.split("T");
+    const parts = datePart.split("-").map((part) => Number(part));
+    if (parts.length === 3 && parts.every((part) => Number.isFinite(part))) {
+      const [, month, day] = parts;
+      return { monthIndex: month - 1, day };
+    }
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {return null;}
+  return { monthIndex: date.getMonth(), day: date.getDate() };
+}
+
+function resolveOccurrenceStart(repeat, deadline) {
+  if (repeat?.unit === "month" && repeat.monthlyMode === "range") {
+    const startDay = repeat.monthlyRangeStart || deadline.getDate();
+    const safeDay = clampDayInMonth(deadline.getFullYear(), deadline.getMonth(), startDay);
+    return startOfDay(new Date(deadline.getFullYear(), deadline.getMonth(), safeDay));
+  }
+  if (repeat?.unit === "year" && repeat.yearlyRangeStartDate) {
+    const rangeParts = parseDateParts(repeat.yearlyRangeStartDate);
+    if (rangeParts) {
+      const safeDay = clampDayInMonth(deadline.getFullYear(), rangeParts.monthIndex, rangeParts.day);
+      return startOfDay(new Date(deadline.getFullYear(), rangeParts.monthIndex, safeDay));
+    }
+  }
+  return startOfDay(deadline);
+}
+
 
 function buildScheduleCandidates(tasks, now, horizonEnd) {
   const ignored = new Set();
@@ -169,7 +205,7 @@ function buildScheduleCandidates(tasks, now, horizonEnd) {
         if (completedOccurrences.has(deadline.toISOString())) {
           return;
         }
-        const occurrenceStart = isRepeating ? startOfDay(deadline) : null;
+        const occurrenceStart = isRepeating ? resolveOccurrenceStart(normalized.repeat, deadline) : null;
         const earliestStart = new Date(
           Math.max(
             now.getTime(),

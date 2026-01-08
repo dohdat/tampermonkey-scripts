@@ -1,12 +1,26 @@
 import { dayOptions, domRefs } from "./constants.js";
+import { formatRRuleDate, getLocalDateKey, getNthWeekday, getWeekdayShortLabel } from "./utils.js";
 import {
-  formatDate,
-  formatOrdinal,
-  formatRRuleDate,
-  getNthWeekday,
-  getWeekdayShortLabel
-} from "./utils.js";
-
+  buildMonthlyRule,
+  buildMonthlySummaryPart,
+  normalizeMonthlyRange,
+  resolveMonthlyDay,
+  resolveMonthlyMode,
+  resolveMonthlyNth,
+  resolveMonthlyRangeEnd,
+  resolveMonthlyRangeStart,
+  syncMonthlyModeText,
+  syncMonthlyModeVisibility,
+  syncMonthlyRangeInputs
+} from "./repeat-monthly.js";
+import {
+  buildRepeatEndPart,
+  buildRepeatFrequencyPart,
+  buildWeeklySummaryPart,
+  buildYearlySummaryPart,
+  resolveWeeklyDays
+} from "./repeat-summary.js";
+import { getDateParts, syncYearlyRangeInputs } from "./repeat-yearly.js";
 const {
   taskDeadlineInput,
   taskRepeatSelect,
@@ -19,6 +33,9 @@ const {
   taskRepeatMonthlyWeekday,
   taskRepeatWeeklySection,
   taskRepeatMonthlySection,
+  taskRepeatYearlySection,
+  taskRepeatYearlyRangeStart,
+  taskRepeatYearlyRangeEnd,
   taskRepeatMonthlyDayWrap,
   taskRepeatMonthlyNthWrap,
   taskRepeatEndNever,
@@ -31,7 +48,6 @@ const {
   repeatModalSaveBtn,
   subsectionTaskRepeatSelect
 } = domRefs;
-
 export function getStartDate() {
   const raw = taskDeadlineInput?.value;
   const date = raw ? new Date(raw) : new Date();
@@ -49,8 +65,14 @@ export function defaultRepeatState(startDate = getStartDate()) {
     monthlyDay: monthDay,
     monthlyNth: nth,
     monthlyWeekday: weekday,
+    monthlyRangeStart: monthDay,
+    monthlyRangeEnd: monthDay,
+    monthlyRangeStartDate: "",
+    monthlyRangeEndDate: "",
     yearlyMonth: startDate.getMonth() + 1,
     yearlyDay: monthDay,
+    yearlyRangeStartDate: "",
+    yearlyRangeEndDate: "",
     end: { type: "never", date: "", count: 1 }
   };
 }
@@ -89,49 +111,6 @@ export function closeRepeatModal() {
   if (repeatModal) {repeatModal.classList.add("hidden");}
 }
 
-function resolveWeeklyDays(repeat, fallback) {
-  if (Array.isArray(repeat.weeklyDays)) {return repeat.weeklyDays;}
-  if (Array.isArray(repeat.byWeekdays)) {return repeat.byWeekdays;}
-  return fallback;
-}
-
-function buildRepeatFrequencyPart(unit, interval) {
-  return `Every ${interval} ${unit}${interval > 1 ? "s" : ""}`;
-}
-
-function buildWeeklySummaryPart(repeat, unit, fallbackDays) {
-  if (unit !== "week") {return "";}
-  const weeklyDays = resolveWeeklyDays(repeat, fallbackDays);
-  if (!weeklyDays.length) {return "";}
-  const labels = weeklyDays.map((d) => getWeekdayShortLabel(d)).filter(Boolean);
-  return labels.length ? `on ${labels.join(", ")}` : "";
-}
-
-function buildMonthlySummaryPart(repeat, unit) {
-  if (unit !== "month") {return "";}
-  if (repeat.monthlyMode === "nth") {
-    const weekdayLabel =
-      dayOptions.find((d) => d.value === repeat.monthlyWeekday)?.label || "";
-    return `on the ${formatOrdinal(repeat.monthlyNth || 1)} ${weekdayLabel}`;
-  }
-  return `on day ${repeat.monthlyDay || 1}`;
-}
-
-function buildYearlySummaryPart(repeat, unit) {
-  if (unit !== "year") {return "";}
-  return `on ${repeat.yearlyMonth || ""}/${repeat.yearlyDay || ""}`;
-}
-
-function buildRepeatEndPart(end) {
-  if (end.type === "on" && end.date) {
-    return `until ${formatDate(end.date)}`;
-  }
-  if (end.type === "after" && end.count) {
-    return `for ${end.count} time${end.count > 1 ? "s" : ""}`;
-  }
-  return "";
-}
-
 function isRepeatDisabled(repeat) {
   return !repeat || repeat.type === "none";
 }
@@ -149,32 +128,6 @@ export function getRepeatSummary(repeat) {
     buildRepeatEndPart(end)
   ].filter(Boolean);
   return parts.join(", ") || "Custom repeat";
-}
-
-function syncMonthlyModeText(repeatState) {
-  if (!taskRepeatMonthlyMode) {return;}
-  const dayOpt = taskRepeatMonthlyMode.querySelector('option[value="day"]');
-  const nthOpt = taskRepeatMonthlyMode.querySelector('option[value="nth"]');
-  if (dayOpt) {dayOpt.textContent = `Monthly on day ${repeatState.monthlyDay || 1}`;}
-  if (nthOpt) {
-    nthOpt.textContent = `Monthly on the ${formatOrdinal(repeatState.monthlyNth || 1)} ${dayOptions.find((d) => d.value === repeatState.monthlyWeekday)?.label || "weekday"}`;
-  }
-}
-
-function syncMonthlyModeVisibility(repeatState) {
-  const isDayMode = repeatState.monthlyMode === "day";
-  const isNthMode = repeatState.monthlyMode === "nth";
-  if (taskRepeatMonthlyDay) {taskRepeatMonthlyDay.disabled = !isDayMode;}
-  if (taskRepeatMonthlyNth) {taskRepeatMonthlyNth.disabled = !isNthMode;}
-  if (taskRepeatMonthlyWeekday) {taskRepeatMonthlyWeekday.disabled = !isNthMode;}
-  if (taskRepeatMonthlyDayWrap) {
-    taskRepeatMonthlyDayWrap.classList.toggle("hidden", !isDayMode);
-    taskRepeatMonthlyDayWrap.style.display = isDayMode ? "" : "none";
-  }
-  if (taskRepeatMonthlyNthWrap) {
-    taskRepeatMonthlyNthWrap.classList.toggle("hidden", !isNthMode);
-    taskRepeatMonthlyNthWrap.style.display = isNthMode ? "" : "none";
-  }
 }
 
 function syncRepeatEndControls(repeatState) {
@@ -204,21 +157,36 @@ function syncRepeatTargetSelect(target) {
 export function renderRepeatUI(target = repeatStore.repeatTarget) {
   if (!taskRepeatUnit) {return;}
   const repeatState = repeatStore.repeatState;
+  if (repeatState.monthlyMode === "range") {
+    repeatState.monthlyMode = "day";
+  }
+  normalizeMonthlyRange(repeatState, getStartDate());
   taskRepeatUnit.value = repeatState.unit === "none" ? "week" : repeatState.unit;
   taskRepeatInterval.value = repeatState.interval;
   taskRepeatWeeklySection.classList.toggle("hidden", repeatState.unit !== "week");
   taskRepeatMonthlySection.classList.toggle("hidden", repeatState.unit !== "month");
+  taskRepeatYearlySection.classList.toggle("hidden", repeatState.unit !== "year");
   renderRepeatWeekdayOptions(repeatState.weeklyDays || []);
   setInputValue(taskRepeatMonthlyMode, repeatState.monthlyMode || "day");
   setInputValue(taskRepeatMonthlyDay, repeatState.monthlyDay || 1);
   setInputValue(taskRepeatMonthlyNth, String(repeatState.monthlyNth || 1));
   setInputValue(taskRepeatMonthlyWeekday, String(repeatState.monthlyWeekday ?? 0));
-  syncMonthlyModeText(repeatState);
-  syncMonthlyModeVisibility(repeatState);
+  syncMonthlyRangeInputs(repeatState, getStartDate(), null, null);
+  syncMonthlyModeText(repeatState, taskRepeatMonthlyMode);
+  syncMonthlyModeVisibility(repeatState, {
+    taskRepeatMonthlyDay,
+    taskRepeatMonthlyNth,
+    taskRepeatMonthlyWeekday,
+    taskRepeatMonthlyRangeStart: null,
+    taskRepeatMonthlyRangeEnd: null,
+    taskRepeatMonthlyDayWrap,
+    taskRepeatMonthlyNthWrap,
+    taskRepeatMonthlyRangeWrap: null
+  });
+  syncYearlyRangeInputs(repeatState, getStartDate(), taskRepeatYearlyRangeStart, taskRepeatYearlyRangeEnd);
   syncRepeatEndControls(repeatState);
   syncRepeatTargetSelect(target);
 }
-
 function resolveRepeatUnit(repeat) {
   if (repeat.unit) {return repeat.unit;}
   const frequencyMap = {
@@ -229,14 +197,6 @@ function resolveRepeatUnit(repeat) {
   };
   return frequencyMap[repeat.frequency] || "week";
 }
-
-function resolveMonthlyMode(repeat) {
-  if (repeat.monthlyMode) {return repeat.monthlyMode;}
-  if (repeat.bySetPos) {return "nth";}
-  if (repeat.byMonthDay) {return "day";}
-  return "day";
-}
-
 function resolveMonthlyWeekday(repeat, base) {
   if (repeat.monthlyWeekday !== undefined && repeat.monthlyWeekday !== null) {
     return repeat.monthlyWeekday;
@@ -246,7 +206,6 @@ function resolveMonthlyWeekday(repeat, base) {
   }
   return base.monthlyWeekday;
 }
-
 function resolveRepeatSelectionTarget(target, selection) {
   if (target === "task") {
     repeatStore.lastRepeatSelection = selection;
@@ -254,7 +213,6 @@ function resolveRepeatSelectionTarget(target, selection) {
     repeatStore.subsectionRepeatSelection = selection;
   }
 }
-
 function setInputValue(input, value) {
   if (input) {
     input.value = value;
@@ -265,19 +223,15 @@ function resolveRepeatInterval(repeat) {
   return Math.max(1, Number(repeat.interval) || 1);
 }
 
-function resolveMonthlyDay(repeat, base) {
-  return repeat.monthlyDay || repeat.byMonthDay || base.monthlyDay;
-}
-
-function resolveMonthlyNth(repeat, base) {
-  return repeat.monthlyNth || repeat.bySetPos || base.monthlyNth;
-}
-
 function resolveYearlyMonth(repeat, base) {
+  const rangeParts = getDateParts(repeat.yearlyRangeEndDate);
+  if (rangeParts) {return rangeParts.month;}
   return repeat.yearlyMonth || repeat.byMonth || base.yearlyMonth;
 }
 
 function resolveYearlyDay(repeat, base) {
+  const rangeParts = getDateParts(repeat.yearlyRangeEndDate);
+  if (rangeParts) {return rangeParts.day;}
   return repeat.yearlyDay || repeat.byMonthDay || base.yearlyDay;
 }
 
@@ -309,8 +263,14 @@ export function setRepeatFromSelection(
     monthlyDay: resolveMonthlyDay(repeat, base),
     monthlyNth: resolveMonthlyNth(repeat, base),
     monthlyWeekday: resolveMonthlyWeekday(repeat, base),
+    monthlyRangeStart: resolveMonthlyRangeStart(repeat, base),
+    monthlyRangeEnd: resolveMonthlyRangeEnd(repeat, base),
+    monthlyRangeStartDate: repeat.monthlyRangeStartDate || base.monthlyRangeStartDate,
+    monthlyRangeEndDate: repeat.monthlyRangeEndDate || base.monthlyRangeEndDate,
     yearlyMonth: resolveYearlyMonth(repeat, base),
     yearlyDay: resolveYearlyDay(repeat, base),
+    yearlyRangeStartDate: repeat.yearlyRangeStartDate || base.yearlyRangeStartDate,
+    yearlyRangeEndDate: repeat.yearlyRangeEndDate || base.yearlyRangeEndDate,
     end: resolveRepeatEnd(repeat)
   };
   const built = buildRepeatFromState();
@@ -359,16 +319,6 @@ function buildWeeklyRule(repeatState, startDate, interval, byDayCodes) {
   return `FREQ=WEEKLY;INTERVAL=${interval};BYDAY=${days.join(",")}`;
 }
 
-function buildMonthlyRule(repeatState, startDate, interval, byDayCodes) {
-  if (repeatState.monthlyMode === "nth") {
-    const byday = byDayCodes[repeatState.monthlyWeekday ?? startDate.getDay()];
-    const bysetpos = repeatState.monthlyNth ?? getNthWeekday(startDate).nth;
-    return `FREQ=MONTHLY;INTERVAL=${interval};BYDAY=${byday};BYSETPOS=${bysetpos}`;
-  }
-  const day = repeatState.monthlyDay || startDate.getDate();
-  return `FREQ=MONTHLY;INTERVAL=${interval};BYMONTHDAY=${day}`;
-}
-
 function buildYearlyRule(repeatState, startDate, interval) {
   const month = repeatState.yearlyMonth || startDate.getMonth() + 1;
   const day = repeatState.yearlyDay || startDate.getDate();
@@ -393,12 +343,20 @@ export function buildRepeatFromState() {
   const unit = repeatState.unit;
   const interval = Math.max(1, Number(repeatState.interval) || 1);
   const end = repeatState.end || { type: "never" };
+  const yearlyRangeParts = getDateParts(repeatState.yearlyRangeEndDate);
+  const yearlyMonth = yearlyRangeParts?.month || repeatState.yearlyMonth;
+  const yearlyDay = yearlyRangeParts?.day || repeatState.yearlyDay;
   const byDayCodes = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
   const ruleBuilders = {
     day: () => buildDailyRule(interval),
     week: () => buildWeeklyRule(repeatState, startDate, interval, byDayCodes),
     month: () => buildMonthlyRule(repeatState, startDate, interval, byDayCodes),
-    year: () => buildYearlyRule(repeatState, startDate, interval)
+    year: () =>
+      buildYearlyRule(
+        { ...repeatState, yearlyMonth, yearlyDay },
+        startDate,
+        interval
+      )
   };
   const ruleBuilder = ruleBuilders[unit];
   const rule = ruleBuilder ? appendRepeatEnd(ruleBuilder(), end) : "";
@@ -411,8 +369,14 @@ export function buildRepeatFromState() {
     monthlyDay: repeatState.monthlyDay,
     monthlyNth: repeatState.monthlyNth,
     monthlyWeekday: repeatState.monthlyWeekday,
-    yearlyMonth: repeatState.yearlyMonth,
-    yearlyDay: repeatState.yearlyDay,
+    monthlyRangeStart: repeatState.monthlyRangeStart,
+    monthlyRangeEnd: repeatState.monthlyRangeEnd,
+    monthlyRangeStartDate: repeatState.monthlyRangeStartDate,
+    monthlyRangeEndDate: repeatState.monthlyRangeEndDate,
+    yearlyMonth,
+    yearlyDay,
+    yearlyRangeStartDate: repeatState.yearlyRangeStartDate,
+    yearlyRangeEndDate: repeatState.yearlyRangeEndDate,
     end,
     rrule: rule
   };
@@ -490,7 +454,7 @@ function registerRepeatSelectHandlers() {
   });
 }
 
-function registerRepeatStateHandlers() {
+function registerRepeatUnitHandlers() {
   taskRepeatUnit?.addEventListener("change", () => {
     const unit = taskRepeatUnit.value || "week";
     repeatStore.repeatState.unit = unit;
@@ -503,21 +467,32 @@ function registerRepeatStateHandlers() {
       const { nth, weekday } = getNthWeekday(start);
       repeatStore.repeatState.monthlyNth = nth;
       repeatStore.repeatState.monthlyWeekday = weekday;
+      repeatStore.repeatState.monthlyRangeStart = start.getDate();
+      repeatStore.repeatState.monthlyRangeEnd = start.getDate();
+      repeatStore.repeatState.monthlyRangeStartDate = "";
+      repeatStore.repeatState.monthlyRangeEndDate = "";
     }
     if (unit === "year") {
       const start = getStartDate();
       repeatStore.repeatState.yearlyMonth = start.getMonth() + 1;
       repeatStore.repeatState.yearlyDay = start.getDate();
+      const fallback = getLocalDateKey(start);
+      repeatStore.repeatState.yearlyRangeStartDate = fallback;
+      repeatStore.repeatState.yearlyRangeEndDate = fallback;
     }
     renderRepeatUI();
   });
+}
 
+function registerRepeatIntervalHandlers() {
   taskRepeatInterval?.addEventListener("input", () => {
     const parsed = Math.max(1, Number(taskRepeatInterval.value) || 1);
     repeatStore.repeatState.interval = parsed;
     taskRepeatInterval.value = parsed;
   });
+}
 
+function registerRepeatWeeklyHandlers() {
   taskRepeatWeekdays?.addEventListener("click", (event) => {
     const btn = event.target.closest("button[data-day-value]");
     if (!btn) {return;}
@@ -532,7 +507,9 @@ function registerRepeatStateHandlers() {
     repeatStore.repeatState.weeklyDays = Array.from(set);
     renderRepeatUI();
   });
+}
 
+function registerRepeatMonthlyHandlers() {
   taskRepeatMonthlyMode?.addEventListener("change", () => {
     repeatStore.repeatState.monthlyMode = taskRepeatMonthlyMode.value || "day";
     renderRepeatUI();
@@ -548,6 +525,39 @@ function registerRepeatStateHandlers() {
   taskRepeatMonthlyWeekday?.addEventListener("change", () => {
     repeatStore.repeatState.monthlyWeekday = Number(taskRepeatMonthlyWeekday.value) || 0;
   });
+}
+
+function registerRepeatYearlyHandlers() {
+  taskRepeatYearlyRangeStart?.addEventListener("input", () => {
+    const baseDate = getStartDate();
+    repeatStore.repeatState.yearlyRangeStartDate =
+      taskRepeatYearlyRangeStart.value || getLocalDateKey(baseDate);
+    syncYearlyRangeInputs(
+      repeatStore.repeatState,
+      baseDate,
+      taskRepeatYearlyRangeStart,
+      taskRepeatYearlyRangeEnd
+    );
+  });
+  taskRepeatYearlyRangeEnd?.addEventListener("input", () => {
+    const baseDate = getStartDate();
+    const endValue = taskRepeatYearlyRangeEnd.value || getLocalDateKey(baseDate);
+    repeatStore.repeatState.yearlyRangeEndDate = endValue;
+    const parts = getDateParts(endValue);
+    if (parts) {
+      repeatStore.repeatState.yearlyMonth = parts.month;
+      repeatStore.repeatState.yearlyDay = parts.day;
+    }
+    syncYearlyRangeInputs(
+      repeatStore.repeatState,
+      baseDate,
+      taskRepeatYearlyRangeStart,
+      taskRepeatYearlyRangeEnd
+    );
+  });
+}
+
+function registerRepeatEndHandlers() {
   const updateRepeatEnd = () => {
     if (taskRepeatEndAfter.checked) {
       repeatStore.repeatState.end = {
@@ -568,6 +578,15 @@ function registerRepeatStateHandlers() {
     taskRepeatEndCount.value = Math.max(1, Number(taskRepeatEndCount.value) || 1);
     updateRepeatEnd();
   });
+}
+
+function registerRepeatStateHandlers() {
+  registerRepeatUnitHandlers();
+  registerRepeatIntervalHandlers();
+  registerRepeatWeeklyHandlers();
+  registerRepeatMonthlyHandlers();
+  registerRepeatYearlyHandlers();
+  registerRepeatEndHandlers();
 }
 
 function registerRepeatModalHandlers() {

@@ -84,6 +84,10 @@ initRef("taskRepeatMonthlyNth", "select");
 initRef("taskRepeatMonthlyWeekday", "select");
 initRef("taskRepeatWeeklySection", "div");
 initRef("taskRepeatMonthlySection", "div");
+initRef("taskRepeatYearlySection", "div");
+initRef("taskRepeatYearlyRangeStart", "input");
+initRef("taskRepeatYearlyRangeEnd", "input");
+initRef("taskRepeatYearlyRangeWrap", "div");
 initRef("taskRepeatMonthlyDayWrap", "div");
 initRef("taskRepeatMonthlyNthWrap", "div");
 initRef("taskRepeatEndNever", "input");
@@ -158,6 +162,10 @@ describe("repeat utils", () => {
       "taskRepeatMonthlyWeekday",
       "taskRepeatWeeklySection",
       "taskRepeatMonthlySection",
+      "taskRepeatYearlySection",
+      "taskRepeatYearlyRangeStart",
+      "taskRepeatYearlyRangeEnd",
+      "taskRepeatYearlyRangeWrap",
       "taskRepeatMonthlyDayWrap",
       "taskRepeatMonthlyNthWrap",
       "taskRepeatEndNever",
@@ -244,11 +252,20 @@ describe("repeat utils", () => {
       yearlyDay: 31,
       end: { type: "on", date: "2026-12-31T00:00:00" }
     };
+    const yearlyRange = {
+      type: "custom",
+      unit: "year",
+      interval: 1,
+      yearlyRangeStartDate: "2026-02-01",
+      yearlyRangeEndDate: "2026-03-15"
+    };
     const monthlySummary = getRepeatSummary(monthlyDay);
     const yearlySummary = getRepeatSummary(yearly);
+    const yearlyRangeSummary = getRepeatSummary(yearlyRange);
     assert.ok(monthlySummary.includes("on day 5"));
     assert.ok(yearlySummary.includes("on 12/31"));
     assert.ok(yearlySummary.includes("until"));
+    assert.ok(yearlyRangeSummary.includes("between"));
   });
 
   it("builds rrule strings from state", () => {
@@ -290,6 +307,7 @@ describe("repeat utils", () => {
       interval: 2,
       yearlyMonth: 12,
       yearlyDay: 31,
+      yearlyRangeEndDate: "2026-12-31",
       end: { type: "on", date: "2026-12-31T00:00:00" }
     };
     built = buildRepeatFromState();
@@ -317,6 +335,19 @@ describe("repeat utils", () => {
     const modeSelect = domRefs.taskRepeatMonthlyMode;
     const nthOpt = modeSelect.querySelector('option[value="nth"]');
     assert.ok(nthOpt.textContent.includes("2nd Thu"));
+  });
+
+  it("renders range fields for yearly mode", () => {
+    repeatStore.repeatState = {
+      unit: "year",
+      interval: 1,
+      yearlyRangeStartDate: "2026-01-05",
+      yearlyRangeEndDate: "2026-01-10",
+      end: { type: "never", date: "", count: 1 }
+    };
+    renderRepeatUI("task");
+    assert.strictEqual(domRefs.taskRepeatYearlySection.classList.contains("hidden"), false);
+    assert.strictEqual(domRefs.taskRepeatMonthlySection.classList.contains("hidden"), true);
   });
 
   it("sets repeat from selection for subsection target", () => {

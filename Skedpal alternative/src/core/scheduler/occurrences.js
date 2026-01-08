@@ -51,14 +51,44 @@ function buildWeeklyOccurrences({ anchor, interval, limitDate, maxCount, nowStar
   return occurrences;
 }
 
+function clampDayInMonth(year, monthIndex, day) {
+  const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+  return Math.min(lastDay, Math.max(1, day));
+}
+
+function parseDateParts(value) {
+  if (!value) {return null;}
+  if (typeof value === "string") {
+    const [datePart] = value.split("T");
+    const parts = datePart.split("-").map((part) => Number(part));
+    if (parts.length === 3 && parts.every((part) => Number.isFinite(part))) {
+      const [, month, day] = parts;
+      return { month, day };
+    }
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {return null;}
+  return { month: date.getMonth() + 1, day: date.getDate() };
+}
+
+function getYearlyRangeEndParts(repeat) {
+  return parseDateParts(repeat.yearlyRangeEndDate);
+}
+
 function getMonthlyCandidate(cursor, anchor, repeat) {
   if (repeat.monthlyMode === "nth") {
     const weekday = repeat.monthlyWeekday ?? anchor.getDay();
     const nth = repeat.monthlyNth ?? 1;
     return nthWeekdayOfMonth(cursor.getFullYear(), cursor.getMonth(), weekday, nth);
   }
+  if (repeat.monthlyMode === "range") {
+    const endDay = repeat.monthlyRangeEnd || anchor.getDate();
+    const safeDay = clampDayInMonth(cursor.getFullYear(), cursor.getMonth(), endDay);
+    return new Date(cursor.getFullYear(), cursor.getMonth(), safeDay);
+  }
   const day = repeat.monthlyDay || anchor.getDate();
-  return new Date(cursor.getFullYear(), cursor.getMonth(), day);
+  const safeDay = clampDayInMonth(cursor.getFullYear(), cursor.getMonth(), day);
+  return new Date(cursor.getFullYear(), cursor.getMonth(), safeDay);
 }
 
 function isWithinWindow(candidate, { anchor, nowStart, limitDate, horizonEnd }) {
@@ -105,10 +135,12 @@ function buildYearlyOccurrences({
   const occurrences = [];
   let cursor = new Date(anchor);
   let emitted = 0;
+  const rangeEndParts = getYearlyRangeEndParts(repeat);
   while (cursor <= limitDate && emitted < maxCount) {
-    const month = (repeat.yearlyMonth || anchor.getMonth() + 1) - 1;
-    const day = repeat.yearlyDay || anchor.getDate();
-    const candidate = new Date(cursor.getFullYear(), month, day);
+    const month = (rangeEndParts?.month || repeat.yearlyMonth || anchor.getMonth() + 1) - 1;
+    const dayValue = rangeEndParts?.day || repeat.yearlyDay || anchor.getDate();
+    const safeDay = clampDayInMonth(cursor.getFullYear(), month, dayValue);
+    const candidate = new Date(cursor.getFullYear(), month, safeDay);
     if (isWithinWindow(candidate, { anchor, nowStart, limitDate, horizonEnd })) {
       occurrences.push(endOfDay(candidate));
       emitted += 1;

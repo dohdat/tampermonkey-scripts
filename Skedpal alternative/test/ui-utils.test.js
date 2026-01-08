@@ -6,6 +6,7 @@ import {
   getInheritedSubtaskFields,
   getLocalDateKey,
   normalizeHorizonDays,
+  renderInBatches,
   toggleClearButtonVisibility
 } from "../src/ui/utils.js";
 
@@ -119,5 +120,43 @@ describe("applyPrioritySelectColor", () => {
     const select = { value: "nope", dataset: {} };
     applyPrioritySelectColor(select);
     assert.strictEqual(select.dataset.priority, "");
+  });
+});
+
+describe("renderInBatches", () => {
+  it("renders items in batches and calls onComplete", async () => {
+    const items = [1, 2, 3, 4, 5];
+    const batches = [];
+    await new Promise((resolve) => {
+      renderInBatches({
+        items,
+        batchSize: 2,
+        renderBatch: (batch) => batches.push([...batch]),
+        onComplete: resolve
+      });
+    });
+    assert.deepStrictEqual(batches, [[1, 2], [3, 4], [5]]);
+  });
+
+  it("stops when shouldCancel returns true", (done) => {
+    const items = [1, 2, 3];
+    let calls = 0;
+    let completed = false;
+    renderInBatches({
+      items,
+      batchSize: 2,
+      shouldCancel: () => calls > 0,
+      renderBatch: () => {
+        calls += 1;
+      },
+      onComplete: () => {
+        completed = true;
+      }
+    });
+    setTimeout(() => {
+      assert.strictEqual(calls, 1);
+      assert.strictEqual(completed, false);
+      done();
+    }, 20);
   });
 });

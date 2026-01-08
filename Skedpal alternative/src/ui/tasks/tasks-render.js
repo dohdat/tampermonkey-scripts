@@ -10,87 +10,25 @@ import {
   domRefs
 } from "../constants.js";
 import { renderTaskCard } from "./task-card.js";
-import { sortTasksByOrder, normalizeTimeMap, getSubsectionDescendantIds } from "../utils.js";
+import {
+  sortTasksByOrder,
+  normalizeTimeMap,
+  getSubsectionDescendantIds,
+  renderInBatches
+} from "../utils.js";
 import { state } from "../state/page-state.js";
 import { getSubsectionsFor, getSectionName } from "../sections.js";
 import { destroyTaskSortables, setupTaskSortables } from "./tasks-sortable.js";
 import { themeColors } from "../theme.js";
+import {
+  buildParentMap,
+  buildTaskDepthGetter,
+  buildCollapsedAncestorChecker,
+  buildChildrenByParent,
+  buildDurationCalculator
+} from "./tasks-render-helpers.js";
 const { taskList } = domRefs;
-
-function buildParentMap(tasks) {
-  return tasks.reduce((map, task) => {
-    if (task.subtaskParentId) {
-      map.set(task.id, task.subtaskParentId);
-    }
-    return map;
-  }, new Map());
-}
-
-function buildTaskDepthGetter(parentById) {
-  const depthMemo = new Map();
-  const getTaskDepthById = (taskId) => {
-    if (!taskId) {return 0;}
-    if (depthMemo.has(taskId)) {return depthMemo.get(taskId);}
-    const parentId = parentById.get(taskId);
-    if (!parentId) {
-      depthMemo.set(taskId, 0);
-      return 0;
-    }
-    const depth = getTaskDepthById(parentId) + 1;
-    depthMemo.set(taskId, depth);
-    return depth;
-  };
-  return getTaskDepthById;
-}
-
-function buildCollapsedAncestorChecker(parentById) {
-  const collapsedAncestorMemo = new Map();
-  const hasCollapsedAncestor = (taskId) => {
-    if (!taskId) {return false;}
-    if (collapsedAncestorMemo.has(taskId)) {return collapsedAncestorMemo.get(taskId);}
-    const parentId = parentById.get(taskId);
-    if (!parentId) {
-      collapsedAncestorMemo.set(taskId, false);
-      return false;
-    }
-    if (state.collapsedTasks.has(parentId)) {
-      collapsedAncestorMemo.set(taskId, true);
-      return true;
-    }
-    const result = hasCollapsedAncestor(parentId);
-    collapsedAncestorMemo.set(taskId, result);
-    return result;
-  };
-  return hasCollapsedAncestor;
-}
-
-function buildChildrenByParent(tasks) {
-  return tasks.reduce((map, task) => {
-    const pid = task.subtaskParentId || "";
-    if (!pid) {return map;}
-    if (!map.has(pid)) {map.set(pid, []);}
-    map.get(pid).push(task);
-    return map;
-  }, new Map());
-}
-
-function buildDurationCalculator(childrenByParent) {
-  const durationMemo = new Map();
-  const computeTotalDuration = (task) => {
-    if (!task?.id) {return 0;}
-    if (durationMemo.has(task.id)) {return durationMemo.get(task.id);}
-    const children = childrenByParent.get(task.id) || [];
-    if (children.length === 0) {
-      const own = Number(task.durationMin) || 0;
-      durationMemo.set(task.id, own);
-      return own;
-    }
-    const total = children.reduce((sum, child) => sum + computeTotalDuration(child), 0);
-    durationMemo.set(task.id, total);
-    return total;
-  };
-  return computeTotalDuration;
-}
+let taskRenderToken = 0;
 
 function buildZoomTaskIds(baseTasks) {
   if (state.zoomFilter?.type !== "task") {
@@ -163,17 +101,36 @@ function buildTaskCardContext(baseTasks, timeMapById, computeTotalDuration, getT
   };
 }
 
-function renderTaskCards(container, tasks, context) {
-  sortTasksByOrder(tasks).forEach((task) => {
-    container.appendChild(renderTaskCard(task, context));
+function renderTaskCards(container, tasks, context, options = {}) {
+  const sorted = sortTasksByOrder(tasks);
+  if (!sorted.length) {return;}
+  const { renderToken, batchSize = 40 } = options;
+  const shouldCancel = Number.isFinite(renderToken)
+    ? () => renderToken !== taskRenderToken
+    : null;
+  if (sorted.length <= batchSize) {
+    sorted.forEach((task) => {
+      container.appendChild(renderTaskCard(task, context));
+    });
+    return;
+  }
+  renderInBatches({
+    items: sorted,
+    batchSize,
+    shouldCancel,
+    renderBatch: (batch) => {
+      const fragment = document.createDocumentFragment();
+      batch.forEach((task) => fragment.appendChild(renderTaskCard(task, context)));
+      container.appendChild(fragment);
+    }
   });
 }
 
-function renderZoomTasks(filteredTasks, context) {
+function renderZoomTasks(filteredTasks, context, renderToken) {
   const zoomWrap = document.createElement("div");
   zoomWrap.className = "space-y-2";
   zoomWrap.setAttribute("data-test-skedpal", "task-zoom-list");
-  renderTaskCards(zoomWrap, filteredTasks, context);
+  renderTaskCards(zoomWrap, filteredTasks, context, { renderToken, batchSize: 30 });
   taskList.appendChild(zoomWrap);
 }
 
@@ -335,14 +292,14 @@ function filterSubsectionsForZoom(subsections, taskSubsections, sectionId) {
   return subsections.filter((s) => allowedSubsections.has(s.id));
 }
 
-function buildUngroupedZone(context, options) {
+function buildUngroupedZone(context, options, renderToken) {
   const ungroupedZone = document.createElement("div");
   ungroupedZone.dataset.dropSection = options.dropSection;
   ungroupedZone.dataset.dropSubsection = options.dropSubsection;
   ungroupedZone.className =
     "space-y-2 rounded-xl border border-dashed border-slate-700 bg-slate-900/50 px-3 py-3";
   ungroupedZone.classList.add(TASK_ZONE_CLASS);
-  renderTaskCards(ungroupedZone, options.ungroupedTasks, context);
+  renderTaskCards(ungroupedZone, options.ungroupedTasks, context, { renderToken, batchSize: 30 });
   return ungroupedZone;
 }
 
@@ -436,7 +393,15 @@ function buildChildSubsectionInput(sub, sectionId, isNoSection) {
   return childSubsectionInputWrap;
 }
 
-function buildSubsectionZone(sub, sectionId, isNoSection, sectionTasks, context, suppressPlaceholders) {
+function buildSubsectionZone(
+  sub,
+  sectionId,
+  isNoSection,
+  sectionTasks,
+  context,
+  suppressPlaceholders,
+  renderToken
+) {
   const subZone = document.createElement("div");
   subZone.dataset.dropSection = isNoSection ? "" : sectionId;
   subZone.dataset.dropSubsection = sub.id;
@@ -450,13 +415,13 @@ function buildSubsectionZone(sub, sectionId, isNoSection, sectionTasks, context,
     empty.textContent = "Drag tasks here or add new.";
     subZone.appendChild(empty);
   } else {
-    renderTaskCards(subZone, subTasks, context);
+    renderTaskCards(subZone, subTasks, context, { renderToken, batchSize: 30 });
   }
   return subZone;
 }
 
 function renderSubsection(sub, section, sectionTasks, context, options) {
-  const { isNoSection, suppressPlaceholders, buildChildren } = options;
+  const { isNoSection, suppressPlaceholders, buildChildren, renderToken } = options;
   const subWrap = document.createElement("div");
   subWrap.className =
     "space-y-2 rounded-xl border border-slate-800 bg-slate-900/60 p-3 pl-4 md:pl-6";
@@ -468,7 +433,15 @@ function renderSubsection(sub, section, sectionTasks, context, options) {
   subBody.style.display = subCollapsed ? "none" : "";
   subBody.appendChild(buildChildSubsectionInput(sub, section.id, isNoSection));
   subBody.appendChild(
-    buildSubsectionZone(sub, section.id, isNoSection, sectionTasks, context, suppressPlaceholders)
+    buildSubsectionZone(
+      sub,
+      section.id,
+      isNoSection,
+      sectionTasks,
+      context,
+      suppressPlaceholders,
+      renderToken
+    )
   );
   const children = buildChildren(sub.id);
   if (children.length) {
@@ -485,7 +458,7 @@ function renderSubsection(sub, section, sectionTasks, context, options) {
 }
 
 function renderSectionCard(section, context, options) {
-  const { filteredTasks, suppressPlaceholders } = options;
+  const { filteredTasks, suppressPlaceholders, renderToken } = options;
   const isNoSection = !section.id;
   const sectionTasks = getSectionTasks(filteredTasks, section, isNoSection);
   const isSubsectionZoom = isSubsectionZoomed(section.id);
@@ -502,11 +475,12 @@ function renderSectionCard(section, context, options) {
   }
   const { subsections, taskSubsections } = buildSubsections(section, sectionTasks);
   const filteredSubs = filterSubsectionsForZoom(subsections, taskSubsections, section.id);
-  appendUngroupedTasks(sectionBody, sectionTasks, isNoSection, context);
+  appendUngroupedTasks(sectionBody, sectionTasks, isNoSection, context, renderToken);
   appendSubsections(sectionBody, filteredSubs, section, sectionTasks, context, {
     isNoSection,
     suppressPlaceholders,
-    isSubsectionZoom
+    isSubsectionZoom,
+    renderToken
   });
   card.appendChild(sectionBody);
   return card;
@@ -529,24 +503,24 @@ function buildSectionCardContainer(section, isSubsectionZoom) {
   return card;
 }
 
-function appendUngroupedTasks(sectionBody, sectionTasks, isNoSection, context) {
+function appendUngroupedTasks(sectionBody, sectionTasks, isNoSection, context, renderToken) {
   const ungroupedTasks = sortTasksByOrder(sectionTasks.filter((t) => !t.subsection));
   if (isNoSection) {
     const ungroupedZone = buildUngroupedZone(context, {
       dropSection: "",
       dropSubsection: "",
       ungroupedTasks
-    });
+    }, renderToken);
     sectionBody.appendChild(ungroupedZone);
     return;
   }
   if (ungroupedTasks.length > 0) {
-    renderTaskCards(sectionBody, ungroupedTasks, context);
+    renderTaskCards(sectionBody, ungroupedTasks, context, { renderToken, batchSize: 30 });
   }
 }
 
 function appendSubsections(sectionBody, filteredSubs, section, sectionTasks, context, options) {
-  const { isNoSection, suppressPlaceholders, isSubsectionZoom } = options;
+  const { isNoSection, suppressPlaceholders, isSubsectionZoom, renderToken } = options;
   const buildChildren = (parentId = "") =>
     filteredSubs.filter((s) => (s.parentId || "") === (parentId || ""));
   if (isSubsectionZoom) {
@@ -557,7 +531,8 @@ function appendSubsections(sectionBody, filteredSubs, section, sectionTasks, con
         renderSubsection(targetSub, section, sectionTasks, context, {
           isNoSection,
           suppressPlaceholders,
-          buildChildren
+          buildChildren,
+          renderToken
         })
       );
     }
@@ -568,7 +543,8 @@ function appendSubsections(sectionBody, filteredSubs, section, sectionTasks, con
       renderSubsection(sub, section, sectionTasks, context, {
         isNoSection,
         suppressPlaceholders,
-        buildChildren
+        buildChildren,
+        renderToken
       })
     );
   });
@@ -578,15 +554,16 @@ export function renderTasks(tasks, timeMaps) {
   taskList.innerHTML = "";
   const timeMapById = new Map(timeMaps.map((tm) => [tm.id, normalizeTimeMap(tm)]));
   const baseTasks = tasks.filter((t) => !t.completed);
+  const renderToken = ++taskRenderToken;
   const parentById = buildParentMap(tasks);
   const getTaskDepthById = buildTaskDepthGetter(parentById);
-  const hasCollapsedAncestor = buildCollapsedAncestorChecker(parentById);
+  const hasCollapsedAncestor = buildCollapsedAncestorChecker(parentById, state.collapsedTasks);
   const childrenByParent = buildChildrenByParent(tasks);
   const computeTotalDuration = buildDurationCalculator(childrenByParent);
   const filteredTasks = filterTasksByZoom(baseTasks, hasCollapsedAncestor);
   const context = buildTaskCardContext(baseTasks, timeMapById, computeTotalDuration, getTaskDepthById);
   if (state.zoomFilter?.type === "task") {
-    renderZoomTasks(filteredTasks, context);
+    renderZoomTasks(filteredTasks, context, renderToken);
     return;
   }
   const suppressPlaceholders = Boolean(state.zoomFilter);
@@ -597,10 +574,26 @@ export function renderTasks(tasks, timeMaps) {
       '<div class="flex items-center justify-center rounded-xl border border-dashed border-slate-700 bg-slate-900/60 px-3 py-4 text-sm text-slate-400">No sections yet. Add a section to begin.</div>';
     return;
   }
-  allSections.forEach((section) => {
-    taskList.appendChild(
-      renderSectionCard(section, context, { filteredTasks, suppressPlaceholders })
-    );
+  renderInBatches({
+    items: allSections,
+    batchSize: 3,
+    shouldCancel: () => renderToken !== taskRenderToken,
+    renderBatch: (batch) => {
+      const fragment = document.createDocumentFragment();
+      batch.forEach((section) => {
+        fragment.appendChild(
+          renderSectionCard(section, context, {
+            filteredTasks,
+            suppressPlaceholders,
+            renderToken
+          })
+        );
+      });
+      taskList.appendChild(fragment);
+    },
+    onComplete: () => {
+      if (renderToken !== taskRenderToken) {return;}
+      setupTaskSortables();
+    }
   });
-  setupTaskSortables();
 }

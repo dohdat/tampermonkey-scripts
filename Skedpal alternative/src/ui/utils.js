@@ -185,6 +185,36 @@ export function formatDurationLong(minutes) {
   return `${hours}h ${remainder}m`;
 }
 
+export function renderInBatches({
+  items = [],
+  batchSize = 40,
+  renderBatch,
+  onComplete,
+  shouldCancel
+} = {}) {
+  if (!Array.isArray(items) || typeof renderBatch !== "function") {return;}
+  const raf = typeof requestAnimationFrame === "function"
+    ? requestAnimationFrame
+    : (callback) => setTimeout(callback, 0);
+  let index = 0;
+  const step = () => {
+    if (shouldCancel?.()) {return;}
+    const end = Math.min(index + batchSize, items.length);
+    if (end <= index) {
+      onComplete?.();
+      return;
+    }
+    renderBatch(items.slice(index, end), index, end);
+    index = end;
+    if (index < items.length) {
+      raf(step);
+    } else {
+      onComplete?.();
+    }
+  };
+  step();
+}
+
 export function toggleClearButtonVisibility(input, button) {
   if (!input || !button) {return false;}
   const hasValue = Boolean((input.value || "").trim());

@@ -1,6 +1,7 @@
 import { domRefs } from "./constants.js";
 import { state } from "./state/page-state.js";
-import { formatDateTime } from "./utils.js";
+import { formatDateTime, renderInBatches } from "./utils.js";
+let reportRenderToken = 0;
 
 function parseTimeToMinutes(value) {
   if (!value || typeof value !== "string") {return 0;}
@@ -315,6 +316,7 @@ function buildTimeMapUsageCard(rows) {
 export function renderReport(tasks = state.tasksCache) {
   const { reportList, reportBadge } = domRefs;
   if (!reportList) {return;}
+  const renderToken = ++reportRenderToken;
   reportList.innerHTML = "";
   const usageRows = getTimeMapUsageRows(
     tasks,
@@ -336,5 +338,14 @@ export function renderReport(tasks = state.tasksCache) {
     reportList.appendChild(empty);
     return;
   }
-  rows.forEach((row) => reportList.appendChild(buildReportRow(row)));
+  renderInBatches({
+    items: rows,
+    batchSize: 40,
+    shouldCancel: () => renderToken !== reportRenderToken,
+    renderBatch: (batch) => {
+      const fragment = document.createDocumentFragment();
+      batch.forEach((row) => fragment.appendChild(buildReportRow(row)));
+      reportList.appendChild(fragment);
+    }
+  });
 }

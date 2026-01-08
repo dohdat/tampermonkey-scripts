@@ -70,7 +70,7 @@ function updateSplitControls(resolvedTarget, showCalendarSplit) {
 function updateSplitToggleLabel() {
   const { tasksCalendarToggleBtn } = domRefs;
   if (!tasksCalendarToggleBtn) {return;}
-  tasksCalendarToggleBtn.textContent = state.tasksCalendarSplit ? "Hide calendar" : "Show calendar";
+  tasksCalendarToggleBtn.textContent = state.tasksCalendarSplit ? "Hide 🗓️" : "Show 🗓️";
 }
 
 function applyCalendarView(resolvedTarget, showCalendarSplit, calendarAnchorDate, focusCalendar) {

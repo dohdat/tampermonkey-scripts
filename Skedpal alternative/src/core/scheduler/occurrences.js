@@ -127,6 +127,13 @@ function clampDayInMonth(year, monthIndex, day) {
   return Math.min(lastDay, Math.max(1, day));
 }
 
+function isMonthDayBeforeDate(monthIndex, day, date) {
+  if (monthIndex !== date.getMonth()) {
+    return monthIndex < date.getMonth();
+  }
+  return day < date.getDate();
+}
+
 function parseDateParts(value) {
   if (!value) {return null;}
   if (typeof value === "string") {
@@ -210,8 +217,10 @@ function buildYearlyOccurrences({
   while (cursor <= limitDate && emitted < maxCount) {
     const month = (rangeEndParts?.month || repeat.yearlyMonth || anchor.getMonth() + 1) - 1;
     const dayValue = rangeEndParts?.day || repeat.yearlyDay || anchor.getDate();
-    const safeDay = clampDayInMonth(cursor.getFullYear(), month, dayValue);
-    const candidate = new Date(cursor.getFullYear(), month, safeDay);
+    const nextYear = isMonthDayBeforeDate(month, dayValue, cursor) ? 1 : 0;
+    const candidateYear = cursor.getFullYear() + nextYear;
+    const safeDay = clampDayInMonth(candidateYear, month, dayValue);
+    const candidate = new Date(candidateYear, month, safeDay);
     if (isWithinWindow(candidate, { anchor, nowStart, limitDate, horizonEnd })) {
       occurrences.push(endOfDay(candidate));
       emitted += 1;

@@ -152,6 +152,14 @@ function parseDateParts(value) {
   return { monthIndex: date.getMonth(), day: date.getDate() };
 }
 
+function isMonthDayAfter(start, end) {
+  if (!start || !end) {return false;}
+  if (start.monthIndex !== end.monthIndex) {
+    return start.monthIndex > end.monthIndex;
+  }
+  return start.day > end.day;
+}
+
 function resolveOccurrenceStart(repeat, deadline) {
   if (repeat?.unit === "month" && repeat.monthlyMode === "range") {
     const startDay = repeat.monthlyRangeStart || deadline.getDate();
@@ -159,10 +167,13 @@ function resolveOccurrenceStart(repeat, deadline) {
     return startOfDay(new Date(deadline.getFullYear(), deadline.getMonth(), safeDay));
   }
   if (repeat?.unit === "year" && repeat.yearlyRangeStartDate) {
-    const rangeParts = parseDateParts(repeat.yearlyRangeStartDate);
-    if (rangeParts) {
-      const safeDay = clampDayInMonth(deadline.getFullYear(), rangeParts.monthIndex, rangeParts.day);
-      return startOfDay(new Date(deadline.getFullYear(), rangeParts.monthIndex, safeDay));
+    const rangeStartParts = parseDateParts(repeat.yearlyRangeStartDate);
+    if (rangeStartParts) {
+      const rangeEndParts = parseDateParts(repeat.yearlyRangeEndDate);
+      const wrapsYear = isMonthDayAfter(rangeStartParts, rangeEndParts);
+      const startYear = wrapsYear ? deadline.getFullYear() - 1 : deadline.getFullYear();
+      const safeDay = clampDayInMonth(startYear, rangeStartParts.monthIndex, rangeStartParts.day);
+      return startOfDay(new Date(startYear, rangeStartParts.monthIndex, safeDay));
     }
   }
   return startOfDay(deadline);

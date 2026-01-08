@@ -66,10 +66,13 @@ function getMissedRate(row) {
 function shouldIncludeMissedTask(task, parentIds) {
   if (task.completed) {return false;}
   if (parentIds.has(task.id)) {return false;}
-  if (["unscheduled", "ignored"].includes(task.scheduleStatus)) {return true;}
   const expectedCount = Number(task.expectedCount) || 0;
   const missedLastRun = Number(task.missedLastRun) || 0;
   const missedCount = Number(task.missedCount) || 0;
+  if (["unscheduled", "ignored"].includes(task.scheduleStatus)) {
+    if (expectedCount > 0) {return missedLastRun > 0;}
+    return missedCount > 0;
+  }
   if (expectedCount > 0) {
     return missedLastRun > 0;
   }

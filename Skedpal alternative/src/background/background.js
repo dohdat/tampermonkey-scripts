@@ -5,16 +5,13 @@ import {
   saveTask
 } from "../data/db.js";
 import { scheduleTasks, getUpcomingOccurrences } from "../core/scheduler.js";
+import { shouldIncrementMissedCount } from "./schedule-metrics.js";
 
 function resolveScheduleStatus(task, parentIds, ignored, taskPlacements) {
   if (parentIds.has(task.id)) {return null;}
   if (ignored.includes(task.id) && taskPlacements.length === 0) {return "ignored";}
   if (taskPlacements.length > 0) {return "scheduled";}
   return "unscheduled";
-}
-
-function shouldCountMiss(task, status, parentIds) {
-  return !task.completed && status && status !== "scheduled" && !parentIds.has(task.id);
 }
 
 function getScheduledOccurrenceCount(taskPlacements) {
@@ -61,7 +58,14 @@ async function persistSchedule(tasks, placements, unscheduled, ignored, now, hor
     const expectedOccurrences = getExpectedOccurrenceCount(task, now, horizonDays);
     const scheduledOccurrences = getScheduledOccurrenceCount(taskPlacements);
     const missedOccurrences = Math.max(0, expectedOccurrences - scheduledOccurrences);
-    if (missedOccurrences > 0 || shouldCountMiss(task, task.scheduleStatus, parentIds)) {
+    if (
+      shouldIncrementMissedCount({
+        task,
+        status: task.scheduleStatus,
+        parentIds,
+        missedOccurrences
+      })
+    ) {
       task.missedCount = (Number(task.missedCount) || 0) + Math.max(1, missedOccurrences);
       task.lastMissedAt = timestamp;
     }

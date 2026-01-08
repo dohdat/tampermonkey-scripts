@@ -140,6 +140,23 @@ describe("report", () => {
     assert.strictEqual(rows[0].id, "child");
   });
 
+  it("excludes unscheduled tasks with zero missed counts", () => {
+    const tasks = [
+      {
+        id: "t7",
+        title: "Unscheduled but fine",
+        scheduleStatus: "unscheduled",
+        missedCount: 0,
+        expectedCount: 0,
+        missedLastRun: 0
+      }
+    ];
+
+    const rows = getMissedTaskRows(tasks, {});
+
+    assert.strictEqual(rows.length, 0);
+  });
+
   it("builds timemap usage rows from scheduled instances", () => {
     const OriginalDate = Date;
     const fixedNow = new OriginalDate(Date.UTC(2026, 0, 5, 12, 0, 0));

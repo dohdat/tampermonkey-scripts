@@ -322,6 +322,45 @@ describe("scheduler", () => {
     assert.ok(result.scheduled[0].start >= startDate);
   });
 
+  it("schedules yearly ranges that wrap across years", () => {
+    const now = new Date(2026, 11, 16, 8, 0, 0, 0);
+    const timeMaps = [
+      {
+        id: "tm-all",
+        days: [0, 1, 2, 3, 4, 5, 6],
+        startTime: "08:00",
+        endTime: "23:00"
+      }
+    ];
+    const tasks = [
+      {
+        id: "yearly-wrap",
+        title: "Yearly wrap",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-all"],
+        repeat: {
+          type: "custom",
+          unit: "year",
+          interval: 1,
+          yearlyRangeStartDate: "2026-11-30",
+          yearlyRangeEndDate: "2027-01-06"
+        }
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 21,
+      now
+    });
+
+    assert.strictEqual(result.scheduled.length, 1);
+    assert.ok(result.scheduled[0].start >= now);
+  });
+
   it("marks unscheduled and ignored tasks", () => {
     const now = nextWeekday(new Date(2026, 0, 1), 1);
     const timeMaps = [

@@ -455,10 +455,14 @@ describe("calendar event modal", () => {
     openExternalEventModal(externalEvent);
 
     assert.strictEqual(refs.eyebrow.textContent, "Google Calendar");
-    assert.strictEqual(refs.toolbar.className.includes("hidden"), false);
+    assert.strictEqual(refs.toolbar.className.includes("hidden"), true);
+    assert.strictEqual(refs.toolbar.hidden, true);
     assert.ok(refs.actions[0].className.includes("hidden"));
     assert.ok(refs.actions[1].className.includes("hidden"));
     assert.ok(refs.actions[2].className.includes("hidden"));
+    assert.strictEqual(refs.actions[0].hidden, true);
+    assert.strictEqual(refs.actions[1].hidden, true);
+    assert.strictEqual(refs.actions[2].hidden, true);
     assert.strictEqual(refs.actions[3].className.includes("hidden"), false);
     assert.strictEqual(refs.actions[4].className.includes("hidden"), false);
     assert.strictEqual(refs.title.textContent, "External meeting");

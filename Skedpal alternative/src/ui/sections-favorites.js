@@ -279,9 +279,6 @@ function buildFavoriteGroup(group, expanded, expandedSubsections) {
       <span class="sidebar-fav-group-title" data-test-skedpal="sidebar-fav-group-title">
         ${group.label}
       </span>
-      <span class="sidebar-fav-group-meta" data-test-skedpal="sidebar-fav-group-count">
-        ${group.items.length}
-      </span>
       <span class="sidebar-fav-group-chevron" data-test-skedpal="sidebar-fav-group-chevron" data-fav-toggle="${
         group.sectionId
       }" aria-hidden="true">

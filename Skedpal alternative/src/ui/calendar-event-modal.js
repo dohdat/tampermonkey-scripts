@@ -200,6 +200,25 @@ function setModalToolbarVisibility(visible) {
   const node = resolveRef(domRefs.calendarEventModalToolbar, "calendar-event-modal-toolbar");
   if (!node) {return;}
   node.classList.toggle("hidden", !visible);
+  node.hidden = !visible;
+  if (node.style) {
+    node.style.display = visible ? "" : "none";
+  }
+}
+
+function setDeferInputVisibility(visible) {
+  const input = resolveRef(
+    domRefs.calendarEventModalDeferInput,
+    "calendar-event-modal-defer-date"
+  );
+  if (!input) {return;}
+  input.classList.toggle("hidden", !visible);
+  input.setAttribute("aria-hidden", visible ? "false" : "true");
+  input.disabled = !visible;
+  input.hidden = !visible;
+  if (input.style) {
+    input.style.display = visible ? "" : "none";
+  }
 }
 
 function showCalendarEventModal(calendarEventModal) {
@@ -297,6 +316,7 @@ export function openCalendarEventModal(eventMeta, anchorEl = null) {
     edit: true,
     delete: true
   });
+  setDeferInputVisibility(true);
   applyCalendarEventModalFields(task, eventMeta);
   showCalendarEventModal(calendarEventModal);
   scheduleModalPosition(anchorEl);
@@ -310,7 +330,7 @@ export function openExternalEventModal(event, anchorEl = null) {
   activeExternalEvent = event;
   activeExternalAnchor = anchorEl;
   setModalEyebrow(EXTERNAL_MODAL_EYEBROW);
-  setModalToolbarVisibility(true);
+  setModalToolbarVisibility(false);
   const actionButtons = getCalendarEventActionButtons(calendarEventModal);
   setActionButtonVisibility(actionButtons, {
     complete: false,
@@ -319,6 +339,7 @@ export function openExternalEventModal(event, anchorEl = null) {
     edit: true,
     delete: true
   });
+  setDeferInputVisibility(false);
   setModalText(
     domRefs.calendarEventModalTitle,
     "calendar-event-modal-title",

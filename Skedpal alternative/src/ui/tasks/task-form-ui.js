@@ -161,7 +161,7 @@ function setTaskFormBasics({
   title = "",
   link = "",
   durationMin = 30,
-  minBlockMin = 30,
+  minBlockMin = 15,
   priority = 3,
   deadline = "",
   startFrom = "",
@@ -174,7 +174,7 @@ function setTaskFormBasics({
   syncTaskLinkClear();
   document.getElementById("task-duration").value = durationMin || "30";
   syncTaskDurationHelper();
-  taskMinBlockInput.value = minBlockMin || "30";
+  taskMinBlockInput.value = minBlockMin || "15";
   document.getElementById("task-priority").value = String(priority || 3);
   applyPrioritySelectColor(taskPriorityInput);
   taskDeadlineInput.value = deadline ? deadline.slice(0, 10) : "";
@@ -249,7 +249,7 @@ export function openTaskEdit(task, options = {}) {
   syncTaskLinkClear();
   document.getElementById("task-duration").value = task.durationMin;
   syncTaskDurationHelper();
-  taskMinBlockInput.value = task.minBlockMin || "30";
+  taskMinBlockInput.value = task.minBlockMin || "15";
   document.getElementById("task-priority").value = String(task.priority);
   applyPrioritySelectColor(taskPriorityInput);
   taskDeadlineInput.value = task.deadline ? task.deadline.slice(0, 10) : "";

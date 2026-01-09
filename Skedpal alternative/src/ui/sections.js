@@ -192,7 +192,7 @@ function buildSubsectionTemplateFromInputs() {
     title: getInputValue(subsectionTaskTitleInput, ""),
     link: getInputValue(subsectionTaskLinkInput, ""),
     durationMin: getNumberInputValue(subsectionTaskDurationInput, 30),
-    minBlockMin: getNumberInputValue(subsectionTaskMinBlockInput, 30),
+    minBlockMin: getNumberInputValue(subsectionTaskMinBlockInput, 15),
     priority: getNumberInputValue(subsectionTaskPriorityInput, 3),
     deadline: getInputValue(subsectionTaskDeadlineInput, ""),
     repeat,
@@ -213,7 +213,7 @@ function applySubsectionTemplate(template) {
   setInputValue(subsectionTaskTitleInput, template.title || "");
   setInputValue(subsectionTaskLinkInput, template.link || "");
   setInputValue(subsectionTaskDurationInput, template.durationMin || 30);
-  setInputValue(subsectionTaskMinBlockInput, template.minBlockMin || 30);
+  setInputValue(subsectionTaskMinBlockInput, template.minBlockMin || 15);
   setInputValue(subsectionTaskPriorityInput, String(template.priority || 3));
   applyPrioritySelectColor(subsectionTaskPriorityInput);
   setInputValue(subsectionTaskDeadlineInput, formatTemplateDate(template.deadline));

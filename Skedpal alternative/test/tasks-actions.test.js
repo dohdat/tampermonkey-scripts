@@ -13,7 +13,7 @@ describe("task form helpers", () => {
     assert.strictEqual(values.title, "");
     assert.strictEqual(values.link, "");
     assert.strictEqual(values.durationMin, 30);
-    assert.strictEqual(values.minBlockMin, 30);
+    assert.strictEqual(values.minBlockMin, 15);
     assert.strictEqual(values.priority, 3);
     assert.deepStrictEqual(values.repeat, { type: "none" });
   });

@@ -275,7 +275,7 @@ function getTaskFormValues() {
     id: document.getElementById("task-id").value || uuid(),
     title: document.getElementById("task-title").value.trim(),
     durationMin: Number(document.getElementById("task-duration").value),
-    minBlockMin: Number(taskMinBlockInput.value) || 30,
+    minBlockMin: Number(taskMinBlockInput.value) || 15,
     priority: Number(document.getElementById("task-priority").value),
     deadline: taskDeadlineInput.value,
     startFrom: taskStartFromInput.value,

@@ -125,7 +125,7 @@ function applyTaskDefaults(task) {
   let changed = false;
   const defaultFields = [
     { key: "id", value: uuid(), condition: (t) => !t.id },
-    { key: "minBlockMin", value: 30, condition: (t) => t.minBlockMin === undefined },
+    { key: "minBlockMin", value: 15, condition: (t) => t.minBlockMin === undefined },
     { key: "subtaskParentId", value: null, condition: (t) => t.subtaskParentId === undefined },
     { key: "startFrom", value: null, condition: (t) => t.startFrom === undefined },
     { key: "completed", value: false, condition: (t) => t.completed === undefined },

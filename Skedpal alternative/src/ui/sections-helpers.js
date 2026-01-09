@@ -4,7 +4,7 @@ export const DEFAULT_SUBSECTION_TEMPLATE = {
   title: "",
   link: "",
   durationMin: 30,
-  minBlockMin: 30,
+  minBlockMin: 15,
   priority: 3,
   deadline: "",
   startFrom: "",

@@ -10,7 +10,7 @@ function resolveParentDefaults(parentTask) {
   const safeTask = parentTask || {};
   const {
     durationMin = 30,
-    minBlockMin = 30,
+  minBlockMin = 15,
     priority = 3,
     deadline = null,
     startFrom = null,

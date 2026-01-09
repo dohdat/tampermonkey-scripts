@@ -26,7 +26,7 @@ function normalizeTemplateInput(template) {
     title: orFallback(safe.title, ""),
     link: orFallback(safe.link, ""),
     durationMin: toPositiveNumberOr(safe.durationMin, 30),
-    minBlockMin: toPositiveNumberOr(safe.minBlockMin, 30),
+    minBlockMin: toPositiveNumberOr(safe.minBlockMin, 15),
     priority: toPositiveNumberOr(safe.priority, 3),
     deadline: orFallback(safe.deadline, null),
     startFrom: orFallback(safe.startFrom, null),

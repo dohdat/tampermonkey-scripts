@@ -20,7 +20,7 @@ export function getSubsectionsFor(sectionId) {
       title: "",
       link: "",
       durationMin: 30,
-      minBlockMin: 30,
+      minBlockMin: 15,
       priority: 3,
       deadline: "",
       startFrom: "",

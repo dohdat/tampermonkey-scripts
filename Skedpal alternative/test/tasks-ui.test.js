@@ -92,7 +92,7 @@ describe("task defaults", () => {
     ];
     const normalized = await ensureTaskIds(tasks);
     assert.strictEqual(normalized[0].id, "uuid-1");
-    assert.strictEqual(normalized[0].minBlockMin, 30);
+    assert.strictEqual(normalized[0].minBlockMin, 15);
     assert.strictEqual(normalized[0].subtaskParentId, null);
     assert.strictEqual(normalized[0].startFrom, null);
     assert.strictEqual(normalized[0].completed, false);

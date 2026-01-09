@@ -101,10 +101,12 @@ function applyCalendarView(resolvedTarget, showCalendarSplit, calendarAnchorDate
   } else if (resolvedTarget === "calendar") {
     state.calendarAnchorDate = new Date();
   }
-  renderCalendar();
+  const renderPromise = renderCalendar();
   if (focusCalendar) {
     const block = showCalendarSplit ? "start" : "center";
-    focusCalendarNow({ behavior: "auto", block });
+    Promise.resolve(renderPromise).then(() => {
+      focusCalendarNow({ behavior: "auto", block });
+    });
   }
 }
 

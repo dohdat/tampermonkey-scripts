@@ -56,6 +56,12 @@ class FakeElement {
     this.listeners[type] = handler;
   }
 
+  removeEventListener(type, handler) {
+    if (this.listeners[type] === handler) {
+      delete this.listeners[type];
+    }
+  }
+
   closest(selector) {
     let current = this;
     while (current) {
@@ -233,7 +239,7 @@ describe("calendar event modal", () => {
     refs.defer.showPicker = () => {
       pickerOpened = true;
     };
-    refs.actions[2].listeners.click();
+    refs.actions[2].listeners.click({ currentTarget: refs.actions[2] });
     assert.strictEqual(domRefs.calendarEventModal, refs.modal);
     assert.ok(typeof domRefs.calendarEventModal.classList.remove === "function");
     const modalFromDom = document.getElementById("calendar-event-modal");
@@ -263,7 +269,7 @@ describe("calendar event modal", () => {
     };
 
     initCalendarEventModal();
-    refs.actions[2].listeners.click();
+    refs.actions[2].listeners.click({ currentTarget: refs.actions[2] });
 
     assert.strictEqual(focused, true);
   });
@@ -311,7 +317,7 @@ describe("calendar event modal", () => {
     });
     const value = subsectionRow?.children?.[1];
     assert.strictEqual(value?.dataset?.zoomType, "subsection");
-    await value?.listeners?.click?.();
+    await value?.listeners?.click?.({ currentTarget: value });
 
     assert.strictEqual(state.zoomFilter?.type, "subsection");
     assert.strictEqual(state.zoomFilter?.sectionId, "section-work");
@@ -336,7 +342,7 @@ describe("calendar event modal", () => {
 
     initCalendarEventModal();
     openCalendarEventModal(eventMeta);
-    refs.actions[0].listeners.click();
+    refs.actions[0].listeners.click({ currentTarget: refs.actions[0] });
 
     assert.strictEqual(clicked, true);
   });
@@ -366,7 +372,7 @@ describe("calendar event modal", () => {
 
     initCalendarEventModal();
     openCalendarEventModal(eventMeta);
-    refs.actions[0].listeners.click();
+    refs.actions[0].listeners.click({ currentTarget: refs.actions[0] });
 
     assert.ok(dispatched);
     assert.strictEqual(dispatched.type, "skedpal:repeat-occurrence-complete");
@@ -388,7 +394,7 @@ describe("calendar event modal", () => {
 
     initCalendarEventModal();
     openCalendarEventModal(eventMeta);
-    refs.actions[3].listeners.click();
+    refs.actions[3].listeners.click({ currentTarget: refs.actions[3] });
 
     assert.ok(dispatched);
     assert.strictEqual(dispatched.type, "skedpal:task-edit");
@@ -445,7 +451,12 @@ describe("calendar event modal", () => {
     openExternalEventModal(externalEvent);
 
     assert.strictEqual(refs.eyebrow.textContent, "Google Calendar");
-    assert.ok(refs.toolbar.className.includes("hidden"));
+    assert.strictEqual(refs.toolbar.className.includes("hidden"), false);
+    assert.ok(refs.actions[0].className.includes("hidden"));
+    assert.ok(refs.actions[1].className.includes("hidden"));
+    assert.ok(refs.actions[2].className.includes("hidden"));
+    assert.strictEqual(refs.actions[3].className.includes("hidden"), false);
+    assert.strictEqual(refs.actions[4].className.includes("hidden"), false);
     assert.strictEqual(refs.title.textContent, "External meeting");
     assert.ok(refs.details.children.length > 0);
   });

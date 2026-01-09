@@ -73,8 +73,8 @@ describe("task virtualization helpers", () => {
   });
 
   it("matches the virtualization threshold", () => {
-    assert.strictEqual(shouldVirtualizeTaskList(200), false);
-    assert.strictEqual(shouldVirtualizeTaskList(201), true);
+    assert.strictEqual(shouldVirtualizeTaskList(20), false);
+    assert.strictEqual(shouldVirtualizeTaskList(21), true);
   });
 
   it("registers and clears virtualizers safely", () => {

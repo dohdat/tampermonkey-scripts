@@ -2,8 +2,8 @@ import { renderTaskCard } from "./task-card.js";
 import { sortTasksByOrder } from "../utils.js";
 import { state } from "../state/page-state.js";
 
-export const TASK_VIRTUALIZATION_THRESHOLD = 200;
-export const TASK_VIRTUALIZATION_BUFFER_MULTIPLIER = 2;
+export const TASK_VIRTUALIZATION_THRESHOLD = 20;
+export const TASK_VIRTUALIZATION_BUFFER_MULTIPLIER = 1;
 
 const taskHeightCache = new Map();
 const pendingVirtualizers = [];

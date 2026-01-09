@@ -23,7 +23,8 @@ import {
   startTaskInSection,
   handleRepeatOccurrenceComplete,
   closeRepeatCompleteModal,
-  openTaskEditById
+  openTaskEditById,
+  openNewTaskWithDefaults
 } from "./tasks/tasks-actions.js";
 import { handleTaskListClick } from "./tasks/task-list-actions.js";
 import {
@@ -54,6 +55,7 @@ import {
 import { invalidateExternalEventsCache, primeExternalEventsOnLoad } from "./calendar-external.js";
 import {
   applyPrioritySelectColor,
+  parseNewTaskFromUrl,
   parseZoomFromUrl,
   parseViewFromUrl,
   toggleClearButtonVisibility,
@@ -493,8 +495,29 @@ function registerCustomEventHandlers() {
   window.addEventListener("skedpal:task-edit", handleTaskEditEvent);
 }
 
+function clearNewTaskParams() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("newTask");
+  url.searchParams.delete("title");
+  url.searchParams.delete("url");
+  history.replaceState({}, "", url.toString());
+}
+
+function handleNewTaskIntentFromUrl() {
+  const payload = parseNewTaskFromUrl();
+  if (!payload) {return;}
+  openNewTaskWithDefaults(payload);
+  clearNewTaskParams();
+}
+
 applyTheme();
 initViewFromUrl(parseViewFromUrl);
 registerEventListeners();
 initCalendarView();
-hydrate();
+hydrate()
+  .catch((error) => {
+    console.error("Failed to hydrate SkedPal page.", error);
+  })
+  .finally(() => {
+    handleNewTaskIntentFromUrl();
+  });

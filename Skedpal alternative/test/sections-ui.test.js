@@ -254,6 +254,18 @@ describe("sections ui", () => {
     assert.strictEqual(subsectionSelect.value, "sub2");
   });
 
+  it("defaults task section selection to Work when available", () => {
+    state.settingsCache.sections = [
+      { id: "s1", name: "Work" },
+      { id: "s2", name: "Personal" }
+    ];
+
+    sectionsModule.renderTaskSectionOptions();
+
+    const sectionSelect = elementMap.get("task-section");
+    assert.strictEqual(sectionSelect.value, "s1");
+  });
+
   it("renders empty favorites placeholder and favorite rows", () => {
     favoritesModule.renderFavoriteShortcuts();
     const sidebar = elementMap.get("sidebar-favorites");

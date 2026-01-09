@@ -55,6 +55,16 @@ export function parseViewFromUrl(defaultView = "tasks") {
   return url.searchParams.get("view") || defaultView;
 }
 
+export function parseNewTaskFromUrl() {
+  const url = new URL(window.location.href);
+  const shouldOpen = url.searchParams.get("newTask");
+  if (shouldOpen !== "1") {return null;}
+  return {
+    title: url.searchParams.get("title") || "",
+    link: url.searchParams.get("url") || ""
+  };
+}
+
 export function updateUrlWithCalendarView(viewMode, options = {}) {
   const { replace = true } = options;
   const url = new URL(window.location.href);

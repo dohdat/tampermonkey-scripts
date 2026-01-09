@@ -445,6 +445,14 @@ export function startTaskInSection(sectionId = "", subsectionId = "") {
   switchView("tasks");
 }
 
+export function openNewTaskWithDefaults(options = {}) {
+  const { title = "", link = "" } = options;
+  resetTaskForm(false);
+  setTaskFormBasics({ title, link });
+  openTaskForm();
+  switchView("tasks");
+}
+
 export function startSubtaskFromTask(task, options = {}) {
   repeatStore.repeatTarget = "task";
   setTaskFormBasics(buildSubtaskFormValues(task));

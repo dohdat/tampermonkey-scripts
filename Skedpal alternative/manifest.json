@@ -16,7 +16,9 @@
   },
   "permissions": [
     "identity",
-    "storage"
+    "storage",
+    "contextMenus",
+    "tabs"
   ],
   "host_permissions": [
     "https://www.googleapis.com/*"

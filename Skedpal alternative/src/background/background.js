@@ -16,6 +16,20 @@ import {
   fetchFreeBusy,
   clearCachedAuthTokens
 } from "./google-calendar.js";
+import { buildCreateTaskUrl } from "./context-menu.js";
+
+const CREATE_TASK_MENU_ID = "skedpal-create-task";
+
+function ensureContextMenu() {
+  if (!chrome.contextMenus?.create) {return;}
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: CREATE_TASK_MENU_ID,
+      title: "Create task",
+      contexts: ["page", "selection", "link"]
+    });
+  });
+}
 
 function resolveScheduleStatus(task, parentIds, ignored, taskPlacements) {
   if (parentIds.has(task.id)) {return null;}
@@ -258,6 +272,35 @@ function handleRuntimeMessage(message, sendResponse) {
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return handleRuntimeMessage(message, sendResponse);
 });
+
+chrome.runtime.onInstalled.addListener(() => {
+  ensureContextMenu();
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  ensureContextMenu();
+});
+
+function handleContextMenuClick(info, tab) {
+  if (info.menuItemId !== CREATE_TASK_MENU_ID) {return;}
+  const baseUrl = chrome.runtime.getURL("pages/index.html");
+  const pageTitle = tab?.title || "";
+  if (pageTitle) {
+    chrome.tabs.create({ url: buildCreateTaskUrl(info, baseUrl, pageTitle) });
+    return;
+  }
+  const tabId = info?.tabId;
+  if (typeof tabId !== "number") {
+    chrome.tabs.create({ url: buildCreateTaskUrl(info, baseUrl, "") });
+    return;
+  }
+  chrome.tabs.get(tabId, (tab) => {
+    const title = tab?.title || "";
+    chrome.tabs.create({ url: buildCreateTaskUrl(info, baseUrl, title) });
+  });
+}
+
+chrome.contextMenus?.onClicked?.addListener(handleContextMenuClick);
 
 chrome.action.onClicked.addListener(() => {
   chrome.runtime.openOptionsPage();

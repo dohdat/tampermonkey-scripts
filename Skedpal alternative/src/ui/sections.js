@@ -131,7 +131,7 @@ export function renderTaskSectionOptions(selected) {
   const sections = [...(state.settingsCache.sections || [])];
   const selectedSection = selected
     ? sections.find((s) => s.id === selected) || sections.find((s) => s.name === selected)
-    : null;
+    : sections.find((s) => s.name?.toLowerCase() === "work") || null;
   const { taskSectionSelect } = domRefs;
   taskSectionSelect.innerHTML = "";
   const noneOpt = document.createElement("option");

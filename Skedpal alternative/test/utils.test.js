@@ -6,6 +6,7 @@ const {
   parseZoomFromUrl,
   updateUrlWithView,
   parseViewFromUrl,
+  parseNewTaskFromUrl,
   updateUrlWithCalendarView,
   parseCalendarViewFromUrl,
   normalizeTimeMap,
@@ -100,6 +101,19 @@ describe("utils url helpers", () => {
 
     updateUrlWithView("");
     assert.strictEqual(parseViewFromUrl("tasks"), "tasks");
+  });
+
+  it("reads new task params", () => {
+    global.window = {
+      location: { href: "https://example.com/app?newTask=1&title=Hello&url=https%3A%2F%2Fexample.com" }
+    };
+    assert.deepStrictEqual(parseNewTaskFromUrl(), {
+      title: "Hello",
+      link: "https://example.com"
+    });
+
+    global.window = { location: { href: "https://example.com/app?newTask=0" } };
+    assert.strictEqual(parseNewTaskFromUrl(), null);
   });
 
   it("pushes history entries when replace is false", () => {

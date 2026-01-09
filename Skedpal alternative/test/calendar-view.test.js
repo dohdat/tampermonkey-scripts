@@ -145,6 +145,7 @@ function installDomStubs() {
 installDomStubs();
 const { domRefs } = await import("../src/ui/constants.js");
 const { state } = await import("../src/ui/state/page-state.js");
+const { getCalendarRange } = await import("../src/ui/calendar-utils.js");
 domRefs.calendarGrid = elements.get("calendar-grid");
 domRefs.calendarTitle = elements.get("calendar-title");
 domRefs.calendarDayBtn = elements.get("calendar-day");
@@ -159,6 +160,7 @@ const {
   renderCalendar,
   initCalendarView
 } = calendar;
+const { ensureExternalEvents } = await import("../src/ui/calendar-external.js");
 
 describe("calendar view", () => {
   beforeEach(() => {
@@ -176,7 +178,8 @@ describe("calendar view", () => {
     state.calendarViewMode = "week";
     state.tasksTimeMapsCache = [];
     state.calendarExternalEvents = [];
-    state.calendarExternalAllowFetch = false;
+    state.calendarExternalRangeKey = "";
+    state.calendarExternalPendingKey = "";
   });
 
   it("returns false when no grid is available for focus", () => {
@@ -243,13 +246,13 @@ describe("calendar view", () => {
     assert.strictEqual(result, false);
   });
 
-  it("renders an empty state when no events exist", () => {
-    renderCalendar([]);
+  it("renders an empty state when no events exist", async () => {
+    await renderCalendar([]);
     const empty = domRefs.calendarGrid.querySelector('[data-test-skedpal="calendar-empty"]');
     assert.ok(empty);
   });
 
-  it("renders with a scheduled event and split view", () => {
+  it("renders with a scheduled event and split view", async () => {
     domRefs.tasksCalendarSplitWrap.dataset.split = "true";
     state.calendarAnchorDate = new Date();
     const now = new Date();
@@ -269,22 +272,23 @@ describe("calendar view", () => {
       ],
       scheduleStatus: "scheduled"
     };
-    renderCalendar([task, overlapping]);
+    await renderCalendar([task, overlapping]);
     const empty = domRefs.calendarGrid.querySelector('[data-test-skedpal="calendar-empty"]');
     assert.strictEqual(Boolean(empty), false);
     const blocks = domRefs.calendarGrid.querySelectorAll('[data-test-skedpal="calendar-event"]');
     assert.ok(blocks.length >= 2);
   });
 
-  it("rerenders when external fetch signals updates", () => {
+  it("rerenders when external fetch signals updates", async () => {
     const originalChrome = globalThis.chrome;
     globalThis.chrome = {
       runtime: {
         sendMessage: (_payload, callback) => callback({ ok: false, error: "bad" })
       }
     };
-    renderCalendar([]);
-    assert.strictEqual(state.calendarExternalAllowFetch, false);
+    const range = getCalendarRange(state.calendarAnchorDate, state.calendarViewMode);
+    await ensureExternalEvents(range);
+    assert.strictEqual(state.calendarExternalPendingKey, "");
     globalThis.chrome = originalChrome;
   });
 

@@ -2,6 +2,14 @@ import assert from "assert";
 import { describe, it, beforeEach } from "mocha";
 
 import { state } from "../src/ui/state/page-state.js";
+import { getCalendarRange } from "../src/ui/calendar-utils.js";
+
+function buildKey(range, calendarIds) {
+  const idsKey = Array.isArray(calendarIds)
+    ? calendarIds.filter(Boolean).sort().join(",") || "none"
+    : "all";
+  return `${range.start.toISOString()}_${range.end.toISOString()}_${idsKey}`;
+}
 
 class FakeElement {
   constructor(tagName = "div") {
@@ -115,13 +123,14 @@ describe("calendar render", () => {
     return installDomStubs().then(({ domRefs, renderCalendar }) => {
       state.calendarViewMode = "day";
       state.calendarAnchorDate = new Date(2026, 0, 6, 0, 0, 0);
-      state.calendarExternalAllowFetch = false;
+      state.settingsCache = { ...state.settingsCache, googleCalendarIds: [] };
       state.calendarExternalEvents = [];
+      state.calendarExternalRangeKey = "";
       testRefs = { domRefs, renderCalendar };
     });
   });
 
-  it("renders scheduled events with metadata", () => {
+  it("renders scheduled events with metadata", async () => {
     const { domRefs, renderCalendar } = testRefs;
     const start = new Date(2026, 0, 6, 9, 0, 0);
     const end = new Date(2026, 0, 6, 10, 0, 0);
@@ -143,7 +152,7 @@ describe("calendar render", () => {
     ];
     state.tasksTimeMapsCache = [{ id: "tm-1", color: "#22c55e" }];
 
-    renderCalendar(tasks);
+    await renderCalendar(tasks);
 
     assert.ok(domRefs.calendarTitle.textContent.includes("2026"));
     assert.ok(domRefs.calendarDayBtn.className.includes("calendar-view-btn--active"));
@@ -158,32 +167,35 @@ describe("calendar render", () => {
     assert.strictEqual(links[0].target, "_blank");
   });
 
-  it("renders an empty state when no events are in range", () => {
+  it("renders an empty state when no events are in range", async () => {
     const { domRefs, renderCalendar } = testRefs;
     state.tasksTimeMapsCache = [];
-    renderCalendar([]);
+    const range = getCalendarRange(state.calendarAnchorDate, state.calendarViewMode);
+    state.calendarExternalRangeKey = buildKey(range, state.settingsCache.googleCalendarIds);
+    await renderCalendar([]);
 
     const empty = findByTestId(domRefs.calendarGrid, "calendar-empty");
     assert.strictEqual(empty.length, 1);
   });
 
-  it("marks three day view as active", () => {
+  it("marks three day view as active", async () => {
     const { domRefs, renderCalendar } = testRefs;
     state.calendarViewMode = "three";
     state.tasksTimeMapsCache = [];
 
-    renderCalendar([]);
+    const range = getCalendarRange(state.calendarAnchorDate, state.calendarViewMode);
+    state.calendarExternalRangeKey = buildKey(range, state.settingsCache.googleCalendarIds);
+    await renderCalendar([]);
 
     assert.ok(domRefs.calendarThreeBtn.className.includes("calendar-view-btn--active"));
     assert.strictEqual(domRefs.calendarDayBtn.className.includes("calendar-view-btn--active"), false);
     assert.strictEqual(domRefs.calendarWeekBtn.className.includes("calendar-view-btn--active"), false);
   });
 
-  it("renders delete action for external calendar events", () => {
+  it("renders delete action for external calendar events", async () => {
     const { domRefs, renderCalendar } = testRefs;
     const start = new Date(2026, 0, 6, 13, 0, 0);
     const end = new Date(2026, 0, 6, 14, 0, 0);
-    state.calendarExternalAllowFetch = false;
     state.calendarExternalEvents = [
       {
         id: "ext-1",
@@ -195,7 +207,9 @@ describe("calendar render", () => {
       }
     ];
 
-    renderCalendar([]);
+    const range = getCalendarRange(state.calendarAnchorDate, state.calendarViewMode);
+    state.calendarExternalRangeKey = buildKey(range, state.settingsCache.googleCalendarIds);
+    await renderCalendar([]);
 
     const events = findByTestId(domRefs.calendarGrid, "calendar-event");
     assert.strictEqual(events.length, 1);
@@ -209,24 +223,25 @@ describe("calendar render", () => {
     assert.ok(events[0].dataset.eventEnd);
   });
 
-  it("prefers title URLs over event links and strips UID", () => {
+  it("prefers title URLs over event links and strips UID", async () => {
     const { domRefs, renderCalendar } = testRefs;
     const start = new Date(2026, 0, 6, 12, 0, 0);
     const end = new Date(2026, 0, 6, 13, 0, 0);
-    state.calendarExternalAllowFetch = false;
-    state.calendarExternalEvents = [
-      {
-        id: "ext-2",
-        calendarId: "cal-2",
-        title: "Join https://cisco.webex.com #UID:abc123",
-        link: "https://calendar.google.com/event?eid=ext-2",
-        start,
-        end,
-        source: "external"
-      }
-    ];
+      state.calendarExternalEvents = [
+        {
+          id: "ext-2",
+          calendarId: "cal-2",
+          title: "Join https://cisco.webex.com #UID:abc123",
+          link: "https://calendar.google.com/event?eid=ext-2",
+          start,
+          end,
+          source: "external"
+        }
+      ];
 
-    renderCalendar([]);
+      const range = getCalendarRange(state.calendarAnchorDate, state.calendarViewMode);
+      state.calendarExternalRangeKey = buildKey(range, state.settingsCache.googleCalendarIds);
+      await renderCalendar([]);
 
     const events = findByTestId(domRefs.calendarGrid, "calendar-event");
     assert.strictEqual(events.length, 1);
@@ -236,23 +251,24 @@ describe("calendar render", () => {
     assert.strictEqual(links[0].textContent, "Join");
   });
 
-  it("strips UID from titles without links", () => {
+  it("strips UID from titles without links", async () => {
     const { domRefs, renderCalendar } = testRefs;
     const start = new Date(2026, 0, 6, 15, 0, 0);
     const end = new Date(2026, 0, 6, 16, 0, 0);
-    state.calendarExternalAllowFetch = false;
-    state.calendarExternalEvents = [
-      {
-        id: "ext-3",
-        calendarId: "cal-3",
-        title: "Focus time #UID:xyz789",
-        start,
-        end,
-        source: "external"
-      }
-    ];
+      state.calendarExternalEvents = [
+        {
+          id: "ext-3",
+          calendarId: "cal-3",
+          title: "Focus time #UID:xyz789",
+          start,
+          end,
+          source: "external"
+        }
+      ];
 
-    renderCalendar([]);
+      const range = getCalendarRange(state.calendarAnchorDate, state.calendarViewMode);
+      state.calendarExternalRangeKey = buildKey(range, state.settingsCache.googleCalendarIds);
+      await renderCalendar([]);
 
     const events = findByTestId(domRefs.calendarGrid, "calendar-event");
     assert.strictEqual(events.length, 1);
@@ -261,7 +277,7 @@ describe("calendar render", () => {
     assert.strictEqual(titles[0].textContent, "Focus time");
   });
 
-  it("skips scheduled instances that are already completed", () => {
+  it("skips scheduled instances that are already completed", async () => {
     const { domRefs, renderCalendar } = testRefs;
     const start = new Date(2026, 0, 6, 9, 0, 0);
     const end = new Date(2026, 0, 6, 10, 0, 0);
@@ -285,7 +301,7 @@ describe("calendar render", () => {
     ];
     state.tasksTimeMapsCache = [{ id: "tm-2", color: "#22c55e" }];
 
-    renderCalendar(tasks);
+    await renderCalendar(tasks);
 
     const events = findByTestId(domRefs.calendarGrid, "calendar-event");
     assert.strictEqual(events.length, 0);

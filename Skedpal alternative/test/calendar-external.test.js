@@ -1,10 +1,16 @@
+import "fake-indexeddb/auto.js";
 import assert from "assert";
 import { describe, it, beforeEach, afterEach } from "mocha";
 
 import { state } from "../src/ui/state/page-state.js";
 import {
+  deleteCalendarCacheEntry,
+  saveCalendarCacheEntry
+} from "../src/data/db.js";
+import {
   ensureExternalEvents,
   getExternalEventsForRange,
+  hydrateExternalEvents,
   invalidateExternalEventsCache,
   primeExternalEventsOnLoad
 } from "../src/ui/calendar-external.js";
@@ -12,6 +18,12 @@ import {
 describe("calendar external events", () => {
   const originalChrome = globalThis.chrome;
   let originalWarn = null;
+  const buildKey = (range, calendarIds) => {
+    const idsKey = Array.isArray(calendarIds)
+      ? calendarIds.filter(Boolean).sort().join(",") || "none"
+      : "all";
+    return `${range.start.toISOString()}_${range.end.toISOString()}_${idsKey}`;
+  };
 
   const range = {
     start: new Date("2026-01-07T00:00:00Z"),
@@ -24,7 +36,10 @@ describe("calendar external events", () => {
     state.calendarExternalEvents = [];
     state.calendarExternalRangeKey = "";
     state.calendarExternalPendingKey = "";
-    state.calendarExternalAllowFetch = false;
+    state.settingsCache = { ...state.settingsCache, googleCalendarIds: [] };
+    invalidateExternalEventsCache();
+    const key = buildKey(range, state.settingsCache.googleCalendarIds);
+    return deleteCalendarCacheEntry(key);
   });
 
   afterEach(() => {
@@ -40,24 +55,21 @@ describe("calendar external events", () => {
   });
 
   it("returns cached events when fetch is disabled", () => {
-    state.calendarExternalAllowFetch = false;
     state.calendarExternalEvents = [{ id: "evt-1", title: "Hold" }];
+    state.calendarExternalRangeKey = buildKey(range, state.settingsCache.googleCalendarIds);
     assert.deepStrictEqual(getExternalEventsForRange(range), state.calendarExternalEvents);
   });
 
   it("short-circuits when runtime is unavailable", async () => {
     globalThis.chrome = undefined;
-    state.calendarExternalAllowFetch = true;
     const updated = await ensureExternalEvents(range);
     assert.strictEqual(updated, false);
     assert.ok(state.calendarExternalRangeKey.length > 0);
   });
 
   it("stores events returned from the background runtime", async () => {
-    const now = new Date();
     state.settingsCache = {
       ...state.settingsCache,
-      schedulingHorizonDays: 10,
       googleCalendarIds: ["calendar-1"]
     };
     let capturedMessage = null;
@@ -82,7 +94,6 @@ describe("calendar external events", () => {
         }
       }
     };
-    state.calendarExternalAllowFetch = true;
     const updated = await ensureExternalEvents(range);
     assert.strictEqual(updated, true);
     assert.strictEqual(state.calendarExternalEvents.length, 1);
@@ -90,16 +101,12 @@ describe("calendar external events", () => {
     const minDate = new Date(capturedMessage.timeMin);
     const maxDate = new Date(capturedMessage.timeMax);
     assert.deepStrictEqual(capturedMessage.calendarIds, ["calendar-1"]);
-    assert.ok(minDate.getTime() >= now.getTime() - 2000);
-    assert.strictEqual(maxDate.getHours(), 23);
-    assert.strictEqual(maxDate.getMinutes(), 59);
-    assert.strictEqual(maxDate.getSeconds(), 59);
-    const dayDiff = Math.round((maxDate - minDate) / (24 * 60 * 60 * 1000));
-    assert.ok(dayDiff >= 9);
+    assert.strictEqual(minDate.toISOString(), range.start.toISOString());
+    assert.strictEqual(maxDate.toISOString(), range.end.toISOString());
   });
 
-  it("skips fetch when fetching is disabled", async () => {
-    state.calendarExternalAllowFetch = false;
+  it("skips fetch when a pending key matches", async () => {
+    state.calendarExternalPendingKey = buildKey(range, state.settingsCache.googleCalendarIds);
     let called = 0;
     globalThis.chrome = {
       runtime: {
@@ -116,7 +123,6 @@ describe("calendar external events", () => {
   });
 
   it("handles failed responses and clears pending flags", async () => {
-    state.calendarExternalAllowFetch = true;
     globalThis.chrome = {
       runtime: {
         lastError: null,
@@ -127,7 +133,6 @@ describe("calendar external events", () => {
     };
     const updated = await ensureExternalEvents(range);
     assert.strictEqual(updated, true);
-    assert.strictEqual(state.calendarExternalAllowFetch, false);
     assert.strictEqual(state.calendarExternalPendingKey, "");
     assert.ok(state.calendarExternalRangeKey.length > 0);
   });
@@ -135,7 +140,6 @@ describe("calendar external events", () => {
   it("sends null calendarIds when none are selected", async () => {
     let capturedMessage = null;
     state.settingsCache = { ...state.settingsCache, googleCalendarIds: null };
-    state.calendarExternalAllowFetch = true;
     globalThis.chrome = {
       runtime: {
         lastError: null,
@@ -159,25 +163,142 @@ describe("calendar external events", () => {
     assert.strictEqual(state.calendarExternalRangeKey, "");
     assert.strictEqual(state.calendarExternalPendingKey, "");
     assert.strictEqual(state.calendarExternalEvents.length, 0);
-    assert.strictEqual(state.calendarExternalAllowFetch, true);
   });
 
   it("primes external events once on load", async () => {
-    state.settingsCache = { ...state.settingsCache, schedulingHorizonDays: 7 };
-    let capturedMessage = null;
+    const updated = await primeExternalEventsOnLoad();
+    assert.strictEqual(updated, false);
+  });
+
+  it("uses cached entries and skips network when fresh", async () => {
+    const key = buildKey(range, state.settingsCache.googleCalendarIds);
+    await saveCalendarCacheEntry({
+      key,
+      fetchedAt: Date.now(),
+      events: [
+        {
+          id: "evt-2",
+          title: "Cached",
+          start: range.start.toISOString(),
+          end: range.end.toISOString()
+        }
+      ]
+    });
+    let called = 0;
     globalThis.chrome = {
       runtime: {
         lastError: null,
-        sendMessage: (msg, cb) => {
-          capturedMessage = msg;
+        sendMessage: (_msg, cb) => {
+          called += 1;
           cb({ ok: true, events: [] });
         }
       }
     };
-    const updated = await primeExternalEventsOnLoad();
+    const updated = await ensureExternalEvents(range);
+    assert.strictEqual(updated, false);
+    assert.strictEqual(called, 0);
+    assert.strictEqual(state.calendarExternalEvents.length, 1);
+  });
+
+  it("hydrates external events from indexedDB", async () => {
+    const key = buildKey(range, state.settingsCache.googleCalendarIds);
+    await saveCalendarCacheEntry({
+      key,
+      fetchedAt: Date.now(),
+      events: [
+        {
+          id: "evt-3",
+          title: "Hydrated",
+          start: range.start.toISOString(),
+          end: range.end.toISOString()
+        }
+      ]
+    });
+    const hydrated = await hydrateExternalEvents(range);
+    assert.strictEqual(hydrated, true);
+    assert.strictEqual(state.calendarExternalEvents.length, 1);
+  });
+
+  it("treats past ranges as fresh when recently cached", async () => {
+    const pastRange = {
+      start: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      end: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+    };
+    const key = buildKey(pastRange, state.settingsCache.googleCalendarIds);
+    await saveCalendarCacheEntry({
+      key,
+      fetchedAt: Date.now(),
+      events: [
+        {
+          id: "evt-4",
+          title: "Past cached",
+          start: pastRange.start.toISOString(),
+          end: pastRange.end.toISOString()
+        }
+      ]
+    });
+    let called = 0;
+    globalThis.chrome = {
+      runtime: {
+        lastError: null,
+        sendMessage: (_msg, cb) => {
+          called += 1;
+          cb({ ok: true, events: [] });
+        }
+      }
+    };
+    const updated = await ensureExternalEvents(pastRange);
+    assert.strictEqual(updated, false);
+    assert.strictEqual(called, 0);
+  });
+
+  it("treats today ranges as fresh when recently cached", async () => {
+    const now = new Date();
+    const todayRange = {
+      start: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0),
+      end: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
+    };
+    const key = buildKey(todayRange, state.settingsCache.googleCalendarIds);
+    await saveCalendarCacheEntry({
+      key,
+      fetchedAt: Date.now(),
+      events: [
+        {
+          id: "evt-5",
+          title: "Today cached",
+          start: todayRange.start.toISOString(),
+          end: todayRange.end.toISOString()
+        }
+      ]
+    });
+    let called = 0;
+    globalThis.chrome = {
+      runtime: {
+        lastError: null,
+        sendMessage: (_msg, cb) => {
+          called += 1;
+          cb({ ok: true, events: [] });
+        }
+      }
+    };
+    const updated = await ensureExternalEvents(todayRange);
+    assert.strictEqual(updated, false);
+    assert.strictEqual(called, 0);
+  });
+
+  it("handles runtime lastError during fetch", async () => {
+    const key = buildKey(range, state.settingsCache.googleCalendarIds);
+    globalThis.chrome = {
+      runtime: {
+        lastError: { message: "bad" },
+        sendMessage: (_msg, cb) => {
+          cb({ ok: true, events: [] });
+        }
+      }
+    };
+    const updated = await ensureExternalEvents(range);
     assert.strictEqual(updated, true);
-    assert.ok(capturedMessage);
-    assert.strictEqual(state.calendarExternalAllowFetch, false);
-    assert.ok(state.calendarExternalRangeKey.length > 0);
+    assert.strictEqual(state.calendarExternalPendingKey, "");
+    assert.strictEqual(state.calendarExternalRangeKey, key);
   });
 });

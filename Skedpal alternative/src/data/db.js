@@ -1,5 +1,5 @@
 const DB_NAME = "personal-skedpal";
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const DEFAULT_SECTIONS = [
   { id: "section-work-default", name: "Work" },
   { id: "section-personal-default", name: "Personal" }
@@ -37,6 +37,9 @@ function openDb() {
       }
       if (!db.objectStoreNames.contains("task-templates")) {
         db.createObjectStore("task-templates", { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains("calendar-cache")) {
+        db.createObjectStore("calendar-cache", { keyPath: "key" });
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -139,6 +142,23 @@ export async function getLatestBackup() {
     req.onsuccess = () => resolve(req.result || null);
     req.onerror = () => reject(req.error);
   });
+}
+
+export async function getCalendarCacheEntry(key) {
+  const store = await getStore("calendar-cache");
+  return new Promise((resolve, reject) => {
+    const req = store.get(key);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function saveCalendarCacheEntry(entry) {
+  return putItem("calendar-cache", entry);
+}
+
+export async function deleteCalendarCacheEntry(key) {
+  return deleteItem("calendar-cache", key);
 }
 
 export async function restoreBackup(snapshot) {

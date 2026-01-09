@@ -22,7 +22,11 @@ import {
   clearCalendarEventFocus,
   focusCalendarEventBlock
 } from "./calendar-focus.js";
-import { ensureExternalEvents, getExternalEventsForRange } from "./calendar-external.js";
+import {
+  ensureExternalEvents,
+  getExternalEventsForRange,
+  hydrateExternalEvents
+} from "./calendar-external.js";
 import { ensureCalendarDragHandlers } from "./calendar-drag.js";
 import { initCalendarCreateModal, openCalendarCreateFromClick } from "./calendar-create-event.js";
 import {
@@ -266,9 +270,10 @@ export function focusCalendarEvent(taskId, options = {}) {
   return true;
 }
 
-export function renderCalendar(tasks = state.tasksCache) {
+export async function renderCalendar(tasks = state.tasksCache) {
   const viewMode = getActiveCalendarViewMode();
   const range = getCalendarRange(state.calendarAnchorDate, viewMode);
+  await hydrateExternalEvents(range);
   const scheduledEvents = getScheduledEvents(tasks);
   const externalEvents = getExternalEventsForRange(range);
   const events = [...scheduledEvents, ...externalEvents].filter(

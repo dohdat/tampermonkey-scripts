@@ -280,6 +280,8 @@ describe("calendar view", () => {
   });
 
   it("rerenders when external fetch signals updates", async () => {
+    const originalWarn = console.warn;
+    console.warn = () => {};
     const originalChrome = globalThis.chrome;
     globalThis.chrome = {
       runtime: {
@@ -290,6 +292,7 @@ describe("calendar view", () => {
     await ensureExternalEvents(range);
     assert.strictEqual(state.calendarExternalPendingKey, "");
     globalThis.chrome = originalChrome;
+    console.warn = originalWarn;
   });
 
   it("initializes the calendar view once", () => {

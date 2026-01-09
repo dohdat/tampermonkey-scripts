@@ -24,8 +24,18 @@ class FakeElement {
   }
 
   appendChild(child) {
+    child.parentElement = this;
     this.children.push(child);
     return child;
+  }
+
+  remove() {
+    if (!this.parentElement) {return;}
+    const index = this.parentElement.children.indexOf(this);
+    if (index >= 0) {
+      this.parentElement.children.splice(index, 1);
+    }
+    this.parentElement = null;
   }
 
   setAttribute(name, value) {
@@ -55,6 +65,11 @@ class FakeElement {
     if (match) {
       const dayKey = match[1];
       return this.children.find((child) => child.dataset?.day === dayKey) || null;
+    }
+    const dataTestMatch = selector.match(/\[data-test-skedpal="([^"]+)"\]/);
+    if (dataTestMatch) {
+      const value = dataTestMatch[1];
+      return this.children.find((child) => child.attributes?.["data-test-skedpal"] === value) || null;
     }
     return null;
   }
@@ -234,5 +249,306 @@ describe("calendar create modal", () => {
     assert.strictEqual(domRefs.calendarEventModal.classList.contains("hidden"), true);
     assert.strictEqual(domRefs.calendarCreateDate.value, "");
     assert.strictEqual(domRefs.calendarGrid.children[0].children.length, 0);
+  });
+
+  it("wires and cleans up create modal listeners", async () => {
+    const {
+      initCalendarCreateModal,
+      cleanupCalendarCreateModal
+    } = await import("../src/ui/calendar-create-event.js");
+
+    const closeButton = new FakeElement("button");
+    domRefs.calendarCreateCloseButtons = [closeButton];
+
+    initCalendarCreateModal({ onRender: () => {} });
+    assert.strictEqual(domRefs.calendarCreateModal.dataset.modalReady, "true");
+    assert.ok(closeButton._listeners.click);
+
+    cleanupCalendarCreateModal();
+    assert.strictEqual(domRefs.calendarCreateModal.dataset.modalReady, "false");
+    assert.strictEqual(closeButton._listeners.click, undefined);
+  });
+
+  it("updates the draft title and ignores invalid time input changes", async () => {
+    const {
+      initCalendarCreateModal,
+      openCalendarCreateModal
+    } = await import("../src/ui/calendar-create-event.js");
+    initCalendarCreateModal();
+    await openCalendarCreateModal({ dayKey: "2026-01-08", startMinutes: 60 });
+
+    domRefs.calendarCreateTitle.value = "Updated title";
+    domRefs.calendarCreateTitle._listeners.input();
+    const draftBlock = domRefs.calendarGrid.children[0].children[0];
+    const title = draftBlock.querySelector('[data-test-skedpal="calendar-event-draft-title"]');
+    assert.strictEqual(title.textContent, "Updated title");
+
+    domRefs.calendarCreateTime.value = "not-a-time";
+    assert.doesNotThrow(() => domRefs.calendarCreateTime._listeners.change());
+  });
+
+  it("returns early when the draft title element is missing", async () => {
+    const {
+      initCalendarCreateModal,
+      openCalendarCreateModal
+    } = await import("../src/ui/calendar-create-event.js");
+    initCalendarCreateModal();
+    await openCalendarCreateModal({ dayKey: "2026-01-08", startMinutes: 60 });
+
+    const dayCol = domRefs.calendarGrid.children[0];
+    const draftBlock = dayCol.children[0];
+    draftBlock.querySelector = () => null;
+    domRefs.calendarCreateTitle.value = "Updated title";
+    assert.doesNotThrow(() => domRefs.calendarCreateTitle._listeners.input());
+  });
+
+  it("updates the draft block on valid input changes", async () => {
+    const {
+      initCalendarCreateModal,
+      openCalendarCreateModal
+    } = await import("../src/ui/calendar-create-event.js");
+    initCalendarCreateModal();
+    await openCalendarCreateModal({ dayKey: "2026-01-08", startMinutes: 60 });
+
+    const dayCol = domRefs.calendarGrid.children[0];
+    const originalBlock = dayCol.children[0];
+
+    domRefs.calendarCreateDate.value = "2026-01-08";
+    domRefs.calendarCreateTime.value = "12:00";
+    domRefs.calendarCreateDuration.value = "30";
+    domRefs.calendarCreateTime._listeners.change();
+
+    const updatedBlock = dayCol.children[0];
+    assert.notStrictEqual(updatedBlock, originalBlock);
+    assert.notStrictEqual(updatedBlock.style.top, originalBlock.style.top);
+  });
+
+  it("uses the draft day key and default title when inputs are empty", async () => {
+    const {
+      initCalendarCreateModal,
+      openCalendarCreateModal
+    } = await import("../src/ui/calendar-create-event.js");
+    initCalendarCreateModal();
+    await openCalendarCreateModal({ dayKey: "2026-01-08", startMinutes: 120 });
+
+    domRefs.calendarCreateDate.value = "";
+    domRefs.calendarCreateTime.value = "11:00";
+    domRefs.calendarCreateDuration.value = "30";
+    domRefs.calendarCreateTime._listeners.change();
+
+    domRefs.calendarCreateTitle.value = "";
+    domRefs.calendarCreateTitle._listeners.input();
+    const dayCol = domRefs.calendarGrid.children[0];
+    const draftBlock = dayCol.children[0];
+    const title = draftBlock.querySelector('[data-test-skedpal="calendar-event-draft-title"]');
+    assert.strictEqual(title.textContent, "(No title)");
+  });
+
+  it("validates the create payload on submit", async () => {
+    const { initCalendarCreateModal } = await import("../src/ui/calendar-create-event.js");
+    initCalendarCreateModal();
+    const submitEvent = { preventDefault: () => {} };
+
+    domRefs.calendarCreateCalendarSelect.value = "";
+    domRefs.calendarCreateDate.value = "2026-01-08";
+    domRefs.calendarCreateTime.value = "09:00";
+    await domRefs.calendarCreateForm._listeners.submit(submitEvent);
+
+    domRefs.calendarCreateCalendarSelect.value = "cal-1";
+    domRefs.calendarCreateDate.value = "";
+    domRefs.calendarCreateTime.value = "09:00";
+    await domRefs.calendarCreateForm._listeners.submit(submitEvent);
+
+    domRefs.calendarCreateDate.value = "2026-01-08";
+    domRefs.calendarCreateTime.value = "bad";
+    await domRefs.calendarCreateForm._listeners.submit(submitEvent);
+
+    domRefs.calendarCreateDate.value = "invalid-date";
+    domRefs.calendarCreateTime.value = "09:00";
+    await domRefs.calendarCreateForm._listeners.submit(submitEvent);
+  });
+
+  it("adds created events and handles failures", async () => {
+    const { initCalendarCreateModal } = await import("../src/ui/calendar-create-event.js");
+    initCalendarCreateModal();
+    const submitEvent = { preventDefault: () => {} };
+    state.calendarExternalEvents = null;
+
+    domRefs.calendarCreateCalendarSelect.value = "cal-1";
+    domRefs.calendarCreateDate.value = "2026-01-08";
+    domRefs.calendarCreateTime.value = "10:00";
+    domRefs.calendarCreateDuration.value = "45";
+
+    global.chrome.runtime.sendMessage = (_message, callback) => {
+      callback({
+        ok: true,
+        event: {
+          id: "evt-1",
+          calendarId: "cal-1",
+          title: "Meeting",
+          start: new Date(2026, 0, 8, 10, 0, 0).toISOString(),
+          end: new Date(2026, 0, 8, 10, 45, 0).toISOString()
+        }
+      });
+    };
+
+    await domRefs.calendarCreateForm._listeners.submit(submitEvent);
+    assert.strictEqual(state.calendarExternalEvents.length, 1);
+
+    global.chrome.runtime.sendMessage = (_message, callback) => {
+      callback({ ok: false, error: "nope" });
+    };
+    await domRefs.calendarCreateForm._listeners.submit(submitEvent);
+    assert.strictEqual(state.calendarExternalEvents.length, 1);
+  });
+
+  it("handles missing time inputs and response payloads without events", async () => {
+    const { initCalendarCreateModal } = await import("../src/ui/calendar-create-event.js");
+    initCalendarCreateModal();
+    const submitEvent = { preventDefault: () => {} };
+
+    const originalTimeInput = domRefs.calendarCreateTime;
+    domRefs.calendarCreateTime = null;
+    domRefs.calendarCreateCalendarSelect.value = "cal-1";
+    domRefs.calendarCreateDate.value = "2026-01-08";
+    await domRefs.calendarCreateForm._listeners.submit(submitEvent);
+    domRefs.calendarCreateTime = originalTimeInput;
+
+    domRefs.calendarCreateCalendarSelect.value = "cal-1";
+    domRefs.calendarCreateDate.value = "2026-01-08";
+    domRefs.calendarCreateTime.value = "10:00";
+    domRefs.calendarCreateDuration.value = "30";
+    global.chrome.runtime.sendMessage = (_message, callback) => {
+      callback({ ok: true, event: null });
+    };
+    await domRefs.calendarCreateForm._listeners.submit(submitEvent);
+  });
+
+  it("returns early when opening without a modal element", async () => {
+    const { openCalendarCreateModal } = await import("../src/ui/calendar-create-event.js");
+    const originalModal = domRefs.calendarCreateModal;
+    domRefs.calendarCreateModal = null;
+
+    await openCalendarCreateModal({ dayKey: "2026-01-08", startMinutes: 60 });
+    domRefs.calendarCreateModal = originalModal;
+  });
+
+  it("skips closing when the modal is missing", async () => {
+    const { initCalendarCreateModal } = await import("../src/ui/calendar-create-event.js");
+    initCalendarCreateModal();
+    const submitEvent = { preventDefault: () => {} };
+    const originalModal = domRefs.calendarCreateModal;
+    domRefs.calendarCreateModal = null;
+
+    domRefs.calendarCreateCalendarSelect.value = "cal-1";
+    domRefs.calendarCreateDate.value = "2026-01-08";
+    domRefs.calendarCreateTime.value = "10:00";
+    domRefs.calendarCreateDuration.value = "30";
+    global.chrome.runtime.sendMessage = (_message, callback) => {
+      callback({
+        ok: true,
+        event: {
+          id: "evt-2",
+          calendarId: "cal-1",
+          title: "Meeting",
+          start: new Date(2026, 0, 8, 10, 0, 0).toISOString(),
+          end: new Date(2026, 0, 8, 10, 30, 0).toISOString()
+        }
+      });
+    };
+
+    await domRefs.calendarCreateForm._listeners.submit(submitEvent);
+    domRefs.calendarCreateModal = originalModal;
+  });
+
+  it("falls back to empty calendars when the runtime errors", async () => {
+    const { openCalendarCreateModal } = await import("../src/ui/calendar-create-event.js");
+    global.chrome.runtime.lastError = { message: "boom" };
+    global.chrome.runtime.sendMessage = (_message, callback) => {
+      callback({ ok: true, calendars: [{ id: "cal-1", summary: "Work" }] });
+    };
+
+    await openCalendarCreateModal({ dayKey: "2026-01-08", startMinutes: 60 });
+    const select = domRefs.calendarCreateCalendarSelect;
+    assert.strictEqual(select.value, "");
+    assert.strictEqual(select.children[0].textContent, "No calendars available");
+    global.chrome.runtime.lastError = null;
+  });
+
+  it("closes the modal via overlay click and escape key", async () => {
+    const {
+      initCalendarCreateModal,
+      openCalendarCreateModal
+    } = await import("../src/ui/calendar-create-event.js");
+    let keydownHandler = null;
+    global.document.addEventListener = (type, handler) => {
+      if (type === "keydown") {
+        keydownHandler = handler;
+      }
+    };
+    global.document.removeEventListener = () => {};
+
+    initCalendarCreateModal();
+    await openCalendarCreateModal({ dayKey: "2026-01-08", startMinutes: 60 });
+
+    domRefs.calendarCreateModal._listeners.click({ target: domRefs.calendarCreateModal });
+    assert.strictEqual(domRefs.calendarCreateModal.classList.contains("hidden"), true);
+
+    await openCalendarCreateModal({ dayKey: "2026-01-08", startMinutes: 60 });
+    keydownHandler({ key: "Escape" });
+    assert.strictEqual(domRefs.calendarCreateModal.classList.contains("hidden"), true);
+  });
+
+  it("guards init and cleanup when missing modal refs", async () => {
+    const {
+      initCalendarCreateModal,
+      cleanupCalendarCreateModal
+    } = await import("../src/ui/calendar-create-event.js");
+
+    const originalModal = domRefs.calendarCreateModal;
+    const originalForm = domRefs.calendarCreateForm;
+    domRefs.calendarCreateModal = null;
+    domRefs.calendarCreateForm = null;
+
+    assert.doesNotThrow(() => initCalendarCreateModal());
+    assert.doesNotThrow(() => cleanupCalendarCreateModal());
+
+    domRefs.calendarCreateModal = originalModal;
+    domRefs.calendarCreateForm = originalForm;
+  });
+
+  it("skips re-initializing the modal when already ready", async () => {
+    const { initCalendarCreateModal } = await import("../src/ui/calendar-create-event.js");
+    initCalendarCreateModal();
+    assert.strictEqual(domRefs.calendarCreateModal.dataset.modalReady, "true");
+    assert.doesNotThrow(() => initCalendarCreateModal());
+  });
+
+  it("ignores draft input updates before a draft is created", async () => {
+    const { initCalendarCreateModal, cleanupCalendarCreateModal } =
+      await import("../src/ui/calendar-create-event.js");
+    initCalendarCreateModal();
+
+    assert.doesNotThrow(() => domRefs.calendarCreateTitle._listeners.input());
+    assert.doesNotThrow(() => domRefs.calendarCreateTime._listeners.change());
+
+    cleanupCalendarCreateModal();
+    assert.doesNotThrow(() => cleanupCalendarCreateModal());
+  });
+
+  it("handles submit errors without a message", async () => {
+    const { initCalendarCreateModal } = await import("../src/ui/calendar-create-event.js");
+    initCalendarCreateModal();
+    const submitEvent = { preventDefault: () => {} };
+
+    domRefs.calendarCreateCalendarSelect.value = "cal-1";
+    domRefs.calendarCreateDate.value = "2026-01-08";
+    domRefs.calendarCreateTime.value = "10:00";
+    domRefs.calendarCreateDuration.value = "30";
+    global.chrome.runtime.sendMessage = () => {
+      throw {};
+    };
+
+    await domRefs.calendarCreateForm._listeners.submit(submitEvent);
   });
 });

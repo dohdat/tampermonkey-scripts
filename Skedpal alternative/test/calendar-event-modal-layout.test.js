@@ -65,6 +65,22 @@ describe("calendar event modal layout", () => {
     assert.strictEqual(panel.style.top, "68px");
   });
 
+  it("uses documentElement viewport fallbacks when window size is zero", () => {
+    const panel = new FakePanel();
+    const modal = buildModal(panel);
+    global.window = { innerWidth: 0, innerHeight: 0 };
+    global.document = { documentElement: { clientWidth: 240, clientHeight: 180 } };
+
+    positionCalendarEventModal(modal, {
+      left: 100,
+      right: 130,
+      top: 20
+    });
+
+    assert.strictEqual(panel.style.position, "fixed");
+    assert.ok(Number(panel.style.left.replace("px", "")) >= 12);
+  });
+
   it("resets position when no anchor is provided", () => {
     const panel = new FakePanel();
     const modal = buildModal(panel);
@@ -76,6 +92,16 @@ describe("calendar event modal layout", () => {
     assert.strictEqual(panel.style.position, "");
     assert.strictEqual(panel.style.top, "");
     assert.strictEqual(panel.style.left, "");
+  });
+
+  it("returns early when modal or panel is missing", () => {
+    const modalWithoutPanel = { querySelector: () => null };
+    installViewport(220, 160);
+
+    assert.doesNotThrow(() => positionCalendarEventModal(null, { left: 0, right: 0, top: 0 }));
+    assert.doesNotThrow(() => positionCalendarEventModal(modalWithoutPanel, { left: 0, right: 0, top: 0 }));
+
+    assert.doesNotThrow(() => resetCalendarModalPosition(modalWithoutPanel));
   });
 
   it("schedules positioning and falls back to reset without anchor", () => {
@@ -96,6 +122,23 @@ describe("calendar event modal layout", () => {
 
     scheduleCalendarEventModalPosition(modal, null);
     assert.strictEqual(panel.style.position, "");
+  });
+
+  it("uses a synchronous fallback when requestAnimationFrame is unavailable", () => {
+    const panel = new FakePanel();
+    const modal = buildModal(panel);
+    installViewport(260, 200);
+    global.requestAnimationFrame = undefined;
+
+    scheduleCalendarEventModalPosition(modal, {
+      getBoundingClientRect: () => ({
+        left: 40,
+        right: 80,
+        top: 20
+      })
+    });
+
+    assert.strictEqual(panel.style.position, "fixed");
   });
 
   after(() => {

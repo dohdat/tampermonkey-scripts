@@ -4,6 +4,7 @@ import { describe, it } from "mocha";
 import {
   buildExternalEventMeta,
   getUpdatedExternalEvents,
+  sendExternalCreateRequest,
   sendExternalDeleteRequest,
   sendExternalUpdateRequest
 } from "../src/ui/calendar-external-events.js";
@@ -39,6 +40,15 @@ describe("calendar external drag helpers", () => {
       buildExternalEventMeta({
         eventExternalId: "",
         eventCalendarId: "cal-1",
+        eventStart: "2026-01-07T10:00:00Z",
+        eventEnd: "2026-01-07T11:00:00Z"
+      }),
+      null
+    );
+    assert.strictEqual(
+      buildExternalEventMeta({
+        eventExternalId: "evt-1",
+        eventCalendarId: "",
         eventStart: "2026-01-07T10:00:00Z",
         eventEnd: "2026-01-07T11:00:00Z"
       }),
@@ -153,5 +163,56 @@ describe("calendar external drag helpers", () => {
     assert.strictEqual(captured.type, "calendar-delete-event");
     assert.strictEqual(captured.calendarId, "cal-1");
     assert.strictEqual(captured.eventId, "evt-1");
+  });
+
+  it("rejects create requests without a runtime", async () => {
+    const payload = {
+      calendarId: "cal-1",
+      title: "New event",
+      start: new Date("2026-01-07T10:00:00Z"),
+      end: new Date("2026-01-07T11:00:00Z")
+    };
+    await assert.rejects(
+      sendExternalCreateRequest(null, payload),
+      /runtime unavailable/i
+    );
+  });
+
+  it("rejects create requests when runtime lastError is set", async () => {
+    const payload = {
+      calendarId: "cal-1",
+      title: "New event",
+      start: new Date("2026-01-07T10:00:00Z"),
+      end: new Date("2026-01-07T11:00:00Z")
+    };
+    const runtime = {
+      lastError: { message: "Create failed" },
+      sendMessage: (_msg, cb) => cb({ ok: false })
+    };
+    await assert.rejects(sendExternalCreateRequest(runtime, payload), /Create failed/);
+  });
+
+  it("sends create requests with ISO timestamps", async () => {
+    const payload = {
+      calendarId: "cal-1",
+      title: "",
+      start: new Date("2026-01-07T10:00:00Z"),
+      end: new Date("2026-01-07T11:00:00Z")
+    };
+    let captured = null;
+    const runtime = {
+      lastError: null,
+      sendMessage: (msg, cb) => {
+        captured = msg;
+        cb({ ok: true });
+      }
+    };
+    const response = await sendExternalCreateRequest(runtime, payload);
+    assert.deepStrictEqual(response, { ok: true });
+    assert.strictEqual(captured.type, "calendar-create-event");
+    assert.strictEqual(captured.calendarId, "cal-1");
+    assert.strictEqual(captured.title, "");
+    assert.strictEqual(captured.start, payload.start.toISOString());
+    assert.strictEqual(captured.end, payload.end.toISOString());
   });
 });

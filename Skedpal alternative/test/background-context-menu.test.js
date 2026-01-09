@@ -85,4 +85,106 @@ describe("background context menu helpers", () => {
     const url = new URL(result);
     assert.strictEqual(url.searchParams.get("url"), "https://example.com/path");
   });
+
+  it("uses raw URLs as titles when parsing fails", () => {
+    const result = buildCreateTaskUrl(
+      {
+        selectionText: "",
+        linkUrl: "not-a-url",
+        pageUrl: ""
+      },
+      "https://extension/pages/index.html",
+      ""
+    );
+    const url = new URL(result);
+    assert.strictEqual(url.searchParams.get("title"), "not-a-url");
+  });
+
+  it("omits the url param when no link is available", () => {
+    const result = buildCreateTaskUrl(
+      {
+        selectionText: "",
+        linkUrl: "",
+        pageUrl: ""
+      },
+      "https://extension/pages/index.html",
+      "Untitled"
+    );
+    const url = new URL(result);
+    assert.strictEqual(url.searchParams.get("title"), "Untitled");
+    assert.strictEqual(url.searchParams.get("url"), null);
+  });
+
+  it("uses link text when no selection or page title exists", () => {
+    const result = buildCreateTaskUrl(
+      {
+        selectionText: "",
+        linkText: "Docs link",
+        linkUrl: "https://example.com/docs"
+      },
+      "https://extension/pages/index.html",
+      ""
+    );
+    const url = new URL(result);
+    assert.strictEqual(url.searchParams.get("title"), "Docs link");
+  });
+
+  it("falls back to the hostname when the URL has no path", () => {
+    const result = buildCreateTaskUrl(
+      {
+        selectionText: "",
+        linkUrl: "https://example.com/",
+        pageUrl: ""
+      },
+      "https://extension/pages/index.html",
+      ""
+    );
+    const url = new URL(result);
+    assert.strictEqual(url.searchParams.get("title"), "example.com");
+  });
+
+  it("omits the title when no source is available", () => {
+    const result = buildCreateTaskUrl(
+      {
+        selectionText: "",
+        linkText: "",
+        linkUrl: "",
+        pageUrl: ""
+      },
+      "https://extension/pages/index.html",
+      ""
+    );
+    const url = new URL(result);
+    assert.strictEqual(url.searchParams.get("title"), null);
+  });
+
+  it("builds a title from the page URL when needed", () => {
+    const result = buildCreateTaskUrl(
+      {
+        selectionText: "",
+        linkText: "",
+        linkUrl: "",
+        pageUrl: "https://example.com/path/"
+      },
+      "https://extension/pages/index.html",
+      ""
+    );
+    const url = new URL(result);
+    assert.strictEqual(url.searchParams.get("title"), "path");
+  });
+
+  it("falls back to the raw URL when no hostname or path exists", () => {
+    const result = buildCreateTaskUrl(
+      {
+        selectionText: "",
+        linkText: "",
+        linkUrl: "data:",
+        pageUrl: ""
+      },
+      "https://extension/pages/index.html",
+      ""
+    );
+    const url = new URL(result);
+    assert.strictEqual(url.searchParams.get("title"), "data:");
+  });
 });

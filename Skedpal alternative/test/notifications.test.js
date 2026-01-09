@@ -99,12 +99,26 @@ describe("notifications", () => {
 
   it("detects typing targets", () => {
     assert.strictEqual(isTypingTarget(null), false);
+    assert.strictEqual(isTypingTarget({}), false);
     assert.strictEqual(isTypingTarget({ tagName: "INPUT" }), true);
     assert.strictEqual(isTypingTarget({ tagName: "TEXTAREA" }), true);
     assert.strictEqual(isTypingTarget({ tagName: "SELECT" }), true);
     assert.strictEqual(isTypingTarget({ tagName: "OPTION" }), true);
     assert.strictEqual(isTypingTarget({ tagName: "DIV", isContentEditable: true }), true);
     assert.strictEqual(isTypingTarget({ tagName: "DIV" }), false);
+  });
+
+  it("returns early when undo nodes are missing", () => {
+    const originalGetElementById = global.document.getElementById;
+    global.document.getElementById = (id) => {
+      if (id === "notification-undo") {return null;}
+      return originalGetElementById(id);
+    };
+
+    showUndoBanner("Saved!", () => {});
+    assert.strictEqual(state.notificationUndoHandler, null);
+
+    global.document.getElementById = originalGetElementById;
   });
 
   it("shows and hides undo banner", async () => {

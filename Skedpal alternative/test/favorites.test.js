@@ -18,6 +18,8 @@ describe("favorites", () => {
       buildFavoriteKey({ type: "subsection", sectionId: "work", subsectionId: "ops" }),
       "subsection:work:ops"
     );
+    assert.strictEqual(buildFavoriteKey({ type: "section" }), "section:");
+    assert.strictEqual(buildFavoriteKey({ type: "subsection" }), "subsection::");
   });
 
   it("calculates next favorite order across sections and subsections", () => {

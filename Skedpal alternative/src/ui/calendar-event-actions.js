@@ -5,6 +5,13 @@ export function setActionButtonVisibility(buttons = [], visibility = {}) {
     if (!action) {return;}
     const shouldShow = visibility[action] !== false;
     button.classList.toggle("hidden", !shouldShow);
+    button.setAttribute("aria-hidden", shouldShow ? "false" : "true");
+    button.tabIndex = shouldShow ? 0 : -1;
+    if (shouldShow) {
+      button.removeAttribute("disabled");
+    } else {
+      button.setAttribute("disabled", "true");
+    }
   });
 }
 

@@ -52,6 +52,10 @@ class FakeElement {
     this.attributes[name] = value;
   }
 
+  removeAttribute(name) {
+    delete this.attributes[name];
+  }
+
   addEventListener(type, handler) {
     this.listeners[type] = handler;
   }

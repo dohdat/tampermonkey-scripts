@@ -15,7 +15,7 @@ export const state = {
   navStack: [],
   navIndex: -1,
   sortableInstances: [],
-  tasksCalendarSplit: false,
+  tasksCalendarSplit: true,
   calendarViewMode: "day",
   calendarAnchorDate: new Date(),
   calendarExternalEvents: [],

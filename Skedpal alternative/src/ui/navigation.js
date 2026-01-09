@@ -75,7 +75,8 @@ function updateSplitControls(resolvedTarget, showCalendarSplit) {
     appHeader,
     appMainContent,
     calendarViewDayOnly,
-    floatingActions
+    floatingActions,
+    navBreadcrumb
   } = domRefs;
   setSplitFlag(tasksCalendarSplitWrap, showCalendarSplit);
   setHidden(tasksCalendarToggleBtn, resolvedTarget !== "tasks");
@@ -83,6 +84,7 @@ function updateSplitControls(resolvedTarget, showCalendarSplit) {
   setSplitFlag(appMainContent, showCalendarSplit);
   setHidden(calendarViewDayOnly, !(resolvedTarget === "calendar" && !showCalendarSplit));
   setSplitFlag(floatingActions, showCalendarSplit);
+  setHidden(navBreadcrumb, resolvedTarget === "calendar");
   relocateCalendarSplitToggle(showCalendarSplit);
 }
 

@@ -71,6 +71,7 @@ export const domRefs = {
     ? document.querySelector("[data-test-skedpal='task-modal-submit']")
     : null,
   taskTimeMapOptions: document.getElementById("task-timemap-options"),
+  taskTitleInput: document.getElementById("task-title"),
   taskDurationInput: document.getElementById("task-duration"),
   taskDurationHelper: document.getElementById("task-duration-helper"),
   taskDeadlineInput: document.getElementById("task-deadline"),
@@ -94,6 +95,9 @@ export const domRefs = {
   taskSubtaskScheduleWrap: document.getElementById("task-subtask-schedule-wrap"),
   taskSubtaskScheduleSelect: document.getElementById("task-subtask-schedule"),
   taskRepeatSelect: document.getElementById("task-repeat"),
+  taskAiButton: document.getElementById("task-ai-generate"),
+  taskAiStatus: document.getElementById("task-ai-status"),
+  taskAiOutput: document.getElementById("task-ai-output"),
   taskRepeatCustom: document.getElementById("task-repeat-custom"),
   taskRepeatUnit: document.getElementById("task-repeat-unit"),
   taskRepeatInterval: document.getElementById("task-repeat-interval"),

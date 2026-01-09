@@ -7,6 +7,7 @@ export const state = {
   tasksCache: [],
   taskTemplatesCache: [],
   taskFormMode: null,
+  taskAiList: [],
   zoomFilter: null,
   collapsedSections: new Set(),
   collapsedSubsections: new Set(),

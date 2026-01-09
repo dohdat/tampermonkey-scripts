@@ -40,6 +40,7 @@ import { repeatStore } from "../repeat.js";
 import { validateTaskForm } from "./task-form-helpers.js";
 import { renderReport } from "../report.js";
 import { requestCreateTaskOverlayClose } from "../overlay-messaging.js";
+import { buildTasksFromAiList } from "./task-ai-helpers.js";
 import {
   buildTasksFromTemplate,
   buildSubtasksFromTemplateForParent
@@ -506,6 +507,14 @@ async function applySelectedTemplateSubtasks(selectedTemplateId, updatedTask) {
   await Promise.all(subtasks.map((task) => saveTask(task)));
 }
 
+async function applyTaskAiSuggestions(updatedTask) {
+  const list = Array.isArray(state.taskAiList) ? state.taskAiList : [];
+  if (!list.length) {return;}
+  const tasks = buildTasksFromAiList(list, updatedTask, state.tasksCache);
+  if (!tasks.length) {return;}
+  await Promise.all(tasks.map((task) => saveTask(task)));
+}
+
 export async function handleTaskSubmit(event) {
   event.preventDefault();
   const values = getTaskFormValues();
@@ -521,6 +530,7 @@ export async function handleTaskSubmit(event) {
   const updatedTask = buildTaskPayload(values, existingTask, parentTask, isParentTask, order);
   await saveTask(updatedTask);
   await applySelectedTemplateSubtasks(selectedTemplateId, updatedTask);
+  await applyTaskAiSuggestions(updatedTask);
   if (isParentTask && existingTask) {
     await updateParentTaskDescendants(values.id, updatedTask);
   }

@@ -186,6 +186,26 @@
           </select>
         </label>
       </div>
+      <div class="task-ai-panel" data-test-skedpal="task-ai-panel">
+        <div class="task-ai-header" data-test-skedpal="task-ai-header">
+          <div>
+            <div class="task-ai-title" data-test-skedpal="task-ai-title">Groq AI helper</div>
+            <p class="task-ai-subtitle" data-test-skedpal="task-ai-subtitle">
+              Use the title to generate a task list with subtasks.
+            </p>
+          </div>
+          <button
+            type="button"
+            id="task-ai-generate"
+            class="btn ghost task-ai-btn"
+            data-test-skedpal="task-ai-generate"
+          >
+            Help me create a list
+          </button>
+        </div>
+        <div id="task-ai-status" class="task-ai-status hidden" data-test-skedpal="task-ai-status"></div>
+        <div id="task-ai-output" class="task-ai-output hidden" data-test-skedpal="task-ai-output"></div>
+      </div>
       <div class="field">
         <span class="field-label">Allowed TimeMaps</span>
         <div id="task-timemap-options" class="timemap-pills"></div>

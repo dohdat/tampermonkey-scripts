@@ -28,6 +28,7 @@ import {
   openNewTaskWithDefaults
 } from "./tasks/tasks-actions.js";
 import { initTaskTemplateSelect } from "./tasks/task-template-select.js";
+import { initTaskListAssistant } from "./tasks/task-ai.js";
 import { handleTaskListClick } from "./tasks/task-list-actions.js";
 import {
   renderTaskSubsectionOptions,
@@ -404,6 +405,7 @@ function registerTaskFormHandlers() {
   reportList?.addEventListener("click", handleReportListClickEvent);
   rescheduleButtons.forEach((btn) => btn.addEventListener("click", handleReschedule));
   cleanupFns.push(initTaskTemplateSelect());
+  cleanupFns.push(initTaskListAssistant());
   return () => {
     cleanupFns.forEach((cleanup) => cleanup());
   };

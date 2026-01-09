@@ -18,6 +18,7 @@ import {
   buildSubtaskFormValues,
   buildTemplateFormValues
 } from "./task-form-helpers.js";
+import { resetTaskListAssistant } from "./task-ai.js";
 import { openTaskForm, closeTaskForm } from "../ui.js";
 import { switchView } from "../navigation.js";
 
@@ -82,6 +83,7 @@ function setTaskFormSectionsVisible(visible) {
 }
 
 function setTaskFormMode(mode) {
+  resetTaskListAssistant();
   state.taskFormMode = mode;
   if (!mode) {
     setTaskFormCopy(TASK_FORM_COPY);

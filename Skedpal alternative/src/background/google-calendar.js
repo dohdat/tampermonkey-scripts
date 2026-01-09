@@ -1,12 +1,8 @@
-const GOOGLE_API_BASE = "https://www.googleapis.com/calendar/v3";
-const DEFAULT_CALENDAR_IDS = [
-  "951d3b2328ace2ababeb5e28228a9bcefa20851a5de9e810dfd8e4ad49277d3c@group.calendar.google.com",
-  "dohdat@gmail.com"
-];
-const CALENDAR_COLOR_OVERRIDES = {
-  "951d3b2328ace2ababeb5e28228a9bcefa20851a5de9e810dfd8e4ad49277d3c@group.calendar.google.com": "#a479b1",
-  "dohdat@gmail.com": "#63ca00"
-};
+import {
+  CALENDAR_COLOR_OVERRIDES,
+  DEFAULT_CALENDAR_IDS,
+  GOOGLE_API_BASE
+} from "../constants.js";
 
 function parseIsoDate(value) {
   if (!value) {return null;}

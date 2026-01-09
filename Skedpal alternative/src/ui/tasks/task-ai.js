@@ -1,9 +1,6 @@
 import { saveSettings } from "../../data/db.js";
-import { domRefs } from "../constants.js";
+import { GROQ_BASE_URL, GROQ_MODEL, domRefs } from "../constants.js";
 import { state } from "../state/page-state.js";
-
-const GROQ_BASE_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = "openai/gpt-oss-20b";
 
 const {
   taskAiButton,

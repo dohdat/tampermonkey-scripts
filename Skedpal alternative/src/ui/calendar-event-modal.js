@@ -2,6 +2,8 @@ import {
   TASK_REPEAT_NONE,
   TASK_STATUS_COMPLETED,
   TASK_STATUS_UNSCHEDULED,
+  CALENDAR_EVENT_MODAL_EXTERNAL_EYEBROW,
+  CALENDAR_EVENT_MODAL_TASK_EYEBROW,
   domRefs,
   editIconSvg,
   removeIconSvg,
@@ -33,9 +35,6 @@ let activeExternalEvent = null;
 let activeExternalAnchor = null;
 let calendarEventModalInitializedFor = null;
 let calendarEventModalCleanupFns = [];
-const TASK_MODAL_EYEBROW = "Scheduled task";
-const EXTERNAL_MODAL_EYEBROW = "Google Calendar";
-
 function resolveRef(current, id) {
   if (current) {return current;}
   return document.getElementById(id);
@@ -313,7 +312,7 @@ export function openCalendarEventModal(eventMeta, anchorEl = null) {
   activeEventMeta = eventMeta;
   activeExternalEvent = null;
   activeExternalAnchor = null;
-  setModalEyebrow(TASK_MODAL_EYEBROW);
+  setModalEyebrow(CALENDAR_EVENT_MODAL_TASK_EYEBROW);
   setModalToolbarVisibility(true);
   const actionButtons = getCalendarEventActionButtons(calendarEventModal);
   setActionButtonVisibility(actionButtons, {
@@ -336,7 +335,7 @@ export function openExternalEventModal(event, anchorEl = null) {
   activeEventMeta = null;
   activeExternalEvent = event;
   activeExternalAnchor = anchorEl;
-  setModalEyebrow(EXTERNAL_MODAL_EYEBROW);
+  setModalEyebrow(CALENDAR_EVENT_MODAL_EXTERNAL_EYEBROW);
   setModalToolbarVisibility(false);
   const actionButtons = getCalendarEventActionButtons(calendarEventModal);
   setActionButtonVisibility(actionButtons, {

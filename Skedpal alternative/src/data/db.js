@@ -1,5 +1,4 @@
-const DB_NAME = "personal-skedpal";
-const DB_VERSION = 4;
+import { DB_NAME, DB_VERSION } from "../constants.js";
 const DEFAULT_SECTIONS = [
   { id: "section-work-default", name: "Work" },
   { id: "section-personal-default", name: "Personal" }

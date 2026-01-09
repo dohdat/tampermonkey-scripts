@@ -8,6 +8,14 @@ import {
 import { scheduleTasks, getUpcomingOccurrences } from "../core/scheduler.js";
 import { shouldIncrementMissedCount } from "./schedule-metrics.js";
 import {
+  CREATE_TASK_MENU_ID,
+  CREATE_TASK_OVERLAY_SCRIPT,
+  TASK_REPEAT_NONE,
+  TASK_STATUS_IGNORED,
+  TASK_STATUS_SCHEDULED,
+  TASK_STATUS_UNSCHEDULED
+} from "../constants.js";
+import {
   fetchCalendarEvents,
   deleteCalendarEvent,
   updateCalendarEvent,
@@ -18,9 +26,6 @@ import {
 } from "./google-calendar.js";
 import { buildCreateTaskUrl } from "./context-menu.js";
 import { buildSequentialSingleDeferredIds } from "./deferred-utils.js";
-
-const CREATE_TASK_MENU_ID = "skedpal-create-task";
-const CREATE_TASK_OVERLAY_SCRIPT = "src/content/create-task-overlay.js";
 
 function getMissedOccurrences(expectedOccurrences, scheduledOccurrences, isDeferred) {
   if (isDeferred) {return 0;}
@@ -47,9 +52,9 @@ function ensureContextMenu() {
 
 function resolveScheduleStatus(task, parentIds, ignored, taskPlacements) {
   if (parentIds.has(task.id)) {return null;}
-  if (ignored.includes(task.id) && taskPlacements.length === 0) {return "ignored";}
-  if (taskPlacements.length > 0) {return "scheduled";}
-  return "unscheduled";
+  if (ignored.includes(task.id) && taskPlacements.length === 0) {return TASK_STATUS_IGNORED;}
+  if (taskPlacements.length > 0) {return TASK_STATUS_SCHEDULED;}
+  return TASK_STATUS_UNSCHEDULED;
 }
 
 function getScheduledOccurrenceCount(taskPlacements) {
@@ -62,7 +67,7 @@ function getScheduledOccurrenceCount(taskPlacements) {
 }
 
 function getExpectedOccurrenceCount(task, now, horizonDays) {
-  if (!task?.repeat || task.repeat.type === "none") {return 0;}
+  if (!task?.repeat || task.repeat.type === TASK_REPEAT_NONE) {return 0;}
   const cap = Math.max(50, horizonDays * 3);
   return getUpcomingOccurrences(task, now, cap, horizonDays).length;
 }

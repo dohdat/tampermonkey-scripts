@@ -37,6 +37,12 @@ export const sortableHighlightClasses = ["ring-1", "ring-lime-400/50"];
 export const domRefs = {
   views: [...document.querySelectorAll(".view")],
   navButtons: [...document.querySelectorAll(".nav-btn")],
+  appShell: document.querySelector
+    ? document.querySelector("[data-test-skedpal='app-shell']")
+    : null,
+  sidebar: document.getElementById("sidebar"),
+  sidebarToggleBtn: document.getElementById("sidebar-toggle"),
+  sidebarBackdrop: document.getElementById("sidebar-backdrop"),
   taskList: document.getElementById("task-list"),
   todayList: document.getElementById("today-list"),
   navBreadcrumb: document.getElementById("nav-breadcrumb"),

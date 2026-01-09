@@ -68,6 +68,7 @@ import { indentTaskUnderPrevious, outdentTask } from "./tasks/tasks-sortable.js"
 import { state } from "./state/page-state.js";
 import { initCalendarView, renderCalendar } from "./calendar.js";
 import { applyTheme } from "./theme.js";
+import { initSidebarToggle } from "./sidebar-toggle.js";
 
 const {
   timeMapDayRows,
@@ -359,6 +360,7 @@ function registerEventListeners() {
   registerTaskFormHandlers();
   registerSectionHandlers();
   registerNavigationHandlers();
+  initSidebarToggle();
   registerFavoritesHandlers();
   registerListHandlers();
   registerSubsectionHandlers();

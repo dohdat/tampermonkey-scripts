@@ -38,7 +38,7 @@ function buildSubtaskRow(subtask, templateId) {
   label.setAttribute("data-test-skedpal", "task-template-subtask-title");
 
   const actions = document.createElement("div");
-  actions.className = "flex flex-wrap items-center gap-2";
+  actions.className = "task-template-subtask-actions flex flex-wrap items-center gap-2";
   actions.setAttribute("data-test-skedpal", "task-template-subtask-actions");
 
   const addChildBtn = document.createElement("button");
@@ -156,7 +156,7 @@ function buildTemplateCard(template) {
   titleWrap.appendChild(count);
 
   const actions = document.createElement("div");
-  actions.className = "flex flex-wrap items-center gap-2";
+  actions.className = "task-template-actions flex flex-wrap items-center gap-2";
   actions.setAttribute("data-test-skedpal", "task-template-actions");
 
   const addSubtaskBtn = document.createElement("button");
@@ -219,6 +219,7 @@ export async function loadTaskTemplates() {
   const templates = await getAllTaskTemplates();
   state.taskTemplatesCache = Array.isArray(templates) ? templates : [];
   renderTaskTemplates();
+  window.dispatchEvent(new CustomEvent("skedpal:templates-loaded"));
 }
 
 async function handleTemplateDelete(templateId) {

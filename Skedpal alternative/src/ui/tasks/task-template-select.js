@@ -56,6 +56,9 @@ export function initTaskTemplateSelect() {
   const handleTemplatesUpdated = () => {
     renderTemplateSelect(select, state.taskTemplatesCache || []);
   };
+  const handleTemplatesLoaded = () => {
+    renderTemplateSelect(select, state.taskTemplatesCache || []);
+  };
 
   const handleChange = () => {
     if (state.taskFormMode?.type) {
@@ -66,9 +69,11 @@ export function initTaskTemplateSelect() {
   renderTemplateSelect(select, state.taskTemplatesCache || []);
   select.addEventListener("change", handleChange);
   window.addEventListener("skedpal:templates-updated", handleTemplatesUpdated);
+  window.addEventListener("skedpal:templates-loaded", handleTemplatesLoaded);
 
   return () => {
     select.removeEventListener("change", handleChange);
     window.removeEventListener("skedpal:templates-updated", handleTemplatesUpdated);
+    window.removeEventListener("skedpal:templates-loaded", handleTemplatesLoaded);
   };
 }

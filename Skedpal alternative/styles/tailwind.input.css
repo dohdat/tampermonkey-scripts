@@ -52,10 +52,18 @@ body.modal-open{overflow:hidden}
 .field{display:flex;flex-direction:column;gap:var(--space-0-35)}
 .field-label{font-size:var(--font-size-sm);text-transform:uppercase;letter-spacing:var(--letter-spacing-normal);font-weight:var(--font-weight-bold);color:var(--color-slate-300)}
 .field-input{width:100%;border:var(--size-1px) solid var(--color-slate-700);border-radius:var(--size-12px);background:var(--color-slate-900);padding:var(--space-0-65) var(--space-0-85);color:var(--color-slate-200);box-shadow:var(--shadow-input)}
+.field-input--compact{padding:var(--space-0-45) var(--space-0-75);font-size:var(--font-size-sm)}
 .field-input-wrap{position:relative;display:flex;align-items:center}
 .field-input--clearable{padding-right:var(--space-2-4)}
 .field-clear-btn{position:absolute;right:var(--space-0-45);top:50%;transform:translateY(-50%)}
 .field-input:focus{outline:none;border-color:var(--color-lime-400);box-shadow:0 0 0 var(--size-1px) rgba(var(--color-lime-400-rgb), .35),0 var(--size-10px) var(--size-30px) rgba(var(--color-black-rgb), .25)}
+.task-template-actions,
+.task-template-subtask-actions{opacity:0;pointer-events:none;transition:opacity var(--motion-fast) ease}
+[data-test-skedpal="task-template-card"]:hover .task-template-actions,
+[data-test-skedpal="task-template-card"]:focus-within .task-template-actions,
+[data-test-skedpal="task-template-subtask-row"]:hover .task-template-subtask-actions,
+[data-test-skedpal="task-template-subtask-row"]:focus-within .task-template-subtask-actions{opacity:1;pointer-events:auto}
+@media (hover: none){.task-template-actions,.task-template-subtask-actions{opacity:1;pointer-events:auto}}
 .timemap-pills{display:grid;grid-template-columns:repeat(auto-fit,minmax(var(--size-240px),1fr));gap:var(--space-0-6)}
 .timemap-pills label{border:var(--size-1px) solid var(--color-slate-700)!important;background:var(--color-slate-800)!important;border-radius:var(--size-12px)!important;padding:var(--space-0-65) var(--space-0-85);display:flex;align-items:center;gap:var(--space-0-55);box-shadow:var(--shadow-timemap-pill)}
 .timemap-pills input[type=checkbox]{accent-color:var(--color-lime-400);height:var(--space-1);width:var(--space-1)}

@@ -4,6 +4,10 @@ import { getDateFromDayKey, roundMinutesToStep, clampMinutes } from "./calendar-
 import { showNotificationBanner } from "./notifications.js";
 import { sendExternalCreateRequest } from "./calendar-external-events.js";
 import { HOUR_HEIGHT, formatEventTimeRange } from "./calendar-render.js";
+import {
+  closeCalendarEventModal,
+  isCalendarEventModalOpen
+} from "./calendar-event-modal.js";
 
 const DEFAULT_DURATION_MIN = 60;
 const MIN_DURATION_MIN = 15;
@@ -301,6 +305,10 @@ async function handleCalendarCreateSubmit(event) {
 }
 
 export function openCalendarCreateFromClick(event) {
+  if (isCalendarEventModalOpen()) {
+    closeCalendarEventModal();
+    return true;
+  }
   const dayCol = event.target?.closest?.(".calendar-day-col");
   if (!dayCol || !dayCol.dataset.day) {return false;}
   const rect = dayCol.getBoundingClientRect?.();

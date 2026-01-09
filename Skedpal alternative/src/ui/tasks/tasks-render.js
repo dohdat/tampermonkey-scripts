@@ -221,9 +221,9 @@ function buildSectionHeader(section, options) {
     "rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
   addSubsectionToggle.textContent = "Add subsection";
   titleActions.appendChild(collapseBtn);
+  titleActions.appendChild(favoriteSectionBtn);
   titleActions.appendChild(editSectionBtn);
   titleActions.appendChild(zoomSectionBtn);
-  titleActions.appendChild(favoriteSectionBtn);
   titleActions.appendChild(addSubsectionToggle);
   titleActions.appendChild(removeSectionBtn);
   title.appendChild(titleActions);
@@ -372,8 +372,8 @@ function buildSubsectionHeader(sub, section, isNoSection) {
     "rounded-lg border border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-200 hover:border-lime-400";
   addChildSubBtn.textContent = "Add subsection";
   subTitle.appendChild(collapseSubBtn);
-  subTitleActions.appendChild(zoomSubBtn);
   subTitleActions.appendChild(favoriteSubBtn);
+  subTitleActions.appendChild(zoomSubBtn);
   subTitleActions.appendChild(addChildSubBtn);
   subTitleActions.appendChild(addSubTaskBtn);
   subTitleActions.appendChild(editSubBtn);

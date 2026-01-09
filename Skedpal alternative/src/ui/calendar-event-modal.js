@@ -154,7 +154,7 @@ async function fallbackDefer(dateValue) {
 }
 
 
-function closeCalendarEventModal() {
+export function closeCalendarEventModal() {
   const calendarEventModal = domRefs.calendarEventModal;
   if (!calendarEventModal) {return;}
   if (calendarEventModal.classList) {
@@ -269,6 +269,10 @@ function isCalendarModalOpen() {
   const calendarEventModal = domRefs.calendarEventModal;
   if (!calendarEventModal?.classList) {return false;}
   return !calendarEventModal.classList.contains("hidden");
+}
+
+export function isCalendarEventModalOpen() {
+  return isCalendarModalOpen();
 }
 
 function isClickInsideModal(target, panel) {

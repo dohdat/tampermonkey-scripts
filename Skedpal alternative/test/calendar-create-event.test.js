@@ -67,7 +67,8 @@ const elementMap = new Map([
   ["calendar-create-date", new FakeElement("input")],
   ["calendar-create-time", new FakeElement("input")],
   ["calendar-create-duration", new FakeElement("input")],
-  ["calendar-create-calendar", new FakeElement("select")]
+  ["calendar-create-calendar", new FakeElement("select")],
+  ["calendar-event-modal", new FakeElement("div")]
 ]);
 
 function installDomStubs() {
@@ -119,6 +120,8 @@ describe("calendar create modal", () => {
     domRefs.calendarCreateTime = elementMap.get("calendar-create-time");
     domRefs.calendarCreateDuration = elementMap.get("calendar-create-duration");
     domRefs.calendarCreateCalendarSelect = elementMap.get("calendar-create-calendar");
+    domRefs.calendarEventModal = elementMap.get("calendar-event-modal");
+    domRefs.calendarEventModal.classList.add("hidden");
     domRefs.calendarCreateCloseButtons = [];
     domRefs.calendarGrid = new FakeElement("div");
     const dayCol = new FakeElement("div");
@@ -163,5 +166,24 @@ describe("calendar create modal", () => {
     assert.strictEqual(domRefs.calendarCreateTime.value, "06:00");
     assert.strictEqual(domRefs.calendarGrid.children[0].children.length, 1);
     cleanupCalendarCreateModal();
+  });
+
+  it("closes the event modal instead of creating on empty slot click", async () => {
+    const { openCalendarCreateFromClick } =
+      await import("../src/ui/calendar-create-event.js");
+    domRefs.calendarEventModal.classList.remove("hidden");
+    const dayCol = new FakeElement("div");
+    dayCol.setAttribute("data-day", "2026-01-10");
+    dayCol.getBoundingClientRect = () => ({ top: 0, height: 1440 });
+    domRefs.calendarGrid = new FakeElement("div");
+    domRefs.calendarGrid.appendChild(dayCol);
+    const target = {
+      closest: (selector) => (selector === ".calendar-day-col" ? dayCol : null)
+    };
+    const handled = openCalendarCreateFromClick({ target, clientY: 360 });
+    assert.strictEqual(handled, true);
+    assert.strictEqual(domRefs.calendarEventModal.classList.contains("hidden"), true);
+    assert.strictEqual(domRefs.calendarCreateDate.value, "");
+    assert.strictEqual(domRefs.calendarGrid.children[0].children.length, 0);
   });
 });

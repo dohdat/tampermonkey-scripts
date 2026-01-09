@@ -1,4 +1,4 @@
-import { isStartAfterDeadline } from "../utils.js";
+import { isStartAfterDeadline, normalizeSubtaskScheduleMode } from "../utils.js";
 
 export function buildTemplateFormValues(template) {
   return {
@@ -28,6 +28,29 @@ export function buildSubtaskFormValues(task) {
     startFrom: task.startFrom || "",
     repeat: task.repeat || { type: "none" }
   };
+}
+
+export function resolveInheritedSubtaskScheduleMode(task) {
+  return normalizeSubtaskScheduleMode(task?.subtaskScheduleMode);
+}
+
+export function resolveSavedSubtaskScheduleMode({
+  selectedMode,
+  existingMode,
+  isSelectorVisible
+}) {
+  const normalizedSelected = normalizeSubtaskScheduleMode(selectedMode);
+  if (isSelectorVisible) {return normalizedSelected;}
+  if (existingMode) {
+    return normalizeSubtaskScheduleMode(existingMode);
+  }
+  return normalizedSelected;
+}
+
+export function shouldShowSubtaskSchedule(task, isParentTask) {
+  if (isParentTask) {return true;}
+  if (!task) {return false;}
+  return !task.subtaskParentId;
 }
 
 export function validateTaskForm(values) {

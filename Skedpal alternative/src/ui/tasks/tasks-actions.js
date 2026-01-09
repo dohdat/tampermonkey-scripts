@@ -37,7 +37,7 @@ import { renderBreadcrumb, switchView } from "../navigation.js";
 import { showUndoBanner } from "../notifications.js";
 import { buildDuplicateTasks } from "./task-duplicate.js";
 import { repeatStore } from "../repeat.js";
-import { validateTaskForm } from "./task-form-helpers.js";
+import { resolveSavedSubtaskScheduleMode, validateTaskForm } from "./task-form-helpers.js";
 import { renderReport } from "../report.js";
 import { requestCreateTaskOverlayClose } from "../overlay-messaging.js";
 import { buildTasksFromAiList } from "./task-ai-helpers.js";
@@ -68,6 +68,7 @@ const {
   taskSectionSelect,
   taskSubsectionSelect,
   taskSubtaskScheduleSelect,
+  taskSubtaskScheduleWrap,
   taskRepeatSelect,
   taskTemplateSelect,
   repeatCompleteModal,
@@ -371,10 +372,14 @@ function resolveTaskOrder(existingTask, parentTask, section, subsection) {
 
 function buildTaskPayload(values, existingTask, parentTask, isParentTask, order) {
   const repeat = taskRepeatSelect.value === "custom" ? repeatStore.lastRepeatSelection : { type: "none" };
-  const normalizedSubtaskScheduleMode = normalizeSubtaskScheduleMode(taskSubtaskScheduleSelect?.value);
-  const subtaskScheduleMode = isParentTask
-    ? normalizedSubtaskScheduleMode
-    : existingTask?.subtaskScheduleMode || normalizedSubtaskScheduleMode;
+  const isSelectorVisible = taskSubtaskScheduleWrap
+    ? !taskSubtaskScheduleWrap.classList.contains("hidden")
+    : false;
+  const subtaskScheduleMode = resolveSavedSubtaskScheduleMode({
+    selectedMode: taskSubtaskScheduleSelect?.value,
+    existingMode: existingTask?.subtaskScheduleMode,
+    isSelectorVisible: isParentTask || isSelectorVisible
+  });
   return {
     id: values.id,
     title: values.title,

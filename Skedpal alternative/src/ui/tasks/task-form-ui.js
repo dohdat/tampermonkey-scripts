@@ -16,7 +16,9 @@ import { renderTaskTimeMapOptions } from "../time-maps.js";
 import { repeatStore, setRepeatFromSelection } from "../repeat.js";
 import {
   buildSubtaskFormValues,
-  buildTemplateFormValues
+  buildTemplateFormValues,
+  resolveInheritedSubtaskScheduleMode,
+  shouldShowSubtaskSchedule
 } from "./task-form-helpers.js";
 import { resetTaskListAssistant } from "./task-ai.js";
 import { openTaskForm, closeTaskForm } from "../ui.js";
@@ -229,7 +231,7 @@ export function startSubtaskFromTask(task, options = {}) {
   setTaskFormBasics(buildSubtaskFormValues(task));
   setTaskFormSectionFields(task.section || "", task.subsection || "");
   renderTaskTimeMapOptions(state.tasksTimeMapsCache || [], task.timeMapIds || []);
-  setTaskSubtaskScheduleMode("parallel");
+  setTaskSubtaskScheduleMode(resolveInheritedSubtaskScheduleMode(task));
   openTaskForm();
   if (options.switchView !== false) {
     switchView("tasks");
@@ -258,7 +260,8 @@ export function openTaskEdit(task, options = {}) {
   renderTaskSubsectionOptions(task.subsection);
   renderTaskTimeMapOptions(state.tasksTimeMapsCache, task.timeMapIds);
   if (taskSubtaskScheduleWrap) {
-    taskSubtaskScheduleWrap.classList.toggle("hidden", !isParentTask);
+    const showSchedule = shouldShowSubtaskSchedule(task, isParentTask);
+    taskSubtaskScheduleWrap.classList.toggle("hidden", !showSchedule);
   }
   if (taskSubtaskScheduleSelect) {
     const mode = normalizeSubtaskScheduleMode(task.subtaskScheduleMode);

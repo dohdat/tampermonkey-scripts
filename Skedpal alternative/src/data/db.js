@@ -10,6 +10,9 @@ const DEFAULT_SETTINGS = {
   defaultTimeMapId: null,
   googleCalendarIds: [],
   favoriteGroupExpanded: {},
+  collapsedSections: [],
+  collapsedSubsections: [],
+  collapsedTasks: [],
   groqApiKey: "",
   sections: DEFAULT_SECTIONS,
   subsections: {

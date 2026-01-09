@@ -82,6 +82,17 @@ function updateHorizonInputValue() {
   );
 }
 
+function applyCollapsedPreferences(settings) {
+  const sections = Array.isArray(settings?.collapsedSections) ? settings.collapsedSections : [];
+  const subsections = Array.isArray(settings?.collapsedSubsections)
+    ? settings.collapsedSubsections
+    : [];
+  const tasks = Array.isArray(settings?.collapsedTasks) ? settings.collapsedTasks : [];
+  state.collapsedSections = new Set(sections.filter(Boolean));
+  state.collapsedSubsections = new Set(subsections.filter(Boolean));
+  state.collapsedTasks = new Set(tasks.filter(Boolean));
+}
+
 function formatCalendarMeta(entry) {
   const parts = [];
   if (entry.primary) {parts.push("Primary");}
@@ -349,6 +360,7 @@ function confirmBackupRestore() {
 async function applyBackupSnapshot(latest) {
   await restoreBackup(latest);
   state.settingsCache = { ...DEFAULT_SETTINGS, ...(latest.settings || {}) };
+  applyCollapsedPreferences(state.settingsCache);
   updateHorizonInputValue();
   updateCalendarStatusFromSettings();
   invalidateExternalEventsCache();
@@ -406,6 +418,7 @@ function initBackupSettings() {
 export async function initSettings(prefetchedSettings) {
   const settings = prefetchedSettings || (await getSettings());
   state.settingsCache = { ...DEFAULT_SETTINGS, ...settings };
+  applyCollapsedPreferences(state.settingsCache);
   const { persistSettings, persistSettingsSafely } = createSettingsPersistor();
   initHorizonSettings(persistSettings);
   initGoogleCalendarSettings(persistSettingsSafely);

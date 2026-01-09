@@ -1,4 +1,4 @@
-import { saveTask, deleteTask } from "../../data/db.js";
+import { saveSettings, saveTask, deleteTask } from "../../data/db.js";
 import { state } from "../state/page-state.js";
 import { getTaskAndDescendants } from "../utils.js";
 import { showUndoBanner } from "../notifications.js";
@@ -177,14 +177,33 @@ function handleCollapseActions(btn, action) {
       set.add(value);
     }
   };
+  const persistCollapsedState = (key, set) => {
+    state.settingsCache = {
+      ...state.settingsCache,
+      [key]: Array.from(set)
+    };
+    const promise = saveSettings(state.settingsCache);
+    state.pendingSettingsSave = promise;
+    promise.finally(() => {
+      if (state.pendingSettingsSave === promise) {
+        state.pendingSettingsSave = null;
+      }
+    });
+  };
   const handlers = [
     {
       when: btn.dataset.toggleSectionCollapse !== undefined,
-      run: () => toggleSetEntry(state.collapsedSections, btn.dataset.toggleSectionCollapse || "")
+      run: () => {
+        toggleSetEntry(state.collapsedSections, btn.dataset.toggleSectionCollapse || "");
+        persistCollapsedState("collapsedSections", state.collapsedSections);
+      }
     },
     {
       when: btn.dataset.toggleSubsectionCollapse !== undefined,
-      run: () => toggleSetEntry(state.collapsedSubsections, btn.dataset.toggleSubsectionCollapse || "")
+      run: () => {
+        toggleSetEntry(state.collapsedSubsections, btn.dataset.toggleSubsectionCollapse || "");
+        persistCollapsedState("collapsedSubsections", state.collapsedSubsections);
+      }
     },
     {
       when: action.toggleTaskDetailsId !== undefined,
@@ -192,7 +211,10 @@ function handleCollapseActions(btn, action) {
     },
     {
       when: action.toggleTaskCollapseId !== undefined,
-      run: () => toggleSetEntry(state.collapsedTasks, action.toggleTaskCollapseId)
+      run: () => {
+        toggleSetEntry(state.collapsedTasks, action.toggleTaskCollapseId);
+        persistCollapsedState("collapsedTasks", state.collapsedTasks);
+      }
     }
   ];
   const match = handlers.find((handler) => handler.when);

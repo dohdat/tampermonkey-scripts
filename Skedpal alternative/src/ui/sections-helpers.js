@@ -1,24 +1,32 @@
+import {
+  DEFAULT_TASK_DURATION_MIN,
+  DEFAULT_TASK_MIN_BLOCK_MIN,
+  DEFAULT_TASK_PRIORITY,
+  DEFAULT_TASK_REPEAT,
+  SUBTASK_SCHEDULE_PARALLEL,
+  TASK_REPEAT_NONE
+} from "./constants.js";
 import { repeatStore } from "./repeat.js";
 
 export const DEFAULT_SUBSECTION_TEMPLATE = {
   title: "",
   link: "",
-  durationMin: 30,
-  minBlockMin: 15,
-  priority: 3,
+  durationMin: DEFAULT_TASK_DURATION_MIN,
+  minBlockMin: DEFAULT_TASK_MIN_BLOCK_MIN,
+  priority: DEFAULT_TASK_PRIORITY,
   deadline: "",
   startFrom: "",
-  repeat: { type: "none" },
+  repeat: { ...DEFAULT_TASK_REPEAT },
   timeMapIds: [],
-  subtaskScheduleMode: "parallel"
+  subtaskScheduleMode: SUBTASK_SCHEDULE_PARALLEL
 };
 
 export function resolveSubsectionRepeatSelection() {
   const selection = repeatStore.subsectionRepeatSelection;
-  if (selection?.type && selection.type !== "none") {
+  if (selection?.type && selection.type !== TASK_REPEAT_NONE) {
     return selection;
   }
-  return { type: "none" };
+  return { ...DEFAULT_TASK_REPEAT };
 }
 
 export function formatTemplateDate(value) {

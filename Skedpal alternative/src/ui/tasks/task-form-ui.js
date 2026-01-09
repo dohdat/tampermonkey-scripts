@@ -1,4 +1,11 @@
-import { domRefs } from "../constants.js";
+import {
+  DEFAULT_TASK_DURATION_MIN,
+  DEFAULT_TASK_MIN_BLOCK_MIN,
+  DEFAULT_TASK_PRIORITY,
+  DEFAULT_TASK_REPEAT,
+  SUBTASK_SCHEDULE_PARALLEL,
+  domRefs
+} from "../constants.js";
 import {
   applyPrioritySelectColor,
   formatDurationLong,
@@ -134,21 +141,21 @@ export function resetTaskForm(shouldClose = false) {
   document.getElementById("task-title").value = "";
   taskLinkInput.value = "";
   syncTaskLinkClear();
-  document.getElementById("task-duration").value = "30";
+  document.getElementById("task-duration").value = String(DEFAULT_TASK_DURATION_MIN);
   syncTaskDurationHelper();
-  taskMinBlockInput.value = "30";
-  document.getElementById("task-priority").value = "3";
+  taskMinBlockInput.value = String(DEFAULT_TASK_MIN_BLOCK_MIN);
+  document.getElementById("task-priority").value = String(DEFAULT_TASK_PRIORITY);
   applyPrioritySelectColor(taskPriorityInput);
   taskDeadlineInput.value = "";
   taskStartFromInput.value = "";
-  setRepeatFromSelection({ type: "none" }, "task");
+  setRepeatFromSelection({ ...DEFAULT_TASK_REPEAT }, "task");
   renderTaskSectionOptions();
   renderTaskTimeMapOptions(state.tasksTimeMapsCache || [], []);
   if (taskSubtaskScheduleWrap) {
     taskSubtaskScheduleWrap.classList.add("hidden");
   }
   if (taskSubtaskScheduleSelect) {
-    taskSubtaskScheduleSelect.value = "parallel";
+    taskSubtaskScheduleSelect.value = SUBTASK_SCHEDULE_PARALLEL;
   }
   if (shouldClose) {
     closeTaskForm();
@@ -160,22 +167,22 @@ function setTaskFormBasics({
   parentId = "",
   title = "",
   link = "",
-  durationMin = 30,
-  minBlockMin = 15,
-  priority = 3,
+  durationMin = DEFAULT_TASK_DURATION_MIN,
+  minBlockMin = DEFAULT_TASK_MIN_BLOCK_MIN,
+  priority = DEFAULT_TASK_PRIORITY,
   deadline = "",
   startFrom = "",
-  repeat = { type: "none" }
+  repeat = { ...DEFAULT_TASK_REPEAT }
 }) {
   document.getElementById("task-id").value = id;
   taskParentIdInput.value = parentId;
   document.getElementById("task-title").value = title;
   taskLinkInput.value = link;
   syncTaskLinkClear();
-  document.getElementById("task-duration").value = durationMin || "30";
+  document.getElementById("task-duration").value = durationMin || String(DEFAULT_TASK_DURATION_MIN);
   syncTaskDurationHelper();
-  taskMinBlockInput.value = minBlockMin || "15";
-  document.getElementById("task-priority").value = String(priority || 3);
+  taskMinBlockInput.value = minBlockMin || String(DEFAULT_TASK_MIN_BLOCK_MIN);
+  document.getElementById("task-priority").value = String(priority || DEFAULT_TASK_PRIORITY);
   applyPrioritySelectColor(taskPriorityInput);
   taskDeadlineInput.value = deadline ? deadline.slice(0, 10) : "";
   taskStartFromInput.value = startFrom ? startFrom.slice(0, 10) : "";
@@ -249,7 +256,7 @@ export function openTaskEdit(task, options = {}) {
   syncTaskLinkClear();
   document.getElementById("task-duration").value = task.durationMin;
   syncTaskDurationHelper();
-  taskMinBlockInput.value = task.minBlockMin || "15";
+  taskMinBlockInput.value = task.minBlockMin || String(DEFAULT_TASK_MIN_BLOCK_MIN);
   document.getElementById("task-priority").value = String(task.priority);
   applyPrioritySelectColor(taskPriorityInput);
   taskDeadlineInput.value = task.deadline ? task.deadline.slice(0, 10) : "";

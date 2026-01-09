@@ -1,4 +1,4 @@
-import { domRefs } from "./constants.js";
+import { TASK_STATUS_IGNORED, TASK_STATUS_UNSCHEDULED, domRefs } from "./constants.js";
 import { DEFAULT_SCHEDULING_HORIZON_DAYS } from "../data/db.js";
 import { state } from "./state/page-state.js";
 import { formatDateTime, normalizeTimeMap, renderInBatches } from "./utils.js";
@@ -52,8 +52,8 @@ function compareDeadlines(a, b) {
 }
 
 function getStatusWeight(status) {
-  if (status === "unscheduled") {return 2;}
-  if (status === "ignored") {return 1;}
+  if (status === TASK_STATUS_UNSCHEDULED) {return 2;}
+  if (status === TASK_STATUS_IGNORED) {return 1;}
   return 0;
 }
 
@@ -108,10 +108,10 @@ function shouldIncludeMissedByStatus(task) {
   const expectedCount = Number(task.expectedCount) || 0;
   const missedLastRun = Number(task.missedLastRun) || 0;
   const missedCount = Number(task.missedCount) || 0;
-  if (task.scheduleStatus === "ignored") {
+  if (task.scheduleStatus === TASK_STATUS_IGNORED) {
     return missedCount > 0;
   }
-  if (task.scheduleStatus === "unscheduled") {
+  if (task.scheduleStatus === TASK_STATUS_UNSCHEDULED) {
     return expectedCount > 0 ? missedLastRun > 0 : missedCount > 0;
   }
   if (expectedCount > 0) {
@@ -144,7 +144,7 @@ function getTaskTitle(task) {
 }
 
 function getTaskStatus(task) {
-  return task.scheduleStatus || "unscheduled";
+  return task.scheduleStatus || TASK_STATUS_UNSCHEDULED;
 }
 
 function getTaskNumber(value) {

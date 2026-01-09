@@ -1,4 +1,9 @@
-import { SUBTASK_ORDER_OFFSET } from "./constants.js";
+import {
+  DEFAULT_TASK_REPEAT,
+  SUBTASK_ORDER_OFFSET,
+  SUBTASK_SCHEDULE_PARALLEL,
+  TASK_STATUS_UNSCHEDULED
+} from "./constants.js";
 import { DEFAULT_SCHEDULING_HORIZON_DAYS } from "../data/db.js";
 
 function buildZoomParam(filter) {
@@ -143,7 +148,7 @@ export function getInheritedSubtaskFields(parentTask) {
     minBlockMin: Number(parentTask.minBlockMin) || 0,
     deadline: parentTask.deadline || null,
     startFrom: parentTask.startFrom || null,
-    repeat: parentTask.repeat || { type: "none" },
+    repeat: parentTask.repeat || { ...DEFAULT_TASK_REPEAT },
     subtaskScheduleMode: normalizeSubtaskScheduleMode(parentTask.subtaskScheduleMode)
   };
 }
@@ -155,7 +160,7 @@ export function buildInheritedSubtaskUpdate(childTask, parentTask) {
     ...childTask,
     ...inherited,
     subtaskParentId: parentTask.id,
-    scheduleStatus: "unscheduled",
+    scheduleStatus: TASK_STATUS_UNSCHEDULED,
     scheduledStart: null,
     scheduledEnd: null,
     scheduledTimeMapId: null,
@@ -296,7 +301,7 @@ export function formatRRuleDate(dateStr) {
 
 export function normalizeSubtaskScheduleMode(value) {
   const valid = new Set(["parallel", "sequential", "sequential-single"]);
-  return valid.has(value) ? value : "parallel";
+  return valid.has(value) ? value : SUBTASK_SCHEDULE_PARALLEL;
 }
 
 export function sortTasksByOrder(list = []) {

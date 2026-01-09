@@ -1,4 +1,5 @@
 import { saveSettings, saveTask, deleteTask } from "../../data/db.js";
+import { TASK_REPEAT_NONE, TASK_STATUS_UNSCHEDULED } from "../constants.js";
 import { state } from "../state/page-state.js";
 import { getTaskAndDescendants } from "../utils.js";
 import { showUndoBanner } from "../notifications.js";
@@ -82,7 +83,7 @@ async function handleTaskComplete(completeTaskId) {
   const affected = getTaskAndDescendants(completeTaskId, state.tasksCache);
   const target = affected[0];
   if (!target) {return;}
-  if (target.repeat && target.repeat.type !== "none" && !target.completed) {
+  if (target.repeat && target.repeat.type !== TASK_REPEAT_NONE && !target.completed) {
     openRepeatCompleteModal(target);
     return;
   }
@@ -90,11 +91,11 @@ async function handleTaskComplete(completeTaskId) {
   const completed = !target.completed;
   const timestamp = completed ? new Date().toISOString() : null;
   const updates = snapshots.map((t) => {
-    let updatedStatus = t.scheduleStatus || "unscheduled";
+    let updatedStatus = t.scheduleStatus || TASK_STATUS_UNSCHEDULED;
     if (completed && t.scheduleStatus !== "completed") {
       updatedStatus = "completed";
     } else if (!completed && t.scheduleStatus === "completed") {
-      updatedStatus = "unscheduled";
+      updatedStatus = TASK_STATUS_UNSCHEDULED;
     }
     return {
       ...t,

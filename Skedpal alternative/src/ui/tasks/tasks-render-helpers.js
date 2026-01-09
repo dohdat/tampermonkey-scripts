@@ -1,6 +1,7 @@
 import { DEFAULT_SCHEDULING_HORIZON_DAYS } from "../../data/db.js";
 import { getUpcomingOccurrences } from "../../core/scheduler.js";
 import { addDays, endOfDay } from "../../core/scheduler/date-utils.js";
+import { TASK_REPEAT_NONE } from "../constants.js";
 import { getLocalDateKey } from "../utils.js";
 
 const UPCOMING_OCCURRENCE_LOOKAHEAD_DAYS = 365;
@@ -87,7 +88,7 @@ export function buildFirstOccurrenceOutOfRangeMap(tasks, settings) {
   const horizonEnd = endOfDay(addDays(now, horizonDays));
   const outOfRangeById = new Map();
   tasks.forEach((task) => {
-    if (!task?.repeat || task.repeat.type === "none") {return;}
+    if (!task?.repeat || task.repeat.type === TASK_REPEAT_NONE) {return;}
     const occurrences = getUpcomingOccurrences(
       task,
       now,
@@ -109,7 +110,7 @@ export function buildFirstOccurrenceUnscheduledMap(tasks, settings) {
   const horizonEnd = endOfDay(addDays(now, horizonDays));
   const unscheduledById = new Map();
   tasks.forEach((task) => {
-    if (!task?.repeat || task.repeat.type === "none") {return;}
+    if (!task?.repeat || task.repeat.type === TASK_REPEAT_NONE) {return;}
     const occurrences = getUpcomingOccurrences(
       task,
       now,

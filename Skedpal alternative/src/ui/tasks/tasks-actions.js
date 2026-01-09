@@ -6,7 +6,15 @@ import {
   DEFAULT_SCHEDULING_HORIZON_DAYS
 } from "../../data/db.js";
 import { getUpcomingOccurrences } from "../../core/scheduler.js";
-import { domRefs } from "../constants.js";
+import {
+  DEFAULT_TASK_MIN_BLOCK_MIN,
+  DEFAULT_TASK_REPEAT,
+  TASK_DURATION_STEP_MIN,
+  TASK_STATUS_IGNORED,
+  TASK_STATUS_SCHEDULED,
+  TASK_STATUS_UNSCHEDULED,
+  domRefs
+} from "../constants.js";
 import {
   getNextOrder,
   getNextSubtaskOrder,
@@ -177,7 +185,7 @@ export async function handleRepeatOccurrenceComplete(taskId, occurrenceIso) {
     completedOccurrences: Array.from(completedOccurrences),
     completed: false,
     completedAt: task.completedAt || null,
-    scheduleStatus: task.scheduleStatus || "unscheduled"
+    scheduleStatus: task.scheduleStatus || TASK_STATUS_UNSCHEDULED
   });
   await loadTasks();
   closeRepeatCompleteModal();
@@ -233,7 +241,7 @@ function resolveFirstScheduledDate(task) {
 
 export async function viewTaskOnCalendar(taskId) {
   const task = state.tasksCache.find((entry) => entry.id === taskId);
-  if (!task || task.scheduleStatus !== "scheduled") {return false;}
+  if (!task || task.scheduleStatus !== TASK_STATUS_SCHEDULED) {return false;}
   const targetDate = resolveFirstScheduledDate(task);
   if (!targetDate) {return false;}
   switchView("calendar", { calendarAnchorDate: targetDate, focusCalendar: false });
@@ -275,7 +283,7 @@ function getTaskFormValues() {
     id: document.getElementById("task-id").value || uuid(),
     title: document.getElementById("task-title").value.trim(),
     durationMin: Number(document.getElementById("task-duration").value),
-    minBlockMin: Number(taskMinBlockInput.value) || 15,
+    minBlockMin: Number(taskMinBlockInput.value) || DEFAULT_TASK_MIN_BLOCK_MIN,
     priority: Number(document.getElementById("task-priority").value),
     deadline: taskDeadlineInput.value,
     startFrom: taskStartFromInput.value,
@@ -294,8 +302,8 @@ function validateTemplateForm(values) {
   if (!values.title || !values.durationMin) {
     return "Title and duration are required.";
   }
-  if (values.durationMin < 15 || values.durationMin % 15 !== 0) {
-    return "Duration must be at least 15 minutes and in 15 minute steps.";
+  if (values.durationMin < TASK_DURATION_STEP_MIN || values.durationMin % TASK_DURATION_STEP_MIN !== 0) {
+    return `Duration must be at least ${TASK_DURATION_STEP_MIN} minutes and in ${TASK_DURATION_STEP_MIN} minute steps.`;
   }
   if (values.timeMapIds.length === 0) {
     return "Select at least one TimeMap.";
@@ -307,7 +315,7 @@ function validateTemplateForm(values) {
 }
 
 function buildTemplatePayload(values, existing = null) {
-  const repeat = repeatStore.lastRepeatSelection || { type: "none" };
+  const repeat = repeatStore.lastRepeatSelection || { ...DEFAULT_TASK_REPEAT };
   return {
     id: values.id,
     title: values.title,
@@ -325,7 +333,7 @@ function buildTemplatePayload(values, existing = null) {
 }
 
 function getTemplateRepeatSelection() {
-  return repeatStore.lastRepeatSelection || { type: "none" };
+  return repeatStore.lastRepeatSelection || { ...DEFAULT_TASK_REPEAT };
 }
 
 function cloneTemplateSubtasks(subtasks) {
@@ -371,7 +379,10 @@ function resolveTaskOrder(existingTask, parentTask, section, subsection) {
 }
 
 function buildTaskPayload(values, existingTask, parentTask, isParentTask, order) {
-  const repeat = taskRepeatSelect.value === "custom" ? repeatStore.lastRepeatSelection : { type: "none" };
+  const repeat =
+    taskRepeatSelect.value === "custom"
+      ? repeatStore.lastRepeatSelection
+      : { ...DEFAULT_TASK_REPEAT };
   const isSelectorVisible = taskSubtaskScheduleWrap
     ? !taskSubtaskScheduleWrap.classList.contains("hidden")
     : false;
@@ -399,7 +410,7 @@ function buildTaskPayload(values, existingTask, parentTask, isParentTask, order)
     completed: existingTask?.completed || false,
     completedAt: existingTask?.completedAt || null,
     completedOccurrences: existingTask?.completedOccurrences || [],
-    scheduleStatus: "unscheduled",
+    scheduleStatus: TASK_STATUS_UNSCHEDULED,
     scheduledStart: null,
     scheduledEnd: null
   };
@@ -414,7 +425,7 @@ async function updateParentTaskDescendants(taskId, updatedTask) {
       saveTask({
         ...task,
         ...inherited,
-        scheduleStatus: "unscheduled",
+        scheduleStatus: TASK_STATUS_UNSCHEDULED,
         scheduledStart: null,
         scheduledEnd: null,
         scheduledTimeMapId: null,
@@ -546,9 +557,9 @@ export async function handleTaskSubmit(event) {
 
 export async function updateScheduleSummary() {
   const [tasks] = await Promise.all([getAllTasks()]);
-  const scheduled = tasks.filter((t) => t.scheduleStatus === "scheduled").length;
-  const unscheduled = tasks.filter((t) => t.scheduleStatus === "unscheduled").length;
-  const ignored = tasks.filter((t) => t.scheduleStatus === "ignored").length;
+  const scheduled = tasks.filter((t) => t.scheduleStatus === TASK_STATUS_SCHEDULED).length;
+  const unscheduled = tasks.filter((t) => t.scheduleStatus === TASK_STATUS_UNSCHEDULED).length;
+  const ignored = tasks.filter((t) => t.scheduleStatus === TASK_STATUS_IGNORED).length;
   const lastRun = tasks.reduce((latest, t) => {
     if (!t.lastScheduledRun) {return latest;}
     return latest ? Math.max(latest, new Date(t.lastScheduledRun)) : new Date(t.lastScheduledRun);

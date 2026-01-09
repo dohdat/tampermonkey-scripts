@@ -1,4 +1,11 @@
 import {
+  DEFAULT_TASK_DURATION_MIN,
+  DEFAULT_TASK_MIN_BLOCK_MIN,
+  DEFAULT_TASK_PRIORITY,
+  DEFAULT_TASK_REPEAT,
+  TASK_STATUS_UNSCHEDULED
+} from "../constants.js";
+import {
   getNextOrder,
   getNextSubtaskOrder,
   getInheritedSubtaskFields,
@@ -25,12 +32,12 @@ function normalizeTemplateInput(template) {
     id: orFallback(safe.id, ""),
     title: orFallback(safe.title, ""),
     link: orFallback(safe.link, ""),
-    durationMin: toPositiveNumberOr(safe.durationMin, 30),
-    minBlockMin: toPositiveNumberOr(safe.minBlockMin, 15),
-    priority: toPositiveNumberOr(safe.priority, 3),
+    durationMin: toPositiveNumberOr(safe.durationMin, DEFAULT_TASK_DURATION_MIN),
+    minBlockMin: toPositiveNumberOr(safe.minBlockMin, DEFAULT_TASK_MIN_BLOCK_MIN),
+    priority: toPositiveNumberOr(safe.priority, DEFAULT_TASK_PRIORITY),
     deadline: orFallback(safe.deadline, null),
     startFrom: orFallback(safe.startFrom, null),
-    repeat: orFallback(safe.repeat, { type: "none" }),
+    repeat: orFallback(safe.repeat, { ...DEFAULT_TASK_REPEAT }),
     timeMapIds: toArray(safe.timeMapIds),
     subtaskParentId: orFallback(safe.subtaskParentId, null),
     subtaskScheduleMode: normalizeSubtaskScheduleMode(safe.subtaskScheduleMode),
@@ -76,7 +83,7 @@ function applyParentTaskOverrides(subtask, parentTask) {
     ...inherited,
     durationMin: Number(parentTask.durationMin) || subtask.durationMin,
     subtaskScheduleMode: normalizeSubtaskScheduleMode(parentTask.subtaskScheduleMode),
-    repeat: parentTask.repeat || { type: "none" }
+    repeat: parentTask.repeat || { ...DEFAULT_TASK_REPEAT }
   };
 }
 
@@ -96,11 +103,11 @@ function buildTaskFromTemplate(template, overrides) {
     order: overrides.order,
     subtaskParentId: overrides.subtaskParentId || null,
     subtaskScheduleMode: normalizeSubtaskScheduleMode(template.subtaskScheduleMode),
-    repeat: template.repeat || { type: "none" },
+    repeat: template.repeat || { ...DEFAULT_TASK_REPEAT },
     completed: false,
     completedAt: null,
     completedOccurrences: [],
-    scheduleStatus: "unscheduled",
+    scheduleStatus: TASK_STATUS_UNSCHEDULED,
     scheduledStart: null,
     scheduledEnd: null,
     scheduledTimeMapId: null,

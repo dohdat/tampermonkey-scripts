@@ -1,4 +1,9 @@
 import { DEFAULT_SETTINGS, saveTask } from "../../data/db.js";
+import {
+  DEFAULT_TASK_MIN_BLOCK_MIN,
+  DEFAULT_TASK_REPEAT,
+  TASK_STATUS_UNSCHEDULED
+} from "../constants.js";
 import { getContainerKey, getTaskAndDescendants, sortTasksByOrder, uuid } from "../utils.js";
 
 function buildMovedBlock(movedSubtree, targetSection, targetSubsection) {
@@ -125,7 +130,11 @@ function applyTaskDefaults(task) {
   let changed = false;
   const defaultFields = [
     { key: "id", value: uuid(), condition: (t) => !t.id },
-    { key: "minBlockMin", value: 15, condition: (t) => t.minBlockMin === undefined },
+    {
+      key: "minBlockMin",
+      value: DEFAULT_TASK_MIN_BLOCK_MIN,
+      condition: (t) => t.minBlockMin === undefined
+    },
     { key: "subtaskParentId", value: null, condition: (t) => t.subtaskParentId === undefined },
     { key: "startFrom", value: null, condition: (t) => t.startFrom === undefined },
     { key: "completed", value: false, condition: (t) => t.completed === undefined },
@@ -142,11 +151,11 @@ function applyTaskDefaults(task) {
     changed = true;
   }
   if (!nextTask.repeat) {
-    nextTask = { ...nextTask, repeat: { type: "none" } };
+    nextTask = { ...nextTask, repeat: { ...DEFAULT_TASK_REPEAT } };
     changed = true;
   }
   if (!nextTask.scheduleStatus) {
-    nextTask = { ...nextTask, scheduleStatus: "unscheduled" };
+    nextTask = { ...nextTask, scheduleStatus: TASK_STATUS_UNSCHEDULED };
     changed = true;
   }
   return { task: nextTask, changed };

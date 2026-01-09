@@ -1,4 +1,11 @@
-import { SUBTASK_ORDER_OFFSET } from "../constants.js";
+import {
+  DEFAULT_TASK_DURATION_MIN,
+  DEFAULT_TASK_MIN_BLOCK_MIN,
+  DEFAULT_TASK_PRIORITY,
+  DEFAULT_TASK_REPEAT,
+  SUBTASK_ORDER_OFFSET,
+  TASK_STATUS_UNSCHEDULED
+} from "../constants.js";
 import {
   getInheritedSubtaskFields,
   getNextSubtaskOrder,
@@ -9,13 +16,13 @@ import {
 function resolveParentDefaults(parentTask) {
   const safeTask = parentTask || {};
   const {
-    durationMin = 30,
-  minBlockMin = 15,
-    priority = 3,
+    durationMin = DEFAULT_TASK_DURATION_MIN,
+    minBlockMin = DEFAULT_TASK_MIN_BLOCK_MIN,
+    priority = DEFAULT_TASK_PRIORITY,
     deadline = null,
     startFrom = null,
     timeMapIds = [],
-    repeat = { type: "none" },
+    repeat = { ...DEFAULT_TASK_REPEAT },
     subtaskScheduleMode
   } = safeTask;
   return {
@@ -57,7 +64,7 @@ function buildAiTaskPayload({
     completed: false,
     completedAt: null,
     completedOccurrences: [],
-    scheduleStatus: "unscheduled",
+    scheduleStatus: TASK_STATUS_UNSCHEDULED,
     scheduledStart: null,
     scheduledEnd: null,
     scheduledTimeMapId: null,

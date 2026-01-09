@@ -1,3 +1,10 @@
+import {
+  DEFAULT_TASK_DURATION_MIN,
+  DEFAULT_TASK_MIN_BLOCK_MIN,
+  DEFAULT_TASK_PRIORITY,
+  DEFAULT_TASK_REPEAT,
+  SUBTASK_SCHEDULE_PARALLEL
+} from "./constants.js";
 import { normalizeSubtaskScheduleMode } from "./utils.js";
 import { state } from "./state/page-state.js";
 
@@ -19,14 +26,14 @@ export function getSubsectionsFor(sectionId) {
     const template = {
       title: "",
       link: "",
-      durationMin: 30,
-      minBlockMin: 15,
-      priority: 3,
+      durationMin: DEFAULT_TASK_DURATION_MIN,
+      minBlockMin: DEFAULT_TASK_MIN_BLOCK_MIN,
+      priority: DEFAULT_TASK_PRIORITY,
       deadline: "",
       startFrom: "",
-      repeat: { type: "none" },
+      repeat: { ...DEFAULT_TASK_REPEAT },
       timeMapIds: [],
-      subtaskScheduleMode: "parallel",
+      subtaskScheduleMode: SUBTASK_SCHEDULE_PARALLEL,
       ...(s.template || {})
     };
     return {

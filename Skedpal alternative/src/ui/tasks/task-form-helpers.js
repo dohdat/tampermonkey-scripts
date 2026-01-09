@@ -1,3 +1,10 @@
+import {
+  DEFAULT_TASK_DURATION_MIN,
+  DEFAULT_TASK_MIN_BLOCK_MIN,
+  DEFAULT_TASK_PRIORITY,
+  DEFAULT_TASK_REPEAT,
+  TASK_DURATION_STEP_MIN
+} from "../constants.js";
 import { isStartAfterDeadline, normalizeSubtaskScheduleMode } from "../utils.js";
 
 export function buildTemplateFormValues(template) {
@@ -6,12 +13,12 @@ export function buildTemplateFormValues(template) {
     parentId: "",
     title: template?.title || "",
     link: template?.link || "",
-    durationMin: template?.durationMin || 30,
-    minBlockMin: template?.minBlockMin || 15,
-    priority: template?.priority || 3,
+    durationMin: template?.durationMin || DEFAULT_TASK_DURATION_MIN,
+    minBlockMin: template?.minBlockMin || DEFAULT_TASK_MIN_BLOCK_MIN,
+    priority: template?.priority || DEFAULT_TASK_PRIORITY,
     deadline: template?.deadline || "",
     startFrom: template?.startFrom || "",
-    repeat: template?.repeat || { type: "none" }
+    repeat: template?.repeat || { ...DEFAULT_TASK_REPEAT }
   };
 }
 
@@ -21,12 +28,12 @@ export function buildSubtaskFormValues(task) {
     parentId: task.id,
     title: task.title || "",
     link: "",
-    durationMin: task.durationMin || 30,
-    minBlockMin: task.minBlockMin || task.durationMin || 15,
-    priority: task.priority || 3,
+    durationMin: task.durationMin || DEFAULT_TASK_DURATION_MIN,
+    minBlockMin: task.minBlockMin || task.durationMin || DEFAULT_TASK_MIN_BLOCK_MIN,
+    priority: task.priority || DEFAULT_TASK_PRIORITY,
     deadline: task.deadline || "",
     startFrom: task.startFrom || "",
-    repeat: task.repeat || { type: "none" }
+    repeat: task.repeat || { ...DEFAULT_TASK_REPEAT }
   };
 }
 
@@ -60,8 +67,8 @@ export function validateTaskForm(values) {
   if (!values.subsection) {
     return "Select a subsection.";
   }
-  if (values.durationMin < 15 || values.durationMin % 15 !== 0) {
-    return "Duration must be at least 15 minutes and in 15 minute steps.";
+  if (values.durationMin < TASK_DURATION_STEP_MIN || values.durationMin % TASK_DURATION_STEP_MIN !== 0) {
+    return `Duration must be at least ${TASK_DURATION_STEP_MIN} minutes and in ${TASK_DURATION_STEP_MIN} minute steps.`;
   }
   if (values.timeMapIds.length === 0) {
     return "Select at least one TimeMap.";

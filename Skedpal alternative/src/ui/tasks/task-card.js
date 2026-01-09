@@ -1,4 +1,5 @@
 import {
+  TASK_REPEAT_NONE,
   caretDownIconSvg,
   caretRightIconSvg,
   checkboxCheckedIconSvg,
@@ -379,7 +380,7 @@ export function renderTaskCard(task, context) {
   if (detailsOpen) {
     const meta = buildTaskMeta(task, timeMapNames, repeatSummary);
     taskCard.appendChild(meta);
-    const isRepeating = task.repeat && task.repeat.type !== "none";
+    const isRepeating = task.repeat && task.repeat.type !== TASK_REPEAT_NONE;
     if (!isRepeating) {
       const statusRow = buildTaskScheduleDetails(task);
       if (statusRow) {

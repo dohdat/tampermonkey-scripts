@@ -1,5 +1,12 @@
 import { getAllTasks, saveSettings, saveTask } from "../data/db.js";
-import { domRefs } from "./constants.js";
+import {
+  DEFAULT_TASK_DURATION_MIN,
+  DEFAULT_TASK_MIN_BLOCK_MIN,
+  DEFAULT_TASK_PRIORITY,
+  DEFAULT_TASK_REPEAT,
+  TASK_REPEAT_NONE,
+  domRefs
+} from "./constants.js";
 import { getNextFavoriteOrder, toggleFavoriteById } from "./favorites.js";
 import {
   applyPrioritySelectColor,
@@ -191,9 +198,9 @@ function buildSubsectionTemplateFromInputs() {
   return {
     title: getInputValue(subsectionTaskTitleInput, ""),
     link: getInputValue(subsectionTaskLinkInput, ""),
-    durationMin: getNumberInputValue(subsectionTaskDurationInput, 30),
-    minBlockMin: getNumberInputValue(subsectionTaskMinBlockInput, 15),
-    priority: getNumberInputValue(subsectionTaskPriorityInput, 3),
+    durationMin: getNumberInputValue(subsectionTaskDurationInput, DEFAULT_TASK_DURATION_MIN),
+    minBlockMin: getNumberInputValue(subsectionTaskMinBlockInput, DEFAULT_TASK_MIN_BLOCK_MIN),
+    priority: getNumberInputValue(subsectionTaskPriorityInput, DEFAULT_TASK_PRIORITY),
     deadline: getInputValue(subsectionTaskDeadlineInput, ""),
     repeat,
     startFrom: getInputValue(subsectionTaskStartFromInput, ""),
@@ -212,14 +219,14 @@ function resolveSubsectionTemplate(existing) {
 function applySubsectionTemplate(template) {
   setInputValue(subsectionTaskTitleInput, template.title || "");
   setInputValue(subsectionTaskLinkInput, template.link || "");
-  setInputValue(subsectionTaskDurationInput, template.durationMin || 30);
-  setInputValue(subsectionTaskMinBlockInput, template.minBlockMin || 15);
-  setInputValue(subsectionTaskPriorityInput, String(template.priority || 3));
+  setInputValue(subsectionTaskDurationInput, template.durationMin || DEFAULT_TASK_DURATION_MIN);
+  setInputValue(subsectionTaskMinBlockInput, template.minBlockMin || DEFAULT_TASK_MIN_BLOCK_MIN);
+  setInputValue(subsectionTaskPriorityInput, String(template.priority || DEFAULT_TASK_PRIORITY));
   applyPrioritySelectColor(subsectionTaskPriorityInput);
   setInputValue(subsectionTaskDeadlineInput, formatTemplateDate(template.deadline));
   setInputValue(subsectionTaskStartFromInput, formatTemplateDate(template.startFrom));
-  const repeat = template.repeat || { type: "none" };
-  setInputValue(subsectionTaskRepeatSelect, repeat.type === "custom" ? "custom" : "none");
+  const repeat = template.repeat || { ...DEFAULT_TASK_REPEAT };
+  setInputValue(subsectionTaskRepeatSelect, repeat.type === "custom" ? "custom" : TASK_REPEAT_NONE);
   setRepeatFromSelection(repeat, "subsection");
   syncSubsectionRepeatLabel();
   if (subsectionTaskSubtaskScheduleSelect) {
@@ -456,7 +463,7 @@ export function closeSubsectionModal() {
   if (subsectionFormWrap) {subsectionFormWrap.classList.add("hidden");}
   editingSubsectionId = "";
   editingSectionId = "";
-  repeatStore.subsectionRepeatSelection = { type: "none" };
+  repeatStore.subsectionRepeatSelection = { ...DEFAULT_TASK_REPEAT };
   repeatStore.repeatTarget = "task";
 }
 

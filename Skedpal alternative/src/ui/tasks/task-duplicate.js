@@ -1,3 +1,4 @@
+import { TASK_STATUS_UNSCHEDULED } from "../constants.js";
 import { getNextOrder, getNextSubtaskOrder, uuid } from "../utils.js";
 
 function buildDuplicateMap(tasksToClone) {
@@ -33,7 +34,7 @@ function buildDuplicateTask(original, parentId, order, newId) {
     completed: false,
     completedAt: null,
     completedOccurrences: [],
-    scheduleStatus: "unscheduled",
+    scheduleStatus: TASK_STATUS_UNSCHEDULED,
     scheduledStart: null,
     scheduledEnd: null,
     scheduledTimeMapId: null,

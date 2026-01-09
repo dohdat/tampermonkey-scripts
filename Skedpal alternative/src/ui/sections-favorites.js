@@ -180,6 +180,10 @@ function buildFavoriteButton(item, options = {}) {
   btn.dataset.sectionId = item.sectionId || "";
   if (item.subsectionId) {btn.dataset.subsectionId = item.subsectionId;}
   const count = getTaskCountForFavorite(item, state.tasksCache || []);
+  const countMarkup =
+    count > 0
+      ? `<span class="sidebar-fav-count" data-test-skedpal="sidebar-fav-count">${count}</span>`
+      : `<span class="sidebar-fav-count sidebar-fav-count--empty" data-test-skedpal="sidebar-fav-count" aria-hidden="true"></span>`;
   const indent = depth > 0 ? `style="margin-left:${depth * 14}px"` : "";
   const toggle = hasChildren
     ? `
@@ -197,7 +201,7 @@ function buildFavoriteButton(item, options = {}) {
       <span class="sidebar-fav-text" ${indent}>
         <span class="sidebar-fav-label" data-test-skedpal="sidebar-fav-label">${item.label}</span>
       </span>
-      <span class="sidebar-fav-count" data-test-skedpal="sidebar-fav-count">${count}</span>
+      ${countMarkup}
       ${toggle}
     `;
   return btn;

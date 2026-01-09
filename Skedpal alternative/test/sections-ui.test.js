@@ -276,6 +276,22 @@ describe("sections ui", () => {
     assert.ok(findByTestAttr(row, "sidebar-fav-button"));
   });
 
+  it("hides zero-count favorite badges while keeping spacing", () => {
+    state.settingsCache.sections = [
+      { id: "s1", name: "Work", favorite: true, favoriteOrder: 1 }
+    ];
+    state.settingsCache.subsections = { s1: [] };
+    state.tasksCache = [];
+
+    favoritesModule.renderFavoriteShortcuts();
+
+    const sidebar = elementMap.get("sidebar-favorites");
+    const row = findByTestAttr(sidebar, "sidebar-fav-row");
+    const button = findByTestAttr(row, "sidebar-fav-button");
+    assert.ok(button.innerHTML.includes("sidebar-fav-count--empty"));
+    assert.strictEqual(button.innerHTML.includes(">0<"), false);
+  });
+
   it("renders collapsible favorite subsections", () => {
     state.settingsCache.sections = [
       { id: "s1", name: "Work", favorite: true, favoriteOrder: 1 }

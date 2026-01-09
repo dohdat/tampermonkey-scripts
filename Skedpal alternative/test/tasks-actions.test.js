@@ -1,11 +1,23 @@
 import assert from "assert";
 import { describe, it } from "mocha";
 import {
+  buildTemplateFormValues,
   buildSubtaskFormValues,
   validateTaskForm
 } from "../src/ui/tasks/task-form-helpers.js";
 
 describe("task form helpers", () => {
+  it("builds template form values with defaults", () => {
+    const values = buildTemplateFormValues(null);
+
+    assert.strictEqual(values.title, "");
+    assert.strictEqual(values.link, "");
+    assert.strictEqual(values.durationMin, 30);
+    assert.strictEqual(values.minBlockMin, 30);
+    assert.strictEqual(values.priority, 3);
+    assert.deepStrictEqual(values.repeat, { type: "none" });
+  });
+
   it("does not inherit parent links when adding subtasks", () => {
     const parentTask = {
       id: "p1",
@@ -35,5 +47,87 @@ describe("task form helpers", () => {
     });
 
     assert.strictEqual(error, "Select a subsection.");
+  });
+
+  it("rejects missing title or duration", () => {
+    const error = validateTaskForm({
+      title: "",
+      durationMin: 0,
+      timeMapIds: ["tm-1"],
+      subsection: "sub-1",
+      startFrom: "",
+      deadline: ""
+    });
+
+    assert.strictEqual(error, "Title and duration are required.");
+  });
+
+  it("rejects durations that are too short or off-step", () => {
+    const tooShort = validateTaskForm({
+      title: "Task",
+      durationMin: 10,
+      timeMapIds: ["tm-1"],
+      subsection: "sub-1",
+      startFrom: "",
+      deadline: ""
+    });
+
+    assert.strictEqual(
+      tooShort,
+      "Duration must be at least 15 minutes and in 15 minute steps."
+    );
+
+    const offStep = validateTaskForm({
+      title: "Task",
+      durationMin: 25,
+      timeMapIds: ["tm-1"],
+      subsection: "sub-1",
+      startFrom: "",
+      deadline: ""
+    });
+
+    assert.strictEqual(
+      offStep,
+      "Duration must be at least 15 minutes and in 15 minute steps."
+    );
+  });
+
+  it("requires at least one TimeMap", () => {
+    const error = validateTaskForm({
+      title: "Task",
+      durationMin: 30,
+      timeMapIds: [],
+      subsection: "sub-1",
+      startFrom: "",
+      deadline: ""
+    });
+
+    assert.strictEqual(error, "Select at least one TimeMap.");
+  });
+
+  it("rejects start dates after deadlines", () => {
+    const error = validateTaskForm({
+      title: "Task",
+      durationMin: 30,
+      timeMapIds: ["tm-1"],
+      subsection: "sub-1",
+      startFrom: "2026-01-10",
+      deadline: "2026-01-09"
+    });
+
+    assert.strictEqual(error, "Start from cannot be after deadline.");
+  });
+
+  it("returns an empty string when the task values are valid", () => {
+    const error = validateTaskForm({
+      title: "Task",
+      durationMin: 30,
+      timeMapIds: ["tm-1"],
+      subsection: "sub-1",
+      startFrom: "2026-01-09",
+      deadline: "2026-01-10"
+    });
+
+    assert.strictEqual(error, "");
   });
 });

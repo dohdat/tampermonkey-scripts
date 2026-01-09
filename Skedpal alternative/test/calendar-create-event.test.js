@@ -148,6 +148,33 @@ describe("calendar create modal", () => {
     assert.strictEqual(domRefs.calendarGrid.children[0].children.length, 1);
   });
 
+  it("prefers a primary calendar when no selection exists", async () => {
+    global.chrome.runtime.sendMessage = (_message, callback) => {
+      callback({
+        ok: true,
+        calendars: [
+          { id: "cal-2", summary: "Team", primary: true },
+          { id: "cal-3", summary: "Personal" }
+        ]
+      });
+    };
+    state.settingsCache = { ...state.settingsCache, googleCalendarIds: [] };
+
+    await openCalendarCreateModal({ dayKey: "2026-01-08", startMinutes: 540 });
+    assert.strictEqual(domRefs.calendarCreateCalendarSelect.value, "cal-2");
+  });
+
+  it("shows an empty calendar option when runtime is unavailable", async () => {
+    global.chrome = {};
+    state.settingsCache = { ...state.settingsCache, googleCalendarIds: [] };
+
+    await openCalendarCreateModal({ dayKey: "2026-01-08", startMinutes: 540 });
+    const select = domRefs.calendarCreateCalendarSelect;
+    assert.strictEqual(select.children.length, 1);
+    assert.strictEqual(select.children[0].textContent, "No calendars available");
+    assert.strictEqual(select.value, "");
+  });
+
   it("opens from calendar grid click coordinates", async () => {
     const { openCalendarCreateFromClick, initCalendarCreateModal, cleanupCalendarCreateModal } =
       await import("../src/ui/calendar-create-event.js");
@@ -166,6 +193,28 @@ describe("calendar create modal", () => {
     assert.strictEqual(domRefs.calendarCreateTime.value, "06:00");
     assert.strictEqual(domRefs.calendarGrid.children[0].children.length, 1);
     cleanupCalendarCreateModal();
+  });
+
+  it("returns false when clicking outside a day column", async () => {
+    const { openCalendarCreateFromClick } =
+      await import("../src/ui/calendar-create-event.js");
+    const handled = openCalendarCreateFromClick({
+      target: { closest: () => null },
+      clientY: 0
+    });
+    assert.strictEqual(handled, false);
+  });
+
+  it("returns false when the day column has no bounds", async () => {
+    const { openCalendarCreateFromClick } =
+      await import("../src/ui/calendar-create-event.js");
+    const dayCol = new FakeElement("div");
+    dayCol.setAttribute("data-day", "2026-01-11");
+    const handled = openCalendarCreateFromClick({
+      target: { closest: () => dayCol },
+      clientY: 0
+    });
+    assert.strictEqual(handled, false);
   });
 
   it("closes the event modal instead of creating on empty slot click", async () => {

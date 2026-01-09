@@ -66,6 +66,10 @@ describe("task form ui", () => {
     resetElements();
     domRefs.taskFormWrap = elementMap.get("task-form-wrap");
     domRefs.taskToggle = null;
+    global.setTimeout = (handler) => {
+      handler();
+      return 0;
+    };
   });
 
   it("opens and closes without a task toggle button", () => {
@@ -79,5 +83,24 @@ describe("task form ui", () => {
     assert.doesNotThrow(() => closeTaskForm());
     assert.strictEqual(wrap.classList.contains("hidden"), true);
     assert.strictEqual(global.document.body.classList.contains("modal-open"), false);
+  });
+
+  it("updates the task toggle label when present", () => {
+    const wrap = elementMap.get("task-form-wrap");
+    const toggle = new FakeElement("button");
+    toggle.textContent = "Create";
+    domRefs.taskToggle = toggle;
+
+    openTaskForm();
+    assert.strictEqual(wrap.classList.contains("hidden"), false);
+    assert.strictEqual(toggle.textContent, "Add task");
+    assert.strictEqual(
+      elementMap.get("task-title")._focused,
+      true
+    );
+
+    closeTaskForm();
+    assert.strictEqual(wrap.classList.contains("hidden"), true);
+    assert.strictEqual(toggle.textContent, "Add task");
   });
 });

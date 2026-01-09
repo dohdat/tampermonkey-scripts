@@ -37,6 +37,36 @@ function normalizeTemplateInput(template) {
   };
 }
 
+function buildChildrenByParent(normalizedSubtasks) {
+  const subtaskIds = new Set(normalizedSubtasks.map((sub) => sub.id).filter(Boolean));
+  return normalizedSubtasks.reduce((map, subtask) => {
+    const parentKey =
+      subtask.subtaskParentId && subtaskIds.has(subtask.subtaskParentId)
+        ? subtask.subtaskParentId
+        : "";
+    if (!map.has(parentKey)) {map.set(parentKey, []);}
+    map.get(parentKey).push(subtask);
+    return map;
+  }, new Map());
+}
+
+function getTemplateChildren(childrenByParent, templateParentId) {
+  return childrenByParent.get(templateParentId || "") || [];
+}
+
+function trackVisitedTemplate(childTemplate, visited) {
+  if (!childTemplate.id) {return true;}
+  if (visited.has(childTemplate.id)) {return false;}
+  visited.add(childTemplate.id);
+  return true;
+}
+
+function ensureTemplateTimeMaps(childTemplate, inheritedTimeMapIds) {
+  if (!Array.isArray(childTemplate.timeMapIds) || childTemplate.timeMapIds.length === 0) {
+    childTemplate.timeMapIds = [...(inheritedTimeMapIds || [])];
+  }
+}
+
 function buildTaskFromTemplate(template, overrides) {
   return {
     id: overrides.id,
@@ -65,6 +95,52 @@ function buildTaskFromTemplate(template, overrides) {
   };
 }
 
+function buildTemplateSubtasks({
+  childrenByParent,
+  templateParentId,
+  parentTaskInstance,
+  inheritedTimeMapIds,
+  sectionId,
+  subsectionId,
+  tasksForOrder,
+  uuidFn,
+  getOrderForChild,
+  created,
+  visited
+}) {
+  const children = getTemplateChildren(childrenByParent, templateParentId);
+  children.forEach((childTemplate) => {
+    if (!trackVisitedTemplate(childTemplate, visited)) {return;}
+    ensureTemplateTimeMaps(childTemplate, inheritedTimeMapIds);
+    const id = uuidFn();
+    const order = getOrderForChild(parentTaskInstance, tasksForOrder);
+    const subtask = buildTaskFromTemplate(childTemplate, {
+      id,
+      sectionId,
+      subsectionId,
+      order,
+      subtaskParentId: parentTaskInstance ? parentTaskInstance.id : null
+    });
+    tasksForOrder.push(subtask);
+    created.push(subtask);
+    if (childTemplate.id) {
+      buildTemplateSubtasks({
+        childrenByParent,
+        templateParentId: childTemplate.id,
+        parentTaskInstance: subtask,
+        inheritedTimeMapIds: subtask.timeMapIds,
+        sectionId,
+        subsectionId,
+        tasksForOrder,
+        uuidFn,
+        getOrderForChild,
+        created,
+        visited
+      });
+    }
+  });
+}
+
 export function buildTasksFromTemplate(
   templateInput,
   sectionId,
@@ -86,49 +162,42 @@ export function buildTasksFromTemplate(
   });
   const tasksForOrder = [...tasks, parentTask];
   const normalizedSubtasks = template.subtasks.map((sub) => normalizeTemplateInput(sub));
-  const subtaskIds = new Set(normalizedSubtasks.map((sub) => sub.id).filter(Boolean));
-  const childrenByParent = normalizedSubtasks.reduce((map, subtask) => {
-    const parentKey =
-      subtask.subtaskParentId && subtaskIds.has(subtask.subtaskParentId)
-        ? subtask.subtaskParentId
-        : "";
-    if (!map.has(parentKey)) {map.set(parentKey, []);}
-    map.get(parentKey).push(subtask);
-    return map;
-  }, new Map());
+  const childrenByParent = buildChildrenByParent(normalizedSubtasks);
   const created = [];
   const visited = new Set();
-  const buildSubtasks = (templateParentId, parentTaskInstance, inheritedTimeMapIds) => {
-    const children = childrenByParent.get(templateParentId || "") || [];
-    children.forEach((childTemplate) => {
-      if (childTemplate.id && visited.has(childTemplate.id)) {return;}
-      if (childTemplate.id) {visited.add(childTemplate.id);}
-      if (!Array.isArray(childTemplate.timeMapIds) || childTemplate.timeMapIds.length === 0) {
-        childTemplate.timeMapIds = [...(inheritedTimeMapIds || [])];
-      }
-      const id = uuidFn();
-      const order = parentTaskInstance
-        ? getNextSubtaskOrder(parentTaskInstance, sectionId, subsectionId, tasksForOrder)
-        : getNextOrder(sectionId, subsectionId, tasksForOrder);
-      const subtask = buildTaskFromTemplate(childTemplate, {
-        id,
-        sectionId,
-        subsectionId,
-        order,
-        subtaskParentId: parentTaskInstance ? parentTaskInstance.id : null
-      });
-      tasksForOrder.push(subtask);
-      created.push(subtask);
-      if (childTemplate.id) {
-        buildSubtasks(childTemplate.id, subtask, subtask.timeMapIds);
-      }
-    });
-  };
+  const getOrderForChild = (parentTaskInstance, tasksForOrderList) =>
+    parentTaskInstance
+      ? getNextSubtaskOrder(parentTaskInstance, sectionId, subsectionId, tasksForOrderList)
+      : getNextOrder(sectionId, subsectionId, tasksForOrderList);
   if (includeParent) {
-    buildSubtasks("", parentTask, parentTask.timeMapIds);
+    buildTemplateSubtasks({
+      childrenByParent,
+      templateParentId: "",
+      parentTaskInstance: parentTask,
+      inheritedTimeMapIds: parentTask.timeMapIds,
+      sectionId,
+      subsectionId,
+      tasksForOrder,
+      uuidFn,
+      getOrderForChild,
+      created,
+      visited
+    });
     return [parentTask, ...created];
   }
-  buildSubtasks("", null, template.timeMapIds);
+  buildTemplateSubtasks({
+    childrenByParent,
+    templateParentId: "",
+    parentTaskInstance: null,
+    inheritedTimeMapIds: template.timeMapIds,
+    sectionId,
+    subsectionId,
+    tasksForOrder,
+    uuidFn,
+    getOrderForChild,
+    created,
+    visited
+  });
   return [...created];
 }
 
@@ -141,48 +210,29 @@ export function buildSubtasksFromTemplateForParent(
   if (!templateInput || !parentTask) {return [];}
   const template = normalizeTemplateInput(templateInput);
   const normalizedSubtasks = template.subtasks.map((sub) => normalizeTemplateInput(sub));
-  const subtaskIds = new Set(normalizedSubtasks.map((sub) => sub.id).filter(Boolean));
-  const childrenByParent = normalizedSubtasks.reduce((map, subtask) => {
-    const parentKey =
-      subtask.subtaskParentId && subtaskIds.has(subtask.subtaskParentId)
-        ? subtask.subtaskParentId
-        : "";
-    if (!map.has(parentKey)) {map.set(parentKey, []);}
-    map.get(parentKey).push(subtask);
-    return map;
-  }, new Map());
+  const childrenByParent = buildChildrenByParent(normalizedSubtasks);
   const created = [];
   const visited = new Set();
   const tasksForOrder = [...tasks];
-  const buildSubtasks = (templateParentId, parentTaskInstance, inheritedTimeMapIds) => {
-    const children = childrenByParent.get(templateParentId || "") || [];
-    children.forEach((childTemplate) => {
-      if (childTemplate.id && visited.has(childTemplate.id)) {return;}
-      if (childTemplate.id) {visited.add(childTemplate.id);}
-      if (!Array.isArray(childTemplate.timeMapIds) || childTemplate.timeMapIds.length === 0) {
-        childTemplate.timeMapIds = [...(inheritedTimeMapIds || [])];
-      }
-      const id = uuidFn();
-      const order = getNextSubtaskOrder(
-        parentTaskInstance,
-        parentTask.section || "",
-        parentTask.subsection || "",
-        tasksForOrder
-      );
-      const subtask = buildTaskFromTemplate(childTemplate, {
-        id,
-        sectionId: parentTask.section || "",
-        subsectionId: parentTask.subsection || "",
-        order,
-        subtaskParentId: parentTaskInstance.id
-      });
-      tasksForOrder.push(subtask);
-      created.push(subtask);
-      if (childTemplate.id) {
-        buildSubtasks(childTemplate.id, subtask, subtask.timeMapIds);
-      }
-    });
-  };
-  buildSubtasks("", parentTask, parentTask.timeMapIds || []);
+  const getOrderForChild = (parentTaskInstance, tasksForOrderList) =>
+    getNextSubtaskOrder(
+      parentTaskInstance,
+      parentTask.section || "",
+      parentTask.subsection || "",
+      tasksForOrderList
+    );
+  buildTemplateSubtasks({
+    childrenByParent,
+    templateParentId: "",
+    parentTaskInstance: parentTask,
+    inheritedTimeMapIds: parentTask.timeMapIds || [],
+    sectionId: parentTask.section || "",
+    subsectionId: parentTask.subsection || "",
+    tasksForOrder,
+    uuidFn,
+    getOrderForChild,
+    created,
+    visited
+  });
   return created;
 }

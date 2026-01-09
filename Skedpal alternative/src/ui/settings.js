@@ -306,90 +306,100 @@ function initGoogleCalendarSettings(persistSettingsSafely) {
   googleCalendarDisconnectBtn?.addEventListener("click", handleCalendarDisconnect);
 }
 
-function initBackupSettings() {
-  const refreshBackupStatus = async () => {
-    try {
-      const latest = await getLatestBackup();
-      if (!latest) {
-        setBackupStatus("No backups yet.");
-        if (backupRestoreBtn) {backupRestoreBtn.disabled = true;}
-        return null;
-      }
-      setBackupStatus(`Latest backup: ${formatBackupTimestamp(latest.createdAt)}.`);
-      if (backupRestoreBtn) {backupRestoreBtn.disabled = false;}
-      return latest;
-    } catch (error) {
-      console.warn("Failed to read latest backup.", error);
-      setBackupStatus("Unable to read backups.");
+async function refreshBackupStatus() {
+  try {
+    const latest = await getLatestBackup();
+    if (!latest) {
+      setBackupStatus("No backups yet.");
       if (backupRestoreBtn) {backupRestoreBtn.disabled = true;}
       return null;
     }
-  };
+    setBackupStatus(`Latest backup: ${formatBackupTimestamp(latest.createdAt)}.`);
+    if (backupRestoreBtn) {backupRestoreBtn.disabled = false;}
+    return latest;
+  } catch (error) {
+    console.warn("Failed to read latest backup.", error);
+    setBackupStatus("Unable to read backups.");
+    if (backupRestoreBtn) {backupRestoreBtn.disabled = true;}
+    return null;
+  }
+}
 
-  const handleBackupNow = async () => {
-    setBackupButtonsState(true);
-    setBackupStatus("Saving backup...");
-    try {
-      const [tasks, timeMaps, settings, taskTemplates] = await Promise.all([
-        getAllTasks(),
-        getAllTimeMaps(),
-        getSettings(),
-        getAllTaskTemplates()
-      ]);
-      const snapshot = {
-        createdAt: new Date().toISOString(),
-        tasks,
-        timeMaps,
-        settings,
-        taskTemplates
-      };
-      await saveBackup(snapshot);
-      setBackupStatus(`Backup saved ${formatBackupTimestamp(snapshot.createdAt)}.`);
-      if (backupRestoreBtn) {backupRestoreBtn.disabled = false;}
-    } catch (error) {
-      console.warn("Failed to save backup.", error);
-      setBackupStatus("Failed to save backup.");
-    } finally {
-      setBackupButtonsState(false);
+async function createBackupSnapshot() {
+  const [tasks, timeMaps, settings, taskTemplates] = await Promise.all([
+    getAllTasks(),
+    getAllTimeMaps(),
+    getSettings(),
+    getAllTaskTemplates()
+  ]);
+  return {
+    createdAt: new Date().toISOString(),
+    tasks,
+    timeMaps,
+    settings,
+    taskTemplates
+  };
+}
+
+function confirmBackupRestore() {
+  if (typeof window === "undefined") {return true;}
+  return window.confirm("Restore the latest backup? This will replace current data.");
+}
+
+async function applyBackupSnapshot(latest) {
+  await restoreBackup(latest);
+  state.settingsCache = { ...DEFAULT_SETTINGS, ...(latest.settings || {}) };
+  updateHorizonInputValue();
+  updateCalendarStatusFromSettings();
+  invalidateExternalEventsCache();
+  await loadTasks();
+  await loadTaskTemplates();
+  await updateScheduleSummary();
+}
+
+async function handleBackupNowClick() {
+  setBackupButtonsState(true);
+  setBackupStatus("Saving backup...");
+  try {
+    const snapshot = await createBackupSnapshot();
+    await saveBackup(snapshot);
+    setBackupStatus(`Backup saved ${formatBackupTimestamp(snapshot.createdAt)}.`);
+    if (backupRestoreBtn) {backupRestoreBtn.disabled = false;}
+  } catch (error) {
+    console.warn("Failed to save backup.", error);
+    setBackupStatus("Failed to save backup.");
+  } finally {
+    setBackupButtonsState(false);
+  }
+}
+
+async function handleRestoreLatestClick() {
+  setBackupButtonsState(true);
+  setBackupStatus("Restoring backup...");
+  try {
+    const latest = await getLatestBackup();
+    if (!latest) {
+      setBackupStatus("No backup available.");
+      return;
     }
-  };
-
-  const handleRestoreLatest = async () => {
-    setBackupButtonsState(true);
-    setBackupStatus("Restoring backup...");
-    try {
-      const latest = await getLatestBackup();
-      if (!latest) {
-        setBackupStatus("No backup available.");
-        return;
-      }
-      if (typeof window !== "undefined") {
-        const confirmed = window.confirm("Restore the latest backup? This will replace current data.");
-        if (!confirmed) {
-          setBackupStatus("Restore canceled.");
-          return;
-        }
-      }
-      await restoreBackup(latest);
-      state.settingsCache = { ...DEFAULT_SETTINGS, ...(latest.settings || {}) };
-      updateHorizonInputValue();
-      updateCalendarStatusFromSettings();
-      invalidateExternalEventsCache();
-      await loadTasks();
-      await loadTaskTemplates();
-      await updateScheduleSummary();
-      setBackupStatus(`Restored backup from ${formatBackupTimestamp(latest.createdAt)}.`);
-    } catch (error) {
-      console.warn("Failed to restore backup.", error);
-      setBackupStatus("Failed to restore backup.");
-    } finally {
-      setBackupButtonsState(false);
-      await refreshBackupStatus();
+    if (!confirmBackupRestore()) {
+      setBackupStatus("Restore canceled.");
+      return;
     }
-  };
+    await applyBackupSnapshot(latest);
+    setBackupStatus(`Restored backup from ${formatBackupTimestamp(latest.createdAt)}.`);
+  } catch (error) {
+    console.warn("Failed to restore backup.", error);
+    setBackupStatus("Failed to restore backup.");
+  } finally {
+    setBackupButtonsState(false);
+    await refreshBackupStatus();
+  }
+}
 
-  backupNowBtn?.addEventListener("click", handleBackupNow);
-  backupRestoreBtn?.addEventListener("click", handleRestoreLatest);
+function initBackupSettings() {
+  backupNowBtn?.addEventListener("click", handleBackupNowClick);
+  backupRestoreBtn?.addEventListener("click", handleRestoreLatestClick);
   void refreshBackupStatus();
 }
 

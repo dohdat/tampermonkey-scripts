@@ -17,11 +17,11 @@ import {
 } from "../src/data/db.js";
 
 const DB_NAME = "personal-skedpal";
-const STORES = ["tasks", "timemaps", "settings", "backups"];
+const STORES = ["tasks", "timemaps", "settings", "backups", "task-templates"];
 
 function openRawDb() {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 2);
+    const request = indexedDB.open(DB_NAME, 3);
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });

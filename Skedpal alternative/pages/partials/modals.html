@@ -129,12 +129,12 @@
           </select>
         </label>
         <label class="field">
-          <span class="field-label">Deadline</span>
-          <input id="task-deadline" type="date" class="field-input" />
-        </label>
-        <label class="field">
           <span class="field-label">Start from</span>
           <input id="task-start-from" type="date" class="field-input" />
+        </label>
+        <label class="field">
+          <span class="field-label">Deadline</span>
+          <input id="task-deadline" type="date" class="field-input" />
         </label>
         <label class="field">
           <span class="field-label">Repeat</span>
@@ -152,6 +152,22 @@
           <span class="field-label">Subsection</span>
           <select id="task-subsection" class="field-input"></select>
         </label>
+        <label
+          class="field hidden"
+          id="task-subtask-schedule-wrap"
+          data-test-skedpal="task-subtask-schedule-wrap"
+        >
+          <span class="field-label">Subtask scheduling</span>
+          <select
+            id="task-subtask-schedule"
+            class="field-input"
+            data-test-skedpal="task-subtask-schedule"
+          >
+            <option value="parallel">Parallel</option>
+            <option value="sequential">Sequential</option>
+            <option value="sequential-single">Sequential (One at a time)</option>
+          </select>
+        </label>
         <label class="field" data-test-skedpal="task-template-field">
           <span class="field-label" data-test-skedpal="task-template-label">Template (optional)</span>
           <select
@@ -167,22 +183,6 @@
             >
               Choose a template...
             </option>
-          </select>
-        </label>
-        <label
-          class="field hidden"
-          id="task-subtask-schedule-wrap"
-          data-test-skedpal="task-subtask-schedule-wrap"
-        >
-          <span class="field-label">Subtask scheduling</span>
-          <select
-            id="task-subtask-schedule"
-            class="field-input"
-            data-test-skedpal="task-subtask-schedule"
-          >
-            <option value="parallel">Parallel</option>
-            <option value="sequential">Sequential</option>
-            <option value="sequential-single">Sequential (One at a time)</option>
           </select>
         </label>
       </div>

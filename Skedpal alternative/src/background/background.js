@@ -19,6 +19,7 @@ import {
 import { buildCreateTaskUrl } from "./context-menu.js";
 
 const CREATE_TASK_MENU_ID = "skedpal-create-task";
+const CREATE_TASK_OVERLAY_SCRIPT = "src/content/create-task-overlay.js";
 
 function ensureContextMenu() {
   if (!chrome.contextMenus?.create) {return;}
@@ -281,23 +282,58 @@ chrome.runtime.onStartup.addListener(() => {
   ensureContextMenu();
 });
 
-function handleContextMenuClick(info, tab) {
+function getTabTitle(tabId) {
+  return new Promise((resolve) => {
+    if (!chrome.tabs?.get) {
+      resolve("");
+      return;
+    }
+    chrome.tabs.get(tabId, (tab) => {
+      resolve(tab?.title || "");
+    });
+  });
+}
+
+async function resolvePageTitle(info, tab) {
+  if (tab?.title) {return tab.title;}
+  const tabId = info?.tabId;
+  if (typeof tabId !== "number") {return "";}
+  return getTabTitle(tabId);
+}
+
+async function openCreateTaskOverlay(tabId, createTaskUrl) {
+  if (!chrome.scripting?.executeScript) {return false;}
+  if (typeof tabId !== "number") {return false;}
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: [CREATE_TASK_OVERLAY_SCRIPT]
+    });
+    const [result] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: (url) => {
+        if (typeof window.skedpalCreateTaskOverlayOpen !== "function") {return false;}
+        return window.skedpalCreateTaskOverlayOpen(url);
+      },
+      args: [createTaskUrl]
+    });
+    return Boolean(result?.result);
+  } catch (error) {
+    console.warn("Failed to open create task overlay.", error);
+    return false;
+  }
+}
+
+async function handleContextMenuClick(info, tab) {
   if (info.menuItemId !== CREATE_TASK_MENU_ID) {return;}
   const baseUrl = chrome.runtime.getURL("pages/index.html");
-  const pageTitle = tab?.title || "";
-  if (pageTitle) {
-    chrome.tabs.create({ url: buildCreateTaskUrl(info, baseUrl, pageTitle) });
-    return;
+  const pageTitle = await resolvePageTitle(info, tab);
+  const createTaskUrl = buildCreateTaskUrl(info, baseUrl, pageTitle);
+  const tabId = tab?.id ?? info?.tabId;
+  const opened = await openCreateTaskOverlay(tabId, createTaskUrl);
+  if (!opened) {
+    chrome.tabs.create({ url: createTaskUrl });
   }
-  const tabId = info?.tabId;
-  if (typeof tabId !== "number") {
-    chrome.tabs.create({ url: buildCreateTaskUrl(info, baseUrl, "") });
-    return;
-  }
-  chrome.tabs.get(tabId, (tab) => {
-    const title = tab?.title || "";
-    chrome.tabs.create({ url: buildCreateTaskUrl(info, baseUrl, title) });
-  });
 }
 
 chrome.contextMenus?.onClicked?.addListener(handleContextMenuClick);

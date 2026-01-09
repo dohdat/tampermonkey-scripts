@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Personal SkedPal Scheduler",
   "description": "Manual SkedPal-style scheduler that places tasks into Google Calendar when you click Reschedule.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "action": {
     "default_title": "SkedPal-Style Scheduler"
   },
@@ -18,7 +18,20 @@
     "identity",
     "storage",
     "contextMenus",
-    "tabs"
+    "tabs",
+    "scripting",
+    "activeTab"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "pages/index.html"
+      ],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ]
+    }
   ],
   "host_permissions": [
     "https://www.googleapis.com/*"

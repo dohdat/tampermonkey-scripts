@@ -49,6 +49,7 @@ import {
   validateTaskForm
 } from "./task-form-helpers.js";
 import { renderReport } from "../report.js";
+import { requestCreateTaskOverlayClose } from "../overlay-messaging.js";
 
 const {
   taskTimeMapOptions,
@@ -355,6 +356,7 @@ export async function handleTaskSubmit(event) {
   }
   resetTaskForm(true);
   await loadTasks();
+  requestCreateTaskOverlayClose();
 }
 
 export function resetTaskForm(shouldClose = false) {

@@ -183,18 +183,22 @@ export function buildSubsectionActionButtons({
   addSubTaskBtn.type = "button";
   addSubTaskBtn.dataset.addSection = isNoSection ? "" : sectionId;
   addSubTaskBtn.dataset.addSubsectionTarget = sub.id;
-  addSubTaskBtn.className =
-    "rounded-lg border border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-200 hover:border-lime-400";
-  addSubTaskBtn.textContent = "Add task";
+  addSubTaskBtn.className = "title-icon-btn";
+  addSubTaskBtn.title = "Add task";
+  addSubTaskBtn.innerHTML = icons.plusIconSvg;
+  addSubTaskBtn.style.borderColor = themeColors.lime400;
+  addSubTaskBtn.style.color = themeColors.lime400;
   addSubTaskBtn.setAttribute("data-test-skedpal", "subsection-add-task");
 
   const addChildSubBtn = document.createElement("button");
   addChildSubBtn.type = "button";
   addChildSubBtn.dataset.addChildSubsection = sub.id;
   addChildSubBtn.dataset.sectionId = isNoSection ? "" : sectionId;
-  addChildSubBtn.className =
-    "rounded-lg border border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-200 hover:border-lime-400";
-  addChildSubBtn.textContent = "Add subsection";
+  addChildSubBtn.className = "title-icon-btn";
+  addChildSubBtn.title = "Add subsection";
+  addChildSubBtn.innerHTML = icons.subtaskIconSvg;
+  addChildSubBtn.style.borderColor = themeColors.lime400;
+  addChildSubBtn.style.color = themeColors.lime400;
   addChildSubBtn.setAttribute("data-test-skedpal", "subsection-add-child");
 
   return {

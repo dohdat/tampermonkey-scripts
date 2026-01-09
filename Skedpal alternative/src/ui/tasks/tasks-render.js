@@ -6,6 +6,8 @@ import {
   editIconSvg,
   favoriteIconSvg,
   zoomInIconSvg,
+  plusIconSvg,
+  subtaskIconSvg,
   removeIconSvg,
   domRefs
 } from "../constants.js";
@@ -228,9 +230,12 @@ function buildSectionHeader(section, options) {
   const addSubsectionToggle = document.createElement("button");
   addSubsectionToggle.type = "button";
   addSubsectionToggle.dataset.toggleSubsection = section.id;
-  addSubsectionToggle.className =
-    "rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
-  addSubsectionToggle.textContent = "Add subsection";
+  addSubsectionToggle.className = "title-icon-btn";
+  addSubsectionToggle.title = "Add subsection";
+  addSubsectionToggle.innerHTML = subtaskIconSvg;
+  addSubsectionToggle.style.borderColor = themeColors.lime400;
+  addSubsectionToggle.style.color = themeColors.lime400;
+  addSubsectionToggle.setAttribute("data-test-skedpal", "section-add-subsection-btn");
   titleActions.appendChild(collapseBtn);
   titleActions.appendChild(favoriteSectionBtn);
   titleActions.appendChild(editSectionBtn);
@@ -352,7 +357,9 @@ function buildSubsectionHeader(sub, section, isNoSection) {
       editIconSvg,
       zoomInIconSvg,
       favoriteIconSvg,
-      removeIconSvg
+      removeIconSvg,
+      plusIconSvg,
+      subtaskIconSvg
     }
   });
   subTitle.appendChild(collapseSubBtn);

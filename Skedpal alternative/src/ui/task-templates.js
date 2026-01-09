@@ -150,7 +150,8 @@ function buildTemplateCard(template) {
   const count = document.createElement("span");
   count.className =
     "rounded-full border border-slate-700 bg-slate-800/70 px-2 py-1 text-xs font-semibold text-slate-200";
-  count.textContent = `${(template.subtasks || []).length} subtasks`;
+  const subtaskCount = (template.subtasks || []).length;
+  count.textContent = `${subtaskCount} ${subtaskCount === 1 ? "subtask" : "subtasks"}`;
   count.setAttribute("data-test-skedpal", "task-template-subtask-count");
   titleWrap.appendChild(title);
   titleWrap.appendChild(count);
@@ -315,12 +316,22 @@ function handleTemplateListClick(event) {
 }
 
 export function initTaskTemplates() {
-  const { taskTemplateNewBtn, taskTemplateList } = domRefs;
+  const { taskTemplateNewBtn, taskTemplateList, taskTemplateToggleBtn, taskTemplateListWrap } = domRefs;
   const cleanupFns = [];
   const handleNewClick = () => openTemplateEditor(null);
   if (taskTemplateNewBtn) {
     taskTemplateNewBtn.addEventListener("click", handleNewClick);
     cleanupFns.push(() => taskTemplateNewBtn.removeEventListener("click", handleNewClick));
+  }
+  const handleToggleClick = () => {
+    if (!taskTemplateListWrap || !taskTemplateToggleBtn) {return;}
+    const isHidden = taskTemplateListWrap.classList.toggle("hidden");
+    taskTemplateToggleBtn.textContent = isHidden ? "Expand" : "Collapse";
+    taskTemplateToggleBtn.setAttribute("aria-expanded", String(!isHidden));
+  };
+  if (taskTemplateToggleBtn) {
+    taskTemplateToggleBtn.addEventListener("click", handleToggleClick);
+    cleanupFns.push(() => taskTemplateToggleBtn.removeEventListener("click", handleToggleClick));
   }
   if (taskTemplateList) {
     taskTemplateList.addEventListener("click", handleTemplateListClick);

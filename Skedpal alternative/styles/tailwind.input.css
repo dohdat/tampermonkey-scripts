@@ -154,6 +154,11 @@ body.modal-open{overflow:hidden}
   .app-main{margin-left:0}
   .app-shell[data-sidebar-expanded="true"] .sidebar{transform:translateX(0)}
   .app-shell[data-sidebar-expanded="true"] .sidebar-backdrop{display:block}
+  :root{--app-header-height:var(--size-60px)}
+  .calendar-toolbar{top:var(--app-header-height)}
+  .calendar-grid-header{top:calc(var(--calendar-toolbar-height) + var(--app-header-height))}
+  [data-test-skedpal="calendar-now-indicator"]{scroll-margin-top:calc(var(--calendar-toolbar-height,var(--size-60px)) + var(--app-header-height))}
+  [data-test-skedpal="tasks-calendar-split"][data-split="true"] [data-test-skedpal="calendar-now-indicator"]{scroll-margin-top:calc(var(--space-1) + var(--app-header-height))}
   [data-test-skedpal="tasks-view"] > :not([hidden]) ~ :not([hidden]){margin-top:var(--space-0-6)}
   [data-test-skedpal="task-list"]{gap:var(--space-0-65)}
   [data-test-skedpal="tasks-view"] [data-test-skedpal="task-card"]{padding:var(--space-0-75);border-radius:var(--size-14px)}

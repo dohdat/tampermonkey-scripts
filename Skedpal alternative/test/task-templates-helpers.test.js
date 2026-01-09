@@ -149,4 +149,50 @@ describe("task template helpers", () => {
     assert.strictEqual(tasks[0].subtaskParentId, "parent-task");
     assert.deepStrictEqual(tasks[0].timeMapIds, ["tm-1"]);
   });
+
+  it("inherits modal fields when applying template to a task", () => {
+    let counter = 0;
+    const nextId = () => {
+      counter += 1;
+      return `t-${counter}`;
+    };
+    const template = {
+      title: "Parent template",
+      durationMin: 30,
+      timeMapIds: ["tm-1"],
+      subtasks: [
+        {
+          id: "sub-1",
+          title: "Child template",
+          durationMin: 15,
+          timeMapIds: ["tm-2"]
+        }
+      ]
+    };
+    const parentTask = {
+      id: "parent-task",
+      section: "sec-2",
+      subsection: "sub-2",
+      timeMapIds: ["tm-parent"],
+      priority: 4,
+      minBlockMin: 45,
+      deadline: "2026-01-24T00:00:00.000Z",
+      startFrom: "2026-01-09T00:00:00.000Z",
+      durationMin: 90,
+      subtaskScheduleMode: "sequential",
+      repeat: { type: "weekly", interval: 1 }
+    };
+    const tasks = buildSubtasksFromTemplateForParent(template, parentTask, [], nextId);
+    assert.strictEqual(tasks.length, 1);
+    assert.strictEqual(tasks[0].section, "sec-2");
+    assert.strictEqual(tasks[0].subsection, "sub-2");
+    assert.deepStrictEqual(tasks[0].timeMapIds, ["tm-parent"]);
+    assert.strictEqual(tasks[0].priority, 4);
+    assert.strictEqual(tasks[0].minBlockMin, 45);
+    assert.strictEqual(tasks[0].deadline, "2026-01-24T00:00:00.000Z");
+    assert.strictEqual(tasks[0].startFrom, "2026-01-09T00:00:00.000Z");
+    assert.strictEqual(tasks[0].durationMin, 90);
+    assert.strictEqual(tasks[0].subtaskScheduleMode, "sequential");
+    assert.deepStrictEqual(tasks[0].repeat, { type: "weekly", interval: 1 });
+  });
 });

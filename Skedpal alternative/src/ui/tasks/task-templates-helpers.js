@@ -1,6 +1,7 @@
 import {
   getNextOrder,
   getNextSubtaskOrder,
+  getInheritedSubtaskFields,
   normalizeSubtaskScheduleMode,
   uuid
 } from "../utils.js";
@@ -65,6 +66,18 @@ function ensureTemplateTimeMaps(childTemplate, inheritedTimeMapIds) {
   if (!Array.isArray(childTemplate.timeMapIds) || childTemplate.timeMapIds.length === 0) {
     childTemplate.timeMapIds = [...(inheritedTimeMapIds || [])];
   }
+}
+
+function applyParentTaskOverrides(subtask, parentTask) {
+  if (!parentTask) {return subtask;}
+  const inherited = getInheritedSubtaskFields(parentTask);
+  return {
+    ...subtask,
+    ...inherited,
+    durationMin: Number(parentTask.durationMin) || subtask.durationMin,
+    subtaskScheduleMode: normalizeSubtaskScheduleMode(parentTask.subtaskScheduleMode),
+    repeat: parentTask.repeat || { type: "none" }
+  };
 }
 
 function buildTaskFromTemplate(template, overrides) {
@@ -234,5 +247,5 @@ export function buildSubtasksFromTemplateForParent(
     created,
     visited
   });
-  return created;
+  return created.map((subtask) => applyParentTaskOverrides(subtask, parentTask));
 }

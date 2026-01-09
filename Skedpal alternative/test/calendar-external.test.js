@@ -11,6 +11,7 @@ import {
 
 describe("calendar external events", () => {
   const originalChrome = globalThis.chrome;
+  let originalWarn = null;
 
   const range = {
     start: new Date("2026-01-07T00:00:00Z"),
@@ -18,6 +19,8 @@ describe("calendar external events", () => {
   };
 
   beforeEach(() => {
+    originalWarn = console.warn;
+    console.warn = () => {};
     state.calendarExternalEvents = [];
     state.calendarExternalRangeKey = "";
     state.calendarExternalPendingKey = "";
@@ -25,6 +28,10 @@ describe("calendar external events", () => {
   });
 
   afterEach(() => {
+    if (originalWarn) {
+      console.warn = originalWarn;
+      originalWarn = null;
+    }
     globalThis.chrome = originalChrome;
   });
 

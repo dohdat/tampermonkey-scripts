@@ -4,13 +4,20 @@ import { requestCreateTaskOverlayClose } from "../src/ui/overlay-messaging.js";
 
 describe("overlay messaging", () => {
   let originalWindow;
+  let originalWarn;
 
   beforeEach(() => {
     originalWindow = global.window;
+    originalWarn = console.warn;
+    console.warn = () => {};
   });
 
   afterEach(() => {
     global.window = originalWindow;
+    if (originalWarn) {
+      console.warn = originalWarn;
+      originalWarn = null;
+    }
   });
 
   it("returns false when window is undefined", () => {

@@ -122,8 +122,11 @@ function resetElements() {
 describe("calendar create modal", () => {
   let domRefs = null;
   let openCalendarCreateModal = null;
+  let originalWarn = null;
 
   beforeEach(async () => {
+    originalWarn = console.warn;
+    console.warn = () => {};
     installDomStubs();
     resetElements();
     const constants = await import("../src/ui/constants.js");
@@ -148,6 +151,10 @@ describe("calendar create modal", () => {
   });
 
   afterEach(() => {
+    if (originalWarn) {
+      console.warn = originalWarn;
+      originalWarn = null;
+    }
     if (domRefs) {
       domRefs.calendarGrid = null;
     }

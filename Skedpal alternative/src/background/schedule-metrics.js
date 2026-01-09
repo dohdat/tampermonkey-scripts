@@ -9,8 +9,10 @@ export function shouldIncrementMissedCount({
   status,
   parentIds,
   missedOccurrences,
-  expectedCount
+  expectedCount,
+  deferredIds = new Set()
 }) {
+  if (deferredIds.has(task?.id)) {return false;}
   if (status === "ignored") {return false;}
   if (Number(expectedCount) === 0 && task?.repeat && task.repeat.type !== "none") {
     return false;

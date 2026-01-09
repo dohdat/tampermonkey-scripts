@@ -17,9 +17,22 @@ import {
   clearCachedAuthTokens
 } from "./google-calendar.js";
 import { buildCreateTaskUrl } from "./context-menu.js";
+import { buildSequentialSingleDeferredIds } from "./deferred-utils.js";
 
 const CREATE_TASK_MENU_ID = "skedpal-create-task";
 const CREATE_TASK_OVERLAY_SCRIPT = "src/content/create-task-overlay.js";
+
+function getMissedOccurrences(expectedOccurrences, scheduledOccurrences, isDeferred) {
+  if (isDeferred) {return 0;}
+  return Math.max(0, expectedOccurrences - scheduledOccurrences);
+}
+
+function applyDeferredMissReset(task, isDeferred) {
+  if (!isDeferred) {return;}
+  task.missedCount = 0;
+  task.missedLastRun = 0;
+  task.lastMissedAt = null;
+}
 
 function ensureContextMenu() {
   if (!chrome.contextMenus?.create) {return;}
@@ -54,12 +67,15 @@ function getExpectedOccurrenceCount(task, now, horizonDays) {
   return getUpcomingOccurrences(task, now, cap, horizonDays).length;
 }
 
-async function persistSchedule(tasks, placements, unscheduled, ignored, now, horizonDays) {
+async function persistSchedule(tasks, placements, unscheduled, ignored, deferred, now, horizonDays) {
   const parentIds = new Set(
     tasks
       .filter((task) => task.subtaskParentId && !task.completed)
       .map((task) => task.subtaskParentId)
   );
+  const deferredIds = new Set(deferred || []);
+  const sequentialDeferred = buildSequentialSingleDeferredIds(tasks, placements);
+  sequentialDeferred.forEach((id) => deferredIds.add(id));
   const byTask = placements.reduce((map, placement) => {
     if (!map.has(placement.taskId)) {map.set(placement.taskId, []);}
     map.get(placement.taskId).push(placement);
@@ -82,14 +98,21 @@ async function persistSchedule(tasks, placements, unscheduled, ignored, now, hor
     task.scheduleStatus = resolveScheduleStatus(task, parentIds, ignored, taskPlacements);
     const expectedOccurrences = getExpectedOccurrenceCount(task, now, horizonDays);
     const scheduledOccurrences = getScheduledOccurrenceCount(taskPlacements);
-    const missedOccurrences = Math.max(0, expectedOccurrences - scheduledOccurrences);
+    const isDeferred = deferredIds.has(task.id);
+    const missedOccurrences = getMissedOccurrences(
+      expectedOccurrences,
+      scheduledOccurrences,
+      isDeferred
+    );
+    applyDeferredMissReset(task, isDeferred);
     if (
       shouldIncrementMissedCount({
         task,
         status: task.scheduleStatus,
         parentIds,
         missedOccurrences,
-        expectedCount: expectedOccurrences
+        expectedCount: expectedOccurrences,
+        deferredIds
       })
     ) {
       task.missedCount = (Number(task.missedCount) || 0) + Math.max(1, missedOccurrences);
@@ -143,7 +166,7 @@ async function runReschedule() {
     }
   }
 
-  const { scheduled, unscheduled, ignored } = scheduleTasks({
+  const { scheduled, unscheduled, ignored, deferred } = scheduleTasks({
     tasks,
     timeMaps,
     busy,
@@ -151,7 +174,15 @@ async function runReschedule() {
     now
   });
 
-  await persistSchedule(tasks, scheduled, unscheduled, ignored, now, settings.schedulingHorizonDays);
+  await persistSchedule(
+    tasks,
+    scheduled,
+    unscheduled,
+    ignored,
+    deferred,
+    now,
+    settings.schedulingHorizonDays
+  );
 
   const scheduledTaskCount = new Set(scheduled.map((p) => p.taskId)).size;
 

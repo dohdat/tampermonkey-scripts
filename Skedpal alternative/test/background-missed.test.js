@@ -43,4 +43,19 @@ describe("background missed metrics", () => {
     });
     assert.strictEqual(shouldIncrement, false);
   });
+
+  it("does not increment when deferred", () => {
+    const task = { id: "deferred-task", completed: false };
+    const parentIds = new Set();
+    const deferredIds = new Set(["deferred-task"]);
+    const shouldIncrement = shouldIncrementMissedCount({
+      task,
+      status: "unscheduled",
+      parentIds,
+      missedOccurrences: 2,
+      expectedCount: 2,
+      deferredIds
+    });
+    assert.strictEqual(shouldIncrement, false);
+  });
 });

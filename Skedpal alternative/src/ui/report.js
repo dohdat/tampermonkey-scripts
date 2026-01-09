@@ -64,9 +64,47 @@ function getMissedRate(row) {
   return row.missedCount > 0 ? 1 : 0;
 }
 
-function shouldIncludeMissedTask(task, parentIds) {
-  if (task.completed) {return false;}
-  if (parentIds.has(task.id)) {return false;}
+function buildSequentialSingleNextChildMap(tasks) {
+  const byParent = (tasks || []).reduce((map, task, index) => {
+    if (!task?.subtaskParentId) {return map;}
+    if (!map.has(task.subtaskParentId)) {map.set(task.subtaskParentId, []);}
+    map.get(task.subtaskParentId).push({
+      id: task.id,
+      order: Number(task.order),
+      completed: Boolean(task.completed),
+      index
+    });
+    return map;
+  }, new Map());
+  const parentModeById = (tasks || []).reduce((map, task) => {
+    if (!task?.id) {return map;}
+    map.set(task.id, task.subtaskScheduleMode || "");
+    return map;
+  }, new Map());
+  const nextChildByParent = new Map();
+  byParent.forEach((children, parentId) => {
+    if (parentModeById.get(parentId) !== "sequential-single") {return;}
+    const active = children.filter((child) => !child.completed);
+    if (!active.length) {return;}
+    active.sort((a, b) => {
+      const aOrder = Number.isFinite(a.order) ? a.order : Number.MAX_SAFE_INTEGER;
+      const bOrder = Number.isFinite(b.order) ? b.order : Number.MAX_SAFE_INTEGER;
+      if (aOrder !== bOrder) {return aOrder - bOrder;}
+      return a.index - b.index;
+    });
+    nextChildByParent.set(parentId, active[0].id);
+  });
+  return nextChildByParent;
+}
+
+function isSequentialSingleBlocked(task, nextChildByParent) {
+  if (!task.subtaskParentId) {return false;}
+  if (!nextChildByParent?.has(task.subtaskParentId)) {return false;}
+  const nextChildId = nextChildByParent.get(task.subtaskParentId);
+  return Boolean(nextChildId && nextChildId !== task.id);
+}
+
+function shouldIncludeMissedByStatus(task) {
   const expectedCount = Number(task.expectedCount) || 0;
   const missedLastRun = Number(task.missedLastRun) || 0;
   const missedCount = Number(task.missedCount) || 0;
@@ -74,13 +112,19 @@ function shouldIncludeMissedTask(task, parentIds) {
     return missedCount > 0;
   }
   if (task.scheduleStatus === "unscheduled") {
-    if (expectedCount > 0) {return missedLastRun > 0;}
-    return missedCount > 0;
+    return expectedCount > 0 ? missedLastRun > 0 : missedCount > 0;
   }
   if (expectedCount > 0) {
     return missedLastRun > 0;
   }
   return missedCount > 0;
+}
+
+function shouldIncludeMissedTask(task, parentIds, nextChildByParent) {
+  if (task.completed) {return false;}
+  if (parentIds.has(task.id)) {return false;}
+  if (isSequentialSingleBlocked(task, nextChildByParent)) {return false;}
+  return shouldIncludeMissedByStatus(task);
 }
 
 function compareMissedTaskRows(a, b) {
@@ -237,8 +281,9 @@ export function getMissedTaskRows(tasks = [], settings = state.settingsCache) {
   const parentIds = new Set(
     (tasks || []).filter((task) => task.subtaskParentId).map((task) => task.subtaskParentId)
   );
+  const nextChildByParent = buildSequentialSingleNextChildMap(tasks);
   return (tasks || [])
-    .filter((task) => shouldIncludeMissedTask(task, parentIds))
+    .filter((task) => shouldIncludeMissedTask(task, parentIds, nextChildByParent))
     .map((task) => {
       const missedCount = getTaskNumber(task.missedCount);
       return {

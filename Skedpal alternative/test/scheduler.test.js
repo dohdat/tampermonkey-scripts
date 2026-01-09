@@ -707,7 +707,7 @@ describe("scheduler", () => {
 
     assert.strictEqual(result.scheduled.length, 1);
     assert.strictEqual(result.scheduled[0].taskId, "child-1");
-    assert.ok(result.unscheduled.includes("child-2"));
+    assert.ok(result.deferred.includes("child-2"));
   });
 
   it("skips scheduling parent tasks that have subtasks", () => {

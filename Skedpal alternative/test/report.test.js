@@ -238,6 +238,37 @@ describe("report", () => {
     assert.strictEqual(rows.length, 0);
   });
 
+  it("shows only the next sequential-single subtask in missed rows", () => {
+    const tasks = [
+      {
+        id: "parent",
+        title: "Parent",
+        subtaskScheduleMode: "sequential-single"
+      },
+      {
+        id: "child-1",
+        title: "First",
+        subtaskParentId: "parent",
+        scheduleStatus: "unscheduled",
+        missedCount: 2,
+        order: 1
+      },
+      {
+        id: "child-2",
+        title: "Second",
+        subtaskParentId: "parent",
+        scheduleStatus: "unscheduled",
+        missedCount: 2,
+        order: 2
+      }
+    ];
+
+    const rows = getMissedTaskRows(tasks, {});
+
+    assert.strictEqual(rows.length, 1);
+    assert.strictEqual(rows[0].id, "child-1");
+  });
+
   it("builds timemap usage rows from scheduled instances", () => {
     const OriginalDate = Date;
     const fixedNow = new OriginalDate(Date.UTC(2026, 0, 5, 12, 0, 0));

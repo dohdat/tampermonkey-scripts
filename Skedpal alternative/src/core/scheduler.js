@@ -429,7 +429,15 @@ function handleSequentialTask(task, state) {
   if (!parentId || mode === "parallel") {return null;}
   const current = parentState.get(parentId) || { failed: false, lastEnd: null, scheduledOne: false };
   if (isSequentialBlocked(current, mode)) {
-    return { handled: true, success: false, placements: [], nextSlots: slots, parentId, state: current };
+    return {
+      handled: true,
+      success: false,
+      blocked: true,
+      placements: [],
+      nextSlots: slots,
+      parentId,
+      state: current
+    };
   }
   const startFrom = getSequentialStart(task, current);
   const candidate = { ...task, startFrom };
@@ -437,7 +445,15 @@ function handleSequentialTask(task, state) {
     requireSingleBlock: mode === "sequential-single"
   });
   const nextState = buildSequentialState(current, mode, result);
-  return { handled: true, success: result.success, placements: result.placements, nextSlots: result.nextSlots, parentId, state: nextState };
+  return {
+    handled: true,
+    success: result.success,
+    blocked: false,
+    placements: result.placements,
+    nextSlots: result.nextSlots,
+    parentId,
+    state: nextState
+  };
 }
 
 export function scheduleTasks({
@@ -463,6 +479,7 @@ export function scheduleTasks({
   let slots = freeSlots;
   const scheduled = [];
   const unscheduled = new Set(immediatelyUnscheduled);
+  const deferred = new Set();
   const parentState = new Map();
 
   sortedCandidates.forEach((task) => {
@@ -477,7 +494,11 @@ export function scheduleTasks({
         scheduled.push(...sequentialResult.placements);
         slots = sequentialResult.nextSlots;
       } else {
-        unscheduled.add(task.id);
+        if (sequentialResult.blocked) {
+          deferred.add(task.id);
+        } else {
+          unscheduled.add(task.id);
+        }
       }
       parentState.set(sequentialResult.parentId, sequentialResult.state);
       return;
@@ -495,6 +516,7 @@ export function scheduleTasks({
     scheduled,
     unscheduled: Array.from(unscheduled),
     ignored: Array.from(ignored),
+    deferred: Array.from(deferred),
     freeSlotsCount: freeSlots.length
   };
 }

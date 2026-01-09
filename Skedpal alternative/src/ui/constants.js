@@ -139,6 +139,9 @@ export const domRefs = {
   notificationMessage: document.getElementById("notification-message"),
   notificationUndoButton: document.getElementById("notification-undo"),
   notificationCloseButton: document.getElementById("notification-close"),
+  floatingActions: document.querySelector
+    ? document.querySelector("[data-test-skedpal='floating-actions']")
+    : null,
   tasksCalendarSplitWrap: document.getElementById("tasks-calendar-split"),
   tasksCalendarToggleBtn: document.querySelector
     ? document.querySelector("[data-test-skedpal='view-calendar-btn']")
@@ -151,6 +154,9 @@ export const domRefs = {
     : null,
   calendarViewDayOnly: document.querySelector
     ? document.querySelector("[data-test-skedpal='calendar-view-day-only']")
+    : null,
+  calendarSplitToggleSlot: document.querySelector
+    ? document.querySelector("[data-test-skedpal='calendar-split-toggle-slot']")
     : null,
   googleCalendarConnectBtn: document.getElementById("google-calendar-connect"),
   googleCalendarRefreshBtn: document.getElementById("google-calendar-refresh"),

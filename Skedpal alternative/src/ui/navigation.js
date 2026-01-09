@@ -31,6 +31,24 @@ function setHidden(node, hidden) {
   node.classList.toggle("hidden", Boolean(hidden));
 }
 
+function relocateCalendarSplitToggle(showCalendarSplit) {
+  const {
+    tasksCalendarToggleBtn,
+    calendarSplitToggleSlot,
+    floatingActions
+  } = domRefs;
+  if (!tasksCalendarToggleBtn) {return;}
+  if (showCalendarSplit && calendarSplitToggleSlot) {
+    if (tasksCalendarToggleBtn.parentElement !== calendarSplitToggleSlot) {
+      calendarSplitToggleSlot.appendChild(tasksCalendarToggleBtn);
+    }
+    return;
+  }
+  if (floatingActions && tasksCalendarToggleBtn.parentElement !== floatingActions) {
+    floatingActions.appendChild(tasksCalendarToggleBtn);
+  }
+}
+
 function shouldShowCalendarSplit(resolvedTarget) {
   return resolvedTarget === "tasks" && state.tasksCalendarSplit;
 }
@@ -65,12 +83,13 @@ function updateSplitControls(resolvedTarget, showCalendarSplit) {
   setSplitFlag(appMainContent, showCalendarSplit);
   setHidden(calendarViewDayOnly, !(resolvedTarget === "calendar" && !showCalendarSplit));
   setSplitFlag(floatingActions, showCalendarSplit);
+  relocateCalendarSplitToggle(showCalendarSplit);
 }
 
 function updateSplitToggleLabel() {
   const { tasksCalendarToggleBtn } = domRefs;
   if (!tasksCalendarToggleBtn) {return;}
-  tasksCalendarToggleBtn.textContent = state.tasksCalendarSplit ? "Hide 🗓️" : "Show 🗓️";
+  tasksCalendarToggleBtn.textContent = state.tasksCalendarSplit ? "x" : "Show 🗓️";
 }
 
 function applyCalendarView(resolvedTarget, showCalendarSplit, calendarAnchorDate, focusCalendar) {

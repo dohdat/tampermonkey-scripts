@@ -48,6 +48,7 @@ describe("task ai helpers", () => {
     assert.deepStrictEqual(taskCollect.timeMapIds, ["tm-1"]);
     assert.ok(taskSubmit.order > taskCollect.order);
     assert.ok(subA1.order > taskCollect.order);
+    assert.ok(subA1.order < taskSubmit.order);
   });
 
   it("returns empty output when no list items exist", () => {

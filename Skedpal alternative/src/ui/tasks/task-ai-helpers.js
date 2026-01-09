@@ -1,3 +1,4 @@
+import { SUBTASK_ORDER_OFFSET } from "../constants.js";
 import {
   getInheritedSubtaskFields,
   getNextSubtaskOrder,
@@ -72,11 +73,15 @@ export function buildTasksFromAiList(list = [], parentTask, tasksCache = []) {
   const output = [];
   const section = parentTask.section || "";
   const subsection = parentTask.subsection || "";
+  const slotStep = SUBTASK_ORDER_OFFSET * 10;
+  const childStep = SUBTASK_ORDER_OFFSET / 10;
+  const baseOrder = getNextSubtaskOrder(parentTask, section, subsection, working);
+  let parentIndex = 0;
 
   tasks.forEach((entry) => {
     const title = typeof entry?.title === "string" ? entry.title.trim() : "";
     if (!title) {return;}
-    const order = getNextSubtaskOrder(parentTask, section, subsection, working);
+    const order = baseOrder + slotStep * parentIndex;
     const task = buildAiTaskPayload({
       title,
       parentTask,
@@ -85,11 +90,13 @@ export function buildTasksFromAiList(list = [], parentTask, tasksCache = []) {
     });
     output.push(task);
     working.push(task);
+    parentIndex += 1;
     const subtasks = Array.isArray(entry.subtasks) ? entry.subtasks : [];
+    let childIndex = 0;
     subtasks.forEach((subtaskTitle) => {
       const cleaned = typeof subtaskTitle === "string" ? subtaskTitle.trim() : "";
       if (!cleaned) {return;}
-      const childOrder = getNextSubtaskOrder(task, section, subsection, working);
+      const childOrder = order + childStep * (childIndex + 1);
       const child = buildAiTaskPayload({
         title: cleaned,
         parentTask,
@@ -98,6 +105,7 @@ export function buildTasksFromAiList(list = [], parentTask, tasksCache = []) {
       });
       output.push(child);
       working.push(child);
+      childIndex += 1;
     });
   });
   return output;

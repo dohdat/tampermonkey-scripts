@@ -286,6 +286,35 @@ describe("task card", () => {
     assert.ok(indicator);
   });
 
+  it("shows unscheduled indicator in the summary row", () => {
+    const task = {
+      id: "t8",
+      title: "Repeat unscheduled",
+      durationMin: 30,
+      timeMapIds: ["tm-1"],
+      completed: false,
+      scheduledStart: new Date(2026, 0, 1, 9, 15).toISOString(),
+      repeat: { type: "custom", unit: "week", interval: 1, weeklyDays: [1] }
+    };
+    const context = {
+      tasks: [task],
+      timeMapById: new Map([["tm-1", { id: "tm-1", name: "Focus" }]]),
+      collapsedTasks: new Set(),
+      expandedTaskDetails: new Set(),
+      computeTotalDuration: () => 0,
+      getTaskDepthById: () => 0,
+      getSectionName: () => "",
+      getSubsectionName: () => "",
+      firstOccurrenceUnscheduledByTaskId: new Map([["t8", true]])
+    };
+
+    const card = renderTaskCard(task, context);
+    const summary = findByTestAttr(card, "task-summary-row");
+    const indicator = findByTestAttr(card, "task-summary-unscheduled");
+    assert.ok(summary);
+    assert.ok(indicator);
+  });
+
   it("skips details when not expanded", () => {
     const task = {
       id: "t6",

@@ -9,6 +9,7 @@ import {
   outOfRangeIconSvg,
   plusIconSvg,
   removeIconSvg,
+  unscheduledIconSvg,
   zoomInIconSvg
 } from "../constants.js";
 import { formatDateTime, formatDurationShort } from "../utils.js";
@@ -187,7 +188,7 @@ function buildTaskDurationPill(displayDurationMin) {
 }
 
 function buildTaskSummaryRow(task, options = {}) {
-  const { showOutOfRangeIcon = false } = options;
+  const { showOutOfRangeIcon = false, showUnscheduledIcon = false } = options;
   const summaryRow = document.createElement("div");
   summaryRow.className = "task-summary-row";
   summaryRow.setAttribute("data-test-skedpal", "task-summary-row");
@@ -245,6 +246,18 @@ function buildTaskSummaryRow(task, options = {}) {
     summaryRow.appendChild(outOfRangeIcon);
     hasContent = true;
   }
+  if (showUnscheduledIcon) {
+    const unscheduledIcon = document.createElement("span");
+    unscheduledIcon.className = "title-icon-btn";
+    unscheduledIcon.title = "First occurrence is unscheduled";
+    unscheduledIcon.setAttribute("data-test-skedpal", "task-summary-unscheduled");
+    unscheduledIcon.innerHTML = unscheduledIconSvg;
+    unscheduledIcon.style.borderColor = themeColors.red400;
+    unscheduledIcon.style.color = themeColors.red400;
+    unscheduledIcon.style.cursor = "default";
+    summaryRow.appendChild(unscheduledIcon);
+    hasContent = true;
+  }
   if (viewCalendarBtn) {
     summaryRow.appendChild(viewCalendarBtn);
   }
@@ -267,7 +280,8 @@ function buildTaskHeader(task, options) {
   }
   if (!options.hideSummaryRow) {
     const summaryRow = buildTaskSummaryRow(task, {
-      showOutOfRangeIcon: options.showOutOfRangeIcon
+      showOutOfRangeIcon: options.showOutOfRangeIcon,
+      showUnscheduledIcon: options.showUnscheduledIcon
     });
     if (summaryRow) {
       actionsWrap.appendChild(summaryRow);
@@ -366,6 +380,7 @@ export function renderTaskCard(task, context) {
   const isLongTitle = (task.title || "").length > 60;
   const detailsOpen = expandedTaskDetails.has(task.id);
   const showOutOfRangeIcon = Boolean(context.firstOccurrenceOutOfRangeByTaskId?.get(task.id));
+  const showUnscheduledIcon = Boolean(context.firstOccurrenceUnscheduledByTaskId?.get(task.id));
   const header = buildTaskHeader(task, {
     hasChildren,
     isCollapsed,
@@ -375,7 +390,8 @@ export function renderTaskCard(task, context) {
     detailsOpen,
     displayDurationMin,
     hideSummaryRow,
-    showOutOfRangeIcon
+    showOutOfRangeIcon,
+    showUnscheduledIcon
   });
   taskCard.appendChild(header);
   if (detailsOpen) {

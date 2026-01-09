@@ -1,6 +1,7 @@
 import { DEFAULT_SCHEDULING_HORIZON_DAYS } from "../../data/db.js";
 import { getUpcomingOccurrences } from "../../core/scheduler.js";
 import { addDays, endOfDay } from "../../core/scheduler/date-utils.js";
+import { getLocalDateKey } from "../utils.js";
 
 const UPCOMING_OCCURRENCE_LOOKAHEAD_DAYS = 365;
 
@@ -99,4 +100,34 @@ export function buildFirstOccurrenceOutOfRangeMap(tasks, settings) {
     }
   });
   return outOfRangeById;
+}
+
+export function buildFirstOccurrenceUnscheduledMap(tasks, settings) {
+  const now = new Date();
+  const horizonDays =
+    Number(settings?.schedulingHorizonDays) || DEFAULT_SCHEDULING_HORIZON_DAYS;
+  const horizonEnd = endOfDay(addDays(now, horizonDays));
+  const unscheduledById = new Map();
+  tasks.forEach((task) => {
+    if (!task?.repeat || task.repeat.type === "none") {return;}
+    const occurrences = getUpcomingOccurrences(
+      task,
+      now,
+      1,
+      UPCOMING_OCCURRENCE_LOOKAHEAD_DAYS
+    );
+    if (!occurrences.length) {return;}
+    const first = occurrences[0];
+    if (first.date > horizonEnd) {return;}
+    const instances = Array.isArray(task.scheduledInstances) ? task.scheduledInstances : [];
+    let matches = instances.filter((instance) => instance.occurrenceId === first.occurrenceId);
+    if (!matches.length) {
+      const targetKey = getLocalDateKey(first.date);
+      matches = instances.filter((instance) => getLocalDateKey(instance.start) === targetKey);
+    }
+    if (!matches.length) {
+      unscheduledById.set(task.id, true);
+    }
+  });
+  return unscheduledById;
 }

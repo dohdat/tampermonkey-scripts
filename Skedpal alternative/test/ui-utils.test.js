@@ -73,7 +73,9 @@ describe("getInheritedSubtaskFields", () => {
       priority: 4,
       minBlockMin: 45,
       deadline: "2026-01-06T00:00:00.000Z",
-      startFrom: "2026-01-05T00:00:00.000Z"
+      startFrom: "2026-01-05T00:00:00.000Z",
+      repeat: { type: "weekly", interval: 2 },
+      subtaskScheduleMode: "sequential"
     };
     assert.deepStrictEqual(getInheritedSubtaskFields(parent), {
       section: "s1",
@@ -82,7 +84,9 @@ describe("getInheritedSubtaskFields", () => {
       priority: 4,
       minBlockMin: 45,
       deadline: "2026-01-06T00:00:00.000Z",
-      startFrom: "2026-01-05T00:00:00.000Z"
+      startFrom: "2026-01-05T00:00:00.000Z",
+      repeat: { type: "weekly", interval: 2 },
+      subtaskScheduleMode: "sequential"
     });
   });
 

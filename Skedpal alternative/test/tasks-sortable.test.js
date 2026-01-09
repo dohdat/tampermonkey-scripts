@@ -13,7 +13,9 @@ describe("task sortable", () => {
       priority: 4,
       minBlockMin: 45,
       deadline: "2026-01-10T00:00:00.000Z",
-      startFrom: "2026-01-06T00:00:00.000Z"
+      startFrom: "2026-01-06T00:00:00.000Z",
+      repeat: { type: "daily", interval: 1 },
+      subtaskScheduleMode: "sequential"
     };
     const child = {
       id: "child-1",
@@ -42,6 +44,8 @@ describe("task sortable", () => {
     assert.strictEqual(updated.minBlockMin, 45);
     assert.strictEqual(updated.deadline, "2026-01-10T00:00:00.000Z");
     assert.strictEqual(updated.startFrom, "2026-01-06T00:00:00.000Z");
+    assert.deepStrictEqual(updated.repeat, { type: "daily", interval: 1 });
+    assert.strictEqual(updated.subtaskScheduleMode, "sequential");
     assert.strictEqual(updated.scheduleStatus, "unscheduled");
     assert.strictEqual(updated.scheduledStart, null);
     assert.strictEqual(updated.scheduledEnd, null);

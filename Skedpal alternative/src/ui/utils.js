@@ -142,7 +142,9 @@ export function getInheritedSubtaskFields(parentTask) {
     priority: Number(parentTask.priority) || 0,
     minBlockMin: Number(parentTask.minBlockMin) || 0,
     deadline: parentTask.deadline || null,
-    startFrom: parentTask.startFrom || null
+    startFrom: parentTask.startFrom || null,
+    repeat: parentTask.repeat || { type: "none" },
+    subtaskScheduleMode: normalizeSubtaskScheduleMode(parentTask.subtaskScheduleMode)
   };
 }
 

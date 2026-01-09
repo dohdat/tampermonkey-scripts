@@ -18,6 +18,7 @@ import {
 import { state } from "../state/page-state.js";
 import { saveTask } from "../../data/db.js";
 import { computeTaskReorderUpdates } from "./tasks.js";
+import { scheduleTaskVirtualizationUpdate } from "./task-virtualization.js";
 const { taskList } = domRefs;
 
 export function toggleZoneHighlight(zone, shouldHighlight) {
@@ -192,6 +193,8 @@ export function setupTaskSortables() {
       onStart: (event) => {
         toggleZoneHighlight(event.from, true);
         const taskId = event.item?.dataset?.taskId;
+        state.draggingTaskId = taskId || null;
+        scheduleTaskVirtualizationUpdate();
         if (!taskId) {return;}
         const hasChildren = state.tasksCache.some((task) => task.subtaskParentId === taskId);
         if (!hasChildren || state.collapsedTasks.has(taskId)) {return;}
@@ -206,6 +209,8 @@ export function setupTaskSortables() {
       onEnd: (event) => {
         toggleZoneHighlight(event.from, false);
         toggleZoneHighlight(event.to, false);
+        state.draggingTaskId = null;
+        scheduleTaskVirtualizationUpdate();
         const collapsedOnDrag = event.item?.dataset?.collapsedOnDrag === "1";
         handleTaskSortEnd(event)
           .then(async (changed) => {

@@ -13,6 +13,7 @@ export const state = {
   collapsedSubsections: new Set(),
   collapsedTasks: new Set(),
   expandedTaskDetails: new Set(),
+  draggingTaskId: null,
   notificationHideTimeout: null,
   notificationUndoHandler: null,
   navStack: [],

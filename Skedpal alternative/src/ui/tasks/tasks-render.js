@@ -1,5 +1,4 @@
 import {
-  TASK_PLACEHOLDER_CLASS,
   TASK_ZONE_CLASS,
   caretDownIconSvg,
   caretRightIconSvg,
@@ -11,17 +10,14 @@ import {
   removeIconSvg,
   domRefs
 } from "../constants.js";
-import { renderTaskCard } from "./task-card.js";
-import {
-  sortTasksByOrder,
-  normalizeTimeMap,
-  getSubsectionDescendantIds,
-  renderInBatches
-} from "../utils.js";
+import { renderTaskCards } from "./task-cards-render.js";
+import { sortTasksByOrder, normalizeTimeMap, getSubsectionDescendantIds, renderInBatches } from "../utils.js";
 import { state } from "../state/page-state.js";
 import { getSubsectionsFor, getSectionName } from "../sections-data.js";
 import { destroyTaskSortables, setupTaskSortables } from "./tasks-sortable.js";
 import { themeColors } from "../theme.js";
+import { destroyTaskVirtualizers, initializeTaskVirtualizers } from "./task-virtualization.js";
+import { buildChildSubsectionInput, buildSubsectionZone } from "./task-subsection-zone.js";
 import {
   buildParentMap,
   buildTaskDepthGetter,
@@ -114,36 +110,20 @@ function buildTaskCardContext(baseTasks, timeMapById, computeTotalDuration, getT
   };
 }
 
-function renderTaskCards(container, tasks, context, options = {}) {
-  const sorted = sortTasksByOrder(tasks);
-  if (!sorted.length) {return;}
-  const { renderToken, batchSize = 40 } = options;
-  const shouldCancel = Number.isFinite(renderToken)
-    ? () => renderToken !== taskRenderToken
-    : null;
-  if (sorted.length <= batchSize) {
-    sorted.forEach((task) => {
-      container.appendChild(renderTaskCard(task, context));
-    });
-    return;
-  }
-  renderInBatches({
-    items: sorted,
-    batchSize,
-    shouldCancel,
-    renderBatch: (batch) => {
-      const fragment = document.createDocumentFragment();
-      batch.forEach((task) => fragment.appendChild(renderTaskCard(task, context)));
-      container.appendChild(fragment);
-    }
-  });
+function buildShouldCancel(renderToken) {
+  if (!Number.isFinite(renderToken)) {return null;}
+  return () => renderToken !== taskRenderToken;
 }
 
 function renderZoomTasks(filteredTasks, context, renderToken) {
   const zoomWrap = document.createElement("div");
   zoomWrap.className = "space-y-2";
   zoomWrap.setAttribute("data-test-skedpal", "task-zoom-list");
-  renderTaskCards(zoomWrap, filteredTasks, context, { renderToken, batchSize: 30 });
+  renderTaskCards(zoomWrap, filteredTasks, context, {
+    renderToken,
+    batchSize: 30,
+    shouldCancel: buildShouldCancel(renderToken)
+  });
   taskList.appendChild(zoomWrap);
 }
 
@@ -315,7 +295,11 @@ function buildUngroupedZone(context, options, renderToken) {
   ungroupedZone.className =
     "space-y-2 rounded-xl border border-dashed border-slate-700 bg-slate-900/50 px-3 py-3";
   ungroupedZone.classList.add(TASK_ZONE_CLASS);
-  renderTaskCards(ungroupedZone, options.ungroupedTasks, context, { renderToken, batchSize: 30 });
+  renderTaskCards(ungroupedZone, options.ungroupedTasks, context, {
+    renderToken,
+    batchSize: 30,
+    shouldCancel: buildShouldCancel(renderToken)
+  });
   return ungroupedZone;
 }
 
@@ -375,54 +359,21 @@ function buildSubsectionHeader(sub, section, isNoSection) {
   return { subHeader, subCollapsed };
 }
 
-function buildChildSubsectionInput(sub, sectionId, isNoSection) {
-  const childSubsectionInputWrap = document.createElement("div");
-  childSubsectionInputWrap.className =
-    "hidden flex flex-col gap-2 md:flex-row md:items-center";
-  childSubsectionInputWrap.dataset.childSubsectionForm = sub.id;
-  childSubsectionInputWrap.innerHTML = `
-        <input data-child-subsection-input="${sub.id}" placeholder="Add subsection" class="w-full rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none" />
-        <button type="button" data-submit-child-subsection="${sub.id}" data-parent-section="${
-          isNoSection ? "" : sectionId
-        }" class="rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-lime-400">Add</button>
-      `;
-  return childSubsectionInputWrap;
-}
-
-function buildSubsectionZone(
-  sub,
-  sectionId,
-  isNoSection,
-  sectionTasks,
-  context,
-  suppressPlaceholders,
-  renderToken
-) {
-  const subZone = document.createElement("div");
-  subZone.dataset.dropSection = isNoSection ? "" : sectionId;
-  subZone.dataset.dropSubsection = sub.id;
-  subZone.className =
-    "space-y-2 rounded-lg border border-dashed border-slate-700 bg-slate-900/40 px-2 py-2";
-  subZone.classList.add(TASK_ZONE_CLASS);
-  const subTasks = sortTasksByOrder(sectionTasks.filter((t) => t.subsection === sub.id));
-  if (subTasks.length === 0 && !suppressPlaceholders) {
-    const empty = document.createElement("div");
-    empty.className = `text-xs text-slate-500 ${TASK_PLACEHOLDER_CLASS}`;
-    empty.textContent = "Drag tasks here or add new.";
-    subZone.appendChild(empty);
-  } else {
-    renderTaskCards(subZone, subTasks, context, { renderToken, batchSize: 30 });
-  }
-  return subZone;
-}
-
 function renderSubsection(sub, section, sectionTasks, context, options) {
-  const { isNoSection, suppressPlaceholders, buildChildren, renderToken } = options;
+  const {
+    isNoSection,
+    suppressPlaceholders,
+    buildChildren,
+    renderToken,
+    enableVirtualization,
+    isAncestorCollapsed
+  } = options;
   const subWrap = document.createElement("div");
   subWrap.className =
     "space-y-2 rounded-xl border border-slate-800 bg-slate-900/60 p-3 pl-4 md:pl-6";
   subWrap.dataset.subsectionCard = sub.id;
   const { subHeader, subCollapsed } = buildSubsectionHeader(sub, section, isNoSection);
+  const isCollapsed = Boolean(isAncestorCollapsed || subCollapsed);
   subWrap.appendChild(subHeader);
   const subBody = document.createElement("div");
   subBody.dataset.subsectionBody = sub.id;
@@ -436,7 +387,12 @@ function renderSubsection(sub, section, sectionTasks, context, options) {
       sectionTasks,
       context,
       suppressPlaceholders,
-      renderToken
+      renderToken,
+      {
+        enableVirtualization,
+        isCollapsed,
+        shouldCancel: buildShouldCancel(renderToken)
+      }
     )
   );
   const children = buildChildren(sub.id);
@@ -444,8 +400,9 @@ function renderSubsection(sub, section, sectionTasks, context, options) {
     const childWrap = document.createElement("div");
     childWrap.className =
       "space-y-2 border-l border-slate-800/60 pl-4 md:pl-6 border-lime-500/10";
+    const childOptions = { ...options, isAncestorCollapsed: isCollapsed };
     children.forEach((child) =>
-      childWrap.appendChild(renderSubsection(child, section, sectionTasks, context, options))
+      childWrap.appendChild(renderSubsection(child, section, sectionTasks, context, childOptions))
     );
     subBody.appendChild(childWrap);
   }
@@ -460,6 +417,7 @@ function renderSectionCard(section, context, options) {
   const isSubsectionZoom = isSubsectionZoomed(section.id);
   const card = buildSectionCardContainer(section, isSubsectionZoom);
   const isCollapsed = state.collapsedSections.has(section.id);
+  const enableVirtualization = true;
   if (!isSubsectionZoom) {
     card.appendChild(buildSectionHeader(section, { isNoSection, isCollapsed }));
   }
@@ -476,7 +434,9 @@ function renderSectionCard(section, context, options) {
     isNoSection,
     suppressPlaceholders,
     isSubsectionZoom,
-    renderToken
+    renderToken,
+    enableVirtualization,
+    isSectionCollapsed: isCollapsed
   });
   card.appendChild(sectionBody);
   return card;
@@ -511,12 +471,23 @@ function appendUngroupedTasks(sectionBody, sectionTasks, isNoSection, context, r
     return;
   }
   if (ungroupedTasks.length > 0) {
-    renderTaskCards(sectionBody, ungroupedTasks, context, { renderToken, batchSize: 30 });
+    renderTaskCards(sectionBody, ungroupedTasks, context, {
+      renderToken,
+      batchSize: 30,
+      shouldCancel: buildShouldCancel(renderToken)
+    });
   }
 }
 
 function appendSubsections(sectionBody, filteredSubs, section, sectionTasks, context, options) {
-  const { isNoSection, suppressPlaceholders, isSubsectionZoom, renderToken } = options;
+  const {
+    isNoSection,
+    suppressPlaceholders,
+    isSubsectionZoom,
+    renderToken,
+    enableVirtualization,
+    isSectionCollapsed
+  } = options;
   const buildChildren = (parentId = "") =>
     filteredSubs.filter((s) => (s.parentId || "") === (parentId || ""));
   if (isSubsectionZoom) {
@@ -528,7 +499,9 @@ function appendSubsections(sectionBody, filteredSubs, section, sectionTasks, con
           isNoSection,
           suppressPlaceholders,
           buildChildren,
-          renderToken
+          renderToken,
+          enableVirtualization,
+          isAncestorCollapsed: isSectionCollapsed
         })
       );
     }
@@ -540,13 +513,16 @@ function appendSubsections(sectionBody, filteredSubs, section, sectionTasks, con
         isNoSection,
         suppressPlaceholders,
         buildChildren,
-        renderToken
+        renderToken,
+        enableVirtualization,
+        isAncestorCollapsed: isSectionCollapsed
       })
     );
   });
 }
 export function renderTasks(tasks, timeMaps) {
   destroyTaskSortables();
+  destroyTaskVirtualizers();
   taskList.innerHTML = "";
   const timeMapById = new Map(timeMaps.map((tm) => [tm.id, normalizeTimeMap(tm)]));
   const baseTasks = tasks.filter((t) => !t.completed);
@@ -589,6 +565,7 @@ export function renderTasks(tasks, timeMaps) {
     },
     onComplete: () => {
       if (renderToken !== taskRenderToken) {return;}
+      initializeTaskVirtualizers();
       setupTaskSortables();
     }
   });

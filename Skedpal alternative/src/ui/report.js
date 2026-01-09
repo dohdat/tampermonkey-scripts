@@ -1,4 +1,9 @@
-import { TASK_STATUS_IGNORED, TASK_STATUS_UNSCHEDULED, domRefs } from "./constants.js";
+import {
+  SUBTASK_SCHEDULE_SEQUENTIAL_SINGLE,
+  TASK_STATUS_IGNORED,
+  TASK_STATUS_UNSCHEDULED,
+  domRefs
+} from "./constants.js";
 import { DEFAULT_SCHEDULING_HORIZON_DAYS } from "../data/db.js";
 import { state } from "./state/page-state.js";
 import { formatDateTime, normalizeTimeMap, renderInBatches } from "./utils.js";
@@ -83,7 +88,7 @@ function buildSequentialSingleNextChildMap(tasks) {
   }, new Map());
   const nextChildByParent = new Map();
   byParent.forEach((children, parentId) => {
-    if (parentModeById.get(parentId) !== "sequential-single") {return;}
+    if (parentModeById.get(parentId) !== SUBTASK_SCHEDULE_SEQUENTIAL_SINGLE) {return;}
     const active = children.filter((child) => !child.completed);
     if (!active.length) {return;}
     active.sort((a, b) => {

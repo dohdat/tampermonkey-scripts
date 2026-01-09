@@ -13,6 +13,7 @@ import {
   registerRepeatEventHandlers,
   setRepeatFromSelection
 } from "./repeat.js";
+import { DEFAULT_TASK_REPEAT } from "./constants.js";
 import { initSettings } from "./settings.js";
 import { loadTaskTemplates } from "./task-templates.js";
 import {
@@ -369,7 +370,7 @@ function registerEventListeners() {
   registerKeyboardHandlers();
   registerCustomEventHandlers();
   registerRepeatEventHandlers();
-  setRepeatFromSelection({ type: "none" });
+  setRepeatFromSelection({ ...DEFAULT_TASK_REPEAT });
 }
 
 function registerTimeMapHandlers() {

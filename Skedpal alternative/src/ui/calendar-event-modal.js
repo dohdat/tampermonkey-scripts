@@ -1,4 +1,7 @@
 import {
+  TASK_REPEAT_NONE,
+  TASK_STATUS_COMPLETED,
+  TASK_STATUS_UNSCHEDULED,
   domRefs,
   editIconSvg,
   removeIconSvg,
@@ -133,7 +136,7 @@ async function fallbackCompleteToggle() {
     ...activeTask,
     completed,
     completedAt: completed ? new Date().toISOString() : null,
-    scheduleStatus: completed ? "completed" : "unscheduled"
+    scheduleStatus: completed ? TASK_STATUS_COMPLETED : TASK_STATUS_UNSCHEDULED
   });
   emitTasksUpdated();
 }
@@ -144,7 +147,7 @@ async function fallbackDefer(dateValue) {
   await saveTask({
     ...activeTask,
     startFrom: parsed,
-    scheduleStatus: "unscheduled",
+    scheduleStatus: TASK_STATUS_UNSCHEDULED,
     scheduledStart: null,
     scheduledEnd: null,
     scheduledTimeMapId: null,
@@ -367,7 +370,11 @@ export function openExternalEventModal(event, anchorEl = null) {
 
 function handleCompleteAction() {
   if (!activeTask) {return;}
-  if (activeTask.repeat?.type && activeTask.repeat.type !== "none" && activeEventMeta?.start) {
+  if (
+    activeTask.repeat?.type &&
+    activeTask.repeat.type !== TASK_REPEAT_NONE &&
+    activeEventMeta?.start
+  ) {
     const occurrenceDate = new Date(activeEventMeta.start);
     occurrenceDate.setHours(23, 59, 59, 999);
     window.dispatchEvent(

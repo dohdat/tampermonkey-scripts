@@ -1,4 +1,4 @@
-import { domRefs } from "./constants.js";
+import { DEFAULT_TASK_REPEAT, TASK_REPEAT_NONE, domRefs } from "./constants.js";
 import { formatRRuleDate, getLocalDateKey, getNthWeekday } from "./utils.js";
 import {
   buildMonthlyRule,
@@ -67,7 +67,7 @@ export function defaultRepeatState(startDate = getStartDate()) {
   const monthDay = startDate.getDate();
   const { nth, weekday } = getNthWeekday(startDate);
   return {
-    unit: "none",
+    unit: TASK_REPEAT_NONE,
     interval: 1,
     weeklyDays: [weekday],
     weeklyMode: "all",
@@ -88,11 +88,11 @@ export function defaultRepeatState(startDate = getStartDate()) {
 }
 export const repeatStore = {
   repeatState: defaultRepeatState(),
-  lastRepeatSelection: { type: "none" },
-  repeatSelectionBeforeModal: { type: "none" },
+  lastRepeatSelection: { ...DEFAULT_TASK_REPEAT },
+  repeatSelectionBeforeModal: { ...DEFAULT_TASK_REPEAT },
   repeatTarget: "task",
-  subsectionRepeatSelection: { type: "none" },
-  subsectionRepeatBeforeModal: { type: "none" }
+  subsectionRepeatSelection: { ...DEFAULT_TASK_REPEAT },
+  subsectionRepeatBeforeModal: { ...DEFAULT_TASK_REPEAT }
 };
 export function openRepeatModal() {
   if (repeatModal) {repeatModal.classList.remove("hidden");}
@@ -101,7 +101,7 @@ export function closeRepeatModal() {
   if (repeatModal) {repeatModal.classList.add("hidden");}
 }
 function isRepeatDisabled(repeat) {
-  return !repeat || repeat.type === "none";
+  return !repeat || repeat.type === TASK_REPEAT_NONE;
 }
 export function getRepeatSummary(repeat) {
   if (isRepeatDisabled(repeat)) {return "Does not repeat";}
@@ -127,14 +127,17 @@ function syncRepeatEndControls(repeatState) {
 }
 function syncRepeatTargetSelect(target) {
   if (target === "task") {
-    taskRepeatSelect.value = repeatStore.lastRepeatSelection.type === "custom" ? "custom" : "none";
+    taskRepeatSelect.value =
+      repeatStore.lastRepeatSelection.type === "custom" ? "custom" : TASK_REPEAT_NONE;
     syncRepeatSelectLabel();
     return;
   }
   if (target === "subsection") {
     if (subsectionTaskRepeatSelect) {
       subsectionTaskRepeatSelect.value =
-        repeatStore.subsectionRepeatSelection.type === "custom" ? "custom" : "none";
+        repeatStore.subsectionRepeatSelection.type === "custom"
+          ? "custom"
+          : TASK_REPEAT_NONE;
     }
     syncSubsectionRepeatLabel();
   }
@@ -144,7 +147,7 @@ export function renderRepeatUI(target = repeatStore.repeatTarget) {
   const repeatState = repeatStore.repeatState;
   if (repeatState.monthlyMode === "range") {repeatState.monthlyMode = "day";}
   normalizeMonthlyRange(repeatState, getStartDate());
-  taskRepeatUnit.value = repeatState.unit === "none" ? "week" : repeatState.unit;
+  taskRepeatUnit.value = repeatState.unit === TASK_REPEAT_NONE ? "week" : repeatState.unit;
   taskRepeatInterval.value = repeatState.interval;
   taskRepeatWeeklySection.classList.toggle("hidden", repeatState.unit !== "week");
   taskRepeatMonthlySection.classList.toggle("hidden", repeatState.unit !== "month");
@@ -215,13 +218,13 @@ function resolveRepeatEnd(repeat) {
   return repeat.end || { type: "never", date: "", count: 1 };
 }
 export function setRepeatFromSelection(
-  repeat = { type: "none" },
+  repeat = { ...DEFAULT_TASK_REPEAT },
   target = repeatStore.repeatTarget || "task"
 ) {
   const base = defaultRepeatState();
   if (isRepeatDisabled(repeat)) {
-    repeatStore.repeatState = { ...base, unit: "none" };
-    resolveRepeatSelectionTarget(target, { type: "none" });
+    repeatStore.repeatState = { ...base, unit: TASK_REPEAT_NONE };
+    resolveRepeatSelectionTarget(target, { ...DEFAULT_TASK_REPEAT });
     renderRepeatUI(target);
     return;
   }
@@ -256,7 +259,7 @@ export function setRepeatFromSelection(
 }
 export function syncRepeatSelectLabel() {
   if (!taskRepeatSelect) {return;}
-  const noneOpt = taskRepeatSelect.querySelector('option[value="none"]');
+  const noneOpt = taskRepeatSelect.querySelector(`option[value="${TASK_REPEAT_NONE}"]`);
   const customOpt = taskRepeatSelect.querySelector('option[value="custom"]');
   const customNewOpt = taskRepeatSelect.querySelector('option[value="custom-new"]');
   if (noneOpt) {noneOpt.textContent = "Does not repeat";}
@@ -272,7 +275,7 @@ export function syncRepeatSelectLabel() {
 }
 export function syncSubsectionRepeatLabel() {
   if (!subsectionTaskRepeatSelect) {return;}
-  const noneOpt = subsectionTaskRepeatSelect.querySelector('option[value="none"]');
+  const noneOpt = subsectionTaskRepeatSelect.querySelector(`option[value="${TASK_REPEAT_NONE}"]`);
   const customOpt = subsectionTaskRepeatSelect.querySelector('option[value="custom"]');
   const customNewOpt = subsectionTaskRepeatSelect.querySelector('option[value="custom-new"]');
   if (noneOpt) {noneOpt.textContent = "Does not repeat";}
@@ -308,7 +311,7 @@ function appendRepeatEnd(rule, end) {
 }
 export function buildRepeatFromState() {
   const repeatState = repeatStore.repeatState;
-  if (!repeatState || repeatState.unit === "none") {return { type: "none" };}
+  if (!repeatState || repeatState.unit === TASK_REPEAT_NONE) {return { ...DEFAULT_TASK_REPEAT };}
   const startDate = getStartDate();
   const unit = repeatState.unit;
   const interval = Math.max(1, Number(repeatState.interval) || 1);
@@ -378,7 +381,7 @@ function handleTaskRepeatSelectChange() {
   const baseSelection =
     repeatStore.lastRepeatSelection?.type === "custom"
       ? repeatStore.lastRepeatSelection
-      : { type: "none" };
+      : { ...DEFAULT_TASK_REPEAT };
   if (value === "custom" || value === "custom-new") {
     repeatStore.repeatTarget = "task";
     repeatStore.repeatSelectionBeforeModal = baseSelection;
@@ -388,11 +391,14 @@ function handleTaskRepeatSelectChange() {
         ? repeatStore.lastRepeatSelection
         : {
           type: "custom",
-          unit: repeatStore.repeatState.unit === "none" ? "week" : repeatStore.repeatState.unit
+          unit:
+            repeatStore.repeatState.unit === TASK_REPEAT_NONE
+              ? "week"
+              : repeatStore.repeatState.unit
         };
     setRepeatFromSelection(initial);
   } else {
-    setRepeatFromSelection({ type: "none" });
+    setRepeatFromSelection({ ...DEFAULT_TASK_REPEAT });
   }
 }
 function handleSubsectionRepeatSelectChange() {
@@ -400,7 +406,7 @@ function handleSubsectionRepeatSelectChange() {
   const baseSelection =
     repeatStore.subsectionRepeatSelection?.type === "custom"
       ? repeatStore.subsectionRepeatSelection
-      : { type: "none" };
+      : { ...DEFAULT_TASK_REPEAT };
   if (value === "custom" || value === "custom-new") {
     repeatStore.repeatTarget = "subsection";
     repeatStore.subsectionRepeatBeforeModal = baseSelection;
@@ -410,12 +416,15 @@ function handleSubsectionRepeatSelectChange() {
         ? repeatStore.subsectionRepeatSelection
         : {
           type: "custom",
-          unit: repeatStore.repeatState.unit === "none" ? "week" : repeatStore.repeatState.unit
+          unit:
+            repeatStore.repeatState.unit === TASK_REPEAT_NONE
+              ? "week"
+              : repeatStore.repeatState.unit
         };
     setRepeatFromSelection(initial, "subsection");
   } else {
     repeatStore.repeatTarget = "subsection";
-    setRepeatFromSelection({ type: "none" }, "subsection");
+    setRepeatFromSelection({ ...DEFAULT_TASK_REPEAT }, "subsection");
     syncSubsectionRepeatLabel();
   }
 }
@@ -471,12 +480,7 @@ function handleRepeatYearlyRangeStartInput() {
   const baseDate = getStartDate();
   repeatStore.repeatState.yearlyRangeStartDate =
     taskRepeatYearlyRangeStart.value || getLocalDateKey(baseDate);
-  syncYearlyRangeInputs(
-    repeatStore.repeatState,
-    baseDate,
-    taskRepeatYearlyRangeStart,
-    taskRepeatYearlyRangeEnd
-  );
+  syncYearlyRangeInputs(repeatStore.repeatState, baseDate, taskRepeatYearlyRangeStart, taskRepeatYearlyRangeEnd);
 }
 function handleRepeatYearlyRangeEndInput() {
   const baseDate = getStartDate();
@@ -487,12 +491,7 @@ function handleRepeatYearlyRangeEndInput() {
     repeatStore.repeatState.yearlyMonth = parts.month;
     repeatStore.repeatState.yearlyDay = parts.day;
   }
-  syncYearlyRangeInputs(
-    repeatStore.repeatState,
-    baseDate,
-    taskRepeatYearlyRangeStart,
-    taskRepeatYearlyRangeEnd
-  );
+  syncYearlyRangeInputs(repeatStore.repeatState, baseDate, taskRepeatYearlyRangeStart, taskRepeatYearlyRangeEnd);
 }
 function updateRepeatEnd() {
   if (taskRepeatEndAfter.checked) {
@@ -510,14 +509,14 @@ function handleRepeatEndCountInput() { taskRepeatEndCount.value = Math.max(1, Nu
 function handleRepeatModalCloseClick() {
   closeRepeatModal();
   if (repeatStore.repeatTarget === "subsection") {
-    setRepeatFromSelection(repeatStore.subsectionRepeatBeforeModal || { type: "none" }, "subsection");
-    const prev = repeatStore.subsectionRepeatBeforeModal || { type: "none" };
-    subsectionTaskRepeatSelect.value = prev.type === "custom" ? "custom" : "none";
+    setRepeatFromSelection(repeatStore.subsectionRepeatBeforeModal || { ...DEFAULT_TASK_REPEAT }, "subsection");
+    const prev = repeatStore.subsectionRepeatBeforeModal || { ...DEFAULT_TASK_REPEAT };
+    subsectionTaskRepeatSelect.value = prev.type === "custom" ? "custom" : TASK_REPEAT_NONE;
     syncSubsectionRepeatLabel();
   } else {
-    setRepeatFromSelection(repeatStore.repeatSelectionBeforeModal || { type: "none" }, "task");
-    const prev = repeatStore.repeatSelectionBeforeModal || { type: "none" };
-    taskRepeatSelect.value = prev.type === "custom" ? "custom" : "none";
+    setRepeatFromSelection(repeatStore.repeatSelectionBeforeModal || { ...DEFAULT_TASK_REPEAT }, "task");
+    const prev = repeatStore.repeatSelectionBeforeModal || { ...DEFAULT_TASK_REPEAT };
+    taskRepeatSelect.value = prev.type === "custom" ? "custom" : TASK_REPEAT_NONE;
     syncRepeatSelectLabel();
   }
   repeatStore.repeatTarget = "task";

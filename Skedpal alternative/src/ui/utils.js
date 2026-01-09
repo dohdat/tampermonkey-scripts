@@ -2,6 +2,8 @@ import {
   DEFAULT_TASK_REPEAT,
   SUBTASK_ORDER_OFFSET,
   SUBTASK_SCHEDULE_PARALLEL,
+  SUBTASK_SCHEDULE_SEQUENTIAL,
+  SUBTASK_SCHEDULE_SEQUENTIAL_SINGLE,
   TASK_STATUS_UNSCHEDULED
 } from "./constants.js";
 import { DEFAULT_SCHEDULING_HORIZON_DAYS } from "../data/db.js";
@@ -300,7 +302,11 @@ export function formatRRuleDate(dateStr) {
 }
 
 export function normalizeSubtaskScheduleMode(value) {
-  const valid = new Set(["parallel", "sequential", "sequential-single"]);
+  const valid = new Set([
+    SUBTASK_SCHEDULE_PARALLEL,
+    SUBTASK_SCHEDULE_SEQUENTIAL,
+    SUBTASK_SCHEDULE_SEQUENTIAL_SINGLE
+  ]);
   return valid.has(value) ? value : SUBTASK_SCHEDULE_PARALLEL;
 }
 

@@ -17,7 +17,10 @@ export const DEFAULT_TASK_REPEAT = Object.freeze({ type: TASK_REPEAT_NONE });
 export const TASK_STATUS_SCHEDULED = "scheduled";
 export const TASK_STATUS_UNSCHEDULED = "unscheduled";
 export const TASK_STATUS_IGNORED = "ignored";
+export const TASK_STATUS_COMPLETED = "completed";
 export const SUBTASK_SCHEDULE_PARALLEL = "parallel";
+export const SUBTASK_SCHEDULE_SEQUENTIAL = "sequential";
+export const SUBTASK_SCHEDULE_SEQUENTIAL_SINGLE = "sequential-single";
 
 export const editIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path d="M14.7 2.3a1 1 0 0 1 1.4 0l1.6 1.6a1 1 0 0 1 0 1.4l-9.2 9.2-3.3.7a.5.5 0 0 1-.6-.6l.7-3.3 9.2-9.2Z"></path><path d="M2.5 17.5h15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>`;
 export const duplicateIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="6" y="6" width="10" height="10" rx="2"></rect><rect x="2.5" y="2.5" width="10" height="10" rx="2"></rect></svg>`;

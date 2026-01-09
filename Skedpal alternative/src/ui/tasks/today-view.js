@@ -1,4 +1,4 @@
-import { domRefs } from "../constants.js";
+import { TASK_STATUS_SCHEDULED, domRefs } from "../constants.js";
 import { renderTaskCard } from "./task-card.js";
 import { getSectionName, getSubsectionsFor } from "../sections-data.js";
 import { normalizeTimeMap } from "../utils.js";
@@ -38,7 +38,7 @@ function getTodayStart(task, dayStart, dayEnd) {
 
 function buildTodayTasks(tasks, dayStart, dayEnd) {
   return (tasks || [])
-    .filter((task) => !task.completed && task.scheduleStatus === "scheduled")
+    .filter((task) => !task.completed && task.scheduleStatus === TASK_STATUS_SCHEDULED)
     .map((task) => ({
       task,
       todayStart: getTodayStart(task, dayStart, dayEnd)

@@ -1,3 +1,5 @@
+import { TASK_STATUS_SCHEDULED } from "./constants.js";
+
 export function endOfDay(date) {
   const d = new Date(date);
   d.setHours(23, 59, 59, 999);
@@ -80,7 +82,7 @@ export function buildScheduleBounds(instances) {
 export function getScheduledEvents(tasks) {
   const events = [];
   (tasks || []).forEach((task) => {
-    if (task.scheduleStatus !== "scheduled") {return;}
+    if (task.scheduleStatus !== TASK_STATUS_SCHEDULED) {return;}
     const instances = Array.isArray(task.scheduledInstances) ? task.scheduledInstances : [];
     if (!instances.length) {return;}
     const completedOccurrences = new Set(task.completedOccurrences || []);
@@ -116,7 +118,7 @@ export function buildUpdatedTaskForDrag(task, eventMeta, newStart, newEnd) {
     scheduledStart,
     scheduledEnd,
     scheduledTimeMapId,
-    scheduleStatus: task.scheduleStatus || "scheduled"
+    scheduleStatus: task.scheduleStatus || TASK_STATUS_SCHEDULED
   };
 }
 

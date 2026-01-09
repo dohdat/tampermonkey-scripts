@@ -1,5 +1,9 @@
 import { saveSettings, saveTask, deleteTask } from "../../data/db.js";
-import { TASK_REPEAT_NONE, TASK_STATUS_UNSCHEDULED } from "../constants.js";
+import {
+  TASK_REPEAT_NONE,
+  TASK_STATUS_COMPLETED,
+  TASK_STATUS_UNSCHEDULED
+} from "../constants.js";
 import { state } from "../state/page-state.js";
 import { getTaskAndDescendants } from "../utils.js";
 import { showUndoBanner } from "../notifications.js";
@@ -92,9 +96,9 @@ async function handleTaskComplete(completeTaskId) {
   const timestamp = completed ? new Date().toISOString() : null;
   const updates = snapshots.map((t) => {
     let updatedStatus = t.scheduleStatus || TASK_STATUS_UNSCHEDULED;
-    if (completed && t.scheduleStatus !== "completed") {
-      updatedStatus = "completed";
-    } else if (!completed && t.scheduleStatus === "completed") {
+    if (completed && t.scheduleStatus !== TASK_STATUS_COMPLETED) {
+      updatedStatus = TASK_STATUS_COMPLETED;
+    } else if (!completed && t.scheduleStatus === TASK_STATUS_COMPLETED) {
       updatedStatus = TASK_STATUS_UNSCHEDULED;
     }
     return {

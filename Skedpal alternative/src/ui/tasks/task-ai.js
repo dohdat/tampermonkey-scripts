@@ -189,12 +189,25 @@ function renderTaskList(tasks) {
     item.className = "task-ai-list-item";
     item.setAttribute("data-test-skedpal", `task-ai-task-${index}`);
 
+    const titleRow = document.createElement("div");
+    titleRow.className = "task-ai-list-title-row";
+    titleRow.setAttribute("data-test-skedpal", `task-ai-task-title-row-${index}`);
+
     const title = document.createElement("div");
     title.className = "task-ai-list-title";
     title.textContent = task.title;
     title.setAttribute("data-test-skedpal", `task-ai-task-title-${index}`);
 
-    item.appendChild(title);
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "task-ai-remove-btn";
+    removeBtn.dataset.taskAiRemove = String(index);
+    removeBtn.textContent = "Remove";
+    removeBtn.setAttribute("data-test-skedpal", `task-ai-task-remove-${index}`);
+
+    titleRow.appendChild(title);
+    titleRow.appendChild(removeBtn);
+    item.appendChild(titleRow);
 
     if (task.subtasks.length) {
       const sublist = document.createElement("ul");
@@ -202,8 +215,22 @@ function renderTaskList(tasks) {
       sublist.setAttribute("data-test-skedpal", `task-ai-sublist-${index}`);
       task.subtasks.forEach((subtask, subIndex) => {
         const subitem = document.createElement("li");
-        subitem.textContent = subtask;
+        subitem.className = "task-ai-subitem";
         subitem.setAttribute("data-test-skedpal", `task-ai-subtask-${index}-${subIndex}`);
+
+        const sublabel = document.createElement("span");
+        sublabel.textContent = subtask;
+        sublabel.setAttribute("data-test-skedpal", `task-ai-subtask-label-${index}-${subIndex}`);
+
+        const subremove = document.createElement("button");
+        subremove.type = "button";
+        subremove.className = "task-ai-remove-btn task-ai-remove-btn--sub";
+        subremove.dataset.taskAiSubremove = `${index}:${subIndex}`;
+        subremove.textContent = "Remove";
+        subremove.setAttribute("data-test-skedpal", `task-ai-subtask-remove-${index}-${subIndex}`);
+
+        subitem.appendChild(sublabel);
+        subitem.appendChild(subremove);
         sublist.appendChild(subitem);
       });
       item.appendChild(sublist);
@@ -237,6 +264,42 @@ function setButtonLoading(isLoading) {
     delete taskAiButton.dataset.loading;
     taskAiButton.textContent = "Help me create a list";
   }
+}
+
+function updateTaskAiList(nextList) {
+  state.taskAiList = Array.isArray(nextList) ? nextList : [];
+  if (!state.taskAiList.length) {
+    clearOutput();
+    setStatus("No suggestions left.", "info");
+    return;
+  }
+  renderTaskList(state.taskAiList);
+}
+
+function handleTaskAiOutputClick(event) {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {return;}
+  const removeBtn = target.closest("[data-task-ai-remove]");
+  if (removeBtn) {
+    const index = Number(removeBtn.dataset.taskAiRemove);
+    if (!Number.isFinite(index)) {return;}
+    const next = state.taskAiList.filter((_, idx) => idx !== index);
+    updateTaskAiList(next);
+    return;
+  }
+  const subremoveBtn = target.closest("[data-task-ai-subremove]");
+  if (!subremoveBtn) {return;}
+  const value = subremoveBtn.dataset.taskAiSubremove || "";
+  const parts = value.split(":").map((part) => Number(part));
+  if (parts.length !== 2 || parts.some((part) => !Number.isFinite(part))) {return;}
+  const [taskIndex, subIndex] = parts;
+  const list = state.taskAiList.map((entry) => ({
+    ...entry,
+    subtasks: Array.isArray(entry.subtasks) ? [...entry.subtasks] : []
+  }));
+  if (!list[taskIndex]) {return;}
+  list[taskIndex].subtasks = list[taskIndex].subtasks.filter((_, idx) => idx !== subIndex);
+  updateTaskAiList(list);
 }
 
 async function handleTaskAiButtonClick() {
@@ -291,7 +354,9 @@ export function resetTaskListAssistant() {
 export function initTaskListAssistant() {
   if (!taskAiButton) {return () => {};}
   taskAiButton.addEventListener("click", handleTaskAiButtonClick);
+  taskAiOutput?.addEventListener("click", handleTaskAiOutputClick);
   return () => {
     taskAiButton.removeEventListener("click", handleTaskAiButtonClick);
+    taskAiOutput?.removeEventListener("click", handleTaskAiOutputClick);
   };
 }

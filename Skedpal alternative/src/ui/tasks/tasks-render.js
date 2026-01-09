@@ -27,7 +27,8 @@ import {
   buildChildrenByParent,
   buildDurationCalculator,
   buildFirstOccurrenceOutOfRangeMap,
-  buildFirstOccurrenceUnscheduledMap
+  buildFirstOccurrenceUnscheduledMap,
+  buildSubsectionActionButtons
 } from "./tasks-render-helpers.js";
 const { taskList } = domRefs;
 let taskRenderToken = 0;
@@ -335,52 +336,25 @@ function buildSubsectionHeader(sub, section, isNoSection) {
   const subCollapsed = state.collapsedSubsections.has(sub.id);
   collapseSubBtn.title = "Expand/collapse subsection";
   collapseSubBtn.innerHTML = subCollapsed ? caretRightIconSvg : caretDownIconSvg;
-  const editSubBtn = document.createElement("button");
-  editSubBtn.type = "button";
-  editSubBtn.dataset.editSubsection = sub.id;
-  editSubBtn.dataset.parentSection = section.id;
-  editSubBtn.className = "title-icon-btn";
-  editSubBtn.title = "Edit subsection";
-  editSubBtn.innerHTML = editIconSvg;
-  editSubBtn.style.borderColor = themeColors.green500;
-  editSubBtn.style.color = themeColors.green500;
-  const zoomSubBtn = document.createElement("button");
-  zoomSubBtn.type = "button";
-  zoomSubBtn.dataset.zoomSubsection = sub.id;
-  zoomSubBtn.dataset.zoomSection = section.id;
-  zoomSubBtn.className = "title-icon-btn";
-  zoomSubBtn.title = "Zoom into subsection";
-  zoomSubBtn.innerHTML = zoomInIconSvg;
-  const favoriteSubBtn = document.createElement("button");
-  favoriteSubBtn.type = "button";
-  favoriteSubBtn.dataset.favoriteSubsection = sub.id;
-  favoriteSubBtn.dataset.parentSection = section.id;
-  favoriteSubBtn.className = `title-icon-btn${sub.favorite ? " favorite-active" : ""}`;
-  favoriteSubBtn.title = sub.favorite ? "Unfavorite subsection" : "Favorite subsection";
-  favoriteSubBtn.innerHTML = favoriteIconSvg;
-  const removeSubBtn = document.createElement("button");
-  removeSubBtn.type = "button";
-  removeSubBtn.dataset.removeSubsection = sub.id;
-  removeSubBtn.dataset.parentSection = section.id;
-  removeSubBtn.className = "title-icon-btn";
-  removeSubBtn.title = "Remove subsection";
-  removeSubBtn.innerHTML = removeIconSvg;
-  removeSubBtn.style.borderColor = themeColors.orange500;
-  removeSubBtn.style.color = themeColors.orange500;
-  const addSubTaskBtn = document.createElement("button");
-  addSubTaskBtn.type = "button";
-  addSubTaskBtn.dataset.addSection = isNoSection ? "" : section.id;
-  addSubTaskBtn.dataset.addSubsectionTarget = sub.id;
-  addSubTaskBtn.className =
-    "rounded-lg border border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-200 hover:border-lime-400";
-  addSubTaskBtn.textContent = "Add task";
-  const addChildSubBtn = document.createElement("button");
-  addChildSubBtn.type = "button";
-  addChildSubBtn.dataset.addChildSubsection = sub.id;
-  addChildSubBtn.dataset.sectionId = isNoSection ? "" : section.id;
-  addChildSubBtn.className =
-    "rounded-lg border border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-200 hover:border-lime-400";
-  addChildSubBtn.textContent = "Add subsection";
+  const {
+    editSubBtn,
+    zoomSubBtn,
+    favoriteSubBtn,
+    removeSubBtn,
+    addSubTaskBtn,
+    addChildSubBtn
+  } = buildSubsectionActionButtons({
+    sub,
+    sectionId: section.id,
+    isNoSection,
+    themeColors,
+    icons: {
+      editIconSvg,
+      zoomInIconSvg,
+      favoriteIconSvg,
+      removeIconSvg
+    }
+  });
   subTitle.appendChild(collapseSubBtn);
   subTitleActions.appendChild(favoriteSubBtn);
   subTitleActions.appendChild(zoomSubBtn);

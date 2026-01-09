@@ -14,6 +14,7 @@ import {
   setRepeatFromSelection
 } from "./repeat.js";
 import { initSettings } from "./settings.js";
+import { loadTaskTemplates } from "./task-templates.js";
 import {
   loadTasks,
   handleTaskSubmit,
@@ -26,6 +27,7 @@ import {
   openTaskEditById,
   openNewTaskWithDefaults
 } from "./tasks/tasks-actions.js";
+import { initTaskTemplateSelect } from "./tasks/task-template-select.js";
 import { handleTaskListClick } from "./tasks/task-list-actions.js";
 import {
   renderTaskSubsectionOptions,
@@ -108,6 +110,7 @@ async function hydrate() {
     state.zoomFilter = initialZoom;
   }
   await loadTasks();
+  await loadTaskTemplates();
   const refreshedExternal = await primeExternalEventsOnLoad();
   if (refreshedExternal) {
     renderCalendar();
@@ -376,6 +379,7 @@ function registerTimeMapHandlers() {
 }
 
 function registerTaskFormHandlers() {
+  const cleanupFns = [];
   document.getElementById("task-form")?.addEventListener("submit", handleTaskSubmit);
   if (taskLinkInput && taskLinkClearBtn) {
     const syncClear = () => toggleClearButtonVisibility(taskLinkInput, taskLinkClearBtn);
@@ -397,6 +401,10 @@ function registerTaskFormHandlers() {
   todayList?.addEventListener("click", handleTodayListClickEvent);
   reportList?.addEventListener("click", handleReportListClickEvent);
   rescheduleButtons.forEach((btn) => btn.addEventListener("click", handleReschedule));
+  cleanupFns.push(initTaskTemplateSelect());
+  return () => {
+    cleanupFns.forEach((cleanup) => cleanup());
+  };
 }
 
 function registerSectionHandlers() {

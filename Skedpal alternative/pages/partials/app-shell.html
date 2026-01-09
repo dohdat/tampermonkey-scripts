@@ -278,6 +278,26 @@
             </button>
           </div>
         </div>
+        <div id="settings-task-templates" class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg space-y-3" data-test-skedpal="settings-task-templates">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="text-xs uppercase tracking-wide text-slate-500" data-test-skedpal="task-templates-eyebrow">Settings</p>
+              <h3 class="text-base font-semibold" data-test-skedpal="task-templates-title">Task Templates</h3>
+              <p class="text-sm text-slate-400" data-test-skedpal="task-templates-subtitle">
+                Build reusable parent tasks with subtasks. Use "Add task from template" inside a subsection to insert them.
+              </p>
+            </div>
+            <button
+              id="task-template-new"
+              type="button"
+              class="rounded-xl border border-lime-400/60 px-4 py-2 text-sm font-semibold text-lime-300 hover:border-lime-400"
+              data-test-skedpal="task-template-new"
+            >
+              New template
+            </button>
+          </div>
+          <div id="task-template-list" class="grid gap-3" data-test-skedpal="task-template-list"></div>
+        </div>
         <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg space-y-3">
           <div class="flex items-center justify-between">
             <div>

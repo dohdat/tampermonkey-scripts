@@ -52,6 +52,18 @@ export const domRefs = {
   taskFormWrap: document.getElementById("task-form-wrap"),
   taskToggle: document.getElementById("task-toggle"),
   taskModalCloseButtons: [...document.querySelectorAll("[data-task-modal-close]")],
+  taskModalEyebrow: document.querySelector
+    ? document.querySelector("[data-test-skedpal='task-modal-eyebrow']")
+    : null,
+  taskModalTitle: document.querySelector
+    ? document.querySelector("[data-test-skedpal='task-modal-title']")
+    : null,
+  taskModalSubtitle: document.querySelector
+    ? document.querySelector("[data-test-skedpal='task-modal-subtitle']")
+    : null,
+  taskModalSubmit: document.querySelector
+    ? document.querySelector("[data-test-skedpal='task-modal-submit']")
+    : null,
   taskTimeMapOptions: document.getElementById("task-timemap-options"),
   taskDurationInput: document.getElementById("task-duration"),
   taskDurationHelper: document.getElementById("task-duration-helper"),
@@ -66,6 +78,13 @@ export const domRefs = {
   taskParentIdInput: document.getElementById("task-parent-id"),
   taskSectionSelect: document.getElementById("task-section"),
   taskSubsectionSelect: document.getElementById("task-subsection"),
+  taskTemplateSelect: document.getElementById("task-template-select"),
+  taskSectionField: document.querySelector
+    ? document.querySelector("[data-test-skedpal='task-section-field']")
+    : null,
+  taskSubsectionField: document.querySelector
+    ? document.querySelector("[data-test-skedpal='task-subsection-field']")
+    : null,
   taskSubtaskScheduleWrap: document.getElementById("task-subtask-schedule-wrap"),
   taskSubtaskScheduleSelect: document.getElementById("task-subtask-schedule"),
   taskRepeatSelect: document.getElementById("task-repeat"),
@@ -168,6 +187,8 @@ export const domRefs = {
   backupNowBtn: document.getElementById("backup-now"),
   backupRestoreBtn: document.getElementById("backup-restore"),
   backupStatus: document.getElementById("backup-status"),
+  taskTemplateNewBtn: document.getElementById("task-template-new"),
+  taskTemplateList: document.getElementById("task-template-list"),
   calendarView: document.getElementById("calendar"),
   calendarGrid: document.getElementById("calendar-grid"),
   calendarTitle: document.getElementById("calendar-title"),

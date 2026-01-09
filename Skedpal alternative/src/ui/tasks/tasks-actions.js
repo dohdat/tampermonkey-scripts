@@ -2,6 +2,7 @@ import {
   getAllTasks,
   getAllTimeMaps,
   saveTask,
+  saveTaskTemplate,
   DEFAULT_SCHEDULING_HORIZON_DAYS
 } from "../../data/db.js";
 import { getUpcomingOccurrences } from "../../core/scheduler.js";
@@ -15,6 +16,7 @@ import {
   formatDurationLong,
   getInheritedSubtaskFields,
   getLocalDateKey,
+  isStartAfterDeadline,
   normalizeTimeMap,
   normalizeSubtaskScheduleMode,
   applyPrioritySelectColor,
@@ -50,6 +52,10 @@ import {
 } from "./task-form-helpers.js";
 import { renderReport } from "../report.js";
 import { requestCreateTaskOverlayClose } from "../overlay-messaging.js";
+import {
+  buildTasksFromTemplate,
+  buildSubtasksFromTemplateForParent
+} from "./task-templates-helpers.js";
 
 const {
   taskTimeMapOptions,
@@ -64,9 +70,16 @@ const {
   taskParentIdInput,
   taskSectionSelect,
   taskSubsectionSelect,
+  taskSectionField,
+  taskSubsectionField,
   taskSubtaskScheduleSelect,
   taskSubtaskScheduleWrap,
   taskRepeatSelect,
+  taskModalEyebrow,
+  taskModalTitle,
+  taskModalSubtitle,
+  taskModalSubmit,
+  taskTemplateSelect,
   repeatCompleteModal,
   repeatCompleteList,
   repeatCompleteEmpty,
@@ -78,6 +91,65 @@ import { openTaskForm, closeTaskForm } from "../ui.js";
 
 function syncTaskLinkClear() {
   toggleClearButtonVisibility(taskLinkInput, taskLinkClearBtn);
+}
+
+const TASK_FORM_COPY = {
+  eyebrow: "Task intake",
+  title: "Plan a new task",
+  subtitle: "Set deadline, duration, and allowed TimeMaps before scheduling.",
+  submit: "Save Task"
+};
+const TEMPLATE_FORM_COPY = {
+  eyebrow: "Task templates",
+  title: "Task template",
+  subtitle: "Define a reusable task template.",
+  submit: "Save template"
+};
+const TEMPLATE_SUBTASK_COPY = {
+  eyebrow: "Task templates",
+  title: "Template subtask",
+  subtitle: "Define a reusable subtask for this template.",
+  submit: "Save subtask"
+};
+
+function setTaskFormCopy(copy) {
+  if (taskModalEyebrow) {taskModalEyebrow.textContent = copy.eyebrow;}
+  if (taskModalTitle) {taskModalTitle.textContent = copy.title;}
+  if (taskModalSubtitle) {taskModalSubtitle.textContent = copy.subtitle;}
+  if (taskModalSubmit) {taskModalSubmit.textContent = copy.submit;}
+}
+
+function setTaskFormSectionsVisible(visible) {
+  if (taskSectionField) {taskSectionField.classList.toggle("hidden", !visible);}
+  if (taskSubsectionField) {taskSubsectionField.classList.toggle("hidden", !visible);}
+  if (taskSectionSelect) {taskSectionSelect.disabled = !visible;}
+  if (taskSubsectionSelect) {taskSubsectionSelect.disabled = !visible;}
+  if (!visible) {
+    if (taskSectionSelect) {taskSectionSelect.value = "";}
+    if (taskSubsectionSelect) {taskSubsectionSelect.value = "";}
+  }
+}
+
+function setTaskFormMode(mode) {
+  state.taskFormMode = mode;
+  if (!mode) {
+    setTaskFormCopy(TASK_FORM_COPY);
+    setTaskFormSectionsVisible(true);
+    return;
+  }
+  if (mode.type === "template-parent") {
+    setTaskFormCopy(TEMPLATE_FORM_COPY);
+    setTaskFormSectionsVisible(false);
+    return;
+  }
+  if (mode.type === "template-subtask") {
+    setTaskFormCopy(TEMPLATE_SUBTASK_COPY);
+    setTaskFormSectionsVisible(false);
+  }
+}
+
+function resetTaskFormMode() {
+  setTaskFormMode(null);
 }
 
 export function syncTaskDurationHelper() {
@@ -242,6 +314,24 @@ export async function viewTaskOnCalendar(taskId) {
   return focusCalendarEvent(taskId, { behavior: "smooth" });
 }
 
+export async function applyTaskTemplateToSubsection(templateId, sectionId = "", subsectionId = "") {
+  if (!templateId) {return false;}
+  const template = state.taskTemplatesCache.find((entry) => entry.id === templateId);
+  if (!template) {return false;}
+  const newTasks = buildTasksFromTemplate(
+    template,
+    sectionId,
+    subsectionId,
+    state.tasksCache,
+    uuid,
+    { includeParent: false }
+  );
+  if (!newTasks.length) {return false;}
+  await Promise.all(newTasks.map((task) => saveTask(task)));
+  await loadTasks();
+  return true;
+}
+
 export function renderTimeMapsAndTasks(timeMaps) {
   renderTasks(state.tasksCache, timeMaps);
   renderBreadcrumb();
@@ -266,11 +356,102 @@ function getTaskFormValues() {
     timeMapIds: collectSelectedValues(taskTimeMapOptions),
     section: taskSectionSelect.value || (state.settingsCache.sections || [])[0]?.id || "",
     subsection: taskSubsectionSelect.value || "",
-    parentId: (taskParentIdInput.value || "").trim()
+    parentId: (taskParentIdInput.value || "").trim(),
+    templateId: taskTemplateSelect?.value || ""
   };
 }
 
 export { validateTaskForm };
+
+function validateTemplateForm(values) {
+  if (!values.title || !values.durationMin) {
+    return "Title and duration are required.";
+  }
+  if (values.durationMin < 15 || values.durationMin % 15 !== 0) {
+    return "Duration must be at least 15 minutes and in 15 minute steps.";
+  }
+  if (values.timeMapIds.length === 0) {
+    return "Select at least one TimeMap.";
+  }
+  if (isStartAfterDeadline(values.startFrom, values.deadline)) {
+    return "Start from cannot be after deadline.";
+  }
+  return "";
+}
+
+function buildTemplatePayload(values, existing = null) {
+  const repeat = repeatStore.lastRepeatSelection || { type: "none" };
+  return {
+    id: values.id,
+    title: values.title,
+    link: values.link || "",
+    durationMin: values.durationMin,
+    minBlockMin: values.minBlockMin,
+    priority: values.priority,
+    deadline: parseLocalDateInput(values.deadline),
+    startFrom: parseLocalDateInput(values.startFrom),
+    timeMapIds: values.timeMapIds,
+    repeat,
+    subtaskScheduleMode: normalizeSubtaskScheduleMode(taskSubtaskScheduleSelect?.value),
+    subtasks: existing?.subtasks || []
+  };
+}
+
+function getTemplateRepeatSelection() {
+  return repeatStore.lastRepeatSelection || { type: "none" };
+}
+
+function cloneTemplateSubtasks(subtasks) {
+  return Array.isArray(subtasks) ? [...subtasks] : [];
+}
+
+function resolveTemplateSubtaskParentId(parentId, existingSubtask) {
+  if (parentId !== null && parentId !== undefined) {return parentId;}
+  if (existingSubtask && existingSubtask.subtaskParentId) {return existingSubtask.subtaskParentId;}
+  return null;
+}
+
+function buildTemplateSubtaskPayload(values, subtaskId, parentId, existingSubtask) {
+  return {
+    id: subtaskId || values.id,
+    title: values.title,
+    link: values.link || "",
+    durationMin: values.durationMin,
+    minBlockMin: values.minBlockMin,
+    priority: values.priority,
+    deadline: parseLocalDateInput(values.deadline),
+    startFrom: parseLocalDateInput(values.startFrom),
+    timeMapIds: values.timeMapIds,
+    repeat: getTemplateRepeatSelection(),
+    subtaskScheduleMode: normalizeSubtaskScheduleMode(taskSubtaskScheduleSelect?.value),
+    subtaskParentId: resolveTemplateSubtaskParentId(parentId, existingSubtask)
+  };
+}
+
+function resolveTemplateSubtaskFormId(subtask) {
+  if (subtask && subtask.id) {return subtask.id;}
+  return uuid();
+}
+
+function resolveTemplateSubtaskFormValues(subtask) {
+  if (subtask) {return buildTemplateFormValues(subtask);}
+  return buildTemplateFormValues({});
+}
+
+function resolveTemplateSubtaskModeId(subtask) {
+  if (subtask && subtask.id) {return subtask.id;}
+  return "";
+}
+
+function resolveTemplateSubtaskTimeMapIds(subtask, template) {
+  if (subtask && Array.isArray(subtask.timeMapIds) && subtask.timeMapIds.length) {
+    return subtask.timeMapIds;
+  }
+  if (template && Array.isArray(template.timeMapIds)) {
+    return template.timeMapIds;
+  }
+  return [];
+}
 
 function resolveTaskOrder(existingTask, parentTask, section, subsection) {
   const targetKey = getContainerKey(section, subsection);
@@ -337,9 +518,72 @@ async function updateParentTaskDescendants(taskId, updatedTask) {
   );
 }
 
+async function handleTemplateParentSubmit(values) {
+  const existing = state.taskTemplatesCache.find((entry) => entry.id === values.id) || null;
+  const template = buildTemplatePayload(values, existing);
+  await saveTaskTemplate(template);
+  window.dispatchEvent(new CustomEvent("skedpal:templates-updated"));
+  resetTaskForm(true);
+  resetTaskFormMode();
+}
+
+async function handleTemplateSubtaskSubmit(
+  values,
+  templateId,
+  subtaskId = "",
+  subtaskParentId = null
+) {
+  const template = state.taskTemplatesCache.find((entry) => entry.id === templateId);
+  if (!template) {return;}
+  const existingSubtask =
+    cloneTemplateSubtasks(template.subtasks).find((entry) => entry.id === subtaskId) || null;
+  const subtaskPayload = buildTemplateSubtaskPayload(
+    values,
+    subtaskId,
+    subtaskParentId,
+    existingSubtask
+  );
+  const subtasks = cloneTemplateSubtasks(template.subtasks);
+  const idx = subtasks.findIndex((entry) => entry.id === subtaskPayload.id);
+  if (idx >= 0) {
+    subtasks[idx] = { ...subtasks[idx], ...subtaskPayload };
+  } else {
+    subtasks.push(subtaskPayload);
+  }
+  await saveTaskTemplate({ ...template, subtasks });
+  window.dispatchEvent(new CustomEvent("skedpal:templates-updated"));
+  resetTaskForm(true);
+  resetTaskFormMode();
+}
+
 export async function handleTaskSubmit(event) {
   event.preventDefault();
   const values = getTaskFormValues();
+  const selectedTemplateId = values.templateId;
+  if (state.taskFormMode?.type === "template-parent") {
+    const error = validateTemplateForm(values);
+    if (error) {
+      alert(error);
+      return;
+    }
+    await handleTemplateParentSubmit(values);
+    return;
+  }
+  if (state.taskFormMode?.type === "template-subtask") {
+    const error = validateTemplateForm(values);
+    if (error) {
+      alert(error);
+      return;
+    }
+    const mode = state.taskFormMode || {};
+    await handleTemplateSubtaskSubmit(
+      values,
+      mode.templateId || "",
+      mode.subtaskId || "",
+      mode.subtaskParentId ?? null
+    );
+    return;
+  }
   const parentTask = values.parentId ? state.tasksCache.find((t) => t.id === values.parentId) : null;
   const existingTask = state.tasksCache.find((t) => t.id === values.id);
   const isParentTask = state.tasksCache.some((t) => t.subtaskParentId === values.id);
@@ -351,6 +595,20 @@ export async function handleTaskSubmit(event) {
   const order = resolveTaskOrder(existingTask, parentTask, values.section, values.subsection);
   const updatedTask = buildTaskPayload(values, existingTask, parentTask, isParentTask, order);
   await saveTask(updatedTask);
+  if (selectedTemplateId) {
+    const template = state.taskTemplatesCache.find((entry) => entry.id === selectedTemplateId);
+    if (template) {
+      const subtasks = buildSubtasksFromTemplateForParent(
+        template,
+        updatedTask,
+        [...state.tasksCache, updatedTask],
+        uuid
+      );
+      if (subtasks.length) {
+        await Promise.all(subtasks.map((task) => saveTask(task)));
+      }
+    }
+  }
   if (isParentTask && existingTask) {
     await updateParentTaskDescendants(values.id, updatedTask);
   }
@@ -360,9 +618,13 @@ export async function handleTaskSubmit(event) {
 }
 
 export function resetTaskForm(shouldClose = false) {
+  resetTaskFormMode();
   repeatStore.repeatTarget = "task";
   document.getElementById("task-id").value = "";
   taskParentIdInput.value = "";
+  if (taskTemplateSelect) {
+    taskTemplateSelect.value = "";
+  }
   document.getElementById("task-title").value = "";
   taskLinkInput.value = "";
   syncTaskLinkClear();
@@ -436,6 +698,7 @@ function resolveSubsectionTemplate(sectionId, subsectionId) {
 }
 
 export function startTaskInSection(sectionId = "", subsectionId = "") {
+  resetTaskFormMode();
   repeatStore.repeatTarget = "task";
   const template = resolveSubsectionTemplate(sectionId, subsectionId);
   const templateSubtaskScheduleMode = normalizeSubtaskScheduleMode(template?.subtaskScheduleMode);
@@ -448,6 +711,7 @@ export function startTaskInSection(sectionId = "", subsectionId = "") {
 }
 
 export function openNewTaskWithDefaults(options = {}) {
+  resetTaskFormMode();
   const { title = "", link = "" } = options;
   resetTaskForm(false);
   setTaskFormBasics({ title, link });
@@ -456,6 +720,7 @@ export function openNewTaskWithDefaults(options = {}) {
 }
 
 export function startSubtaskFromTask(task, options = {}) {
+  resetTaskFormMode();
   repeatStore.repeatTarget = "task";
   setTaskFormBasics(buildSubtaskFormValues(task));
   setTaskFormSectionFields(task.section || "", task.subsection || "");
@@ -469,6 +734,7 @@ export function startSubtaskFromTask(task, options = {}) {
 
 export function openTaskEdit(task, options = {}) {
   if (!task) {return;}
+  resetTaskFormMode();
   const { switchView: shouldSwitchView = true } = options;
   const isParentTask = state.tasksCache.some((t) => t.subtaskParentId === task.id);
   document.getElementById("task-id").value = task.id;
@@ -504,6 +770,46 @@ export function openTaskEditById(taskId, options = {}) {
   const task = state.tasksCache.find((t) => t.id === taskId);
   if (!task) {return;}
   openTaskEdit(task, options);
+}
+
+export function openTemplateEditor(template) {
+  resetTaskFormMode();
+  repeatStore.repeatTarget = "task";
+  const values = buildTemplateFormValues(template);
+  values.id = template?.id || uuid();
+  setTaskFormMode({ type: "template-parent", templateId: values.id });
+  setTaskFormBasics(values);
+  renderTaskTimeMapOptions(state.tasksTimeMapsCache || [], template?.timeMapIds || []);
+  if (taskSubtaskScheduleWrap) {
+    taskSubtaskScheduleWrap.classList.remove("hidden");
+  }
+  if (taskSubtaskScheduleSelect) {
+    const mode = normalizeSubtaskScheduleMode(template?.subtaskScheduleMode);
+    taskSubtaskScheduleSelect.value = mode;
+  }
+  openTaskForm();
+}
+
+export function openTemplateSubtaskEditor(template, subtask, parentSubtaskId = null) {
+  if (!template) {return;}
+  resetTaskFormMode();
+  repeatStore.repeatTarget = "task";
+  const values = resolveTemplateSubtaskFormValues(subtask);
+  values.id = resolveTemplateSubtaskFormId(subtask);
+  const resolvedParentId = resolveTemplateSubtaskParentId(parentSubtaskId, subtask);
+  setTaskFormMode({
+    type: "template-subtask",
+    templateId: template.id,
+    subtaskId: resolveTemplateSubtaskModeId(subtask),
+    subtaskParentId: resolvedParentId
+  });
+  setTaskFormBasics(values);
+  const timeMapIds = resolveTemplateSubtaskTimeMapIds(subtask, template);
+  renderTaskTimeMapOptions(state.tasksTimeMapsCache || [], timeMapIds);
+  if (taskSubtaskScheduleWrap) {
+    taskSubtaskScheduleWrap.classList.add("hidden");
+  }
+  openTaskForm();
 }
 
 export async function updateScheduleSummary() {

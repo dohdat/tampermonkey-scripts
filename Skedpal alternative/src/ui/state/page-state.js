@@ -5,6 +5,8 @@ export const state = {
   pendingSettingsSave: null,
   tasksTimeMapsCache: [],
   tasksCache: [],
+  taskTemplatesCache: [],
+  taskFormMode: null,
   zoomFilter: null,
   collapsedSections: new Set(),
   collapsedSubsections: new Set(),

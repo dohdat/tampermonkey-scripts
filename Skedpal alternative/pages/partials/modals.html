@@ -5,9 +5,11 @@
   >
     <div class="task-modal__header task-modal__header--task" data-test-skedpal="task-modal-header">
       <div>
-        <p class="task-modal__eyebrow">Task intake</p>
-        <h3 class="task-modal__title">Plan a new task</h3>
-        <p class="task-modal__subtitle">Set deadline, duration, and allowed TimeMaps before scheduling.</p>
+        <p class="task-modal__eyebrow" data-test-skedpal="task-modal-eyebrow">Task intake</p>
+        <h3 class="task-modal__title" data-test-skedpal="task-modal-title">Plan a new task</h3>
+        <p class="task-modal__subtitle" data-test-skedpal="task-modal-subtitle">
+          Set deadline, duration, and allowed TimeMaps before scheduling.
+        </p>
       </div>
       <button
         type="button"
@@ -142,13 +144,30 @@
             <option value="custom-new">Custom...</option>
           </select>
         </label>
-        <label class="field">
+        <label class="field" data-test-skedpal="task-section-field">
           <span class="field-label">Section</span>
           <select id="task-section" class="field-input"></select>
         </label>
-        <label class="field">
+        <label class="field" data-test-skedpal="task-subsection-field">
           <span class="field-label">Subsection</span>
           <select id="task-subsection" class="field-input"></select>
+        </label>
+        <label class="field task-form-grid__full" data-test-skedpal="task-template-field">
+          <span class="field-label" data-test-skedpal="task-template-label">Template (optional)</span>
+          <select
+            id="task-template-select"
+            class="field-input"
+            data-test-skedpal="task-template-select"
+          >
+            <option
+              value=""
+              selected
+              disabled
+              data-test-skedpal="task-template-select-placeholder"
+            >
+              Choose a template...
+            </option>
+          </select>
         </label>
         <label
           class="field hidden"
@@ -173,7 +192,7 @@
       </div>
       <div class="task-modal__actions">
         <button type="button" class="btn muted" data-task-modal-close>Cancel</button>
-        <button type="submit" class="btn primary">Save Task</button>
+        <button type="submit" class="btn primary" data-test-skedpal="task-modal-submit">Save Task</button>
       </div>
     </form>
   </div>

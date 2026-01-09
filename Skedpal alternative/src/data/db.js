@@ -1,5 +1,5 @@
 const DB_NAME = "personal-skedpal";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const DEFAULT_SECTIONS = [
   { id: "section-work-default", name: "Work" },
   { id: "section-personal-default", name: "Personal" }
@@ -33,6 +33,9 @@ function openDb() {
       }
       if (!db.objectStoreNames.contains("backups")) {
         db.createObjectStore("backups", { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains("task-templates")) {
+        db.createObjectStore("task-templates", { keyPath: "id" });
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -85,6 +88,18 @@ export async function deleteTask(id) {
   return deleteItem("tasks", id);
 }
 
+export async function getAllTaskTemplates() {
+  return getAll("task-templates");
+}
+
+export async function saveTaskTemplate(template) {
+  return putItem("task-templates", template);
+}
+
+export async function deleteTaskTemplate(id) {
+  return deleteItem("task-templates", id);
+}
+
 export async function getAllTimeMaps() {
   return getAll("timemaps");
 }
@@ -130,18 +145,23 @@ export async function restoreBackup(snapshot) {
     throw new Error("No backup available.");
   }
   const db = await openDb();
-  const tx = db.transaction(["tasks", "timemaps", "settings"], "readwrite");
+  const tx = db.transaction(["tasks", "timemaps", "settings", "task-templates"], "readwrite");
   const tasksStore = tx.objectStore("tasks");
   const timeMapsStore = tx.objectStore("timemaps");
   const settingsStore = tx.objectStore("settings");
+  const templatesStore = tx.objectStore("task-templates");
   tasksStore.clear();
   timeMapsStore.clear();
   settingsStore.clear();
+  templatesStore.clear();
   (snapshot.tasks || []).forEach((task) => {
     tasksStore.put(task);
   });
   (snapshot.timeMaps || []).forEach((timeMap) => {
     timeMapsStore.put(timeMap);
+  });
+  (snapshot.taskTemplates || []).forEach((template) => {
+    templatesStore.put(template);
   });
   settingsStore.put({
     id: "settings",

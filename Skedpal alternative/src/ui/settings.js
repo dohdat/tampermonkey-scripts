@@ -1,5 +1,6 @@
 import {
   getAllTasks,
+  getAllTaskTemplates,
   getAllTimeMaps,
   getSettings,
   saveBackup,
@@ -14,6 +15,7 @@ import { state } from "./state/page-state.js";
 import { normalizeHorizonDays } from "./utils.js";
 import { invalidateExternalEventsCache } from "./calendar-external.js";
 import { loadTasks, updateScheduleSummary } from "./tasks/tasks-actions.js";
+import { initTaskTemplates, loadTaskTemplates } from "./task-templates.js";
 
 const {
   horizonInput,
@@ -328,16 +330,18 @@ function initBackupSettings() {
     setBackupButtonsState(true);
     setBackupStatus("Saving backup...");
     try {
-      const [tasks, timeMaps, settings] = await Promise.all([
+      const [tasks, timeMaps, settings, taskTemplates] = await Promise.all([
         getAllTasks(),
         getAllTimeMaps(),
-        getSettings()
+        getSettings(),
+        getAllTaskTemplates()
       ]);
       const snapshot = {
         createdAt: new Date().toISOString(),
         tasks,
         timeMaps,
-        settings
+        settings,
+        taskTemplates
       };
       await saveBackup(snapshot);
       setBackupStatus(`Backup saved ${formatBackupTimestamp(snapshot.createdAt)}.`);
@@ -372,6 +376,7 @@ function initBackupSettings() {
       updateCalendarStatusFromSettings();
       invalidateExternalEventsCache();
       await loadTasks();
+      await loadTaskTemplates();
       await updateScheduleSummary();
       setBackupStatus(`Restored backup from ${formatBackupTimestamp(latest.createdAt)}.`);
     } catch (error) {
@@ -395,4 +400,5 @@ export async function initSettings(prefetchedSettings) {
   initHorizonSettings(persistSettings);
   initGoogleCalendarSettings(persistSettingsSafely);
   initBackupSettings();
+  state.taskTemplatesCleanup = initTaskTemplates();
 }

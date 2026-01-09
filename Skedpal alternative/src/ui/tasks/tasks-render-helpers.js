@@ -131,3 +131,78 @@ export function buildFirstOccurrenceUnscheduledMap(tasks, settings) {
   });
   return unscheduledById;
 }
+
+export function buildSubsectionActionButtons({
+  sub,
+  sectionId,
+  isNoSection,
+  themeColors,
+  icons
+}) {
+  const editSubBtn = document.createElement("button");
+  editSubBtn.type = "button";
+  editSubBtn.dataset.editSubsection = sub.id;
+  editSubBtn.dataset.parentSection = sectionId;
+  editSubBtn.className = "title-icon-btn";
+  editSubBtn.title = "Edit subsection";
+  editSubBtn.innerHTML = icons.editIconSvg;
+  editSubBtn.style.borderColor = themeColors.green500;
+  editSubBtn.style.color = themeColors.green500;
+  editSubBtn.setAttribute("data-test-skedpal", "subsection-edit-btn");
+
+  const zoomSubBtn = document.createElement("button");
+  zoomSubBtn.type = "button";
+  zoomSubBtn.dataset.zoomSubsection = sub.id;
+  zoomSubBtn.dataset.zoomSection = sectionId;
+  zoomSubBtn.className = "title-icon-btn";
+  zoomSubBtn.title = "Zoom into subsection";
+  zoomSubBtn.innerHTML = icons.zoomInIconSvg;
+  zoomSubBtn.setAttribute("data-test-skedpal", "subsection-zoom-btn");
+
+  const favoriteSubBtn = document.createElement("button");
+  favoriteSubBtn.type = "button";
+  favoriteSubBtn.dataset.favoriteSubsection = sub.id;
+  favoriteSubBtn.dataset.parentSection = sectionId;
+  favoriteSubBtn.className = `title-icon-btn${sub.favorite ? " favorite-active" : ""}`;
+  favoriteSubBtn.title = sub.favorite ? "Unfavorite subsection" : "Favorite subsection";
+  favoriteSubBtn.innerHTML = icons.favoriteIconSvg;
+  favoriteSubBtn.setAttribute("data-test-skedpal", "subsection-favorite-btn");
+
+  const removeSubBtn = document.createElement("button");
+  removeSubBtn.type = "button";
+  removeSubBtn.dataset.removeSubsection = sub.id;
+  removeSubBtn.dataset.parentSection = sectionId;
+  removeSubBtn.className = "title-icon-btn";
+  removeSubBtn.title = "Remove subsection";
+  removeSubBtn.innerHTML = icons.removeIconSvg;
+  removeSubBtn.style.borderColor = themeColors.orange500;
+  removeSubBtn.style.color = themeColors.orange500;
+  removeSubBtn.setAttribute("data-test-skedpal", "subsection-remove-btn");
+
+  const addSubTaskBtn = document.createElement("button");
+  addSubTaskBtn.type = "button";
+  addSubTaskBtn.dataset.addSection = isNoSection ? "" : sectionId;
+  addSubTaskBtn.dataset.addSubsectionTarget = sub.id;
+  addSubTaskBtn.className =
+    "rounded-lg border border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-200 hover:border-lime-400";
+  addSubTaskBtn.textContent = "Add task";
+  addSubTaskBtn.setAttribute("data-test-skedpal", "subsection-add-task");
+
+  const addChildSubBtn = document.createElement("button");
+  addChildSubBtn.type = "button";
+  addChildSubBtn.dataset.addChildSubsection = sub.id;
+  addChildSubBtn.dataset.sectionId = isNoSection ? "" : sectionId;
+  addChildSubBtn.className =
+    "rounded-lg border border-slate-700 px-3 py-1 text-[11px] font-semibold text-slate-200 hover:border-lime-400";
+  addChildSubBtn.textContent = "Add subsection";
+  addChildSubBtn.setAttribute("data-test-skedpal", "subsection-add-child");
+
+  return {
+    editSubBtn,
+    zoomSubBtn,
+    favoriteSubBtn,
+    removeSubBtn,
+    addSubTaskBtn,
+    addChildSubBtn
+  };
+}

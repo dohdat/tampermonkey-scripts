@@ -1,3 +1,9 @@
+import { DEFAULT_SCHEDULING_HORIZON_DAYS } from "../../data/db.js";
+import { getUpcomingOccurrences } from "../../core/scheduler.js";
+import { addDays, endOfDay } from "../../core/scheduler/date-utils.js";
+
+const UPCOMING_OCCURRENCE_LOOKAHEAD_DAYS = 365;
+
 export function buildParentMap(tasks) {
   return tasks.reduce((map, task) => {
     if (task.subtaskParentId) {
@@ -71,4 +77,26 @@ export function buildDurationCalculator(childrenByParent) {
     return total;
   };
   return computeTotalDuration;
+}
+
+export function buildFirstOccurrenceOutOfRangeMap(tasks, settings) {
+  const now = new Date();
+  const horizonDays =
+    Number(settings?.schedulingHorizonDays) || DEFAULT_SCHEDULING_HORIZON_DAYS;
+  const horizonEnd = endOfDay(addDays(now, horizonDays));
+  const outOfRangeById = new Map();
+  tasks.forEach((task) => {
+    if (!task?.repeat || task.repeat.type === "none") {return;}
+    const occurrences = getUpcomingOccurrences(
+      task,
+      now,
+      1,
+      UPCOMING_OCCURRENCE_LOOKAHEAD_DAYS
+    );
+    if (!occurrences.length) {return;}
+    if (occurrences[0].date > horizonEnd) {
+      outOfRangeById.set(task.id, true);
+    }
+  });
+  return outOfRangeById;
 }

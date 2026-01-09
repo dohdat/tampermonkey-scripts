@@ -257,6 +257,35 @@ describe("task card", () => {
     assert.strictEqual(collapseBtn.innerHTML, caretRightIconSvg);
   });
 
+  it("shows out-of-range indicator in the summary row", () => {
+    const task = {
+      id: "t7",
+      title: "Repeat outside horizon",
+      durationMin: 30,
+      timeMapIds: ["tm-1"],
+      completed: false,
+      scheduledStart: new Date(2026, 0, 1, 9, 15).toISOString(),
+      repeat: { type: "custom", unit: "month", interval: 1 }
+    };
+    const context = {
+      tasks: [task],
+      timeMapById: new Map([["tm-1", { id: "tm-1", name: "Focus" }]]),
+      collapsedTasks: new Set(),
+      expandedTaskDetails: new Set(),
+      computeTotalDuration: () => 0,
+      getTaskDepthById: () => 0,
+      getSectionName: () => "",
+      getSubsectionName: () => "",
+      firstOccurrenceOutOfRangeByTaskId: new Map([["t7", true]])
+    };
+
+    const card = renderTaskCard(task, context);
+    const summary = findByTestAttr(card, "task-summary-row");
+    const indicator = findByTestAttr(card, "task-summary-out-of-range");
+    assert.ok(summary);
+    assert.ok(indicator);
+  });
+
   it("skips details when not expanded", () => {
     const task = {
       id: "t6",

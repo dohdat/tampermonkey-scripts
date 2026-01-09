@@ -6,6 +6,7 @@ import {
   calendarIconSvg,
   duplicateIconSvg,
   editIconSvg,
+  outOfRangeIconSvg,
   plusIconSvg,
   removeIconSvg,
   zoomInIconSvg
@@ -185,7 +186,8 @@ function buildTaskDurationPill(displayDurationMin) {
   return durationPill;
 }
 
-function buildTaskSummaryRow(task) {
+function buildTaskSummaryRow(task, options = {}) {
+  const { showOutOfRangeIcon = false } = options;
   const summaryRow = document.createElement("div");
   summaryRow.className = "task-summary-row";
   summaryRow.setAttribute("data-test-skedpal", "task-summary-row");
@@ -194,6 +196,8 @@ function buildTaskSummaryRow(task) {
   summaryRow.style.marginTop = "0";
   summaryRow.style.marginLeft = "auto";
   summaryRow.style.gap = "0.35rem";
+  let hasContent = false;
+  let viewCalendarBtn = null;
   if (task.scheduledStart) {
     const scheduledDate = new Date(task.scheduledStart);
     if (!Number.isNaN(scheduledDate)) {
@@ -201,6 +205,7 @@ function buildTaskSummaryRow(task) {
         hour: "numeric",
         minute: "2-digit"
       });
+      hasContent = true;
       const viewCalendarBtn = document.createElement("button");
       viewCalendarBtn.type = "button";
       viewCalendarBtn.className = "title-icon-btn";
@@ -226,10 +231,24 @@ function buildTaskSummaryRow(task) {
         viewCalendarBtn.addEventListener("focus", revealCalendarBtn);
         viewCalendarBtn.addEventListener("blur", hideCalendarBtn);
       }
-      summaryRow.appendChild(viewCalendarBtn);
     }
   }
-  return summaryRow.children && summaryRow.children.length ? summaryRow : null;
+  if (showOutOfRangeIcon) {
+    const outOfRangeIcon = document.createElement("span");
+    outOfRangeIcon.className = "title-icon-btn";
+    outOfRangeIcon.title = "First occurrence is outside the scheduling horizon";
+    outOfRangeIcon.setAttribute("data-test-skedpal", "task-summary-out-of-range");
+    outOfRangeIcon.innerHTML = outOfRangeIconSvg;
+    outOfRangeIcon.style.borderColor = themeColors.amber400;
+    outOfRangeIcon.style.color = themeColors.amber400;
+    outOfRangeIcon.style.cursor = "default";
+    summaryRow.appendChild(outOfRangeIcon);
+    hasContent = true;
+  }
+  if (viewCalendarBtn) {
+    summaryRow.appendChild(viewCalendarBtn);
+  }
+  return hasContent ? summaryRow : null;
 }
 
 function buildTaskHeader(task, options) {
@@ -247,7 +266,9 @@ function buildTaskHeader(task, options) {
     actionsWrap.appendChild(durationPill);
   }
   if (!options.hideSummaryRow) {
-    const summaryRow = buildTaskSummaryRow(task);
+    const summaryRow = buildTaskSummaryRow(task, {
+      showOutOfRangeIcon: options.showOutOfRangeIcon
+    });
     if (summaryRow) {
       actionsWrap.appendChild(summaryRow);
     }
@@ -344,6 +365,7 @@ export function renderTaskCard(task, context) {
   const titleMarkup = buildTitleMarkup(task);
   const isLongTitle = (task.title || "").length > 60;
   const detailsOpen = expandedTaskDetails.has(task.id);
+  const showOutOfRangeIcon = Boolean(context.firstOccurrenceOutOfRangeByTaskId?.get(task.id));
   const header = buildTaskHeader(task, {
     hasChildren,
     isCollapsed,
@@ -352,7 +374,8 @@ export function renderTaskCard(task, context) {
     titleMarkup,
     detailsOpen,
     displayDurationMin,
-    hideSummaryRow
+    hideSummaryRow,
+    showOutOfRangeIcon
   });
   taskCard.appendChild(header);
   if (detailsOpen) {

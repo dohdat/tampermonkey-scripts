@@ -25,7 +25,8 @@ import {
   buildTaskDepthGetter,
   buildCollapsedAncestorChecker,
   buildChildrenByParent,
-  buildDurationCalculator
+  buildDurationCalculator,
+  buildFirstOccurrenceOutOfRangeMap
 } from "./tasks-render-helpers.js";
 const { taskList } = domRefs;
 let taskRenderToken = 0;
@@ -96,6 +97,10 @@ function buildTaskCardContext(baseTasks, timeMapById, computeTotalDuration, getT
     expandedTaskDetails: state.expandedTaskDetails,
     computeTotalDuration,
     getTaskDepthById,
+    firstOccurrenceOutOfRangeByTaskId: buildFirstOccurrenceOutOfRangeMap(
+      baseTasks,
+      state.settingsCache
+    ),
     getSectionName,
     getSubsectionName
   };

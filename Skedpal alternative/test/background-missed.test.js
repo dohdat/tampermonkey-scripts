@@ -25,7 +25,21 @@ describe("background missed metrics", () => {
       task,
       status: "ignored",
       parentIds,
-      missedOccurrences: 2
+      missedOccurrences: 2,
+      expectedCount: 2
+    });
+    assert.strictEqual(shouldIncrement, false);
+  });
+
+  it("does not increment for repeat tasks outside the horizon", () => {
+    const task = { id: "repeat-task", completed: false, repeat: { type: "custom" } };
+    const parentIds = new Set();
+    const shouldIncrement = shouldIncrementMissedCount({
+      task,
+      status: "unscheduled",
+      parentIds,
+      missedOccurrences: 0,
+      expectedCount: 0
     });
     assert.strictEqual(shouldIncrement, false);
   });

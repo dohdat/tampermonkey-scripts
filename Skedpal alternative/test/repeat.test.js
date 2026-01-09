@@ -355,6 +355,18 @@ describe("repeat utils", () => {
     assert.ok(nthOpt.textContent.includes("2nd Thu"));
   });
 
+  it("keeps weekly mode counts at one per week", () => {
+    repeatStore.repeatState = {
+      unit: "week",
+      interval: 4,
+      weeklyDays: [1, 3],
+      weeklyMode: "any"
+    };
+    renderRepeatUI("task");
+    assert.strictEqual(domRefs.taskRepeatWeeklyAnyCount.textContent, "1");
+    assert.strictEqual(domRefs.taskRepeatWeeklyAllCount.textContent, "1");
+  });
+
   it("renders range fields for yearly mode", () => {
     repeatStore.repeatState = {
       unit: "year",

@@ -30,7 +30,7 @@ describe("report", () => {
       {
         id: "t3",
         title: "Most missed",
-        scheduleStatus: "ignored",
+        scheduleStatus: "unscheduled",
         missedCount: 4,
         expectedCount: 10,
         missedLastRun: 5,
@@ -168,6 +168,14 @@ describe("report", () => {
         missedLastRun: 0
       },
       {
+        id: "t8b",
+        title: "Ignored out of range",
+        scheduleStatus: "ignored",
+        expectedCount: 3,
+        missedCount: 0,
+        missedLastRun: 3
+      },
+      {
         id: "t9",
         title: "Scheduled without expected count",
         scheduleStatus: "scheduled",
@@ -191,6 +199,7 @@ describe("report", () => {
     assert.ok(ids.includes("t8"));
     assert.ok(ids.includes("t9"));
     assert.ok(!ids.includes("t10"));
+    assert.ok(!ids.includes("t8b"));
   });
 
   it("falls back to default section labels", () => {

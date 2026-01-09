@@ -29,7 +29,8 @@ export function syncWeeklyModeInputs(repeatState, anyInput, allInput) {
 }
 
 export function syncWeeklyModeLabels(repeatState, anyCountEl, allCountEl) {
-  const value = Math.max(1, Number(repeatState.interval) || 1);
-  if (anyCountEl) {anyCountEl.textContent = value;}
-  if (allCountEl) {allCountEl.textContent = value;}
+  const value = 1;
+  const label = String(value);
+  if (anyCountEl) {anyCountEl.textContent = label;}
+  if (allCountEl) {allCountEl.textContent = label;}
 }

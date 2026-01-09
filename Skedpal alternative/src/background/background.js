@@ -88,7 +88,8 @@ async function persistSchedule(tasks, placements, unscheduled, ignored, now, hor
         task,
         status: task.scheduleStatus,
         parentIds,
-        missedOccurrences
+        missedOccurrences,
+        expectedCount: expectedOccurrences
       })
     ) {
       task.missedCount = (Number(task.missedCount) || 0) + Math.max(1, missedOccurrences);

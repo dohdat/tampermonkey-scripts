@@ -4,8 +4,17 @@ export function shouldCountMiss(task, status, parentIds = new Set()) {
   return !parentIds.has(task.id);
 }
 
-export function shouldIncrementMissedCount({ task, status, parentIds, missedOccurrences }) {
+export function shouldIncrementMissedCount({
+  task,
+  status,
+  parentIds,
+  missedOccurrences,
+  expectedCount
+}) {
   if (status === "ignored") {return false;}
+  if (Number(expectedCount) === 0 && task?.repeat && task.repeat.type !== "none") {
+    return false;
+  }
   if (Number(missedOccurrences) > 0) {return true;}
   return shouldCountMiss(task, status, parentIds);
 }

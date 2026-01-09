@@ -70,7 +70,10 @@ function shouldIncludeMissedTask(task, parentIds) {
   const expectedCount = Number(task.expectedCount) || 0;
   const missedLastRun = Number(task.missedLastRun) || 0;
   const missedCount = Number(task.missedCount) || 0;
-  if (["unscheduled", "ignored"].includes(task.scheduleStatus)) {
+  if (task.scheduleStatus === "ignored") {
+    return missedCount > 0;
+  }
+  if (task.scheduleStatus === "unscheduled") {
     if (expectedCount > 0) {return missedLastRun > 0;}
     return missedCount > 0;
   }

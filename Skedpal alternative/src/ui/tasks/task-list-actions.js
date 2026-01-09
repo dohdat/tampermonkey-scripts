@@ -23,6 +23,30 @@ import {
   viewTaskOnCalendar
 } from "./tasks-actions.js";
 
+function runTaskDetailCleanup(taskId) {
+  if (!taskId) {return;}
+  const cleanup = state.taskDetailCleanup.get(taskId);
+  if (typeof cleanup === "function") {
+    cleanup();
+  }
+  state.taskDetailCleanup.delete(taskId);
+}
+
+function collapseTaskDetails(taskId) {
+  if (!taskId) {return;}
+  if (!state.expandedTaskDetails.has(taskId)) {return;}
+  runTaskDetailCleanup(taskId);
+  state.expandedTaskDetails.delete(taskId);
+}
+
+function collapseOtherTaskDetails(taskId) {
+  Array.from(state.expandedTaskDetails).forEach((id) => {
+    if (id !== taskId) {
+      collapseTaskDetails(id);
+    }
+  });
+}
+
 function parseTaskListClick(btn) {
   return {
     completeTaskId: btn.dataset.completeTask,
@@ -207,7 +231,16 @@ function handleCollapseActions(btn, action) {
     },
     {
       when: action.toggleTaskDetailsId !== undefined,
-      run: () => toggleSetEntry(state.expandedTaskDetails, action.toggleTaskDetailsId)
+      run: () => {
+        const taskId = action.toggleTaskDetailsId;
+        if (!taskId) {return;}
+        if (state.expandedTaskDetails.has(taskId)) {
+          collapseTaskDetails(taskId);
+          return;
+        }
+        collapseOtherTaskDetails(taskId);
+        state.expandedTaskDetails.add(taskId);
+      }
     },
     {
       when: action.toggleTaskCollapseId !== undefined,

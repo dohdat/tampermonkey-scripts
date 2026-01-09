@@ -13,6 +13,7 @@ export const state = {
   collapsedSubsections: new Set(),
   collapsedTasks: new Set(),
   expandedTaskDetails: new Set(),
+  taskDetailCleanup: new Map(),
   draggingTaskId: null,
   notificationHideTimeout: null,
   notificationUndoHandler: null,

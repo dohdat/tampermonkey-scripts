@@ -207,31 +207,13 @@ function buildTaskSummaryRow(task, options = {}) {
         minute: "2-digit"
       });
       hasContent = true;
-      const viewCalendarBtn = document.createElement("button");
+      viewCalendarBtn = document.createElement("button");
       viewCalendarBtn.type = "button";
-      viewCalendarBtn.className = "title-icon-btn";
+      viewCalendarBtn.className = "title-icon-btn task-summary-calendar";
       viewCalendarBtn.title = "View on calendar";
       viewCalendarBtn.dataset.viewCalendarTask = task.id;
       viewCalendarBtn.setAttribute("data-test-skedpal", "task-summary-view-calendar");
       viewCalendarBtn.innerHTML = calendarIconSvg;
-      viewCalendarBtn.style.opacity = "0";
-      viewCalendarBtn.style.pointerEvents = "none";
-      const revealCalendarBtn = () => {
-        viewCalendarBtn.style.opacity = "1";
-        viewCalendarBtn.style.pointerEvents = "auto";
-      };
-      const hideCalendarBtn = () => {
-        viewCalendarBtn.style.opacity = "0";
-        viewCalendarBtn.style.pointerEvents = "none";
-      };
-      if (typeof summaryRow.addEventListener === "function") {
-        summaryRow.addEventListener("mouseenter", revealCalendarBtn);
-        summaryRow.addEventListener("mouseleave", hideCalendarBtn);
-      }
-      if (typeof viewCalendarBtn.addEventListener === "function") {
-        viewCalendarBtn.addEventListener("focus", revealCalendarBtn);
-        viewCalendarBtn.addEventListener("blur", hideCalendarBtn);
-      }
     }
   }
   if (showOutOfRangeIcon) {

@@ -116,6 +116,10 @@ body.modal-open{overflow:hidden}
 .task-title-row--stacked .task-title-main{flex:1 1 100%}
 .task-title-row--stacked .task-title-actions{flex-basis:auto;margin-left:0;justify-content:flex-start}
 .task-summary-row{margin-top:var(--space-0-25);display:flex;flex-wrap:wrap;gap:var(--space-0-6);font-size:var(--font-size-xs);line-height:var(--line-height-base);color:var(--color-slate-300)}
+.task-summary-calendar{opacity:0;pointer-events:none;transition:opacity var(--motion-fast) ease}
+.task-summary-row:hover .task-summary-calendar,
+.task-summary-row:focus-within .task-summary-calendar{opacity:1;pointer-events:auto}
+@media (hover: none){.task-summary-calendar{opacity:1;pointer-events:auto}}
 .task-summary-row--stacked{flex-basis:100%}
 .pill{display:inline-flex;align-items:center;gap:var(--space-0-25);padding:var(--space-0-15) var(--space-0-5);border-radius:var(--space-0-65);border:var(--size-1px) solid var(--color-slate-600);font-weight:var(--font-weight-semibold);font-size:var(--font-size-xs)}
 .pill-muted{background:var(--color-slate-800);border-color:var(--color-slate-600);color:var(--color-slate-200)}

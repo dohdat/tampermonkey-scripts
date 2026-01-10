@@ -41,6 +41,21 @@ export function getOverdueReminders(task, now = new Date()) {
   });
 }
 
+export function renderTaskReminderBadge(tasks = state.tasksCache) {
+  const { taskReminderBadge } = domRefs;
+  if (!taskReminderBadge) {return;}
+  const overdueCount = (tasks || []).reduce(
+    (total, task) => total + getOverdueReminders(task).length,
+    0
+  );
+  if (overdueCount > 0) {
+    taskReminderBadge.textContent = String(overdueCount);
+  } else {
+    taskReminderBadge.textContent = "";
+  }
+  taskReminderBadge.classList.toggle("hidden", overdueCount === 0);
+}
+
 function buildReminderEntry(days, now = new Date()) {
   const baseTime = now instanceof Date ? now.getTime() : new Date(now).getTime();
   const remindAt = new Date(baseTime + days * DAY_MS).toISOString();

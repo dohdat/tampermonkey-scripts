@@ -6,6 +6,48 @@ import { state } from "../src/ui/state/page-state.js";
 import { domRefs } from "../src/ui/constants.js";
 
 describe("task reminders", () => {
+  it("toggles the sidebar reminder badge when overdue reminders exist", async () => {
+    const originalDocument = global.document;
+    global.document = {
+      querySelectorAll: () => [],
+      querySelector: () => null,
+      getElementById: () => null
+    };
+    const { renderTaskReminderBadge } = await import("../src/ui/tasks/task-reminders.js");
+    global.document = originalDocument;
+
+    class BadgeElement {
+      constructor() {
+        this._classSet = new Set(["hidden"]);
+        this.classList = {
+          add: (...names) => names.forEach((n) => this._classSet.add(n)),
+          remove: (...names) => names.forEach((n) => this._classSet.delete(n)),
+          toggle: (name, force) => {
+            if (force === undefined) {
+              if (this._classSet.has(name)) {this._classSet.delete(name);}
+              else {this._classSet.add(name);}
+              return;
+            }
+            if (force) {this._classSet.add(name);}
+            else {this._classSet.delete(name);}
+          },
+          contains: (name) => this._classSet.has(name)
+        };
+      }
+    }
+
+    const badge = new BadgeElement();
+    domRefs.taskReminderBadge = badge;
+    const past = new Date(Date.now() - 86400000).toISOString();
+    renderTaskReminderBadge([{ reminders: [{ id: "r1", days: 1, remindAt: past, dismissedAt: "" }] }]);
+    assert.strictEqual(badge.classList.contains("hidden"), false);
+    assert.strictEqual(badge.textContent, "1");
+
+    renderTaskReminderBadge([{ reminders: [{ id: "r1", days: 1, remindAt: past, dismissedAt: past }] }]);
+    assert.strictEqual(badge.classList.contains("hidden"), true);
+    assert.strictEqual(badge.textContent, "");
+  });
+
   it("hides the existing reminder list when empty", async () => {
     class FakeElement {
       constructor(tagName = "div") {

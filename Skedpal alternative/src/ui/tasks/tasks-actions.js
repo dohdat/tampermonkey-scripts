@@ -47,6 +47,7 @@ import { buildDuplicateTasks } from "./task-duplicate.js";
 import { repeatStore } from "../repeat.js";
 import { resolveSavedSubtaskScheduleMode, validateTaskForm } from "./task-form-helpers.js";
 import { renderReport } from "../report.js";
+import { renderTaskReminderBadge } from "./task-reminders.js";
 import { requestCreateTaskOverlayClose } from "../overlay-messaging.js";
 import { buildTasksFromAiList } from "./task-ai-helpers.js";
 import {
@@ -251,6 +252,7 @@ export function renderTimeMapsAndTasks(timeMaps) {
   });
   renderCalendar(state.tasksCache);
   renderReport(state.tasksCache);
+  renderTaskReminderBadge(state.tasksCache);
 }
 function getTaskFormValues() {
   return {

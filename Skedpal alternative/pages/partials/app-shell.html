@@ -36,7 +36,15 @@
             <circle cx="7" cy="18" r="1.25" fill="currentColor" />
           </svg>
         </span>
-        <span class="sidebar-label" data-test-skedpal="nav-tasks">Tasks</span>
+        <span class="relative inline-flex items-start pr-3" data-test-skedpal="nav-tasks-wrap">
+          <span class="sidebar-label" data-test-skedpal="nav-tasks">Tasks</span>
+          <span
+            class="absolute -top-2 left-full hidden min-w-[18px] -translate-x-1/2 items-center justify-center rounded-full bg-[color:var(--color-orange-500)] px-1 text-[10px] font-semibold text-white"
+            data-test-skedpal="nav-tasks-reminder-badge"
+          >
+          !
+          </span>
+        </span>
       </button>
       <div class="sidebar-favorites">
         <ul

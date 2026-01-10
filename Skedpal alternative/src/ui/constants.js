@@ -201,6 +201,9 @@ export const domRefs = {
   reportBadge: document.querySelector
     ? document.querySelector("[data-test-skedpal='nav-report-badge']")
     : null,
+  taskReminderBadge: document.querySelector
+    ? document.querySelector("[data-test-skedpal='nav-tasks-reminder-badge']")
+    : null,
   horizonInput: document.getElementById("horizon"),
   notificationBanner: document.getElementById("notification-banner"),
   notificationMessage: document.getElementById("notification-message"),

@@ -4,6 +4,7 @@ import {
   DEFAULT_TASK_PRIORITY,
   DEFAULT_TASK_REPEAT,
   SUBTASK_ORDER_OFFSET,
+  TEN,
   TASK_STATUS_UNSCHEDULED
 } from "../constants.js";
 import {
@@ -80,8 +81,8 @@ export function buildTasksFromAiList(list = [], parentTask, tasksCache = []) {
   const output = [];
   const section = parentTask.section || "";
   const subsection = parentTask.subsection || "";
-  const slotStep = SUBTASK_ORDER_OFFSET * 10;
-  const childStep = SUBTASK_ORDER_OFFSET / 10;
+  const slotStep = SUBTASK_ORDER_OFFSET * TEN;
+  const childStep = SUBTASK_ORDER_OFFSET / TEN;
   const baseOrder = getNextSubtaskOrder(parentTask, section, subsection, working);
   let parentIndex = 0;
 

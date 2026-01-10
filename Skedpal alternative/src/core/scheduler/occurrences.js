@@ -1,5 +1,6 @@
 import { addDays, endOfDay, nthWeekdayOfMonth, startOfDay, startOfWeek } from "./date-utils.js";
 import { normalizeTask } from "./task-utils.js";
+import { DAYS_PER_WEEK, DAYS_PER_YEAR, TEN, THREE } from "../../constants.js";
 
 function buildNonRepeatOccurrences(task, now, horizonEnd) {
   if (task.deadline >= now && task.deadline <= horizonEnd) {
@@ -63,7 +64,7 @@ function buildWeeklyAllOccurrences({
       emitted += 1;
       if (emitted >= maxCount) {break;}
     }
-    weekStart = addDays(weekStart, 7 * interval);
+    weekStart = addDays(weekStart, DAYS_PER_WEEK * interval);
   }
   return occurrences;
 }
@@ -93,7 +94,7 @@ function buildWeeklyAnyOccurrences({
       occurrences.push(endOfDay(candidate));
       emitted += 1;
     }
-    weekStart = addDays(weekStart, 7 * interval);
+    weekStart = addDays(weekStart, DAYS_PER_WEEK * interval);
   }
   return occurrences;
 }
@@ -139,7 +140,7 @@ function parseDateParts(value) {
   if (typeof value === "string") {
     const [datePart] = value.split("T");
     const parts = datePart.split("-").map((part) => Number(part));
-    if (parts.length === 3 && parts.every((part) => Number.isFinite(part))) {
+    if (parts.length === THREE && parts.every((part) => Number.isFinite(part))) {
       const [, month, day] = parts;
       return { month, day };
     }
@@ -268,7 +269,12 @@ export function buildOccurrenceDates(task, now, horizonEnd) {
   return handler ? handler(context) : [];
 }
 
-export function getUpcomingOccurrences(task, now = new Date(), count = 10, horizonDays = 365) {
+export function getUpcomingOccurrences(
+  task,
+  now = new Date(),
+  count = TEN,
+  horizonDays = DAYS_PER_YEAR
+) {
   if (!task) {return [];}
   const horizonEnd = endOfDay(addDays(now, horizonDays));
   const normalized = normalizeTask(task, now, horizonEnd);

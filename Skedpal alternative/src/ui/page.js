@@ -1,4 +1,4 @@
-import { domRefs } from "./constants.js";
+import { HALF, domRefs } from "./constants.js";
 import {
   renderDayRows,
   loadTimeMaps,
@@ -276,7 +276,7 @@ function handleFavoritesDragOver(event) {
   if (!target || target.dataset.favKey === draggingKey) {return;}
   if (draggingGroup && target.dataset.favGroup !== draggingGroup) {return;}
   const rect = target.getBoundingClientRect();
-  const after = event.clientY > rect.top + rect.height / 2;
+  const after = event.clientY > rect.top + rect.height * HALF;
   if (after) {
     target.after(
       sidebarFavorites.querySelector(`[data-fav-row][data-fav-key="${draggingKey}"]`)

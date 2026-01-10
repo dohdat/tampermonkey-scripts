@@ -1,8 +1,15 @@
-import { TASK_STATUS_SCHEDULED } from "./constants.js";
+import {
+  END_OF_DAY_HOUR,
+  END_OF_DAY_MINUTE,
+  END_OF_DAY_MS,
+  END_OF_DAY_SECOND,
+  INDEX_NOT_FOUND,
+  TASK_STATUS_SCHEDULED
+} from "./constants.js";
 
 export function endOfDay(date) {
   const d = new Date(date);
-  d.setHours(23, 59, 59, 999);
+  d.setHours(END_OF_DAY_HOUR, END_OF_DAY_MINUTE, END_OF_DAY_SECOND, END_OF_DAY_MS);
   return d;
 }
 
@@ -53,7 +60,7 @@ export function resolveInstanceIndex(instances, eventMeta) {
       return dates.start.getTime() === originalStart && dates.end.getTime() === originalEnd;
     });
   }
-  return -1;
+  return INDEX_NOT_FOUND;
 }
 
 export function buildScheduleBounds(instances) {

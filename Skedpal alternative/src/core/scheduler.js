@@ -1,6 +1,7 @@
 import { addDays, endOfDay, parseTime, startOfDay } from "./scheduler/date-utils.js";
 import { buildOccurrenceDates, getUpcomingOccurrences } from "./scheduler/occurrences.js";
 import { normalizeTask } from "./scheduler/task-utils.js";
+import { INDEX_NOT_FOUND, THREE } from "../constants.js";
 
 export { getUpcomingOccurrences };
 
@@ -142,7 +143,7 @@ function parseDateParts(value) {
   if (typeof value === "string") {
     const [datePart] = value.split("T");
     const parts = datePart.split("-").map((part) => Number(part));
-    if (parts.length === 3 && parts.every((part) => Number.isFinite(part))) {
+    if (parts.length === THREE && parts.every((part) => Number.isFinite(part))) {
       const [, month, day] = parts;
       return { monthIndex: month - 1, day };
     }
@@ -330,7 +331,7 @@ function placeTaskInMultipleSlots(task, freeSlots, now) {
       [...slots.slice(0, i), ...segments, ...slots.slice(i + 1)],
       placement
     );
-    i = -1; // restart scan with updated slots
+    i = INDEX_NOT_FOUND; // restart scan with updated slots
   }
 
   if (remaining > 0) {
@@ -348,7 +349,7 @@ function placeTaskInSlots(task, freeSlots, now, options = {}) {
 }
 
 function compareNumeric(aValue, bValue) {
-  if (aValue < bValue) {return -1;}
+  if (aValue < bValue) {return INDEX_NOT_FOUND;}
   if (aValue > bValue) {return 1;}
   return 0;
 }

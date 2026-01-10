@@ -4,6 +4,7 @@ import {
   DEFAULT_TASK_PRIORITY,
   DEFAULT_TASK_REPEAT,
   SUBTASK_SCHEDULE_PARALLEL,
+  TEN,
   domRefs
 } from "../constants.js";
 import {
@@ -184,8 +185,8 @@ function setTaskFormBasics({
   taskMinBlockInput.value = minBlockMin || String(DEFAULT_TASK_MIN_BLOCK_MIN);
   document.getElementById("task-priority").value = String(priority || DEFAULT_TASK_PRIORITY);
   applyPrioritySelectColor(taskPriorityInput);
-  taskDeadlineInput.value = deadline ? deadline.slice(0, 10) : "";
-  taskStartFromInput.value = startFrom ? startFrom.slice(0, 10) : "";
+  taskDeadlineInput.value = deadline ? deadline.slice(0, TEN) : "";
+  taskStartFromInput.value = startFrom ? startFrom.slice(0, TEN) : "";
   setRepeatFromSelection(repeat, "task");
 }
 
@@ -259,8 +260,8 @@ export function openTaskEdit(task, options = {}) {
   taskMinBlockInput.value = task.minBlockMin || String(DEFAULT_TASK_MIN_BLOCK_MIN);
   document.getElementById("task-priority").value = String(task.priority);
   applyPrioritySelectColor(taskPriorityInput);
-  taskDeadlineInput.value = task.deadline ? task.deadline.slice(0, 10) : "";
-  taskStartFromInput.value = task.startFrom ? task.startFrom.slice(0, 10) : "";
+  taskDeadlineInput.value = task.deadline ? task.deadline.slice(0, TEN) : "";
+  taskStartFromInput.value = task.startFrom ? task.startFrom.slice(0, TEN) : "";
   taskParentIdInput.value = task.subtaskParentId || "";
   setRepeatFromSelection(task.repeat, "task");
   renderTaskSectionOptions(task.section);

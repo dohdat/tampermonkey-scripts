@@ -1,10 +1,11 @@
 import { renderTaskCard } from "./task-card.js";
 import { sortTasksByOrder, renderInBatches } from "../utils.js";
+import { FORTY } from "../constants.js";
 
 export function renderTaskCards(container, tasks, context, options = {}) {
   const sorted = sortTasksByOrder(tasks);
   if (!sorted.length) {return;}
-  const { batchSize = 40, shouldCancel } = options;
+  const { batchSize = FORTY, shouldCancel } = options;
   const cancelCheck = typeof shouldCancel === "function" ? shouldCancel : null;
   if (sorted.length <= batchSize) {
     sorted.forEach((task) => {

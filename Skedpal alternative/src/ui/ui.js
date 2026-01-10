@@ -1,4 +1,4 @@
-import { domRefs } from "./constants.js";
+import { FIFTY, domRefs } from "./constants.js";
 
 function getTaskFormRefs() {
   return {
@@ -17,7 +17,7 @@ export function openTaskForm() {
   document.body.classList.add("modal-open");
   setTimeout(() => {
     document.getElementById("task-title")?.focus();
-  }, 50);
+  }, FIFTY);
 }
 
 export function closeTaskForm() {

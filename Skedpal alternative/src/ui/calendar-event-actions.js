@@ -1,3 +1,5 @@
+import { INDEX_NOT_FOUND } from "./constants.js";
+
 export function setActionButtonVisibility(buttons = [], visibility = {}) {
   if (!buttons.length) {return;}
   buttons.forEach((button) => {
@@ -10,7 +12,7 @@ export function setActionButtonVisibility(buttons = [], visibility = {}) {
       button.style.display = shouldShow ? "" : "none";
     }
     button.setAttribute("aria-hidden", shouldShow ? "false" : "true");
-    button.tabIndex = shouldShow ? 0 : -1;
+    button.tabIndex = shouldShow ? 0 : INDEX_NOT_FOUND;
     if (shouldShow) {
       button.removeAttribute("disabled");
     } else {

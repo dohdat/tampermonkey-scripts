@@ -1,4 +1,9 @@
-import { domRefs, homeIconSvg } from "./constants.js";
+import {
+  MOUSE_BUTTON_BACK,
+  MOUSE_BUTTON_FORWARD,
+  domRefs,
+  homeIconSvg
+} from "./constants.js";
 import { state } from "./state/page-state.js";
 import {
   parseCalendarViewFromUrl,
@@ -384,9 +389,9 @@ export function handleNavigationShortcuts(event) {
 
 export function handleNavigationMouseButtons(event) {
   if (isTypingTarget(event.target)) {return;}
-  if (event.button === 3) {
+  if (event.button === MOUSE_BUTTON_BACK) {
     if (goBackInNavigation()) {event.preventDefault();}
-  } else if (event.button === 4) {
+  } else if (event.button === MOUSE_BUTTON_FORWARD) {
     if (goForwardInNavigation()) {event.preventDefault();}
   }
 }

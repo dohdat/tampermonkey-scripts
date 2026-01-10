@@ -1,4 +1,16 @@
-import { domRefs } from "./constants.js";
+import {
+  DEFAULT_TASK_MIN_BLOCK_MIN,
+  EIGHT,
+  EIGHTY,
+  HOURS_PER_DAY,
+  MINUTES_PER_HOUR,
+  MS_PER_MINUTE,
+  TWENTY,
+  TWO_FIFTY,
+  TWO_THOUSAND_FIVE_HUNDRED,
+  THREE_THOUSAND_FIVE_HUNDRED,
+  domRefs
+} from "./constants.js";
 import { state } from "./state/page-state.js";
 import {
   getDateFromDayKey,
@@ -21,9 +33,9 @@ import {
 import { syncExternalEventsCache } from "./calendar-external.js";
 import { HOUR_HEIGHT, formatEventTimeRange } from "./calendar-render.js";
 
-const DRAG_STEP_MINUTES = 15;
-const DRAG_ACTIVATION_DELAY = 80;
-const DRAG_CANCEL_DISTANCE = 8;
+const DRAG_STEP_MINUTES = DEFAULT_TASK_MIN_BLOCK_MIN;
+const DRAG_ACTIVATION_DELAY = EIGHTY;
+const DRAG_CANCEL_DISTANCE = EIGHT;
 let dragState = null;
 let pendingDrag = null;
 let resizeState = null;
@@ -58,7 +70,7 @@ export function buildExternalUpdatePayload(eventMeta, dayKey, minutes, durationM
   const startDate = getDateFromDayKey(dayKey);
   if (!startDate) {return null;}
   startDate.setMinutes(minutes, 0, 0);
-  const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
+  const endDate = new Date(startDate.getTime() + durationMinutes * MS_PER_MINUTE);
   return {
     eventId: eventMeta.eventId,
     calendarId: eventMeta.calendarId,
@@ -83,7 +95,7 @@ async function persistDraggedEvent(eventMeta, dayKey, minutes, durationMinutes) 
   const startDate = getDateFromDayKey(dayKey);
   if (!startDate) {return;}
   startDate.setMinutes(minutes, 0, 0);
-  const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
+  const endDate = new Date(startDate.getTime() + durationMinutes * MS_PER_MINUTE);
   const updated = buildUpdatedTaskForDrag(task, eventMeta, startDate, endDate);
   if (!updated) {return;}
   await saveTask(updated);
@@ -91,28 +103,30 @@ async function persistDraggedEvent(eventMeta, dayKey, minutes, durationMinutes) 
 }
 
 function updateDragTarget(dayCol, block, minutes, durationMinutes) {
-  const top = (minutes / 60) * HOUR_HEIGHT;
+  const top = (minutes / MINUTES_PER_HOUR) * HOUR_HEIGHT;
   block.style.top = `${top}px`;
   const timeLabel = block.querySelector('[data-test-skedpal="calendar-event-time"]');
   if (timeLabel) {
     const start = getDateFromDayKey(dayCol.dataset.day);
     if (start) {
       start.setMinutes(minutes, 0, 0);
-      const end = new Date(start.getTime() + durationMinutes * 60000);
+      const end = new Date(start.getTime() + durationMinutes * MS_PER_MINUTE);
       timeLabel.textContent = formatEventTimeRange(start, end);
     }
   }
 }
 
 function updateResizeTarget(dayCol, block, startMinutes, endMinutes) {
-  const height = ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT;
-  block.style.height = `${Math.max(20, height)}px`;
+  const height = ((endMinutes - startMinutes) / MINUTES_PER_HOUR) * HOUR_HEIGHT;
+  block.style.height = `${Math.max(TWENTY, height)}px`;
   const timeLabel = block.querySelector('[data-test-skedpal="calendar-event-time"]');
   if (timeLabel) {
     const start = getDateFromDayKey(dayCol.dataset.day);
     if (start) {
       start.setMinutes(startMinutes, 0, 0);
-      const end = new Date(start.getTime() + (endMinutes - startMinutes) * 60000);
+      const end = new Date(
+        start.getTime() + (endMinutes - startMinutes) * MS_PER_MINUTE
+      );
       timeLabel.textContent = formatEventTimeRange(start, end);
     }
   }
@@ -137,12 +151,12 @@ function beginCalendarDrag(pending) {
   if (!block || !dayCol || !eventMeta) {return;}
   const rect = dayCol.getBoundingClientRect();
   const y = clampMinutes(lastClientY - rect.top, 0, rect.height);
-  const pointerMinutes = (y / rect.height) * 24 * 60;
+  const pointerMinutes = (y / rect.height) * HOURS_PER_DAY * MINUTES_PER_HOUR;
   const startMinutes = getMinutesIntoDay(eventMeta.start);
   const grabOffsetMinutes = pointerMinutes - startMinutes;
   const durationMinutes = Math.max(
     DRAG_STEP_MINUTES,
-    Math.round((eventMeta.end.getTime() - eventMeta.start.getTime()) / 60000)
+    Math.round((eventMeta.end.getTime() - eventMeta.start.getTime()) / MS_PER_MINUTE)
   );
   dragState = {
     block,
@@ -250,10 +264,13 @@ function updateActiveDrag(event) {
   }
   const rect = nextDayCol.getBoundingClientRect();
   const y = clampMinutes(event.clientY - rect.top, 0, rect.height);
-  const pointerMinutes = (y / rect.height) * 24 * 60;
+  const pointerMinutes = (y / rect.height) * HOURS_PER_DAY * MINUTES_PER_HOUR;
   const adjustedMinutes = pointerMinutes - (dragState.grabOffsetMinutes || 0);
   const roundedMinutes = roundMinutesToStep(adjustedMinutes, DRAG_STEP_MINUTES);
-  const maxStart = Math.max(0, 24 * 60 - dragState.durationMinutes);
+  const maxStart = Math.max(
+    0,
+    HOURS_PER_DAY * MINUTES_PER_HOUR - dragState.durationMinutes
+  );
   const minutes = clampMinutes(roundedMinutes, 0, maxStart);
   if (minutes !== dragState.minutes) {
     dragState.moved = true;
@@ -266,10 +283,14 @@ function updateActiveResize(event) {
   if (!resizeState) {return;}
   const rect = resizeState.dayCol.getBoundingClientRect();
   const y = clampMinutes(event.clientY - rect.top, 0, rect.height);
-  const pointerMinutes = (y / rect.height) * 24 * 60;
+  const pointerMinutes = (y / rect.height) * HOURS_PER_DAY * MINUTES_PER_HOUR;
   const roundedMinutes = roundMinutesToStep(pointerMinutes, DRAG_STEP_MINUTES);
   const minEnd = resizeState.startMinutes + DRAG_STEP_MINUTES;
-  const endMinutes = clampMinutes(roundedMinutes, minEnd, 24 * 60);
+  const endMinutes = clampMinutes(
+    roundedMinutes,
+    minEnd,
+    HOURS_PER_DAY * MINUTES_PER_HOUR
+  );
   if (endMinutes !== resizeState.endMinutes) {
     resizeState.moved = true;
   }
@@ -340,17 +361,19 @@ async function handleCalendarDragEnd() {
         try {
           await persistDraggedExternalEvent(previous);
           calendarRenderHandler?.();
-          showNotificationBanner("Changes reverted.", { autoHideMs: 2500 });
+          showNotificationBanner("Changes reverted.", { autoHideMs: TWO_THOUSAND_FIVE_HUNDRED });
         } catch (error) {
           console.warn("Failed to undo external calendar update.", error);
-          showNotificationBanner("Unable to undo changes.", { autoHideMs: 3500 });
+          showNotificationBanner("Unable to undo changes.", {
+            autoHideMs: THREE_THOUSAND_FIVE_HUNDRED
+          });
         }
       });
       return;
     } catch (error) {
       console.warn("Failed to update external calendar event.", error);
       showNotificationBanner("Failed to update Google Calendar event.", {
-        autoHideMs: 3500
+        autoHideMs: THREE_THOUSAND_FIVE_HUNDRED
       });
     }
   } else {
@@ -400,17 +423,19 @@ async function handleCalendarResizeEnd() {
         try {
           await persistDraggedExternalEvent(previous);
           calendarRenderHandler?.();
-          showNotificationBanner("Changes reverted.", { autoHideMs: 2500 });
+          showNotificationBanner("Changes reverted.", { autoHideMs: TWO_THOUSAND_FIVE_HUNDRED });
         } catch (error) {
           console.warn("Failed to undo external calendar update.", error);
-          showNotificationBanner("Unable to undo changes.", { autoHideMs: 3500 });
+          showNotificationBanner("Unable to undo changes.", {
+            autoHideMs: THREE_THOUSAND_FIVE_HUNDRED
+          });
         }
       });
       return;
     } catch (error) {
       console.warn("Failed to update external calendar event.", error);
       showNotificationBanner("Failed to update Google Calendar event.", {
-        autoHideMs: 3500
+        autoHideMs: THREE_THOUSAND_FIVE_HUNDRED
       });
     }
   } else {
@@ -429,8 +454,8 @@ async function handleCalendarPointerEnd() {
 
 function handleCalendarEventClick(event) {
   if (!calendarClickHandler) {return;}
-  if (lastDragMoved && Date.now() - lastDragCompletedAt < 250) {return;}
-  if (lastResizeMoved && Date.now() - lastResizeCompletedAt < 250) {return;}
+  if (lastDragMoved && Date.now() - lastDragCompletedAt < TWO_FIFTY) {return;}
+  if (lastResizeMoved && Date.now() - lastResizeCompletedAt < TWO_FIFTY) {return;}
   calendarClickHandler(event);
 }
 

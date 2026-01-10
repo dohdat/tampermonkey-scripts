@@ -10,6 +10,12 @@ import { shouldIncrementMissedCount } from "./schedule-metrics.js";
 import {
   CREATE_TASK_MENU_ID,
   CREATE_TASK_OVERLAY_SCRIPT,
+  END_OF_DAY_HOUR,
+  END_OF_DAY_MINUTE,
+  END_OF_DAY_MS,
+  END_OF_DAY_SECOND,
+  FIFTY,
+  THREE,
   TASK_REPEAT_NONE,
   TASK_STATUS_IGNORED,
   TASK_STATUS_SCHEDULED,
@@ -68,7 +74,7 @@ function getScheduledOccurrenceCount(taskPlacements) {
 
 function getExpectedOccurrenceCount(task, now, horizonDays) {
   if (!task?.repeat || task.repeat.type === TASK_REPEAT_NONE) {return 0;}
-  const cap = Math.max(50, horizonDays * 3);
+  const cap = Math.max(FIFTY, horizonDays * THREE);
   return getUpcomingOccurrences(task, now, cap, horizonDays).length;
 }
 
@@ -158,7 +164,7 @@ async function runReschedule() {
   const horizonDays = Number(settings.schedulingHorizonDays) || DEFAULT_SCHEDULING_HORIZON_DAYS;
   const horizonEnd = new Date(now.getTime());
   horizonEnd.setDate(horizonEnd.getDate() + horizonDays);
-  horizonEnd.setHours(23, 59, 59, 999);
+  horizonEnd.setHours(END_OF_DAY_HOUR, END_OF_DAY_MINUTE, END_OF_DAY_SECOND, END_OF_DAY_MS);
   if (!Array.isArray(calendarIds) || calendarIds.length) {
     try {
       busy = await fetchFreeBusy({

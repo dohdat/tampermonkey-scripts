@@ -4,6 +4,11 @@ import {
   TASK_STATUS_UNSCHEDULED,
   CALENDAR_EVENT_MODAL_EXTERNAL_EYEBROW,
   CALENDAR_EVENT_MODAL_TASK_EYEBROW,
+  END_OF_DAY_HOUR,
+  END_OF_DAY_MINUTE,
+  END_OF_DAY_MS,
+  END_OF_DAY_SECOND,
+  TEN,
   domRefs,
   editIconSvg,
   removeIconSvg,
@@ -250,7 +255,7 @@ function applyCalendarEventModalFields(task, eventMeta) {
   setModalValue(
     domRefs.calendarEventModalDeferInput,
     "calendar-event-modal-defer-date",
-    task.startFrom ? task.startFrom.slice(0, 10) : ""
+    task.startFrom ? task.startFrom.slice(0, TEN) : ""
   );
   const calendarEventModalDetails = resolveRef(
     domRefs.calendarEventModalDetails,
@@ -375,7 +380,7 @@ function handleCompleteAction() {
     activeEventMeta?.start
   ) {
     const occurrenceDate = new Date(activeEventMeta.start);
-    occurrenceDate.setHours(23, 59, 59, 999);
+    occurrenceDate.setHours(END_OF_DAY_HOUR, END_OF_DAY_MINUTE, END_OF_DAY_SECOND, END_OF_DAY_MS);
     window.dispatchEvent(
       new CustomEvent("skedpal:repeat-occurrence-complete", {
         detail: {

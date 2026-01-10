@@ -11,6 +11,8 @@ import {
   plusIconSvg,
   reminderIconSvg,
   removeIconSvg,
+  TASK_CHILD_INDENT_PX,
+  TASK_TITLE_LONG_THRESHOLD,
   unscheduledIconSvg,
   zoomInIconSvg
 } from "../constants.js";
@@ -40,7 +42,7 @@ function applyTaskCardBaseStyles(taskCard, task, depth, timeMapById, options = {
   taskCard.style.minHeight = "fit-content";
   taskCard.style.padding = "5px";
   if (isSubtask) {
-    taskCard.style.marginLeft = `${depth * 10}px`;
+    taskCard.style.marginLeft = `${depth * TASK_CHILD_INDENT_PX}px`;
     taskCard.style.borderStyle = "dashed";
   }
   const timeMapIds = Array.isArray(task.timeMapIds) ? task.timeMapIds : [];
@@ -419,7 +421,7 @@ export function renderTaskCard(task, context) {
   const repeatSummary = getRepeatSummary(task.repeat);
   const taskCard = buildTaskCardShell(task, { depth, timeMapById });
   const titleMarkup = buildTitleMarkup(task);
-  const isLongTitle = (task.title || "").length > 60;
+  const isLongTitle = (task.title || "").length > TASK_TITLE_LONG_THRESHOLD;
   const detailsOpen = expandedTaskDetails.has(task.id);
   const overdueReminders = getOverdueReminders(task);
   if (overdueReminders.length) {

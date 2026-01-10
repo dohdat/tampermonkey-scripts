@@ -1,4 +1,16 @@
-import { domRefs } from "./constants.js";
+import {
+  DEFAULT_TASK_MIN_BLOCK_MIN,
+  FIFTY,
+  HOURS_PER_DAY,
+  MINUTES_PER_HOUR,
+  MS_PER_MINUTE,
+  SIXTY,
+  TWO,
+  TWENTY,
+  TWO_THOUSAND_FIVE_HUNDRED,
+  THREE_THOUSAND_FIVE_HUNDRED,
+  domRefs
+} from "./constants.js";
 import { state } from "./state/page-state.js";
 import { getDateFromDayKey, roundMinutesToStep, clampMinutes } from "./calendar-utils.js";
 import { showNotificationBanner } from "./notifications.js";
@@ -10,8 +22,8 @@ import {
   isCalendarEventModalOpen
 } from "./calendar-event-modal.js";
 
-const DEFAULT_DURATION_MIN = 60;
-const MIN_DURATION_MIN = 15;
+const DEFAULT_DURATION_MIN = SIXTY;
+const MIN_DURATION_MIN = DEFAULT_TASK_MIN_BLOCK_MIN;
 let calendarCreateCleanup = null;
 let calendarRenderHandler = null;
 let draftBlock = null;
@@ -23,21 +35,21 @@ function getRuntime() {
 
 function toInputDate(date) {
   const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
+  const month = `${date.getMonth() + 1}`.padStart(TWO, "0");
+  const day = `${date.getDate()}`.padStart(TWO, "0");
   return `${year}-${month}-${day}`;
 }
 
 function toInputTime(minutes) {
-  const hours = Math.floor(minutes / 60);
-  const mins = Math.floor(minutes % 60);
-  return `${`${hours}`.padStart(2, "0")}:${`${mins}`.padStart(2, "0")}`;
+  const hours = Math.floor(minutes / MINUTES_PER_HOUR);
+  const mins = Math.floor(minutes % MINUTES_PER_HOUR);
+  return `${`${hours}`.padStart(TWO, "0")}:${`${mins}`.padStart(TWO, "0")}`;
 }
 
 function parseTimeInput(value) {
   const [hours, minutes] = String(value || "").split(":").map((part) => Number(part));
   if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {return null;}
-  return hours * 60 + minutes;
+  return hours * MINUTES_PER_HOUR + minutes;
 }
 
 function normalizeDuration(value) {
@@ -111,8 +123,8 @@ function buildDraftBlock(dayCol, startMinutes, durationMinutes, titleText) {
   block.dataset.eventSource = "external";
   block.dataset.eventExternalId = "";
   block.dataset.eventCalendarId = "";
-  block.style.top = `${(startMinutes / 60) * HOUR_HEIGHT}px`;
-  block.style.height = `${Math.max(20, (durationMinutes / 60) * HOUR_HEIGHT)}px`;
+  block.style.top = `${(startMinutes / MINUTES_PER_HOUR) * HOUR_HEIGHT}px`;
+  block.style.height = `${Math.max(TWENTY, (durationMinutes / MINUTES_PER_HOUR) * HOUR_HEIGHT)}px`;
   block.style.left = "8px";
   block.style.right = "8px";
   const title = document.createElement("div");
@@ -125,7 +137,7 @@ function buildDraftBlock(dayCol, startMinutes, durationMinutes, titleText) {
   const start = getDateFromDayKey(dayCol.dataset.day);
   if (start) {
     start.setMinutes(startMinutes, 0, 0);
-    const end = new Date(start.getTime() + durationMinutes * 60000);
+    const end = new Date(start.getTime() + durationMinutes * MS_PER_MINUTE);
     time.textContent = formatEventTimeRange(start, end);
   }
   block.appendChild(title);
@@ -159,7 +171,11 @@ function updateDraftFromInputs() {
   const minutes = parseTimeInput(timeValue);
   const durationMinutes = normalizeDuration(durationValue);
   if (!dayKey || !Number.isFinite(minutes)) {return;}
-  const startMinutes = clampMinutes(minutes, 0, 24 * 60 - MIN_DURATION_MIN);
+  const startMinutes = clampMinutes(
+    minutes,
+    0,
+    HOURS_PER_DAY * MINUTES_PER_HOUR - MIN_DURATION_MIN
+  );
   renderDraftBlock({ dayKey, startMinutes, durationMinutes });
 }
 
@@ -204,7 +220,7 @@ export async function openCalendarCreateModal(options) {
   document.body.classList.add("modal-open");
   setTimeout(() => {
     calendarCreateTitle?.focus?.();
-  }, 50);
+  }, FIFTY);
 }
 
 function closeCalendarCreateModal() {
@@ -255,7 +271,7 @@ function buildCreatePayload() {
   }
   date.setMinutes(minutes, 0, 0);
   const duration = normalizeDuration(calendarCreateDuration?.value);
-  const end = new Date(date.getTime() + duration * 60000);
+  const end = new Date(date.getTime() + duration * MS_PER_MINUTE);
   return {
     calendarId,
     title,
@@ -297,11 +313,11 @@ async function handleCalendarCreateSubmit(event) {
     await syncExternalEventsCache(state.calendarExternalEvents);
     calendarRenderHandler?.();
     closeCalendarCreateModal();
-    showNotificationBanner("Event created.", { autoHideMs: 2500 });
+    showNotificationBanner("Event created.", { autoHideMs: TWO_THOUSAND_FIVE_HUNDRED });
   } catch (error) {
     console.warn("Failed to create Google Calendar event.", error);
     showNotificationBanner(error?.message || "Failed to create Google Calendar event.", {
-      autoHideMs: 3500
+      autoHideMs: THREE_THOUSAND_FIVE_HUNDRED
     });
   }
 }
@@ -316,9 +332,13 @@ export function openCalendarCreateFromClick(event) {
   const rect = dayCol.getBoundingClientRect?.();
   if (!rect) {return false;}
   const y = clampMinutes(event.clientY - rect.top, 0, rect.height);
-  const pointerMinutes = (y / rect.height) * 24 * 60;
+  const pointerMinutes = (y / rect.height) * HOURS_PER_DAY * MINUTES_PER_HOUR;
   const rounded = roundMinutesToStep(pointerMinutes, MIN_DURATION_MIN);
-  const minutes = clampMinutes(rounded, 0, 24 * 60 - MIN_DURATION_MIN);
+  const minutes = clampMinutes(
+    rounded,
+    0,
+    HOURS_PER_DAY * MINUTES_PER_HOUR - MIN_DURATION_MIN
+  );
   openCalendarCreateModal({ dayKey: dayCol.dataset.day, startMinutes: minutes });
   return true;
 }

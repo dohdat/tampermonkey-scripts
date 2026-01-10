@@ -1,11 +1,22 @@
 import { saveTask } from "../../data/db.js";
-import { domRefs } from "../constants.js";
+import {
+  HALF,
+  MS_PER_DAY,
+  REMINDER_DAY_OPTIONS,
+  REMINDER_PANEL_ANCHOR_OFFSET_PX,
+  REMINDER_PANEL_FALLBACK_HEIGHT_PX,
+  REMINDER_PANEL_FALLBACK_WIDTH_PX,
+  REMINDER_PANEL_FOCUS_DELAY_MS,
+  REMINDER_PANEL_PADDING_PX,
+  SORT_AFTER,
+  SORT_BEFORE,
+  domRefs
+} from "../constants.js";
 import { state } from "../state/page-state.js";
 import { uuid } from "../utils.js";
 import { removeReminderEntry } from "./task-reminders-helpers.js";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const REMINDER_DAY_OPTIONS = [1, 2, 3, 5, 7, 14];
+const DAY_MS = MS_PER_DAY;
 const reminderDayButtons = new Map();
 const selectedDays = new Set();
 let reminderTargetId = "";
@@ -107,7 +118,7 @@ function renderExistingReminders(task) {
   const reminders = normalizeReminders(task?.reminders || []).sort((a, b) => {
     const aDismissed = Boolean(a.dismissedAt);
     const bDismissed = Boolean(b.dismissedAt);
-    if (aDismissed !== bDismissed) {return aDismissed ? 1 : -1;}
+    if (aDismissed !== bDismissed) {return aDismissed ? SORT_AFTER : SORT_BEFORE;}
     const aTime = new Date(a.remindAt).getTime();
     const bTime = new Date(b.remindAt).getTime();
     if (Number.isFinite(aTime) && Number.isFinite(bTime) && aTime !== bTime) {
@@ -226,20 +237,27 @@ function resolveAnchorFromEvent(event) {
   const target = hasHTMLElement && event.target instanceof HTMLElement ? event.target : null;
   const rect = target?.getBoundingClientRect?.();
   if (!rect) {return null;}
-  return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  return { x: rect.left + rect.width * HALF, y: rect.top + rect.height * HALF };
 }
 
 function applyReminderPanelPosition(anchor) {
   const panel = getReminderPanel();
   if (!panel || !anchor) {return;}
-  const padding = 12;
   const rect = panel.getBoundingClientRect();
-  const panelWidth = rect.width || 360;
-  const panelHeight = rect.height || 420;
-  const maxLeft = window.innerWidth - panelWidth - padding;
-  const maxTop = window.innerHeight - panelHeight - padding;
-  const left = clamp(anchor.x - panelWidth / 2, padding, Math.max(padding, maxLeft));
-  const top = clamp(anchor.y - 24, padding, Math.max(padding, maxTop));
+  const panelWidth = rect.width || REMINDER_PANEL_FALLBACK_WIDTH_PX;
+  const panelHeight = rect.height || REMINDER_PANEL_FALLBACK_HEIGHT_PX;
+  const maxLeft = window.innerWidth - panelWidth - REMINDER_PANEL_PADDING_PX;
+  const maxTop = window.innerHeight - panelHeight - REMINDER_PANEL_PADDING_PX;
+  const left = clamp(
+    anchor.x - panelWidth * HALF,
+    REMINDER_PANEL_PADDING_PX,
+    Math.max(REMINDER_PANEL_PADDING_PX, maxLeft)
+  );
+  const top = clamp(
+    anchor.y - REMINDER_PANEL_ANCHOR_OFFSET_PX,
+    REMINDER_PANEL_PADDING_PX,
+    Math.max(REMINDER_PANEL_PADDING_PX, maxTop)
+  );
   panel.style.position = "fixed";
   panel.style.left = `${left}px`;
   panel.style.top = `${top}px`;
@@ -269,7 +287,7 @@ export function openTaskReminderModal(taskId, options = {}) {
   });
   setTimeout(() => {
     taskReminderCustomInput?.focus?.();
-  }, 50);
+  }, REMINDER_PANEL_FOCUS_DELAY_MS);
 }
 
 function handleReminderOverlayClick(event) {

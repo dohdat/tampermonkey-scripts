@@ -68,6 +68,15 @@ module.exports = {
         "name": "setInterval",
         "message": "Ensure intervals are cleared with clearInterval"
       }
+    ], 
+    "no-magic-numbers": [
+      "error",
+      {
+        "ignore": [0, 1],
+        "ignoreArrayIndexes": true,
+        "enforceConst": true,
+        "detectObjects": false
+      }
     ]
   },
 
@@ -80,7 +89,8 @@ module.exports = {
         "max-depth": "off",
         "complexity": "off",
         "consistent-return": "off",
-        "no-else-return": "off"
+        "no-else-return": "off",
+        "no-magic-numbers": "off"
       }
     }
   ]

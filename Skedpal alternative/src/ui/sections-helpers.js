@@ -3,6 +3,7 @@ import {
   DEFAULT_TASK_MIN_BLOCK_MIN,
   DEFAULT_TASK_PRIORITY,
   DEFAULT_TASK_REPEAT,
+  TEN,
   SUBTASK_SCHEDULE_PARALLEL,
   TASK_REPEAT_NONE
 } from "./constants.js";
@@ -30,7 +31,7 @@ export function resolveSubsectionRepeatSelection() {
 }
 
 export function formatTemplateDate(value) {
-  return value ? value.slice(0, 10) : "";
+  return value ? value.slice(0, TEN) : "";
 }
 
 export function getInputValue(input, fallback = "") {

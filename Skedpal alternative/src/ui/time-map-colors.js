@@ -1,3 +1,4 @@
+import { MAX_INT_32, THIRTY_ONE } from "./constants.js";
 import { themeColors } from "./theme.js";
 
 const timeMapColorPalette = [
@@ -48,7 +49,7 @@ function hashSeed(value) {
   if (!value) {return 0;}
   let hash = 0;
   for (let i = 0; i < value.length; i += 1) {
-    hash = (hash * 31 + value.charCodeAt(i)) % 2147483647;
+    hash = (hash * THIRTY_ONE + value.charCodeAt(i)) % MAX_INT_32;
   }
   return Math.abs(hash);
 }

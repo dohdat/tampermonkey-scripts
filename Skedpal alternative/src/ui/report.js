@@ -1,4 +1,16 @@
 import {
+  END_OF_DAY_HOUR,
+  END_OF_DAY_MINUTE,
+  END_OF_DAY_MS,
+  END_OF_DAY_SECOND,
+  FORTY,
+  HOURS_PER_DAY,
+  INDEX_NOT_FOUND,
+  MINUTES_PER_HOUR,
+  MS_PER_MINUTE,
+  ONE_HUNDRED,
+  PERCENT_LABEL_CAP,
+  TWO,
   SUBTASK_SCHEDULE_SEQUENTIAL_SINGLE,
   TASK_STATUS_IGNORED,
   TASK_STATUS_UNSCHEDULED,
@@ -13,9 +25,12 @@ let reportRenderToken = 0;
 function parseTimeToMinutes(value) {
   if (!value || typeof value !== "string") {return 0;}
   const parts = value.split(":").map((part) => Number(part));
-  if (parts.length !== 2 || parts.some((part) => !Number.isFinite(part))) {return 0;}
+  if (parts.length !== TWO || parts.some((part) => !Number.isFinite(part))) {return 0;}
   const [hours, minutes] = parts;
-  return Math.max(0, Math.min(24 * 60, hours * 60 + minutes));
+  return Math.max(
+    0,
+    Math.min(HOURS_PER_DAY * MINUTES_PER_HOUR, hours * MINUTES_PER_HOUR + minutes)
+  );
 }
 
 function startOfDay(date) {
@@ -26,7 +41,7 @@ function startOfDay(date) {
 
 function endOfDay(date) {
   const d = new Date(date);
-  d.setHours(23, 59, 59, 999);
+  d.setHours(END_OF_DAY_HOUR, END_OF_DAY_MINUTE, END_OF_DAY_SECOND, END_OF_DAY_MS);
   return d;
 }
 
@@ -52,12 +67,12 @@ function getSubsectionLabel(sectionId, subsectionId, settings) {
 function compareDeadlines(a, b) {
   if (!a && !b) {return 0;}
   if (!a) {return 1;}
-  if (!b) {return -1;}
+  if (!b) {return INDEX_NOT_FOUND;}
   return new Date(a).getTime() - new Date(b).getTime();
 }
 
 function getStatusWeight(status) {
-  if (status === TASK_STATUS_UNSCHEDULED) {return 2;}
+  if (status === TASK_STATUS_UNSCHEDULED) {return TWO;}
   if (status === TASK_STATUS_IGNORED) {return 1;}
   return 0;
 }
@@ -174,9 +189,12 @@ function getTaskTimeMapIds(task) {
 
 function getMissedFillPercent(row) {
   if (row.expectedCount > 0) {
-    return Math.min(100, Math.max(0, (row.missedLastRun / row.expectedCount) * 100));
+    return Math.min(
+      ONE_HUNDRED,
+      Math.max(0, (row.missedLastRun / row.expectedCount) * ONE_HUNDRED)
+    );
   }
-  return row.missedCount > 0 ? 100 : 0;
+  return row.missedCount > 0 ? ONE_HUNDRED : 0;
 }
 
 function buildReportTaskContext(rows, timeMaps, expandedTaskDetails) {
@@ -200,7 +218,7 @@ function buildReportTaskContext(rows, timeMaps, expandedTaskDetails) {
 function formatMissedPercentage(missedCount, expectedCount) {
   if (!expectedCount || expectedCount <= 0) {return "";}
   const ratio = Math.min(1, Math.max(0, missedCount / expectedCount));
-  return ` (${Math.round(ratio * 100)}%)`;
+  return ` (${Math.round(ratio * ONE_HUNDRED)}%)`;
 }
 
 function buildTimeMapRulesByDay(timeMap) {
@@ -244,7 +262,9 @@ function buildScheduledMinutesByTimeMap(tasks, horizonStart, horizonEnd) {
       const clampedStart = start < horizonStart ? horizonStart : start;
       const clampedEnd = end > horizonEnd ? horizonEnd : end;
       if (clampedEnd <= clampedStart) {return;}
-      const minutes = Math.round((clampedEnd.getTime() - clampedStart.getTime()) / 60000);
+      const minutes = Math.round(
+        (clampedEnd.getTime() - clampedStart.getTime()) / MS_PER_MINUTE
+      );
       if (minutes <= 0) {return;}
       usage.set(instance.timeMapId, (usage.get(instance.timeMapId) || 0) + minutes);
     });
@@ -262,7 +282,7 @@ export function getTimeMapUsageRows(tasks = [], timeMaps = [], settings = state.
     const capacityMinutes = getTimeMapCapacityMinutes(timeMap, horizonStart, horizonEnd);
     const scheduledMinutes = scheduledByTimeMap.get(timeMap.id) || 0;
     const percent = capacityMinutes > 0
-      ? Math.round((scheduledMinutes / capacityMinutes) * 100)
+      ? Math.round((scheduledMinutes / capacityMinutes) * ONE_HUNDRED)
       : 0;
     return {
       id: timeMap.id,
@@ -275,7 +295,7 @@ export function getTimeMapUsageRows(tasks = [], timeMaps = [], settings = state.
     };
   }).sort((a, b) => {
     if (a.isOverSubscribed !== b.isOverSubscribed) {
-      return a.isOverSubscribed ? -1 : 1;
+      return a.isOverSubscribed ? INDEX_NOT_FOUND : 1;
     }
     if (b.percent !== a.percent) {return b.percent - a.percent;}
     return a.name.localeCompare(b.name);
@@ -410,7 +430,7 @@ function buildTimeMapUsageCard(rows) {
     if (row.color) {
       item.style.borderColor = row.color;
     }
-    const fillPercent = Math.min(100, Math.max(0, row.percent || 0));
+    const fillPercent = Math.min(ONE_HUNDRED, Math.max(0, row.percent || 0));
     const fillColor = row.color || "var(--color-green-500)";
     item.style.background = `linear-gradient(90deg, ${fillColor}33 ${fillPercent}%, rgba(2, 6, 23, 0.5) ${fillPercent}%)`;
     const name = document.createElement("div");
@@ -434,7 +454,7 @@ function buildTimeMapUsageCard(rows) {
     meta.className = "relative mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400";
     meta.setAttribute("data-test-skedpal", "report-timemap-meta");
     const percentLabel = row.capacityMinutes
-      ? `${Math.min(999, Math.max(0, row.percent))}%`
+      ? `${Math.min(PERCENT_LABEL_CAP, Math.max(0, row.percent))}%`
       : "No availability";
     meta.innerHTML = `
       <span data-test-skedpal="report-timemap-percent">Used: ${percentLabel}</span>
@@ -486,7 +506,7 @@ export function renderReport(tasks = state.tasksCache) {
   }
   renderInBatches({
     items: rows,
-    batchSize: 40,
+    batchSize: FORTY,
     shouldCancel: () => renderToken !== reportRenderToken,
     renderBatch: (batch) => {
       const fragment = document.createDocumentFragment();

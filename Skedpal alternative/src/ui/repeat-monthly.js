@@ -1,12 +1,12 @@
-import { dayOptions } from "./constants.js";
+import { THIRTY_ONE, TWO, dayOptions } from "./constants.js";
 import { formatOrdinal, getNthWeekday } from "./utils.js";
 
 function pad2(value) {
-  return String(value).padStart(2, "0");
+  return String(value).padStart(TWO, "0");
 }
 
 export function clampDayValue(value) {
-  return Math.min(31, Math.max(1, Number(value) || 1));
+  return Math.min(THIRTY_ONE, Math.max(1, Number(value) || 1));
 }
 
 function clampDayInMonth(baseDate, day) {

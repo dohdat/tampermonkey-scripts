@@ -1,3 +1,11 @@
+import {
+  DAYS_PER_WEEK,
+  DEFAULT_TASK_MIN_BLOCK_MIN,
+  MINUTES_PER_HOUR,
+  THREE,
+  TWO
+} from "./constants.js";
+
 function startOfDay(date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
@@ -24,13 +32,13 @@ function clampDate(value) {
 export function getCalendarRange(anchorDate, viewMode) {
   const anchor = clampDate(anchorDate);
   let start = getWeekStartSunday(anchor);
-  let days = 7;
+  let days = DAYS_PER_WEEK;
   if (viewMode === "day") {
     start = startOfDay(anchor);
     days = 1;
   } else if (viewMode === "three") {
     start = startOfDay(anchor);
-    days = 3;
+    days = THREE;
   }
   const end = addDays(start, days);
   return { start, end, days };
@@ -48,7 +56,7 @@ export function getCalendarTitle(anchorDate, viewMode) {
   }
   if (viewMode === "three") {
     const { start } = getCalendarRange(anchor, "three");
-    const end = addDays(start, 2);
+    const end = addDays(start, TWO);
     const startLabel = start.toLocaleDateString(undefined, {
       month: "short",
       day: "numeric"
@@ -67,8 +75,8 @@ export function getDayKey(date) {
   const d = new Date(date);
   if (Number.isNaN(d.getTime())) {return "";}
   const year = d.getFullYear();
-  const month = `${d.getMonth() + 1}`.padStart(2, "0");
-  const day = `${d.getDate()}`.padStart(2, "0");
+  const month = `${d.getMonth() + 1}`.padStart(TWO, "0");
+  const day = `${d.getDate()}`.padStart(TWO, "0");
   return `${year}-${month}-${day}`;
 }
 
@@ -77,7 +85,7 @@ export function addCalendarDays(date, days) {
 }
 
 export function getMinutesIntoDay(date) {
-  return date.getHours() * 60 + date.getMinutes();
+  return date.getHours() * MINUTES_PER_HOUR + date.getMinutes();
 }
 
 export function getDateFromDayKey(dayKey) {
@@ -90,9 +98,9 @@ export function getDateFromDayKey(dayKey) {
   return date;
 }
 
-export function roundMinutesToStep(minutes, step = 15) {
+export function roundMinutesToStep(minutes, step = DEFAULT_TASK_MIN_BLOCK_MIN) {
   if (!Number.isFinite(minutes)) {return 0;}
-  const safeStep = Number.isFinite(step) && step > 0 ? step : 15;
+  const safeStep = Number.isFinite(step) && step > 0 ? step : DEFAULT_TASK_MIN_BLOCK_MIN;
   return Math.round(minutes / safeStep) * safeStep;
 }
 

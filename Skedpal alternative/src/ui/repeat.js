@@ -1,4 +1,10 @@
-import { DEFAULT_TASK_REPEAT, TASK_REPEAT_NONE, domRefs } from "./constants.js";
+import {
+  DEFAULT_TASK_REPEAT,
+  TASK_REPEAT_NONE,
+  TEN,
+  THIRTY_ONE,
+  domRefs
+} from "./constants.js";
 import { formatRRuleDate, getLocalDateKey, getNthWeekday } from "./utils.js";
 import {
   buildMonthlyRule,
@@ -122,7 +128,7 @@ function syncRepeatEndControls(repeatState) {
   taskRepeatEndNever.checked = endType === "never";
   taskRepeatEndOn.checked = endType === "on";
   taskRepeatEndAfter.checked = endType === "after";
-  taskRepeatEndDate.value = repeatState.end?.date ? repeatState.end.date.slice(0, 10) : "";
+  taskRepeatEndDate.value = repeatState.end?.date ? repeatState.end.date.slice(0, TEN) : "";
   taskRepeatEndCount.value = repeatState.end?.count ? Number(repeatState.end.count) : 1;
 }
 function syncRepeatTargetSelect(target) {
@@ -473,7 +479,7 @@ function handleRepeatWeekdaysClick(event) {
 function handleRepeatWeeklyModeAnyChange() { if (taskRepeatWeeklyModeAny.checked) { repeatStore.repeatState.weeklyMode = "any"; renderRepeatUI(); } }
 function handleRepeatWeeklyModeAllChange() { if (taskRepeatWeeklyModeAll.checked) { repeatStore.repeatState.weeklyMode = "all"; renderRepeatUI(); } }
 function handleRepeatMonthlyModeChange() { repeatStore.repeatState.monthlyMode = taskRepeatMonthlyMode.value || "day"; renderRepeatUI(); }
-function handleRepeatMonthlyDayInput() { const val = Math.min(31, Math.max(1, Number(taskRepeatMonthlyDay.value) || 1)); repeatStore.repeatState.monthlyDay = val; taskRepeatMonthlyDay.value = val; }
+function handleRepeatMonthlyDayInput() { const val = Math.min(THIRTY_ONE, Math.max(1, Number(taskRepeatMonthlyDay.value) || 1)); repeatStore.repeatState.monthlyDay = val; taskRepeatMonthlyDay.value = val; }
 function handleRepeatMonthlyNthChange() { repeatStore.repeatState.monthlyNth = Number(taskRepeatMonthlyNth.value) || 1; }
 function handleRepeatMonthlyWeekdayChange() { repeatStore.repeatState.monthlyWeekday = Number(taskRepeatMonthlyWeekday.value) || 0; }
 function handleRepeatYearlyRangeStartInput() {

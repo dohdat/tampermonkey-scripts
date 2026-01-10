@@ -1,9 +1,25 @@
 import {
   DEFAULT_TASK_REPEAT,
+  ELEVEN,
+  FORTY,
+  FOUR,
+  INDEX_NOT_FOUND,
+  ONE_HUNDRED,
+  SEVEN,
+  SIXTY,
   SUBTASK_ORDER_OFFSET,
   SUBTASK_SCHEDULE_PARALLEL,
   SUBTASK_SCHEDULE_SEQUENTIAL,
   SUBTASK_SCHEDULE_SEQUENTIAL_SINGLE,
+  TEN,
+  THIRTEEN,
+  THIRTY_ONE,
+  THIRTY_SIX,
+  THREE,
+  THREE_SIXTY,
+  TWELVE,
+  TWENTY_NINE,
+  TWO,
   TASK_STATUS_UNSCHEDULED
 } from "./constants.js";
 import { DEFAULT_SCHEDULING_HORIZON_DAYS } from "../data/db.js";
@@ -92,7 +108,9 @@ export function parseCalendarViewFromUrl(defaultView = "day") {
 }
 
 export function uuid() {
-  return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+  return crypto.randomUUID
+    ? crypto.randomUUID()
+    : Math.random().toString(THIRTY_SIX).slice(TWO);
 }
 
 export function normalizeTimeMap(timeMap) {
@@ -132,7 +150,7 @@ export function formatDate(value) {
 export function normalizeHorizonDays(
   value,
   min = 1,
-  max = 60,
+  max = SIXTY,
   fallback = DEFAULT_SCHEDULING_HORIZON_DAYS
 ) {
   const parsed = Number(value);
@@ -184,15 +202,15 @@ export function getLocalDateKey(value) {
   const date = value ? new Date(value) : null;
   if (!date || Number.isNaN(date.getTime())) {return "";}
   const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
+  const month = `${date.getMonth() + 1}`.padStart(TWO, "0");
+  const day = `${date.getDate()}`.padStart(TWO, "0");
   return `${year}-${month}-${day}`;
 }
 
 export function parseLocalDateInput(value) {
   if (!value) {return null;}
   const parts = value.split("-").map((part) => Number(part));
-  if (parts.length !== 3 || parts.some((part) => !Number.isFinite(part))) {return null;}
+  if (parts.length !== THREE || parts.some((part) => !Number.isFinite(part))) {return null;}
   const [year, month, day] = parts;
   const localDate = new Date(year, month - 1, day, 0, 0, 0, 0);
   if (Number.isNaN(localDate.getTime())) {return null;}
@@ -215,9 +233,9 @@ export function isStartAfterDeadline(startFrom, deadline) {
 
 export function formatDurationShort(minutes) {
   const mins = Number(minutes) || 0;
-  if (mins >= 60) {
-    const hours = mins / 60;
-    const rounded = Math.round(hours * 10) / 10;
+  if (mins >= SIXTY) {
+    const hours = mins / SIXTY;
+    const rounded = Math.round(hours * TEN) / TEN;
     return `${Number.isInteger(rounded) ? rounded : rounded}h`;
   }
   return `${Math.max(1, mins)}m`;
@@ -226,8 +244,8 @@ export function formatDurationShort(minutes) {
 export function formatDurationLong(minutes) {
   const mins = Math.max(0, Math.round(Number(minutes) || 0));
   if (!mins) {return "0m";}
-  const hours = Math.floor(mins / 60);
-  const remainder = mins % 60;
+  const hours = Math.floor(mins / SIXTY);
+  const remainder = mins % SIXTY;
   if (!hours) {return `${remainder}m`;}
   if (!remainder) {return `${hours}h`;}
   return `${hours}h ${remainder}m`;
@@ -235,7 +253,7 @@ export function formatDurationLong(minutes) {
 
 export function renderInBatches({
   items = [],
-  batchSize = 40,
+  batchSize = FORTY,
   renderBatch,
   onComplete,
   shouldCancel
@@ -277,17 +295,17 @@ export function getWeekdayShortLabel(day) {
 export function getNthWeekday(date) {
   const day = date.getDay();
   const dayOfMonth = date.getDate();
-  const nth = Math.ceil(dayOfMonth / 7);
-  return { nth: nth > 4 ? -1 : nth, weekday: day };
+  const nth = Math.ceil(dayOfMonth / SEVEN);
+  return { nth: nth > FOUR ? INDEX_NOT_FOUND : nth, weekday: day };
 }
 
 export function formatOrdinal(n) {
-  if (n === -1) {return "last";}
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) {return `${n}st`;}
-  if (mod10 === 2 && mod100 !== 12) {return `${n}nd`;}
-  if (mod10 === 3 && mod100 !== 13) {return `${n}rd`;}
+  if (n === INDEX_NOT_FOUND) {return "last";}
+  const mod10 = n % TEN;
+  const mod100 = n % ONE_HUNDRED;
+  if (mod10 === 1 && mod100 !== ELEVEN) {return `${n}st`;}
+  if (mod10 === TWO && mod100 !== TWELVE) {return `${n}nd`;}
+  if (mod10 === THREE && mod100 !== THIRTEEN) {return `${n}rd`;}
   return `${n}th`;
 }
 
@@ -296,8 +314,8 @@ export function formatRRuleDate(dateStr) {
   const d = new Date(dateStr);
   if (Number.isNaN(d.getTime())) {return "";}
   const y = d.getFullYear();
-  const m = `${d.getMonth() + 1}`.padStart(2, "0");
-  const day = `${d.getDate()}`.padStart(2, "0");
+  const m = `${d.getMonth() + 1}`.padStart(TWO, "0");
+  const day = `${d.getDate()}`.padStart(TWO, "0");
   return `${y}${m}${day}`;
 }
 
@@ -418,7 +436,7 @@ export function getSubsectionDescendantIds(subsections = [], rootId = "") {
 function hashString(value) {
   let hash = 0;
   for (let i = 0; i < value.length; i += 1) {
-    hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+    hash = (hash * THIRTY_ONE + value.charCodeAt(i)) >>> 0;
   }
   return hash;
 }
@@ -428,10 +446,10 @@ export function getSectionColorMap(sections = []) {
   const usedHues = new Set();
   sections.forEach((section, index) => {
     const seed = String(section.id || section.name || index);
-    let hue = hashString(seed) % 360;
+    let hue = hashString(seed) % THREE_SIXTY;
     let attempts = 0;
-    while (usedHues.has(hue) && attempts < 360) {
-      hue = (hue + 29) % 360;
+    while (usedHues.has(hue) && attempts < THREE_SIXTY) {
+      hue = (hue + TWENTY_NINE) % THREE_SIXTY;
       attempts += 1;
     }
     usedHues.add(hue);

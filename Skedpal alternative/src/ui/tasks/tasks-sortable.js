@@ -1,5 +1,5 @@
 import Sortable, { MultiDrag } from "../../../vendor/sortable.esm.js";
-import { domRefs } from "../constants.js";
+import { INDEX_NOT_FOUND, domRefs } from "../constants.js";
 import {
   TASK_PLACEHOLDER_CLASS,
   TASK_SORTABLE_STYLE_ID,
@@ -179,7 +179,7 @@ function resolveDropTargets({
     ? findAdjacentTaskIdExcluding(evt.item, 1, movedSubtreeIds) || null
     : dropBeforeId;
   const adjustedPrevTaskId = isMultiDrag
-    ? findAdjacentTaskIdExcluding(evt.item, -1, movedSubtreeIds)
+    ? findAdjacentTaskIdExcluding(evt.item, INDEX_NOT_FOUND, movedSubtreeIds)
     : prevTaskId || "";
   const adjustedDropBeforeTask = adjustedDropBeforeId
     ? state.tasksCache.find((task) => task.id === adjustedDropBeforeId)

@@ -7,8 +7,14 @@ import {
 } from "../../data/db.js";
 import { getUpcomingOccurrences } from "../../core/scheduler.js";
 import {
+  DAYS_PER_YEAR,
   DEFAULT_TASK_MIN_BLOCK_MIN,
   DEFAULT_TASK_REPEAT,
+  END_OF_DAY_HOUR,
+  END_OF_DAY_MINUTE,
+  END_OF_DAY_MS,
+  END_OF_DAY_SECOND,
+  TEN,
   TASK_DURATION_STEP_MIN,
   TASK_STATUS_IGNORED,
   TASK_STATUS_SCHEDULED,
@@ -114,8 +120,8 @@ export function openRepeatCompleteModal(task) {
   const now = new Date();
   const horizonEnd = new Date(now.getTime());
   horizonEnd.setDate(horizonEnd.getDate() + horizonDays);
-  horizonEnd.setHours(23, 59, 59, 999);
-  const occurrences = getUpcomingOccurrences(task, now, 10, 365);
+  horizonEnd.setHours(END_OF_DAY_HOUR, END_OF_DAY_MINUTE, END_OF_DAY_SECOND, END_OF_DAY_MS);
+  const occurrences = getUpcomingOccurrences(task, now, TEN, DAYS_PER_YEAR);
   if (!occurrences.length) {
     repeatCompleteEmpty?.classList.remove("hidden");
   } else {

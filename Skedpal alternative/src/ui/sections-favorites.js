@@ -4,7 +4,7 @@ import { getSectionName } from "./sections-data.js";
 import { getSectionColorMap, getSubsectionDescendantIds } from "./utils.js";
 import { state } from "./state/page-state.js";
 import { themeColors } from "./theme.js";
-import { domRefs } from "./constants.js";
+import { FOURTEEN, domRefs } from "./constants.js";
 
 const { sidebarFavorites } = domRefs;
 
@@ -184,7 +184,7 @@ function buildFavoriteButton(item, options = {}) {
     count > 0
       ? `<span class="sidebar-fav-count" data-test-skedpal="sidebar-fav-count">${count}</span>`
       : `<span class="sidebar-fav-count sidebar-fav-count--empty" data-test-skedpal="sidebar-fav-count" aria-hidden="true"></span>`;
-  const indent = depth > 0 ? `style="margin-left:${depth * 14}px"` : "";
+  const indent = depth > 0 ? `style="margin-left:${depth * FOURTEEN}px"` : "";
   const toggle = hasChildren
     ? `
       <span class="sidebar-fav-sub-toggle" data-test-skedpal="sidebar-fav-sub-toggle" data-fav-sub-toggle="${item.subsectionId}">

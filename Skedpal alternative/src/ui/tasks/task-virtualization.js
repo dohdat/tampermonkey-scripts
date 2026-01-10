@@ -1,6 +1,7 @@
 import { renderTaskCard } from "./task-card.js";
 import { sortTasksByOrder } from "../utils.js";
 import { state } from "../state/page-state.js";
+import { HALF } from "../constants.js";
 
 export const TASK_VIRTUALIZATION_THRESHOLD = 20;
 export const TASK_VIRTUALIZATION_BUFFER_MULTIPLIER = 1;
@@ -33,7 +34,7 @@ export function findStartIndex(offsets, target) {
   let low = 0;
   let high = offsets.length - 1;
   while (low < high) {
-    const mid = Math.floor((low + high) / 2);
+    const mid = Math.floor((low + high) * HALF);
     if (offsets[mid] <= target) {
       low = mid + 1;
     } else {
@@ -48,7 +49,7 @@ export function findEndIndex(offsets, target) {
   let low = 0;
   let high = offsets.length - 1;
   while (low < high) {
-    const mid = Math.floor((low + high) / 2);
+    const mid = Math.floor((low + high) * HALF);
     if (offsets[mid] < target) {
       low = mid + 1;
     } else {

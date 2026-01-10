@@ -1,7 +1,10 @@
 import {
   CALENDAR_COLOR_OVERRIDES,
   DEFAULT_CALENDAR_IDS,
-  GOOGLE_API_BASE
+  GOOGLE_API_BASE,
+  HTTP_STATUS_FORBIDDEN,
+  HTTP_STATUS_UNAUTHORIZED,
+  THREE
 } from "../constants.js";
 
 function parseIsoDate(value) {
@@ -14,7 +17,7 @@ function parseIsoDate(value) {
 export function parseAllDayDate(value) {
   if (!value) {return null;}
   const parts = String(value).split("-").map((part) => Number(part));
-  if (parts.length !== 3 || parts.some((part) => !Number.isFinite(part))) {return null;}
+  if (parts.length !== THREE || parts.some((part) => !Number.isFinite(part))) {return null;}
   const [year, month, day] = parts;
   return new Date(year, month - 1, day, 0, 0, 0, 0);
 }
@@ -125,7 +128,7 @@ async function fetchWithAuth(url, options = {}) {
       Authorization: `Bearer ${token}`
     }
   });
-  if (response.status === 401 || response.status === 403) {
+  if (response.status === HTTP_STATUS_UNAUTHORIZED || response.status === HTTP_STATUS_FORBIDDEN) {
     removeCachedToken(token);
     const retryToken = await getAuthToken(true);
     return fetch(url, {

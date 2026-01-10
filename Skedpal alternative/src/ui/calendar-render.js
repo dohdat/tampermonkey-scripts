@@ -1,11 +1,23 @@
 import { addCalendarDays, getDayKey } from "./calendar-utils.js";
 import { buildDayEventLayout } from "./calendar-layout.js";
-import { removeIconSvg } from "./constants.js";
+import {
+  EIGHT,
+  FOUR,
+  HOURS_PER_DAY,
+  MINUTES_PER_HOUR,
+  ONE_TWENTY,
+  OPACITY_TWENTY_TWO,
+  SIXTEEN,
+  TWENTY,
+  TWO,
+  TWO_FIFTY_FIVE,
+  removeIconSvg
+} from "./constants.js";
 
-export const HOUR_HEIGHT = 120;
-const EVENT_GUTTER = 2;
-const EVENT_EDGE_INSET = 8;
-const EVENT_OVERLAP_INSET = 4;
+export const HOUR_HEIGHT = ONE_TWENTY;
+const EVENT_GUTTER = TWO;
+const EVENT_EDGE_INSET = EIGHT;
+const EVENT_OVERLAP_INSET = FOUR;
 const URL_PATTERN = /https?:\/\/\S+/;
 const UID_PATTERN = /#?UID:[^\s]+/;
 
@@ -47,10 +59,10 @@ function normalizeHexColor(value) {
 function hexToRgba(hex, alpha = 1) {
   const normalized = normalizeHexColor(hex);
   if (!normalized) {return "";}
-  const intVal = Number.parseInt(normalized.slice(1), 16);
-  const r = (intVal >> 16) & 255;
-  const g = (intVal >> 8) & 255;
-  const b = intVal & 255;
+  const intVal = Number.parseInt(normalized.slice(1), SIXTEEN);
+  const r = (intVal >> SIXTEEN) & TWO_FIFTY_FIVE;
+  const g = (intVal >> EIGHT) & TWO_FIFTY_FIVE;
+  const b = intVal & TWO_FIFTY_FIVE;
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
@@ -58,7 +70,7 @@ function getExternalEventStyles(event) {
   const colorHex = normalizeHexColor(event?.colorHex || "");
   if (colorHex) {
     return {
-      backgroundColor: hexToRgba(colorHex, 0.22),
+      backgroundColor: hexToRgba(colorHex, OPACITY_TWENTY_TWO),
       borderColor: colorHex,
       color: colorHex
     };
@@ -128,7 +140,7 @@ function buildCalendarTimeColumn() {
   const timeCol = document.createElement("div");
   timeCol.className = "calendar-time-col";
   timeCol.setAttribute("data-test-skedpal", "calendar-time-col");
-  for (let hour = 0; hour < 24; hour += 1) {
+  for (let hour = 0; hour < HOURS_PER_DAY; hour += 1) {
     const label = document.createElement("div");
     label.className = "calendar-time-label";
     label.textContent = formatHourLabel(hour);
@@ -210,8 +222,11 @@ function buildResizeHandle() {
 }
 
 function buildCalendarEventBlock(item, timeMapColorById) {
-  const top = (item.startMinutes / 60) * HOUR_HEIGHT;
-  const height = Math.max(20, ((item.endMinutes - item.startMinutes) / 60) * HOUR_HEIGHT);
+  const top = (item.startMinutes / MINUTES_PER_HOUR) * HOUR_HEIGHT;
+  const height = Math.max(
+    TWENTY,
+    ((item.endMinutes - item.startMinutes) / MINUTES_PER_HOUR) * HOUR_HEIGHT
+  );
   const block = document.createElement("div");
   block.className = "calendar-event";
   block.style.top = `${top}px`;
@@ -219,7 +234,7 @@ function buildCalendarEventBlock(item, timeMapColorById) {
   if (item.columnCount > 1) {
     const inset = EVENT_OVERLAP_INSET;
     const totalGutter = EVENT_GUTTER * (item.columnCount - 1);
-    block.style.width = `calc((100% - ${totalGutter}px) / ${item.columnCount} - ${inset * 2}px)`;
+    block.style.width = `calc((100% - ${totalGutter}px) / ${item.columnCount} - ${inset * TWO}px)`;
     block.style.left = `calc(${item.columnIndex} * ((100% - ${totalGutter}px) / ${item.columnCount}) + ${item.columnIndex * EVENT_GUTTER}px + ${inset}px)`;
     block.style.right = "auto";
   } else {

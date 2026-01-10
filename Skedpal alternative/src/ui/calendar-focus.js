@@ -1,3 +1,18 @@
+import {
+  EIGHT,
+  FOUR,
+  ONE_TWENTY,
+  OPACITY_EIGHTY,
+  OPACITY_FORTY_FIVE,
+  OPACITY_SIXTY,
+  OPACITY_THIRTY_FIVE,
+  THREE,
+  TWO,
+  SIXTEEN,
+  TWO_SIXTY,
+  TWO_THOUSAND_FIVE_HUNDRED,
+  SIX
+} from "./constants.js";
 import { themeColors } from "./theme.js";
 
 function toRgba(color, alpha) {
@@ -9,16 +24,16 @@ function toRgba(color, alpha) {
   }
   if (!trimmed.startsWith("#")) {return trimmed;}
   let hex = trimmed.slice(1);
-  if (hex.length === 3) {
+  if (hex.length === THREE) {
     hex = hex
       .split("")
       .map((char) => char + char)
       .join("");
   }
-  if (hex.length !== 6) {return trimmed;}
-  const r = Number.parseInt(hex.slice(0, 2), 16);
-  const g = Number.parseInt(hex.slice(2, 4), 16);
-  const b = Number.parseInt(hex.slice(4, 6), 16);
+  if (hex.length !== SIX) {return trimmed;}
+  const r = Number.parseInt(hex.slice(0, TWO), SIXTEEN);
+  const g = Number.parseInt(hex.slice(TWO, FOUR), SIXTEEN);
+  const b = Number.parseInt(hex.slice(FOUR, SIX), SIXTEEN);
   if ([r, g, b].some((value) => Number.isNaN(value))) {return trimmed;}
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
@@ -51,7 +66,7 @@ export function clearCalendarEventFocus(calendarGrid) {
 
 export function focusCalendarEventBlock(eventBlock, options = {}) {
   if (!eventBlock) {return false;}
-  const { autoClearMs = 2500, pulse = true } = options;
+  const { autoClearMs = TWO_THOUSAND_FIVE_HUNDRED, pulse = true } = options;
   const focusOutlineColor = themeColors.slate100 || themeColors.white;
   const focusGlowColor = themeColors.black;
   eventBlock.dataset.calendarFocusBoxShadow = eventBlock.style.boxShadow || "";
@@ -60,10 +75,10 @@ export function focusCalendarEventBlock(eventBlock, options = {}) {
   eventBlock.dataset.calendarFocusFilter = eventBlock.style.filter || "";
   eventBlock.dataset.calendarFocusTransition = eventBlock.style.transition || "";
   eventBlock.setAttribute("data-calendar-focus", "true");
-  eventBlock.style.outline = `2px solid ${focusOutlineColor}`;
+  eventBlock.style.outline = `${TWO}px solid ${focusOutlineColor}`;
   const baseShadow = [
-    `0 0 0 3px ${toRgba(focusOutlineColor, 0.6)}`,
-    `0 0 0 6px ${toRgba(focusGlowColor, 0.35)}`
+    `0 0 0 ${THREE}px ${toRgba(focusOutlineColor, OPACITY_SIXTY)}`,
+    `0 0 0 ${SIX}px ${toRgba(focusGlowColor, OPACITY_THIRTY_FIVE)}`
   ].join(", ");
   eventBlock.style.boxShadow = baseShadow;
   eventBlock.style.zIndex = "6";
@@ -71,17 +86,17 @@ export function focusCalendarEventBlock(eventBlock, options = {}) {
   eventBlock.style.transition = "box-shadow 240ms ease, outline-color 240ms ease, filter 240ms ease";
   if (pulse) {
     const pulseShadow = [
-      `0 0 0 4px ${toRgba(focusOutlineColor, 0.8)}`,
-      `0 0 0 8px ${toRgba(focusGlowColor, 0.45)}`
+      `0 0 0 ${FOUR}px ${toRgba(focusOutlineColor, OPACITY_EIGHTY)}`,
+      `0 0 0 ${EIGHT}px ${toRgba(focusGlowColor, OPACITY_FORTY_FIVE)}`
     ].join(", ");
     const pulseTimeout = window.setTimeout(() => {
       eventBlock.style.boxShadow = pulseShadow;
       eventBlock.dataset.calendarFocusPulseTimeout = String(
         window.setTimeout(() => {
           eventBlock.style.boxShadow = baseShadow;
-        }, 260)
+        }, TWO_SIXTY)
       );
-    }, 120);
+    }, ONE_TWENTY);
     eventBlock.dataset.calendarFocusPulseTimeout = String(pulseTimeout);
   }
   if (autoClearMs > 0) {

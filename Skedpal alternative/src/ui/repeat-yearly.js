@@ -1,3 +1,4 @@
+import { THREE } from "./constants.js";
 import { getLocalDateKey } from "./utils.js";
 
 export function getDateParts(dateValue) {
@@ -5,7 +6,7 @@ export function getDateParts(dateValue) {
   if (typeof dateValue === "string") {
     const [datePart] = dateValue.split("T");
     const pieces = datePart.split("-").map((part) => Number(part));
-    if (pieces.length === 3 && pieces.every((part) => Number.isFinite(part))) {
+    if (pieces.length === THREE && pieces.every((part) => Number.isFinite(part))) {
       const [, month, day] = pieces;
       return { month, day };
     }

@@ -1,4 +1,4 @@
-import { domRefs } from "./constants.js";
+import { SIX_THOUSAND_FIVE_HUNDRED, domRefs } from "./constants.js";
 import { state } from "./state/page-state.js";
 
 function getNotificationNodes() {
@@ -69,7 +69,7 @@ export function showUndoBanner(message, undoHandler) {
   };
   state.notificationHideTimeout = window.setTimeout(() => {
     hideNotificationBanner();
-  }, 6500);
+  }, SIX_THOUSAND_FIVE_HUNDRED);
 }
 
 export function showNotificationBanner(message, options = {}) {

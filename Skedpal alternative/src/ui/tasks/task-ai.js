@@ -1,5 +1,5 @@
 import { saveSettings } from "../../data/db.js";
-import { GROQ_BASE_URL, GROQ_MODEL, domRefs } from "../constants.js";
+import { GROQ_BASE_URL, GROQ_MODEL, INDEX_NOT_FOUND, TWO, domRefs } from "../constants.js";
 import { state } from "../state/page-state.js";
 
 const {
@@ -84,7 +84,7 @@ function extractJsonCandidate(text) {
   const candidate = fencedMatch ? fencedMatch[1] : text;
   const start = candidate.indexOf("{");
   const end = candidate.lastIndexOf("}");
-  if (start === -1 || end === -1 || end <= start) {
+  if (start === INDEX_NOT_FOUND || end === INDEX_NOT_FOUND || end <= start) {
     return "";
   }
   return candidate.slice(start, end + 1);
@@ -108,7 +108,7 @@ function extractSubtasksFromBlock(block) {
   const listStart = (match.index ?? 0) + match[0].length;
   const listSlice = block.slice(listStart);
   const listEnd = listSlice.indexOf("]");
-  const segment = listEnd === -1 ? listSlice : listSlice.slice(0, listEnd);
+  const segment = listEnd === INDEX_NOT_FOUND ? listSlice : listSlice.slice(0, listEnd);
   const items = segment.match(/"([^"]+)"/g) || [];
   return items
     .map((item) => item.replace(/"/g, "").trim())
@@ -124,16 +124,16 @@ function parseLooseTaskList(text) {
     if (!titleMatch || titleMatch.index === undefined) {break;}
     const titleStart = index + titleMatch.index + titleMatch[0].length;
     const titleEnd = text.indexOf("\"", titleStart);
-    if (titleEnd === -1) {break;}
+    if (titleEnd === INDEX_NOT_FOUND) {break;}
     const title = text.slice(titleStart, titleEnd).trim();
     const nextTitleIndex = text.indexOf("\"title\"", titleEnd);
-    const blockEnd = nextTitleIndex === -1 ? text.length : nextTitleIndex;
+    const blockEnd = nextTitleIndex === INDEX_NOT_FOUND ? text.length : nextTitleIndex;
     const block = text.slice(titleEnd, blockEnd);
     const subtasks = extractSubtasksFromBlock(block);
     if (title) {
       tasks.push({ title, subtasks });
     }
-    if (nextTitleIndex === -1 || nextTitleIndex <= titleEnd) {break;}
+    if (nextTitleIndex === INDEX_NOT_FOUND || nextTitleIndex <= titleEnd) {break;}
     index = nextTitleIndex;
   }
   return tasks;
@@ -288,7 +288,7 @@ function handleTaskAiOutputClick(event) {
   if (!subremoveBtn) {return;}
   const value = subremoveBtn.dataset.taskAiSubremove || "";
   const parts = value.split(":").map((part) => Number(part));
-  if (parts.length !== 2 || parts.some((part) => !Number.isFinite(part))) {return;}
+  if (parts.length !== TWO || parts.some((part) => !Number.isFinite(part))) {return;}
   const [taskIndex, subIndex] = parts;
   const list = state.taskAiList.map((entry) => ({
     ...entry,

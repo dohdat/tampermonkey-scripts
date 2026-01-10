@@ -10,7 +10,7 @@ import {
   DEFAULT_SETTINGS,
   DEFAULT_SCHEDULING_HORIZON_DAYS
 } from "../data/db.js";
-import { domRefs } from "./constants.js";
+import { SIXTY, domRefs } from "./constants.js";
 import { state } from "./state/page-state.js";
 import { normalizeHorizonDays } from "./utils.js";
 import { invalidateExternalEventsCache } from "./calendar-external.js";
@@ -75,7 +75,7 @@ function formatBackupTimestamp(value) {
 function updateHorizonInputValue() {
   if (!horizonInput) {return;}
   const min = Number(horizonInput.min) || 1;
-  const max = Number(horizonInput.max) || 60;
+  const max = Number(horizonInput.max) || SIXTY;
   const fallback = DEFAULT_SCHEDULING_HORIZON_DAYS;
   horizonInput.value = String(
     normalizeHorizonDays(state.settingsCache.schedulingHorizonDays, min, max, fallback)
@@ -229,7 +229,7 @@ function createSettingsPersistor() {
 function initHorizonSettings(persistSettings) {
   if (!horizonInput) {return;}
   const min = Number(horizonInput.min) || 1;
-  const max = Number(horizonInput.max) || 60;
+  const max = Number(horizonInput.max) || SIXTY;
   const fallback = DEFAULT_SCHEDULING_HORIZON_DAYS;
   const normalizeHorizonInput = () => {
     const days = normalizeHorizonDays(horizonInput.value, min, max, fallback);

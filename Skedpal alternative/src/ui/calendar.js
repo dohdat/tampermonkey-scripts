@@ -1,4 +1,11 @@
-import { domRefs } from "./constants.js";
+import {
+  DAYS_PER_WEEK,
+  FOURTEEN,
+  MINUTES_PER_HOUR,
+  MS_PER_MINUTE,
+  THREE,
+  domRefs
+} from "./constants.js";
 import { state } from "./state/page-state.js";
 import {
   addCalendarDays,
@@ -120,8 +127,11 @@ function buildNowIndicator() {
 }
 
 function positionNowIndicator(indicator, now) {
-  const minutes = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
-  const top = (minutes / 60) * HOUR_HEIGHT;
+  const minutes =
+    now.getHours() * MINUTES_PER_HOUR +
+    now.getMinutes() +
+    now.getSeconds() / MINUTES_PER_HOUR;
+  const top = (minutes / MINUTES_PER_HOUR) * HOUR_HEIGHT;
   indicator.style.top = `${top}px`;
 }
 
@@ -199,8 +209,8 @@ function getActiveCalendarViewMode() {
 
 function getViewStep(viewMode) {
   if (viewMode === "day") {return 1;}
-  if (viewMode === "three") {return 3;}
-  return 7;
+  if (viewMode === "three") {return THREE;}
+  return DAYS_PER_WEEK;
 }
 function setCalendarViewMode(viewMode) {
   state.calendarViewMode = viewMode;
@@ -227,7 +237,7 @@ function isCalendarVisible() {
 
 function getExternalFetchRange() {
   const horizonDays = Number(state.settingsCache?.schedulingHorizonDays);
-  const safeDays = Number.isFinite(horizonDays) && horizonDays > 0 ? horizonDays : 14;
+  const safeDays = Number.isFinite(horizonDays) && horizonDays > 0 ? horizonDays : FOURTEEN;
   const start = new Date();
   start.setHours(0, 0, 0, 0);
   const end = addCalendarDays(start, safeDays);
@@ -358,7 +368,7 @@ export function initCalendarView() {
   if (nowIndicatorTimer) {
     clearInterval(nowIndicatorTimer);
   }
-  nowIndicatorTimer = window.setInterval(updateNowIndicator, 60 * 1000);
+  nowIndicatorTimer = window.setInterval(updateNowIndicator, MS_PER_MINUTE);
   renderCalendar();
   ensureCalendarDragHandlers({
     onRender: renderCalendar,

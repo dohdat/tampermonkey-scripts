@@ -1,4 +1,11 @@
-import { TASK_STATUS_SCHEDULED, domRefs } from "../constants.js";
+import {
+  END_OF_DAY_HOUR,
+  END_OF_DAY_MINUTE,
+  END_OF_DAY_MS,
+  END_OF_DAY_SECOND,
+  TASK_STATUS_SCHEDULED,
+  domRefs
+} from "../constants.js";
 import { renderTaskCard } from "./task-card.js";
 import { getSectionName, getSubsectionsFor } from "../sections-data.js";
 import { normalizeTimeMap } from "../utils.js";
@@ -11,7 +18,7 @@ function startOfDay(date) {
 
 function endOfDay(date) {
   const d = new Date(date);
-  d.setHours(23, 59, 59, 999);
+  d.setHours(END_OF_DAY_HOUR, END_OF_DAY_MINUTE, END_OF_DAY_SECOND, END_OF_DAY_MS);
   return d;
 }
 

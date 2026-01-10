@@ -228,26 +228,76 @@
               class="task-modal__section-grid task-modal__section-grid--two"
               data-test-skedpal="task-modal-section-scheduling-grid"
             >
-              <label class="field">
-                <span class="field-label">Start from</span>
+            <label class="field">
+              <span class="field-label">Start from</span>
+              <div class="field-input-wrap" data-test-skedpal="task-start-from-wrap">
                 <input
                   id="task-start-from"
                   type="text"
-                  class="field-input"
+                  class="field-input field-input--clearable"
                   data-date-picker="true"
                   data-test-skedpal="task-start-from-input"
                 />
-              </label>
-              <label class="field">
-                <span class="field-label">Deadline (optional)</span>
+                <button
+                  type="button"
+                  class="modal-close-btn field-clear-btn hidden"
+                  aria-label="Clear start from date"
+                  data-test-skedpal="task-start-from-clear"
+                >
+                  <svg
+                    class="modal-close-icon"
+                    aria-hidden="true"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    data-test-skedpal="modal-close-icon"
+                  >
+                    <path
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18 17.94 6M18 18 6.06 6"
+                    ></path>
+                  </svg>
+                  <span class="sr-only" data-test-skedpal="modal-close-label">Clear date</span>
+                </button>
+              </div>
+            </label>
+            <label class="field">
+              <span class="field-label">Deadline (optional)</span>
+              <div class="field-input-wrap" data-test-skedpal="task-deadline-wrap">
                 <input
                   id="task-deadline"
                   type="text"
-                  class="field-input"
+                  class="field-input field-input--clearable"
                   data-date-picker="true"
                   data-test-skedpal="task-deadline-input"
                 />
-              </label>
+                <button
+                  type="button"
+                  class="modal-close-btn field-clear-btn hidden"
+                  aria-label="Clear deadline date"
+                  data-test-skedpal="task-deadline-clear"
+                >
+                  <svg
+                    class="modal-close-icon"
+                    aria-hidden="true"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    data-test-skedpal="modal-close-icon"
+                  >
+                    <path
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18 17.94 6M18 18 6.06 6"
+                    ></path>
+                  </svg>
+                  <span class="sr-only" data-test-skedpal="modal-close-label">Clear date</span>
+                </button>
+              </div>
+            </label>
               <label class="field task-modal__section-full">
                 <span class="field-label">Repeat</span>
                 <select id="task-repeat" class="field-input">

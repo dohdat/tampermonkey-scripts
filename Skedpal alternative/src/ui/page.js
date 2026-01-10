@@ -159,6 +159,24 @@ function handleTaskLinkClearClick() {
   taskLinkInput.focus();
 }
 
+function handleTaskStartFromClearClick() {
+  const input = domRefs.taskStartFromInput;
+  if (!input) {return;}
+  input.value = "";
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+  input.focus();
+}
+
+function handleTaskDeadlineClearClick() {
+  const input = domRefs.taskDeadlineInput;
+  if (!input) {return;}
+  input.value = "";
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+  input.focus();
+}
+
 function handleTaskToggleClick() {
   startTaskInSection();
 }
@@ -417,6 +435,36 @@ function registerTaskFormHandlers() {
     taskLinkInput.addEventListener("input", syncClear);
     taskLinkClearBtn.addEventListener("click", handleTaskLinkClearClick);
     syncClear();
+    cleanupFns.push(() => taskLinkInput?.removeEventListener("input", syncClear));
+    cleanupFns.push(() => taskLinkClearBtn?.removeEventListener("click", handleTaskLinkClearClick));
+  }
+  const taskStartFromClearBtn = document.querySelector('[data-test-skedpal="task-start-from-clear"]');
+  const taskDeadlineClearBtn = document.querySelector('[data-test-skedpal="task-deadline-clear"]');
+  if (domRefs.taskStartFromInput && taskStartFromClearBtn) {
+    const syncStartFromClear = () =>
+      toggleClearButtonVisibility(domRefs.taskStartFromInput, taskStartFromClearBtn);
+    domRefs.taskStartFromInput.addEventListener("input", syncStartFromClear);
+    taskStartFromClearBtn.addEventListener("click", handleTaskStartFromClearClick);
+    syncStartFromClear();
+    cleanupFns.push(() =>
+      domRefs.taskStartFromInput?.removeEventListener("input", syncStartFromClear)
+    );
+    cleanupFns.push(() =>
+      taskStartFromClearBtn?.removeEventListener("click", handleTaskStartFromClearClick)
+    );
+  }
+  if (domRefs.taskDeadlineInput && taskDeadlineClearBtn) {
+    const syncDeadlineClear = () =>
+      toggleClearButtonVisibility(domRefs.taskDeadlineInput, taskDeadlineClearBtn);
+    domRefs.taskDeadlineInput.addEventListener("input", syncDeadlineClear);
+    taskDeadlineClearBtn.addEventListener("click", handleTaskDeadlineClearClick);
+    syncDeadlineClear();
+    cleanupFns.push(() =>
+      domRefs.taskDeadlineInput?.removeEventListener("input", syncDeadlineClear)
+    );
+    cleanupFns.push(() =>
+      taskDeadlineClearBtn?.removeEventListener("click", handleTaskDeadlineClearClick)
+    );
   }
   if (taskDurationInput) {
     taskDurationInput.addEventListener("input", syncTaskDurationHelper);

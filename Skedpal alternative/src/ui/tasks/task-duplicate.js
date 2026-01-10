@@ -9,16 +9,25 @@ function buildDuplicateMap(tasksToClone) {
   return map;
 }
 
-function resolveKeptParentId(original, rootId, keptSet, byId, idMap) {
-  if (original.id === rootId) {return null;}
+function findKeptParentId(original, rootId, keptSet, byId) {
   let currentId = original.subtaskParentId || "";
   while (currentId && !keptSet.has(currentId)) {
     currentId = byId.get(currentId)?.subtaskParentId || rootId;
   }
+  if (!currentId || !keptSet.has(currentId)) {
+    return "";
+  }
+  return currentId;
+}
+
+function resolveKeptParentId(original, rootId, rootParentId, keptSet, byId, idMap) {
+  if (original.id === rootId) {
+    return rootParentId || null;
+  }
   const fallback = idMap.get(rootId) || null;
-  if (!currentId) {return fallback;}
-  if (!keptSet.has(currentId)) {return fallback;}
-  return idMap.get(currentId) || fallback;
+  const keptParentId = findKeptParentId(original, rootId, keptSet, byId);
+  if (!keptParentId) {return fallback;}
+  return idMap.get(keptParentId) || fallback;
 }
 
 function buildDuplicateTask(original, parentId, order, newId) {
@@ -47,13 +56,14 @@ function buildDuplicateTask(original, parentId, order, newId) {
 export function buildDuplicateTasks(originals, tasksCache) {
   if (!Array.isArray(originals) || originals.length === 0) {return [];}
   const rootId = originals[0].id;
+  const rootParentId = originals[0].subtaskParentId || "";
   const byId = new Map(originals.map((task) => [task.id, task]));
   const kept = originals.filter((task) => task.id === rootId || !task.completed);
   const keptSet = new Set(kept.map((task) => task.id));
   const idMap = buildDuplicateMap(kept);
   const tasksWithNew = [...(tasksCache || [])];
   return kept.map((original) => {
-    const parentId = resolveKeptParentId(original, rootId, keptSet, byId, idMap);
+    const parentId = resolveKeptParentId(original, rootId, rootParentId, keptSet, byId, idMap);
     const section = original.section || "";
     const subsection = original.subsection || "";
     const parentTask = parentId ? tasksWithNew.find((task) => task.id === parentId) : null;

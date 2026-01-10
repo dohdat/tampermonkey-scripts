@@ -1,4 +1,5 @@
 import { FIFTY, domRefs } from "./constants.js";
+import { resetTaskModalSections } from "./task-modal-sections.js";
 
 function getTaskFormRefs() {
   return {
@@ -11,6 +12,7 @@ export function openTaskForm() {
   const { taskFormWrap, taskToggle } = getTaskFormRefs();
   if (!taskFormWrap) {return;}
   taskFormWrap.classList.remove("hidden");
+  resetTaskModalSections();
   if (taskToggle) {
     taskToggle.textContent = "Add task";
   }

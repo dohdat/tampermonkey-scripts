@@ -54,6 +54,16 @@ function setupTaskModalSectionToggles(form) {
   return cleanupFns;
 }
 
+export function resetTaskModalSections() {
+  const form = resolveTaskModalForm();
+  if (!form) {return;}
+  const sections = [...form.querySelectorAll('[data-collapsible="true"]')];
+  const defaultSection = form.querySelector('[data-test-skedpal="task-modal-section-time"]');
+  sections.forEach((section) => {
+    setSectionCollapsed(section, section !== defaultSection);
+  });
+}
+
 export function initTaskModalSections() {
   if (taskModalSectionsCleanup) {return taskModalSectionsCleanup;}
   const form = resolveTaskModalForm();

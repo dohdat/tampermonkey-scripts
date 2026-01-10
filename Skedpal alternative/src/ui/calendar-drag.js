@@ -18,6 +18,7 @@ import {
   getUpdatedExternalEvents,
   sendExternalUpdateRequest
 } from "./calendar-external-events.js";
+import { syncExternalEventsCache } from "./calendar-external.js";
 import { HOUR_HEIGHT, formatEventTimeRange } from "./calendar-render.js";
 
 const DRAG_STEP_MINUTES = 15;
@@ -73,6 +74,7 @@ async function persistDraggedExternalEvent(payload) {
     throw new Error(response?.error || "Failed to update calendar event");
   }
   updateExternalEventInState(payload);
+  await syncExternalEventsCache(state.calendarExternalEvents);
 }
 
 async function persistDraggedEvent(eventMeta, dayKey, minutes, durationMinutes) {

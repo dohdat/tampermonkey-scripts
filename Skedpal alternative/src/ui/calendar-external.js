@@ -105,6 +105,19 @@ export function invalidateExternalEventsCache() {
   memoryCache.clear();
 }
 
+export async function syncExternalEventsCache(events) {
+  const key = state.calendarExternalRangeKey;
+  if (!key) {return false;}
+  const entry = {
+    key,
+    fetchedAt: Date.now(),
+    events: serializeEvents(events || [])
+  };
+  memoryCache.set(key, entry);
+  await saveCalendarCacheEntry(entry);
+  return true;
+}
+
 export async function primeExternalEventsOnLoad() {
   return false;
 }

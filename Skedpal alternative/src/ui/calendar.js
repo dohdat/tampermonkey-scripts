@@ -25,7 +25,8 @@ import {
 import {
   ensureExternalEvents,
   getExternalEventsForRange,
-  hydrateExternalEvents
+  hydrateExternalEvents,
+  syncExternalEventsCache
 } from "./calendar-external.js";
 import { ensureCalendarDragHandlers } from "./calendar-drag.js";
 import { initCalendarCreateModal, openCalendarCreateFromClick } from "./calendar-create-event.js";
@@ -94,6 +95,7 @@ async function deleteExternalEvent(deleteBtn) {
       throw new Error(response?.error || "Failed to delete calendar event");
     }
     removeExternalEvent(payload);
+    await syncExternalEventsCache(state.calendarExternalEvents);
     renderCalendar();
   } catch (error) {
     console.warn("Failed to delete Google Calendar event.", error);

@@ -3,6 +3,7 @@ import { state } from "./state/page-state.js";
 import { getDateFromDayKey, roundMinutesToStep, clampMinutes } from "./calendar-utils.js";
 import { showNotificationBanner } from "./notifications.js";
 import { sendExternalCreateRequest } from "./calendar-external-events.js";
+import { syncExternalEventsCache } from "./calendar-external.js";
 import { HOUR_HEIGHT, formatEventTimeRange } from "./calendar-render.js";
 import {
   closeCalendarEventModal,
@@ -293,6 +294,7 @@ async function handleCalendarCreateSubmit(event) {
   try {
     const created = await submitCreatePayload(payload);
     applyCreatedEvent(created);
+    await syncExternalEventsCache(state.calendarExternalEvents);
     calendarRenderHandler?.();
     closeCalendarCreateModal();
     showNotificationBanner("Event created.", { autoHideMs: 2500 });

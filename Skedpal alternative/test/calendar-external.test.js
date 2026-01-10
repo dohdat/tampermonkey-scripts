@@ -5,6 +5,7 @@ import { describe, it, beforeEach, afterEach } from "mocha";
 import { state } from "../src/ui/state/page-state.js";
 import {
   deleteCalendarCacheEntry,
+  getCalendarCacheEntry,
   saveCalendarCacheEntry
 } from "../src/data/db.js";
 import {
@@ -12,7 +13,8 @@ import {
   getExternalEventsForRange,
   hydrateExternalEvents,
   invalidateExternalEventsCache,
-  primeExternalEventsOnLoad
+  primeExternalEventsOnLoad,
+  syncExternalEventsCache
 } from "../src/ui/calendar-external.js";
 
 describe("calendar external events", () => {
@@ -300,5 +302,25 @@ describe("calendar external events", () => {
     assert.strictEqual(updated, true);
     assert.strictEqual(state.calendarExternalPendingKey, "");
     assert.strictEqual(state.calendarExternalRangeKey, key);
+  });
+
+  it("syncs updated external events into the cache entry", async () => {
+    const key = buildKey(range, state.settingsCache.googleCalendarIds);
+    state.calendarExternalRangeKey = key;
+    state.calendarExternalEvents = [
+      {
+        id: "evt-6",
+        title: "Synced",
+        start: range.start,
+        end: range.end
+      }
+    ];
+    const synced = await syncExternalEventsCache(state.calendarExternalEvents);
+    assert.strictEqual(synced, true);
+    const entry = await getCalendarCacheEntry(key);
+    assert.ok(entry);
+    assert.strictEqual(entry.key, key);
+    assert.strictEqual(entry.events?.length, 1);
+    assert.strictEqual(entry.events[0].id, "evt-6");
   });
 });

@@ -129,6 +129,9 @@ export function switchView(target, options = {}) {
   const views = getViews();
   const allowedViews = navButtons.map((btn) => btn.dataset.view);
   const resolvedTarget = allowedViews.includes(target) ? target : "tasks";
+  if (domRefs.appShell) {
+    domRefs.appShell.dataset.activeView = resolvedTarget;
+  }
   const isCalendarSplit = shouldShowCalendarSplit(resolvedTarget);
   const currentView = getActiveViewId(views);
   if (resolvedTarget !== "tasks" && state.zoomFilter) {

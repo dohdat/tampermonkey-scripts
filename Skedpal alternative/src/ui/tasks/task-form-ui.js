@@ -119,6 +119,18 @@ function syncTaskLinkClear() {
   toggleClearButtonVisibility(taskLinkInput, taskLinkClearBtn);
 }
 
+function notifyPriorityChange() {
+  if (!taskPriorityInput) {return;}
+  if (typeof Event === "function") {
+    taskPriorityInput.dispatchEvent(new Event("change", { bubbles: true }));
+    return;
+  }
+  const handler = taskPriorityInput?._listeners?.change;
+  if (typeof handler === "function") {
+    handler();
+  }
+}
+
 export function syncTaskDurationHelper() {
   if (!taskDurationInput || !taskDurationHelper) {return;}
   const minutes = Number(taskDurationInput.value);
@@ -147,6 +159,7 @@ export function resetTaskForm(shouldClose = false) {
   taskMinBlockInput.value = String(DEFAULT_TASK_MIN_BLOCK_MIN);
   document.getElementById("task-priority").value = String(DEFAULT_TASK_PRIORITY);
   applyPrioritySelectColor(taskPriorityInput);
+  notifyPriorityChange();
   taskDeadlineInput.value = "";
   taskStartFromInput.value = "";
   setRepeatFromSelection({ ...DEFAULT_TASK_REPEAT }, "task");
@@ -185,6 +198,7 @@ function setTaskFormBasics({
   taskMinBlockInput.value = minBlockMin || String(DEFAULT_TASK_MIN_BLOCK_MIN);
   document.getElementById("task-priority").value = String(priority || DEFAULT_TASK_PRIORITY);
   applyPrioritySelectColor(taskPriorityInput);
+  notifyPriorityChange();
   taskDeadlineInput.value = deadline ? deadline.slice(0, TEN) : "";
   taskStartFromInput.value = startFrom ? startFrom.slice(0, TEN) : "";
   setRepeatFromSelection(repeat, "task");
@@ -260,6 +274,7 @@ export function openTaskEdit(task, options = {}) {
   taskMinBlockInput.value = task.minBlockMin || String(DEFAULT_TASK_MIN_BLOCK_MIN);
   document.getElementById("task-priority").value = String(task.priority);
   applyPrioritySelectColor(taskPriorityInput);
+  notifyPriorityChange();
   taskDeadlineInput.value = task.deadline ? task.deadline.slice(0, TEN) : "";
   taskStartFromInput.value = task.startFrom ? task.startFrom.slice(0, TEN) : "";
   taskParentIdInput.value = task.subtaskParentId || "";

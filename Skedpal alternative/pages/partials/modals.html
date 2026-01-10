@@ -143,20 +143,209 @@
                   class="field-input"
                 />
               </label>
-              <label class="field">
-                <span class="field-label">Priority (1-5)</span>
+            <label class="field" data-test-skedpal="task-priority-field">
+              <span class="field-label">Priority (1-5)</span>
+              <div class="priority-dropdown" data-test-skedpal="task-priority-dropdown">
+                <button
+                  type="button"
+                  class="priority-dropdown__trigger"
+                  data-test-skedpal="task-priority-trigger"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                >
+                  <span class="priority-dropdown__icon" data-test-skedpal="task-priority-trigger-icon"></span>
+                  <span class="priority-dropdown__text" data-test-skedpal="task-priority-trigger-text">
+                    <span class="priority-dropdown__label" data-test-skedpal="task-priority-trigger-label">
+                      Normal
+                    </span>
+                  </span>
+                  <span class="priority-dropdown__value" data-test-skedpal="task-priority-trigger-value">
+                    3
+                  </span>
+                  <span class="priority-dropdown__caret" data-test-skedpal="task-priority-trigger-caret">
+                    <svg viewBox="0 0 20 20" aria-hidden="true">
+                      <path
+                        d="m5 7 5 5 5-5"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.6"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      ></path>
+                    </svg>
+                  </span>
+                </button>
+                <div
+                  class="priority-dropdown__menu hidden"
+                  role="listbox"
+                  data-test-skedpal="task-priority-menu"
+                >
+                  <button
+                    type="button"
+                    class="priority-dropdown__option"
+                    role="option"
+                    data-value="5"
+                    data-priority="5"
+                    data-test-skedpal="task-priority-option-5"
+                  >
+                    <span class="priority-dropdown__icon" data-test-skedpal="task-priority-icon-5">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                          d="M12 4 3 20h18L12 4Z"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.6"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        ></path>
+                        <path
+                          d="M12 9v5m0 3v0"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.6"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        ></path>
+                      </svg>
+                    </span>
+                    <span class="priority-dropdown__text">
+                      <span class="priority-dropdown__label">Urgent</span>
+                    </span>
+                    <span class="priority-dropdown__value">5</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="priority-dropdown__option"
+                    role="option"
+                    data-value="4"
+                    data-priority="4"
+                    data-test-skedpal="task-priority-option-4"
+                  >
+                    <span class="priority-dropdown__icon" data-test-skedpal="task-priority-icon-4">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                          d="m4 16 6-6 4 4 6-6"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.6"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        ></path>
+                        <path
+                          d="M16 8h4v4"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.6"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        ></path>
+                      </svg>
+                    </span>
+                    <span class="priority-dropdown__text">
+                      <span class="priority-dropdown__label">Important</span>
+                    </span>
+                    <span class="priority-dropdown__value">4</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="priority-dropdown__option"
+                    role="option"
+                    data-value="3"
+                    data-priority="3"
+                    data-test-skedpal="task-priority-option-3"
+                  >
+                    <span class="priority-dropdown__icon" data-test-skedpal="task-priority-icon-3">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                          d="M6 12h12"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.6"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        ></path>
+                      </svg>
+                    </span>
+                    <span class="priority-dropdown__text">
+                      <span class="priority-dropdown__label">Normal</span>
+                    </span>
+                    <span class="priority-dropdown__value">3</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="priority-dropdown__option"
+                    role="option"
+                    data-value="2"
+                    data-priority="2"
+                    data-test-skedpal="task-priority-option-2"
+                  >
+                    <span class="priority-dropdown__icon" data-test-skedpal="task-priority-icon-2">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                          d="m20 8-6 6-4-4-6 6"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.6"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        ></path>
+                      </svg>
+                    </span>
+                    <span class="priority-dropdown__text">
+                      <span class="priority-dropdown__label">Can wait</span>
+                    </span>
+                    <span class="priority-dropdown__value">2</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="priority-dropdown__option"
+                    role="option"
+                    data-value="1"
+                    data-priority="1"
+                    data-test-skedpal="task-priority-option-1"
+                  >
+                    <span class="priority-dropdown__icon" data-test-skedpal="task-priority-icon-1">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                          d="m18 10-6 6-6-6"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.6"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        ></path>
+                        <path
+                          d="M6 6h12"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.6"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        ></path>
+                      </svg>
+                    </span>
+                    <span class="priority-dropdown__text">
+                      <span class="priority-dropdown__label">Minimal</span>
+                    </span>
+                    <span class="priority-dropdown__value">1</span>
+                  </button>
+                  <div class="priority-dropdown__hint" data-test-skedpal="task-priority-hint">
+                    Higher priority tasks are scheduled first.
+                  </div>
+                </div>
                 <select
                   id="task-priority"
-                  class="field-input priority-select"
+                  class="field-input priority-select sr-only"
                   data-test-skedpal="task-priority-select"
                 >
-                  <option value="5">5</option>
-                  <option value="4">4</option>
-                  <option value="3" selected>3</option>
-                  <option value="2">2</option>
-                  <option value="1">1</option>
+                  <option value="5">Critical</option>
+                  <option value="4">Important</option>
+                  <option value="3" selected>Normal</option>
+                  <option value="2">Can wait</option>
+                  <option value="1">Minimal</option>
                 </select>
-              </label>
+              </div>
+            </label>
             </div>
           </div>
         </div>

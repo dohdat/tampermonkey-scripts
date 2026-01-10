@@ -79,6 +79,7 @@ import { applyTheme } from "./theme.js";
 import { initSidebarToggle } from "./sidebar-toggle.js";
 import { initDatePicker } from "./date-picker.js";
 import { initTaskModalSections } from "./task-modal-sections.js";
+import { initTaskPriorityDropdown } from "./tasks/task-priority-dropdown.js";
 
 const {
   timeMapDayRows,
@@ -577,6 +578,7 @@ function registerModalHandlers() {
   initTaskReminderModal();
   initDatePicker();
   initTaskModalSections();
+  initTaskPriorityDropdown();
 }
 
 function registerKeyboardHandlers() {

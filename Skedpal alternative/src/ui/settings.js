@@ -104,7 +104,7 @@ function formatCalendarMeta(entry) {
 function buildCalendarRow(entry, selectedIds, onChange) {
   const row = document.createElement("label");
   row.className =
-    "flex items-start gap-3 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-slate-200 transition hover:border-lime-400/60";
+    "flex items-start gap-3 rounded-xl border-slate-800 bg-slate-950/60 px-3 py-2 text-slate-200 transition hover:border-lime-400/60";
   row.setAttribute("data-test-skedpal", "google-calendar-row");
 
   const checkbox = document.createElement("input");
@@ -117,7 +117,7 @@ function buildCalendarRow(entry, selectedIds, onChange) {
   checkbox.addEventListener("change", onChange);
 
   const color = document.createElement("span");
-  color.className = "mt-1 h-3 w-3 rounded-full border border-slate-700";
+  color.className = "mt-1 h-3 w-3 rounded-full border-slate-700";
   color.setAttribute("data-test-skedpal", "google-calendar-color");
   if (entry.backgroundColor) {
     color.style.backgroundColor = entry.backgroundColor;
@@ -150,7 +150,7 @@ function renderCalendarList(calendars, selectedIds, onChange) {
   googleCalendarList.innerHTML = "";
   if (!calendars.length) {
     const empty = document.createElement("div");
-    empty.className = "rounded-xl border border-dashed border-slate-800 bg-slate-950/40 px-3 py-2 text-xs text-slate-400";
+    empty.className = "rounded-xl border-dashed border-slate-800 bg-slate-950/40 px-3 py-2 text-xs text-slate-400";
     empty.textContent = "No calendars found.";
     empty.setAttribute("data-test-skedpal", "google-calendar-empty");
     googleCalendarList.appendChild(empty);

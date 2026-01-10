@@ -51,7 +51,7 @@ function buildTodayTasks(tasks, dayStart, dayEnd) {
 function renderTodayEmpty(list) {
   const empty = document.createElement("div");
   empty.className =
-    "rounded-2xl border border-dashed border-slate-800 bg-slate-900/50 px-4 py-6 text-sm text-slate-400";
+    "rounded-2xl border-dashed border-slate-800 bg-slate-900/50 px-4 py-6 text-sm text-slate-400";
   empty.textContent = "No tasks scheduled for today.";
   empty.setAttribute("data-test-skedpal", "today-empty");
   list.appendChild(empty);

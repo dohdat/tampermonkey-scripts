@@ -11,6 +11,19 @@
   input[type="date"] {
     color-scheme: dark;
   }
+
+  button {
+    border-width: var(--size-1px);
+    border-style: solid;
+  }
+
+  button:not(:hover) {
+    border-color: transparent !important;
+  }
+
+  button:hover {
+    border-color: var(--color-slate-600);
+  }
 }
 
 

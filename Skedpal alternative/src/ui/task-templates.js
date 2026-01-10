@@ -18,7 +18,7 @@ function sortTemplates(list) {
 function renderEmptyTemplateList(container) {
   const empty = document.createElement("div");
   empty.className =
-    "flex items-center justify-center rounded-xl border border-dashed border-slate-700 bg-slate-900/60 px-3 py-4 text-sm text-slate-400";
+    "flex items-center justify-center rounded-xl border-dashed border-slate-700 bg-slate-900/60 px-3 py-4 text-sm text-slate-400";
   empty.textContent = "No task templates yet.";
   empty.setAttribute("data-test-skedpal", "task-template-empty");
   container.appendChild(empty);
@@ -27,7 +27,7 @@ function renderEmptyTemplateList(container) {
 function buildSubtaskRow(subtask, templateId) {
   const row = document.createElement("div");
   row.className =
-    "flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-200";
+    "flex flex-wrap items-center justify-between gap-2 rounded-xl border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-200";
   row.setAttribute("data-test-skedpal", "task-template-subtask-row");
   row.dataset.templateId = templateId;
   row.dataset.subtaskId = subtask.id || "";
@@ -46,7 +46,7 @@ function buildSubtaskRow(subtask, templateId) {
   addChildBtn.dataset.templateAddChildSubtask = subtask.id || "";
   addChildBtn.dataset.templateId = templateId;
   addChildBtn.className =
-    "rounded-lg border border-slate-700 px-2 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
+    "rounded-lg border-slate-700 px-2 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
   addChildBtn.textContent = "Add subtask";
   addChildBtn.setAttribute("data-test-skedpal", "task-template-subtask-add-child");
 
@@ -55,7 +55,7 @@ function buildSubtaskRow(subtask, templateId) {
   editBtn.dataset.templateSubtaskEdit = subtask.id || "";
   editBtn.dataset.templateId = templateId;
   editBtn.className =
-    "rounded-lg border border-slate-700 px-2 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
+    "rounded-lg border-slate-700 px-2 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
   editBtn.textContent = "Edit";
   editBtn.setAttribute("data-test-skedpal", "task-template-subtask-edit");
 
@@ -64,7 +64,7 @@ function buildSubtaskRow(subtask, templateId) {
   removeBtn.dataset.templateSubtaskDelete = subtask.id || "";
   removeBtn.dataset.templateId = templateId;
   removeBtn.className =
-    "rounded-lg border border-slate-700 px-2 py-1 text-xs font-semibold text-slate-200 hover:border-orange-400";
+    "rounded-lg border-slate-700 px-2 py-1 text-xs font-semibold text-slate-200 hover:border-orange-400";
   removeBtn.textContent = "Remove";
   removeBtn.setAttribute("data-test-skedpal", "task-template-subtask-delete");
 
@@ -132,7 +132,7 @@ function renderSubtaskTree(container, templateId, subtasks) {
 
 function buildTemplateCard(template) {
   const card = document.createElement("div");
-  card.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow space-y-3";
+  card.className = "rounded-2xl border-slate-800 bg-slate-900/70 p-4 shadow space-y-3";
   card.setAttribute("data-test-skedpal", "task-template-card");
   card.dataset.templateId = template.id || "";
 
@@ -149,7 +149,7 @@ function buildTemplateCard(template) {
   title.setAttribute("data-test-skedpal", "task-template-title");
   const count = document.createElement("span");
   count.className =
-    "rounded-full border border-slate-700 bg-slate-800/70 px-2 py-1 text-xs font-semibold text-slate-200";
+    "rounded-full border-slate-700 bg-slate-800/70 px-2 py-1 text-xs font-semibold text-slate-200";
   const subtaskCount = (template.subtasks || []).length;
   count.textContent = `${subtaskCount} ${subtaskCount === 1 ? "subtask" : "subtasks"}`;
   count.setAttribute("data-test-skedpal", "task-template-subtask-count");
@@ -164,7 +164,7 @@ function buildTemplateCard(template) {
   addSubtaskBtn.type = "button";
   addSubtaskBtn.dataset.templateAddSubtask = template.id || "";
   addSubtaskBtn.className =
-    "rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
+    "rounded-lg border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
   addSubtaskBtn.textContent = "Add subtask";
   addSubtaskBtn.setAttribute("data-test-skedpal", "task-template-add-subtask");
 
@@ -172,7 +172,7 @@ function buildTemplateCard(template) {
   editBtn.type = "button";
   editBtn.dataset.templateEdit = template.id || "";
   editBtn.className =
-    "rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
+    "rounded-lg border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
   editBtn.textContent = "Edit";
   editBtn.setAttribute("data-test-skedpal", "task-template-edit");
 
@@ -180,7 +180,7 @@ function buildTemplateCard(template) {
   deleteBtn.type = "button";
   deleteBtn.dataset.templateDelete = template.id || "";
   deleteBtn.className =
-    "rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-orange-400";
+    "rounded-lg border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-orange-400";
   deleteBtn.textContent = "Delete";
   deleteBtn.setAttribute("data-test-skedpal", "task-template-delete");
 

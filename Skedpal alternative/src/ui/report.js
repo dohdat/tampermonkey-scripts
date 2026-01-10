@@ -377,7 +377,7 @@ function formatMinutesSummary(scheduledMinutes, capacityMinutes) {
 
 function buildTimeMapUsageCard(rows) {
   const card = document.createElement("div");
-  card.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow";
+  card.className = "rounded-2xl border-slate-800 bg-slate-900/70 p-4 shadow";
   card.setAttribute("data-test-skedpal", "report-timemap-card");
   const header = document.createElement("div");
   header.className = "text-base font-semibold text-slate-100";
@@ -405,7 +405,7 @@ function buildTimeMapUsageCard(rows) {
   rows.forEach((row) => {
     const item = document.createElement("div");
     item.className =
-      "relative overflow-hidden rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2 text-xs text-slate-200";
+      "relative overflow-hidden rounded-xl border-slate-800 bg-slate-950/50 px-3 py-2 text-xs text-slate-200";
     item.setAttribute("data-test-skedpal", "report-timemap-row");
     if (row.color) {
       item.style.borderColor = row.color;
@@ -478,7 +478,7 @@ export function renderReport(tasks = state.tasksCache) {
   if (!rows.length) {
     const empty = document.createElement("div");
     empty.className =
-      "rounded-2xl border border-dashed border-slate-800 bg-slate-900/50 p-4 text-sm text-slate-400";
+      "rounded-2xl border-dashed border-slate-800 bg-slate-900/50 p-4 text-sm text-slate-400";
     empty.setAttribute("data-test-skedpal", "report-empty");
     empty.textContent = "No missed tasks yet.";
     reportList.appendChild(empty);

@@ -14,7 +14,7 @@ describe("calendar event styles", () => {
     assert.strictEqual(styles, null);
   });
 
-  it("returns background and border colors for timemap events", () => {
+  it("returns background and colors for timemap events", () => {
     const colors = new Map([["tm-1", "#22c55e"]]);
     const styles = getCalendarEventStyles({ timeMapId: "tm-1" }, colors);
     assert.deepStrictEqual(styles, {

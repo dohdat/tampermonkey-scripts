@@ -91,7 +91,7 @@ export function renderSections() {
       section.id === "section-work-default" || section.id === "section-personal-default";
     const chip = document.createElement("div");
     chip.className =
-      "flex items-center gap-1 rounded-full border border-slate-700 bg-slate-800/70 px-3 py-1 text-xs font-semibold text-slate-200";
+      "flex items-center gap-1 rounded-full border-slate-700 bg-slate-800/70 px-3 py-1 text-xs font-semibold text-slate-200";
     chip.setAttribute("data-test-skedpal", "section-chip");
     const label = document.createElement("span");
     label.textContent = getSectionName(section.id) || section.name;
@@ -100,7 +100,7 @@ export function renderSections() {
     removeBtn.type = "button";
     removeBtn.dataset.removeSection = section.id;
     removeBtn.className =
-      "h-5 w-5 rounded-full border border-slate-700 text-[10px] font-bold text-slate-300 hover:border-orange-400 hover:text-orange-300";
+      "h-5 w-5 rounded-full border-slate-700 text-[10px] font-bold text-slate-300 hover:border-orange-400 hover:text-orange-300";
     removeBtn.setAttribute("data-test-skedpal", "section-remove-btn");
     removeBtn.textContent = "x";
     if (isDefault) {

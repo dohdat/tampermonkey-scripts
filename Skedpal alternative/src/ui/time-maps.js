@@ -69,7 +69,7 @@ function createDayHeader(day) {
   const removeDayBtn = document.createElement("button");
   removeDayBtn.type = "button";
   removeDayBtn.className =
-    "rounded-lg border border-slate-700 px-2 py-1 text-xs font-semibold text-slate-300 hover:border-orange-400 hover:text-orange-300";
+    "rounded-lg border-slate-700 px-2 py-1 text-xs font-semibold text-slate-300 hover:border-orange-400 hover:text-orange-300";
   removeDayBtn.textContent = "Remove";
   removeDayBtn.setAttribute("data-test-skedpal", "timemap-day-remove");
   removeDayBtn.addEventListener("click", handleRemoveDayClick);
@@ -81,21 +81,21 @@ function createDayHeader(day) {
 function createTimeBlock(day, block = { startTime: "09:00", endTime: "12:00" }) {
   const wrapper = document.createElement("div");
   wrapper.className =
-    "flex flex-wrap items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 text-xs text-slate-200";
+    "flex flex-wrap items-center gap-2 rounded-lg border-slate-700 bg-slate-950/70 px-3 py-2 text-xs text-slate-200";
   wrapper.dataset.block = day;
   wrapper.setAttribute("data-test-skedpal", "timemap-block");
   const start = document.createElement("input");
   start.type = "time";
   start.value = block.startTime || "09:00";
   start.className =
-    "w-24 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100 focus:border-lime-400 focus:outline-none";
+    "w-24 rounded-lg border-slate-700 bg-slate-900 px-2 py-1 text-slate-100 focus:border-lime-400 focus:outline-none";
   start.dataset.startFor = day;
   start.setAttribute("data-test-skedpal", "timemap-block-start");
   const end = document.createElement("input");
   end.type = "time";
   end.value = block.endTime || "12:00";
   end.className =
-    "w-24 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100 focus:border-lime-400 focus:outline-none";
+    "w-24 rounded-lg border-slate-700 bg-slate-900 px-2 py-1 text-slate-100 focus:border-lime-400 focus:outline-none";
   end.dataset.endFor = day;
   end.setAttribute("data-test-skedpal", "timemap-block-end");
   const removeBtn = document.createElement("button");
@@ -148,7 +148,7 @@ function createAddBlockButton(day) {
   addBlockBtn.type = "button";
   addBlockBtn.textContent = "Add time range";
   addBlockBtn.className =
-    "mt-2 w-fit rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
+    "mt-2 w-fit rounded-lg border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
   addBlockBtn.setAttribute("data-test-skedpal", "timemap-block-add");
   addBlockBtn.dataset.day = String(day);
   addBlockBtn.addEventListener("click", handleAddBlockClick);
@@ -158,7 +158,7 @@ function createAddBlockButton(day) {
 function createDayRow(day, blocks = []) {
   const row = document.createElement("div");
   row.dataset.dayRow = String(day);
-  row.className = "rounded-xl border border-slate-700 bg-slate-900/60 p-3";
+  row.className = "rounded-xl border-slate-700 bg-slate-900/60 p-3";
   row.setAttribute("data-test-skedpal", "timemap-day-row");
   const header = createDayHeader(day);
   const blocksContainer = createBlocksContainer(day, blocks);
@@ -236,7 +236,7 @@ export function renderTimeMaps(timeMaps) {
   timeMapList.innerHTML = "";
   if (timeMaps.length === 0) {
     timeMapList.innerHTML =
-      '<div class="flex items-center justify-center rounded-xl border border-dashed border-slate-700 bg-slate-900/60 px-3 py-4 text-sm text-slate-400">No TimeMaps yet. Add at least one availability map.</div>';
+      '<div class="flex items-center justify-center rounded-xl border-dashed border-slate-700 bg-slate-900/60 px-3 py-4 text-sm text-slate-400">No TimeMaps yet. Add at least one availability map.</div>';
     return;
   }
   const usageCounts = timeMaps.reduce((map, tm) => {
@@ -251,7 +251,7 @@ export function renderTimeMaps(timeMaps) {
     const editBtnBorder = tm.color || themeColors.slate500;
     const editBtnColor = tm.color ? themeColors.slate800 : themeColors.slate100;
     const card = document.createElement("div");
-    card.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow";
+    card.className = "rounded-2xl border-slate-800 bg-slate-900/70 p-4 shadow";
     card.setAttribute("data-test-skedpal", "timemap-card");
     if (tm.color) {
       card.style.borderColor = tm.color;
@@ -267,12 +267,12 @@ export function renderTimeMaps(timeMaps) {
     card.innerHTML = `
       <h3 class="text-base font-semibold flex flex-wrap items-center gap-2">
         <span>${tm.name}</span>
-        ${isDefault ? '<span class="rounded-full border border-lime-400/60 bg-lime-400/10 px-2 py-1 text-xs font-semibold text-lime-300">Default</span>' : ""}
-        <span class="rounded-full border border-slate-700 bg-slate-800/70 px-2 py-1 text-xs font-semibold text-slate-200" data-test-skedpal="timemap-task-count">${taskCount}</span>
+        ${isDefault ? '<span class="rounded-full border-lime-400/60 bg-lime-400/10 px-2 py-1 text-xs font-semibold text-lime-300">Default</span>' : ""}
+        <span class="rounded-full border-slate-700 bg-slate-800/70 px-2 py-1 text-xs font-semibold text-slate-200" data-test-skedpal="timemap-task-count">${taskCount}</span>
       </h3>
       <div class="mt-1 flex flex-wrap gap-2 text-xs text-slate-400">${rulesText}</div>
       <div class="mt-3 flex gap-2">
-        <button style="background:${editBtnBackground};border-color:${editBtnBorder};color:${editBtnColor}" class="rounded-lg border px-3 py-1 text-xs font-semibold" data-edit="${tm.id}">Edit</button>
+        <button style="background:${editBtnBackground};border-color:${editBtnBorder};color:${editBtnColor}" class="rounded-lg px-3 py-1 text-xs font-semibold" data-edit="${tm.id}">Edit</button>
         <button class="rounded-lg bg-orange-500/90 px-3 py-1 text-xs font-semibold text-slate-900 hover:bg-orange-400" data-delete="${tm.id}" data-test-skedpal="timemap-delete">Delete</button>
       </div>
     `;
@@ -321,7 +321,7 @@ export function renderTaskTimeMapOptions(
     const label = document.createElement("label");
     label.htmlFor = id;
     label.className =
-      "flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-100";
+      "flex items-center gap-2 rounded-lg border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-100";
     const input = document.createElement("input");
     input.type = "checkbox";
     input.value = tm.id;
@@ -335,7 +335,7 @@ export function renderTaskTimeMapOptions(
       text.style.color = tm.color;
     }
     const swatch = document.createElement("span");
-    swatch.className = "h-3 w-3 rounded-full border border-slate-700";
+    swatch.className = "h-3 w-3 rounded-full border-slate-700";
     swatch.style.backgroundColor = tm.color || themeColors.slate100;
     swatch.style.borderColor = tm.color || themeColors.slate500;
     label.appendChild(input);
@@ -356,7 +356,7 @@ export function renderTimeMapOptions(
   normalized.forEach((tm) => {
     const label = document.createElement("label");
     label.className =
-      "flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-xs text-slate-200";
+      "flex items-center gap-2 rounded-lg border-slate-800 bg-slate-950/80 px-3 py-2 text-xs text-slate-200";
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.value = tm.id;

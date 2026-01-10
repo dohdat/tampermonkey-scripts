@@ -233,8 +233,8 @@ function buildSectionSubsectionInput(sectionId) {
   subsectionInputWrap.style.display = "none";
   subsectionInputWrap.dataset.subsectionForm = sectionId;
   subsectionInputWrap.innerHTML = `
-        <input data-subsection-input="${sectionId}" placeholder="Add subsection" class="w-full rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none" />
-        <button type="button" data-add-subsection="${sectionId}" class="rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-lime-400">Add subsection</button>
+        <input data-subsection-input="${sectionId}" placeholder="Add subsection" class="w-full rounded-lg border-slate-800 bg-slate-950/80 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none" />
+        <button type="button" data-add-subsection="${sectionId}" class="rounded-lg border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-lime-400">Add subsection</button>
       `;
   return subsectionInputWrap;
 }
@@ -293,7 +293,7 @@ function buildUngroupedZone(context, options, renderToken) {
   ungroupedZone.dataset.dropSection = options.dropSection;
   ungroupedZone.dataset.dropSubsection = options.dropSubsection;
   ungroupedZone.className =
-    "space-y-2 rounded-xl border border-dashed border-slate-700 bg-slate-900/50 px-3 py-3";
+    "space-y-2 rounded-xl border-dashed border-slate-700 bg-slate-900/50 px-3 py-3";
   ungroupedZone.classList.add(TASK_ZONE_CLASS);
   renderTaskCards(ungroupedZone, options.ungroupedTasks, context, {
     renderToken,
@@ -370,7 +370,7 @@ function renderSubsection(sub, section, sectionTasks, context, options) {
   } = options;
   const subWrap = document.createElement("div");
   subWrap.className =
-    "space-y-2 rounded-xl border border-slate-800 bg-slate-900/60 p-3 pl-4 md:pl-6";
+    "space-y-2 rounded-xl border-slate-800 bg-slate-900/60 p-3 pl-4 md:pl-6";
   subWrap.dataset.subsectionCard = sub.id;
   const { subHeader, subCollapsed } = buildSubsectionHeader(sub, section, isNoSection);
   const isCollapsed = Boolean(isAncestorCollapsed || subCollapsed);
@@ -454,7 +454,7 @@ function buildSectionCardContainer(section, isSubsectionZoom) {
   const card = document.createElement("div");
   card.className = isSubsectionZoom
     ? "space-y-3"
-    : "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow space-y-3";
+    : "rounded-2xl border-slate-800 bg-slate-900/70 p-4 shadow space-y-3";
   card.dataset.sectionCard = section.id;
   return card;
 }
@@ -543,7 +543,7 @@ export function renderTasks(tasks, timeMaps) {
   const allSections = buildSectionsList(sections, filteredTasks);
   if (allSections.length === 0) {
     taskList.innerHTML =
-      '<div class="flex items-center justify-center rounded-xl border border-dashed border-slate-700 bg-slate-900/60 px-3 py-4 text-sm text-slate-400">No sections yet. Add a section to begin.</div>';
+      '<div class="flex items-center justify-center rounded-xl border-dashed border-slate-700 bg-slate-900/60 px-3 py-4 text-sm text-slate-400">No sections yet. Add a section to begin.</div>';
     return;
   }
   renderInBatches({

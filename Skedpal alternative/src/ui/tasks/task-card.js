@@ -29,7 +29,7 @@ function buildTitleMarkup(task) {
 function applyTaskCardBaseStyles(taskCard, task, depth, timeMapById, options = {}) {
   const isSubtask = depth > 0;
   const dataTest = options.dataTest || "task-card";
-  taskCard.className = "rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow";
+  taskCard.className = "rounded-2xl border-slate-800 bg-slate-900/70 p-4 shadow";
   taskCard.setAttribute("data-test-skedpal", dataTest);
   taskCard.dataset.taskId = task.id;
   taskCard.dataset.sectionId = task.section || "";

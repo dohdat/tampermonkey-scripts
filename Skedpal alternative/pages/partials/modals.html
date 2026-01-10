@@ -365,6 +365,92 @@
   </div>
 </div>
 <div
+  id="task-reminder-modal"
+  class="task-modal task-reminder-modal hidden"
+  data-test-skedpal="task-reminder-modal"
+>
+  <div class="task-modal__panel task-modal__panel--task">
+    <div class="task-modal__header task-modal__header--task">
+      <div>
+        <p class="task-modal__eyebrow" data-test-skedpal="task-reminder-eyebrow">Reminders</p>
+        <h3 class="task-modal__title" data-test-skedpal="task-reminder-title">Remind me</h3>
+        <p class="task-modal__subtitle" data-test-skedpal="task-reminder-subtitle">
+          Select how many days from now you want a reminder.
+        </p>
+      </div>
+      <button
+        type="button"
+        class="modal-close-btn"
+        data-reminder-modal-close
+        aria-label="Close reminder modal"
+        data-test-skedpal="task-reminder-close"
+      >
+        <svg
+          class="modal-close-icon"
+          aria-hidden="true"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          data-test-skedpal="modal-close-icon"
+        >
+          <path
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M6 18 17.94 6M18 18 6.06 6"
+          ></path>
+        </svg>
+        <span class="sr-only" data-test-skedpal="modal-close-label">Close modal</span>
+      </button>
+    </div>
+    <div class="task-modal__form" data-test-skedpal="task-reminder-form">
+      <div class="space-y-2" data-test-skedpal="task-reminder-days-wrap">
+        <span class="field-label">Remind me in</span>
+        <div
+          id="task-reminder-days"
+          class="flex flex-wrap gap-2"
+          data-test-skedpal="task-reminder-days"
+        ></div>
+      </div>
+      <div class="mt-3 space-y-2" data-test-skedpal="task-reminder-custom-wrap">
+        <span class="field-label">Custom days</span>
+        <div class="flex flex-wrap items-center gap-2">
+          <input
+            id="task-reminder-custom"
+            type="number"
+            min="1"
+            class="field-input w-24"
+            placeholder="3"
+            data-test-skedpal="task-reminder-custom"
+          />
+          <button
+            type="button"
+            class="rounded-lg border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400"
+            id="task-reminder-custom-add"
+            data-test-skedpal="task-reminder-custom-add"
+          >
+            Add
+          </button>
+        </div>
+      </div>
+      <div class="mt-3 hidden" id="task-reminder-existing" data-test-skedpal="task-reminder-existing">
+        <span class="field-label">Existing reminders</span>
+        <div
+          class="space-y-2"
+          id="task-reminder-existing-list"
+          data-test-skedpal="task-reminder-existing-list"
+        ></div>
+      </div>
+      <div class="task-modal__actions">
+        <button type="button" class="btn muted" data-reminder-modal-close>Cancel</button>
+        <button type="button" class="btn primary" id="task-reminder-save" data-test-skedpal="task-reminder-save">
+          Save reminders
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div
   id="calendar-event-modal"
   class="task-modal calendar-event-modal-overlay hidden"
   data-test-skedpal="calendar-event-modal"

@@ -27,6 +27,7 @@ import {
   duplicateTaskWithChildren,
   viewTaskOnCalendar
 } from "./tasks-actions.js";
+import { openTaskReminderModal, dismissOverdueTaskReminders } from "./task-reminders.js";
 
 function runTaskDetailCleanup(taskId) {
   if (!taskId) {return;}
@@ -77,6 +78,8 @@ function parseTaskListClick(btn) {
     editId: btn.dataset.edit,
     deleteId: btn.dataset.delete,
     duplicateTaskId: btn.dataset.duplicateTask,
+    remindTaskId: btn.dataset.remindTask,
+    dismissReminderTaskId: btn.dataset.dismissReminder,
     addSubtaskId: btn.dataset.addSubtask,
     toggleTaskDetailsId: btn.dataset.toggleTaskDetails,
     toggleTaskCollapseId: btn.dataset.toggleTaskCollapse
@@ -283,6 +286,14 @@ async function handleTaskActions(action, options = {}) {
     {
       when: Boolean(action.duplicateTaskId),
       run: () => duplicateTaskWithChildren(action.duplicateTaskId)
+    },
+    {
+      when: Boolean(action.remindTaskId),
+      run: () => openTaskReminderModal(action.remindTaskId)
+    },
+    {
+      when: Boolean(action.dismissReminderTaskId),
+      run: () => dismissOverdueTaskReminders(action.dismissReminderTaskId)
     },
     {
       when: action.addSubtaskId !== undefined,

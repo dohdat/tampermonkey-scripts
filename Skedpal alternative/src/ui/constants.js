@@ -37,6 +37,7 @@ export const dayOptions = [
 
 export const editIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path d="M14.7 2.3a1 1 0 0 1 1.4 0l1.6 1.6a1 1 0 0 1 0 1.4l-9.2 9.2-3.3.7a.5.5 0 0 1-.6-.6l.7-3.3 9.2-9.2Z"></path><path d="M2.5 17.5h15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>`;
 export const duplicateIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="6" y="6" width="10" height="10" rx="2"></rect><rect x="2.5" y="2.5" width="10" height="10" rx="2"></rect></svg>`;
+export const reminderIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5.5 8.5a4.5 4.5 0 0 1 9 0v3.2l1.3 2.1a1 1 0 0 1-.85 1.5H5.05a1 1 0 0 1-.85-1.5l1.3-2.1V8.5Z"></path><path d="M8 16.5a2 2 0 0 0 4 0" stroke-linecap="round"></path></svg>`;
 export const calendarIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="14" height="13" rx="2"></rect><path d="M6.5 2.5v3M13.5 2.5v3M3 8h14"></path></svg>`;
 export const removeIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h12"></path><path d="M8 6v9m4-9v9"></path><path d="M7 6V4.5A1.5 1.5 0 0 1 8.5 3h3A1.5 1.5 0 0 1 13 4.5V6"></path><path d="M5 6v9.5A1.5 1.5 0 0 0 6.5 17h7A1.5 1.5 0 0 0 15 15.5V6"></path></svg>`;
 export const favoriteIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path d="m10 2.5 2.1 4.25 4.65.68-3.37 3.28.79 4.61L10 13.8 5.83 15.3l.79-4.61L3.25 7.43l4.65-.68Z"/></svg>`;
@@ -154,6 +155,14 @@ export const domRefs = {
   taskRepeatEndAfter: document.getElementById("task-repeat-end-after"),
   taskRepeatEndDate: document.getElementById("task-repeat-end-date"),
   taskRepeatEndCount: document.getElementById("task-repeat-end-count"),
+  taskReminderModal: document.getElementById("task-reminder-modal"),
+  taskReminderDays: document.getElementById("task-reminder-days"),
+  taskReminderCustomInput: document.getElementById("task-reminder-custom"),
+  taskReminderCustomAdd: document.getElementById("task-reminder-custom-add"),
+  taskReminderExistingWrap: document.getElementById("task-reminder-existing"),
+  taskReminderExistingList: document.getElementById("task-reminder-existing-list"),
+  taskReminderSaveBtn: document.getElementById("task-reminder-save"),
+  taskReminderCloseButtons: [...document.querySelectorAll("[data-reminder-modal-close]")],
   repeatModal: document.getElementById("repeat-modal"),
   repeatModalCloseBtns: [...document.querySelectorAll("[data-repeat-modal-close]")],
   repeatModalSaveBtn: document.getElementById("task-repeat-save"),

@@ -39,9 +39,9 @@ import { renderFavoriteShortcuts } from "../sections-favorites.js";
 import { renderTaskTimeMapOptions, collectSelectedValues } from "../time-maps.js";
 import { renderTasks } from "./tasks-render.js";
 import { renderTodayView } from "./today-view.js";
-import { focusCalendarEvent, renderCalendar } from "../calendar.js";
+import { renderCalendar } from "../calendar.js";
 import { ensureTaskIds, migrateSectionsAndTasks } from "./tasks.js";
-import { renderBreadcrumb, switchView } from "../navigation.js";
+import { renderBreadcrumb } from "../navigation.js";
 import { showUndoBanner } from "../notifications.js";
 import { buildDuplicateTasks } from "./task-duplicate.js";
 import { repeatStore } from "../repeat.js";
@@ -98,6 +98,7 @@ export {
   openTemplateEditor,
   openTemplateSubtaskEditor
 };
+export { viewTaskOnCalendar } from "./task-calendar-actions.js";
 
 export function closeRepeatCompleteModal() {
   if (repeatCompleteModal) {repeatCompleteModal.classList.add("hidden");}
@@ -224,31 +225,6 @@ export async function duplicateTaskWithChildren(taskId) {
   await loadTasks();
 }
 
-function resolveFirstScheduledDate(task) {
-  if (!task) {return null;}
-  if (task.scheduledStart) {
-    const start = new Date(task.scheduledStart);
-    return Number.isNaN(start.getTime()) ? null : start;
-  }
-  const instances = Array.isArray(task.scheduledInstances) ? task.scheduledInstances : [];
-  if (!instances.length) {return null;}
-  const starts = instances
-    .map((instance) => new Date(instance.start))
-    .filter((date) => !Number.isNaN(date.getTime()));
-  if (!starts.length) {return null;}
-  return new Date(Math.min(...starts.map((date) => date.getTime())));
-}
-
-export async function viewTaskOnCalendar(taskId) {
-  const task = state.tasksCache.find((entry) => entry.id === taskId);
-  if (!task || task.scheduleStatus !== TASK_STATUS_SCHEDULED) {return false;}
-  const targetDate = resolveFirstScheduledDate(task);
-  if (!targetDate) {return false;}
-  switchView("calendar", { calendarAnchorDate: targetDate, focusCalendar: false });
-  renderCalendar(state.tasksCache);
-  return focusCalendarEvent(taskId, { behavior: "smooth" });
-}
-
 export async function applyTaskTemplateToSubsection(templateId, sectionId = "", subsectionId = "") {
   if (!templateId) {return false;}
   const template = state.taskTemplatesCache.find((entry) => entry.id === templateId);
@@ -266,7 +242,6 @@ export async function applyTaskTemplateToSubsection(templateId, sectionId = "", 
   await loadTasks();
   return true;
 }
-
 export function renderTimeMapsAndTasks(timeMaps) {
   renderTasks(state.tasksCache, timeMaps);
   renderBreadcrumb();
@@ -277,7 +252,6 @@ export function renderTimeMapsAndTasks(timeMaps) {
   renderCalendar(state.tasksCache);
   renderReport(state.tasksCache);
 }
-
 function getTaskFormValues() {
   return {
     id: document.getElementById("task-id").value || uuid(),
@@ -377,20 +351,24 @@ function resolveTaskOrder(existingTask, parentTask, section, subsection) {
   }
   return getNextOrder(section, subsection, state.tasksCache);
 }
-
-function buildTaskPayload(values, existingTask, parentTask, isParentTask, order) {
-  const repeat =
-    taskRepeatSelect.value === "custom"
-      ? repeatStore.lastRepeatSelection
-      : { ...DEFAULT_TASK_REPEAT };
+function resolveTaskRepeatSelection() {
+  return taskRepeatSelect.value === "custom"
+    ? repeatStore.lastRepeatSelection
+    : { ...DEFAULT_TASK_REPEAT };
+}
+function resolveTaskSubtaskScheduleMode(existingTask, isParentTask) {
   const isSelectorVisible = taskSubtaskScheduleWrap
     ? !taskSubtaskScheduleWrap.classList.contains("hidden")
     : false;
-  const subtaskScheduleMode = resolveSavedSubtaskScheduleMode({
+  return resolveSavedSubtaskScheduleMode({
     selectedMode: taskSubtaskScheduleSelect?.value,
     existingMode: existingTask?.subtaskScheduleMode,
     isSelectorVisible: isParentTask || isSelectorVisible
   });
+}
+function buildTaskPayload(values, existingTask, parentTask, isParentTask, order) {
+  const repeat = resolveTaskRepeatSelection();
+  const subtaskScheduleMode = resolveTaskSubtaskScheduleMode(existingTask, isParentTask);
   return {
     id: values.id,
     title: values.title,
@@ -407,6 +385,7 @@ function buildTaskPayload(values, existingTask, parentTask, isParentTask, order)
     order,
     subtaskScheduleMode,
     repeat,
+    reminders: existingTask?.reminders || [],
     completed: existingTask?.completed || false,
     completedAt: existingTask?.completedAt || null,
     completedOccurrences: existingTask?.completedOccurrences || [],

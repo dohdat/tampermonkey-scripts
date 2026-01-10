@@ -39,7 +39,8 @@ function buildDuplicateTask(original, parentId, order, newId) {
     scheduledEnd: null,
     scheduledTimeMapId: null,
     scheduledInstances: [],
-    lastScheduledRun: null
+    lastScheduledRun: null,
+    reminders: []
   };
 }
 

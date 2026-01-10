@@ -67,9 +67,15 @@ function installDomStubs(elements) {
   global.document = {
     createElement: (tag) => new FakeElement(tag),
     createDocumentFragment: () => new FakeElement("fragment"),
+    addEventListener: () => {},
+    removeEventListener: () => {},
     querySelectorAll: () => [],
     querySelector: (selector) => elements.get(selector) || null,
     getElementById: (id) => elements.get(id) || null
+  };
+  global.window = {
+    addEventListener: () => {},
+    removeEventListener: () => {}
   };
   global.requestAnimationFrame = (cb) => cb();
 }

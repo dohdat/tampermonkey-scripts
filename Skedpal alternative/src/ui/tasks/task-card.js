@@ -9,6 +9,7 @@ import {
   editIconSvg,
   outOfRangeIconSvg,
   plusIconSvg,
+  reminderIconSvg,
   removeIconSvg,
   unscheduledIconSvg,
   zoomInIconSvg
@@ -16,6 +17,7 @@ import {
 import { formatDateTime, formatDurationShort } from "../utils.js";
 import { getRepeatSummary } from "../repeat.js";
 import { themeColors } from "../theme.js";
+import { getOverdueReminders } from "./task-reminders.js";
 
 function buildTitleMarkup(task) {
   if (!task.link) {
@@ -89,6 +91,29 @@ function buildTaskCompleteButton(task) {
   return completeBtn;
 }
 
+function buildReminderControls(task) {
+  const remindTaskBtn = document.createElement("button");
+  remindTaskBtn.type = "button";
+  remindTaskBtn.dataset.remindTask = task.id;
+  remindTaskBtn.className = "title-icon-btn";
+  remindTaskBtn.title = "Remind me";
+  remindTaskBtn.setAttribute("data-test-skedpal", "task-remind-btn");
+  remindTaskBtn.innerHTML = reminderIconSvg;
+  remindTaskBtn.style.borderColor = themeColors.amber400;
+  remindTaskBtn.style.color = themeColors.amber400;
+  const overdueReminders = getOverdueReminders(task);
+  let reminderDot = null;
+  if (overdueReminders.length) {
+    reminderDot = document.createElement("button");
+    reminderDot.type = "button";
+    reminderDot.dataset.dismissReminder = task.id;
+    reminderDot.className = "reminder-alert-dot";
+    reminderDot.title = "Dismiss reminder";
+    reminderDot.setAttribute("data-test-skedpal", "task-reminder-alert");
+  }
+  return { remindTaskBtn, reminderDot };
+}
+
 function buildTitleWrap(task, options) {
   const {
     hasChildren,
@@ -145,6 +170,7 @@ function buildTaskTitleActions(task, detailsOpen) {
   duplicateTaskBtn.innerHTML = duplicateIconSvg;
   duplicateTaskBtn.style.borderColor = themeColors.blue500;
   duplicateTaskBtn.style.color = themeColors.blue500;
+  const { remindTaskBtn, reminderDot } = buildReminderControls(task);
   const deleteTaskBtn = document.createElement("button");
   deleteTaskBtn.type = "button";
   deleteTaskBtn.dataset.delete = task.id;
@@ -172,6 +198,10 @@ function buildTaskTitleActions(task, detailsOpen) {
   detailsToggleBtn.innerHTML = detailsOpen ? caretDownIconSvg : caretRightIconSvg;
   titleActions.appendChild(zoomTaskBtn);
   titleActions.appendChild(duplicateTaskBtn);
+  titleActions.appendChild(remindTaskBtn);
+  if (reminderDot) {
+    titleActions.appendChild(reminderDot);
+  }
   titleActions.appendChild(addSubtaskBtn);
   titleActions.appendChild(editTaskBtn);
   titleActions.appendChild(deleteTaskBtn);

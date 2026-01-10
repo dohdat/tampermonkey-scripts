@@ -31,6 +31,7 @@ import {
 import { initTaskTemplateSelect } from "./tasks/task-template-select.js";
 import { initTaskListAssistant } from "./tasks/task-ai.js";
 import { handleTaskListClick } from "./tasks/task-list-actions.js";
+import { initTaskReminderModal } from "./tasks/task-reminders.js";
 import {
   renderTaskSubsectionOptions,
   openSectionForm,
@@ -498,6 +499,7 @@ function registerModalHandlers() {
     btn.addEventListener("click", closeRepeatCompleteModal)
   );
   repeatCompleteList?.addEventListener("click", handleRepeatCompleteListClick);
+  initTaskReminderModal();
 }
 
 function registerKeyboardHandlers() {

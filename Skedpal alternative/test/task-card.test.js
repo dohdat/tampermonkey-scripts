@@ -315,6 +315,60 @@ describe("task card", () => {
     assert.ok(indicator);
   });
 
+  it("shows reminder controls and overdue indicator", () => {
+    const past = new Date(Date.now() - 86400000).toISOString();
+    const task = {
+      id: "t9",
+      title: "Reminder",
+      durationMin: 20,
+      timeMapIds: ["tm-1"],
+      completed: false,
+      reminders: [{ id: "r1", days: 1, remindAt: past, dismissedAt: "" }]
+    };
+    const context = {
+      tasks: [task],
+      timeMapById: new Map([["tm-1", { id: "tm-1", name: "Focus" }]]),
+      collapsedTasks: new Set(),
+      expandedTaskDetails: new Set(),
+      computeTotalDuration: () => 0,
+      getTaskDepthById: () => 0,
+      getSectionName: () => "",
+      getSubsectionName: () => ""
+    };
+
+    const card = renderTaskCard(task, context);
+    const remindBtn = findByTestAttr(card, "task-remind-btn");
+    const alertDot = findByTestAttr(card, "task-reminder-alert");
+    assert.ok(remindBtn);
+    assert.ok(alertDot);
+  });
+
+  it("hides reminder alert when dismissed", () => {
+    const past = new Date(Date.now() - 86400000).toISOString();
+    const task = {
+      id: "t10",
+      title: "Reminder",
+      durationMin: 20,
+      timeMapIds: ["tm-1"],
+      completed: false,
+      reminders: [{ id: "r1", days: 1, remindAt: past, dismissedAt: past }]
+    };
+    const context = {
+      tasks: [task],
+      timeMapById: new Map([["tm-1", { id: "tm-1", name: "Focus" }]]),
+      collapsedTasks: new Set(),
+      expandedTaskDetails: new Set(),
+      computeTotalDuration: () => 0,
+      getTaskDepthById: () => 0,
+      getSectionName: () => "",
+      getSubsectionName: () => ""
+    };
+
+    const card = renderTaskCard(task, context);
+    const alertDot = findByTestAttr(card, "task-reminder-alert");
+    assert.strictEqual(alertDot, null);
+  });
+
   it("skips details when not expanded", () => {
     const task = {
       id: "t6",

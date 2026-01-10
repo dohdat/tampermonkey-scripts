@@ -150,6 +150,10 @@ function applyTaskDefaults(task) {
     nextTask = { ...nextTask, completedOccurrences: [] };
     changed = true;
   }
+  if (!Array.isArray(nextTask.reminders)) {
+    nextTask = { ...nextTask, reminders: [] };
+    changed = true;
+  }
   if (!nextTask.repeat) {
     nextTask = { ...nextTask, repeat: { ...DEFAULT_TASK_REPEAT } };
     changed = true;

@@ -1,14 +1,5 @@
 import { state } from "./state/page-state.js";
-import {
-  deleteCalendarCacheEntry,
-  getCalendarCacheEntry,
-  saveCalendarCacheEntry
-} from "../data/db.js";
 
-const TODAY_TTL_MS = 3 * 60 * 1000;
-const FUTURE_TTL_MS = 60 * 60 * 1000;
-const PAST_TTL_MS = 24 * 60 * 60 * 1000;
-const memoryCache = new Map();
 const pendingFetches = new Set();
 
 function buildCalendarIdsKey(calendarIds) {
@@ -38,14 +29,6 @@ function coerceEvents(events) {
     .filter(Boolean);
 }
 
-function serializeEvents(events) {
-  return (events || []).map((event) => ({
-    ...event,
-    start: event?.start instanceof Date ? event.start.toISOString() : event.start,
-    end: event?.end instanceof Date ? event.end.toISOString() : event.end
-  }));
-}
-
 function getRuntime() {
   return globalThis.chrome?.runtime || null;
 }
@@ -60,61 +43,37 @@ function shouldSkipFetch(key) {
   return !key || pendingFetches.has(key) || state.calendarExternalPendingKey === key;
 }
 
-function getCacheTtlMs(range) {
-  const now = new Date();
-  if (range?.end && range.end < now) {return PAST_TTL_MS;}
-  if (range?.start && range.start <= now && range.end && range.end >= now) {
-    return TODAY_TTL_MS;
-  }
-  return FUTURE_TTL_MS;
+function setExternalRange(range) {
+  state.calendarExternalRange = range
+    ? { start: new Date(range.start), end: new Date(range.end) }
+    : null;
 }
 
-function isCacheStale(entry, range) {
-  if (!entry?.fetchedAt) {return true;}
-  const ttl = getCacheTtlMs(range);
-  return Date.now() - entry.fetchedAt > ttl;
-}
-
-function applyCacheEntry(key, entry) {
-  if (!entry) {return false;}
-  state.calendarExternalEvents = coerceEvents(entry.events);
+function setEmptyExternalState(range, key) {
+  state.calendarExternalEvents = [];
+  setExternalRange(range);
   state.calendarExternalRangeKey = key;
-  return true;
-}
-
-async function readCacheEntry(key) {
-  if (!key) {return null;}
-  if (memoryCache.has(key)) {return memoryCache.get(key);}
-  const entry = await getCalendarCacheEntry(key);
-  if (entry) {
-    memoryCache.set(key, entry);
-  }
-  return entry;
 }
 
 export function getExternalEventsForRange(range) {
-  const key = buildRangeKey(range, getSelectedCalendarIds());
-  if (!key || state.calendarExternalRangeKey !== key) {return [];}
-  return state.calendarExternalEvents || [];
+  const fetched = state.calendarExternalRange;
+  if (!fetched?.start || !fetched?.end || !range?.start || !range?.end) {return [];}
+  if (range.end <= fetched.start || range.start >= fetched.end) {return [];}
+  return (state.calendarExternalEvents || []).filter(
+    (event) => event.end > range.start && event.start < range.end
+  );
 }
 
 export function invalidateExternalEventsCache() {
   state.calendarExternalRangeKey = "";
   state.calendarExternalPendingKey = "";
   state.calendarExternalEvents = [];
-  memoryCache.clear();
+  state.calendarExternalRange = null;
+  pendingFetches.clear();
 }
 
 export async function syncExternalEventsCache(events) {
-  const key = state.calendarExternalRangeKey;
-  if (!key) {return false;}
-  const entry = {
-    key,
-    fetchedAt: Date.now(),
-    events: serializeEvents(events || [])
-  };
-  memoryCache.set(key, entry);
-  await saveCalendarCacheEntry(entry);
+  state.calendarExternalEvents = coerceEvents(events || []);
   return true;
 }
 
@@ -122,30 +81,18 @@ export async function primeExternalEventsOnLoad() {
   return false;
 }
 
-export async function hydrateExternalEvents(range) {
-  const key = buildRangeKey(range, getSelectedCalendarIds());
-  if (!key) {return false;}
-  const entry = await readCacheEntry(key);
-  if (!entry) {return false;}
-  applyCacheEntry(key, entry);
-  return true;
+export async function hydrateExternalEvents(_range) {
+  return false;
 }
 
 export async function ensureExternalEvents(range) {
   const calendarIds = getSelectedCalendarIds();
   const key = buildRangeKey(range, calendarIds);
   if (shouldSkipFetch(key)) {return false;}
-  const cachedEntry = await readCacheEntry(key);
-  if (cachedEntry) {
-    applyCacheEntry(key, cachedEntry);
-    if (!isCacheStale(cachedEntry, range)) {
-      return false;
-    }
-  }
+  if (state.calendarExternalRangeKey === key) {return false;}
   const runtime = getRuntime();
   if (!runtime?.sendMessage) {
-    state.calendarExternalEvents = [];
-    state.calendarExternalRangeKey = key;
+    setEmptyExternalState(range, key);
     return false;
   }
   state.calendarExternalPendingKey = key;
@@ -172,23 +119,13 @@ export async function ensureExternalEvents(range) {
       throw new Error(response?.error || "Calendar events fetch failed");
     }
     const normalized = coerceEvents(response.events);
-    const entry = {
-      key,
-      fetchedAt: Date.now(),
-      events: serializeEvents(normalized)
-    };
     state.calendarExternalEvents = normalized;
+    setExternalRange(range);
     state.calendarExternalRangeKey = key;
-    memoryCache.set(key, entry);
-    await saveCalendarCacheEntry(entry);
     return true;
   } catch (error) {
     console.warn("Failed to fetch external calendar events.", error);
-    if (!cachedEntry) {
-      state.calendarExternalEvents = [];
-      state.calendarExternalRangeKey = key;
-      await deleteCalendarCacheEntry(key);
-    }
+    setEmptyExternalState(range, key);
     return true;
   } finally {
     pendingFetches.delete(key);

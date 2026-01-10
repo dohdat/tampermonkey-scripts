@@ -4,13 +4,6 @@ import { describe, it, beforeEach } from "mocha";
 import { state } from "../src/ui/state/page-state.js";
 import { getCalendarRange } from "../src/ui/calendar-utils.js";
 
-function buildKey(range, calendarIds) {
-  const idsKey = Array.isArray(calendarIds)
-    ? calendarIds.filter(Boolean).sort().join(",") || "none"
-    : "all";
-  return `${range.start.toISOString()}_${range.end.toISOString()}_${idsKey}`;
-}
-
 class FakeElement {
   constructor(tagName = "div") {
     this.tagName = tagName.toUpperCase();
@@ -126,6 +119,7 @@ describe("calendar render", () => {
       state.settingsCache = { ...state.settingsCache, googleCalendarIds: [] };
       state.calendarExternalEvents = [];
       state.calendarExternalRangeKey = "";
+      state.calendarExternalRange = null;
       testRefs = { domRefs, renderCalendar };
     });
   });
@@ -171,7 +165,7 @@ describe("calendar render", () => {
     const { domRefs, renderCalendar } = testRefs;
     state.tasksTimeMapsCache = [];
     const range = getCalendarRange(state.calendarAnchorDate, state.calendarViewMode);
-    state.calendarExternalRangeKey = buildKey(range, state.settingsCache.googleCalendarIds);
+    state.calendarExternalRange = range;
     await renderCalendar([]);
 
     const empty = findByTestId(domRefs.calendarGrid, "calendar-empty");
@@ -184,7 +178,7 @@ describe("calendar render", () => {
     state.tasksTimeMapsCache = [];
 
     const range = getCalendarRange(state.calendarAnchorDate, state.calendarViewMode);
-    state.calendarExternalRangeKey = buildKey(range, state.settingsCache.googleCalendarIds);
+    state.calendarExternalRange = range;
     await renderCalendar([]);
 
     assert.ok(domRefs.calendarThreeBtn.className.includes("calendar-view-btn--active"));
@@ -208,7 +202,7 @@ describe("calendar render", () => {
     ];
 
     const range = getCalendarRange(state.calendarAnchorDate, state.calendarViewMode);
-    state.calendarExternalRangeKey = buildKey(range, state.settingsCache.googleCalendarIds);
+    state.calendarExternalRange = range;
     await renderCalendar([]);
 
     const events = findByTestId(domRefs.calendarGrid, "calendar-event");
@@ -240,7 +234,7 @@ describe("calendar render", () => {
       ];
 
       const range = getCalendarRange(state.calendarAnchorDate, state.calendarViewMode);
-      state.calendarExternalRangeKey = buildKey(range, state.settingsCache.googleCalendarIds);
+      state.calendarExternalRange = range;
       await renderCalendar([]);
 
     const events = findByTestId(domRefs.calendarGrid, "calendar-event");
@@ -267,7 +261,7 @@ describe("calendar render", () => {
       ];
 
       const range = getCalendarRange(state.calendarAnchorDate, state.calendarViewMode);
-      state.calendarExternalRangeKey = buildKey(range, state.settingsCache.googleCalendarIds);
+      state.calendarExternalRange = range;
       await renderCalendar([]);
 
     const events = findByTestId(domRefs.calendarGrid, "calendar-event");

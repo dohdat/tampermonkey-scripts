@@ -25,7 +25,6 @@ import {
 import {
   ensureExternalEvents,
   getExternalEventsForRange,
-  hydrateExternalEvents,
   syncExternalEventsCache
 } from "./calendar-external.js";
 import { ensureCalendarDragHandlers } from "./calendar-drag.js";
@@ -221,6 +220,19 @@ function handleCalendarNextClick() {
 function isCalendarSplitVisible() {
   return domRefs.tasksCalendarSplitWrap?.dataset?.split === "true";
 }
+
+function isCalendarVisible() {
+  return isCalendarSplitVisible() || domRefs.appShell?.dataset?.activeView === "calendar";
+}
+
+function getExternalFetchRange() {
+  const horizonDays = Number(state.settingsCache?.schedulingHorizonDays);
+  const safeDays = Number.isFinite(horizonDays) && horizonDays > 0 ? horizonDays : 14;
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = addCalendarDays(start, safeDays);
+  return { start, end };
+}
 function handleCalendarTodayClick() {
   state.calendarAnchorDate = new Date();
   renderCalendar();
@@ -275,7 +287,6 @@ export function focusCalendarEvent(taskId, options = {}) {
 export async function renderCalendar(tasks = state.tasksCache) {
   const viewMode = getActiveCalendarViewMode();
   const range = getCalendarRange(state.calendarAnchorDate, viewMode);
-  await hydrateExternalEvents(range);
   const scheduledEvents = getScheduledEvents(tasks);
   const externalEvents = getExternalEventsForRange(range);
   const events = [...scheduledEvents, ...externalEvents].filter(
@@ -295,15 +306,19 @@ export async function renderCalendar(tasks = state.tasksCache) {
   if (!events.length) {
     domRefs.calendarGrid?.appendChild(buildEmptyState());
   }
-  ensureExternalEvents(range)
-    .then((updated) => {
-      if (updated) {
-        renderCalendar(tasks);
-      }
-    })
-    .catch((error) => {
-      console.warn("Failed to refresh external calendar events.", error);
-    });
+  if (isCalendarVisible() && state.calendarExternalAllowFetch) {
+    state.calendarExternalAllowFetch = false;
+    const fetchRange = getExternalFetchRange();
+    ensureExternalEvents(fetchRange)
+      .then((updated) => {
+        if (updated) {
+          renderCalendar(tasks);
+        }
+      })
+      .catch((error) => {
+        console.warn("Failed to refresh external calendar events.", error);
+      });
+  }
 }
 
 export function initCalendarView() {

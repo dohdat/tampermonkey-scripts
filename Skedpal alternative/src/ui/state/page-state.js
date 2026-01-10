@@ -24,6 +24,7 @@ export const state = {
   calendarViewMode: "day",
   calendarAnchorDate: new Date(),
   calendarExternalEvents: [],
+  calendarExternalRange: null,
   calendarExternalRangeKey: "",
   calendarExternalPendingKey: "",
   calendarExternalAllowFetch: false

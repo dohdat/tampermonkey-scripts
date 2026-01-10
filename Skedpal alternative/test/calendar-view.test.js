@@ -179,6 +179,7 @@ describe("calendar view", () => {
     state.tasksTimeMapsCache = [];
     state.calendarExternalEvents = [];
     state.calendarExternalRangeKey = "";
+    state.calendarExternalRange = null;
     state.calendarExternalPendingKey = "";
   });
 

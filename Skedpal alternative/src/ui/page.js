@@ -56,7 +56,7 @@ import {
   switchView,
   goHome
 } from "./navigation.js";
-import { invalidateExternalEventsCache, primeExternalEventsOnLoad } from "./calendar-external.js";
+import { invalidateExternalEventsCache } from "./calendar-external.js";
 import {
   applyPrioritySelectColor,
   parseNewTaskFromUrl,
@@ -114,9 +114,11 @@ async function hydrate() {
   }
   await loadTasks();
   await loadTaskTemplates();
-  const refreshedExternal = await primeExternalEventsOnLoad();
-  if (refreshedExternal) {
-    renderCalendar();
+  const isCalendarView = domRefs.appShell?.dataset?.activeView === "calendar";
+  const isCalendarSplit = domRefs.tasksCalendarSplitWrap?.dataset?.split === "true";
+  if (isCalendarView || isCalendarSplit) {
+    state.calendarExternalAllowFetch = true;
+    await renderCalendar();
   }
   if (initialZoom) {
     pushNavigation(initialZoom);
@@ -215,6 +217,7 @@ function handleNavButtonClick(event) {
   }
   if (view === "calendar") {
     invalidateExternalEventsCache();
+    state.calendarExternalAllowFetch = true;
   }
   if (view) {
     switchView(view);

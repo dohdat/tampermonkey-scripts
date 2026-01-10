@@ -30,7 +30,7 @@ import {
 } from "./tasks/tasks-actions.js";
 import { initTaskTemplateSelect } from "./tasks/task-template-select.js";
 import { initTaskListAssistant } from "./tasks/task-ai.js";
-import { handleTaskListClick } from "./tasks/task-list-actions.js";
+import { handleTaskListClick, handleTaskTitleDoubleClick } from "./tasks/task-list-actions.js";
 import { initTaskReminderModal } from "./tasks/task-reminders.js";
 import {
   renderTaskSubsectionOptions,
@@ -161,8 +161,16 @@ async function handleTaskListClickEvent(event) {
   await handleTaskListClick(event);
 }
 
+function handleTaskListDoubleClickEvent(event) {
+  handleTaskTitleDoubleClick(event);
+}
+
 async function handleTodayListClickEvent(event) {
   await handleTaskListClick(event);
+}
+
+function handleTodayListDoubleClickEvent(event) {
+  handleTaskTitleDoubleClick(event);
 }
 
 async function handleReportListClickEvent(event) {
@@ -413,11 +421,15 @@ function registerTaskFormHandlers() {
   }
   taskToggle?.addEventListener("click", handleTaskToggleClick);
   taskList?.addEventListener("click", handleTaskListClickEvent);
+  taskList?.addEventListener("dblclick", handleTaskListDoubleClickEvent);
   todayList?.addEventListener("click", handleTodayListClickEvent);
+  todayList?.addEventListener("dblclick", handleTodayListDoubleClickEvent);
   reportList?.addEventListener("click", handleReportListClickEvent);
   rescheduleButtons.forEach((btn) => btn.addEventListener("click", handleReschedule));
   cleanupFns.push(initTaskTemplateSelect());
   cleanupFns.push(initTaskListAssistant());
+  cleanupFns.push(() => taskList?.removeEventListener("dblclick", handleTaskListDoubleClickEvent));
+  cleanupFns.push(() => todayList?.removeEventListener("dblclick", handleTodayListDoubleClickEvent));
   return () => {
     cleanupFns.forEach((cleanup) => cleanup());
   };

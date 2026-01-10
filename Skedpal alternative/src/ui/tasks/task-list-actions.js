@@ -28,6 +28,7 @@ import {
   viewTaskOnCalendar
 } from "./tasks-actions.js";
 import { openTaskReminderModal, dismissOverdueTaskReminders } from "./task-reminders.js";
+export { handleTaskTitleDoubleClick } from "./task-inline-edit.js";
 
 function runTaskDetailCleanup(taskId) {
   if (!taskId) {return;}

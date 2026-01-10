@@ -19,6 +19,7 @@ export const state = {
   draggingTaskId: null,
   notificationHideTimeout: null,
   notificationUndoHandler: null,
+  taskTitleEditCleanup: null,
   navStack: [],
   navIndex: -1,
   sortableInstances: [],

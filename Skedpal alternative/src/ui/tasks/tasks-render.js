@@ -153,11 +153,12 @@ function buildSectionsList(sections, filteredTasks) {
 function buildSectionHeader(section, options) {
   const { isNoSection, isCollapsed } = options;
   const header = document.createElement("div");
-  header.className = "flex flex-wrap items-center justify-between gap-2";
+  header.className = "flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/60 pb-1";
   const title = document.createElement("div");
   title.className =
     "title-hover-group flex items-center gap-2 text-base font-semibold text-slate-100";
   const titleText = document.createElement("span");
+  titleText.setAttribute("data-test-skedpal", "section-title-text");
   titleText.textContent = getSectionName(section.id) || section.name || "Untitled section";
   title.appendChild(titleText);
   if (isNoSection) {
@@ -305,7 +306,8 @@ function buildUngroupedZone(context, options, renderToken) {
 
 function buildSubsectionHeader(sub, section, isNoSection) {
   const subHeader = document.createElement("div");
-  subHeader.className = "flex items-center justify-between text-base font-semibold text-slate-200";
+  subHeader.className =
+    "flex items-center justify-between border-b border-slate-800/60 pb-1 text-base font-semibold text-slate-200";
   subHeader.setAttribute("data-test-skedpal", "subsection-header");
   const subTitle = document.createElement("div");
   subTitle.className = "title-hover-group flex items-center gap-2";

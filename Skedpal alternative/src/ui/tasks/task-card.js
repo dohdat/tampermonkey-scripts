@@ -153,7 +153,7 @@ function buildTaskActionsMenu(task) {
   const menuItems = [
     buildTaskActionButton({
       taskId: task.id,
-      label: "Zoom",
+      label: "Zoom (Z)",
       dataset: {
         zoomTask: task.id,
         zoomSection: task.section || "",
@@ -164,14 +164,14 @@ function buildTaskActionsMenu(task) {
     }),
     buildTaskActionButton({
       taskId: task.id,
-      label: "Add subtask",
+      label: "Add subtask (A)",
       dataset: { addSubtask: task.id },
       iconSvg: plusIconSvg,
       testAttr: "task-menu-add-subtask"
     }),
     buildTaskActionButton({
       taskId: task.id,
-      label: "Duplicate",
+      label: "Duplicate (D)",
       dataset: { duplicateTask: task.id },
       iconSvg: duplicateIconSvg,
       testAttr: "task-menu-duplicate",
@@ -179,7 +179,7 @@ function buildTaskActionsMenu(task) {
     }),
     buildTaskActionButton({
       taskId: task.id,
-      label: "Remind me",
+      label: "Remind me (R)",
       dataset: { remindTask: task.id },
       iconSvg: reminderIconSvg,
       testAttr: "task-menu-remind",
@@ -187,7 +187,7 @@ function buildTaskActionsMenu(task) {
     }),
     buildTaskActionButton({
       taskId: task.id,
-      label: "Edit",
+      label: "Edit (E)",
       dataset: { edit: task.id },
       iconSvg: editIconSvg,
       testAttr: "task-menu-edit",
@@ -195,7 +195,7 @@ function buildTaskActionsMenu(task) {
     }),
     buildTaskActionButton({
       taskId: task.id,
-      label: "Delete",
+      label: "Delete (X)",
       dataset: { delete: task.id },
       iconSvg: removeIconSvg,
       testAttr: "task-menu-delete",

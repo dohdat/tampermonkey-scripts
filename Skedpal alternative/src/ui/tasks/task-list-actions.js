@@ -107,6 +107,27 @@ function cleanupTaskMenuListeners() {
 }
 
 function createTaskMenuHandlers(taskId) {
+  function isEditableTarget(target) {
+    if (!(target instanceof HTMLElement)) {return false;}
+    if (target.isContentEditable) {return true;}
+    const tag = target.tagName?.toLowerCase?.();
+    return tag === "input" || tag === "textarea" || tag === "select";
+  }
+
+  function getMenuActionButton(menu, key) {
+    const keyMap = {
+      z: "task-menu-zoom",
+      e: "task-menu-edit",
+      d: "task-menu-duplicate",
+      r: "task-menu-remind",
+      a: "task-menu-add-subtask",
+      x: "task-menu-delete"
+    };
+    const testAttr = keyMap[key];
+    if (!testAttr) {return null;}
+    return menu.querySelector?.(`[data-test-skedpal="${testAttr}"]`) || null;
+  }
+
   function onTaskMenuPointerDown(event) {
     const menu = document.querySelector?.(`[data-task-menu="${taskId}"]`);
     const toggleBtn = document.querySelector?.(`[data-task-menu-toggle="${taskId}"]`);
@@ -120,8 +141,18 @@ function createTaskMenuHandlers(taskId) {
   }
 
   function onTaskMenuKeyDown(event) {
-    if (event.key !== "Escape") {return;}
-    closeTaskActionMenus();
+    if (isEditableTarget(event.target)) {return;}
+    const key = event.key.toLowerCase();
+    const menu = document.querySelector?.(`[data-task-menu="${taskId}"]`);
+    if (!menu || menu.classList.contains("hidden")) {return;}
+    if (key === "escape") {
+      closeTaskActionMenus();
+      return;
+    }
+    const actionButton = getMenuActionButton(menu, key);
+    if (!actionButton) {return;}
+    event.preventDefault();
+    actionButton.click();
   }
 
   return { onTaskMenuPointerDown, onTaskMenuKeyDown };

@@ -101,17 +101,7 @@ function buildReminderControls(task) {
   remindTaskBtn.innerHTML = reminderIconSvg;
   remindTaskBtn.style.borderColor = themeColors.amber400;
   remindTaskBtn.style.color = themeColors.amber400;
-  const overdueReminders = getOverdueReminders(task);
-  let reminderDot = null;
-  if (overdueReminders.length) {
-    reminderDot = document.createElement("button");
-    reminderDot.type = "button";
-    reminderDot.dataset.dismissReminder = task.id;
-    reminderDot.className = "reminder-alert-dot";
-    reminderDot.title = "Dismiss reminder";
-    reminderDot.setAttribute("data-test-skedpal", "task-reminder-alert");
-  }
-  return { remindTaskBtn, reminderDot };
+  return { remindTaskBtn };
 }
 
 function buildTitleWrap(task, options) {
@@ -170,7 +160,7 @@ function buildTaskTitleActions(task, detailsOpen) {
   duplicateTaskBtn.innerHTML = duplicateIconSvg;
   duplicateTaskBtn.style.borderColor = themeColors.blue500;
   duplicateTaskBtn.style.color = themeColors.blue500;
-  const { remindTaskBtn, reminderDot } = buildReminderControls(task);
+  const { remindTaskBtn } = buildReminderControls(task);
   const deleteTaskBtn = document.createElement("button");
   deleteTaskBtn.type = "button";
   deleteTaskBtn.dataset.delete = task.id;
@@ -199,9 +189,6 @@ function buildTaskTitleActions(task, detailsOpen) {
   titleActions.appendChild(zoomTaskBtn);
   titleActions.appendChild(duplicateTaskBtn);
   titleActions.appendChild(remindTaskBtn);
-  if (reminderDot) {
-    titleActions.appendChild(reminderDot);
-  }
   titleActions.appendChild(addSubtaskBtn);
   titleActions.appendChild(editTaskBtn);
   titleActions.appendChild(deleteTaskBtn);
@@ -392,6 +379,11 @@ export function renderTaskCard(task, context) {
   const titleMarkup = buildTitleMarkup(task);
   const isLongTitle = (task.title || "").length > 60;
   const detailsOpen = expandedTaskDetails.has(task.id);
+  const overdueReminders = getOverdueReminders(task);
+  if (overdueReminders.length) {
+    taskCard.classList.add("task-card--reminder-alert");
+    taskCard.dataset.reminderAlert = "true";
+  }
   const showOutOfRangeIcon = Boolean(context.firstOccurrenceOutOfRangeByTaskId?.get(task.id));
   const showUnscheduledIcon = Boolean(context.firstOccurrenceUnscheduledByTaskId?.get(task.id));
   const header = buildTaskHeader(task, {

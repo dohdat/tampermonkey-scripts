@@ -338,9 +338,8 @@ describe("task card", () => {
 
     const card = renderTaskCard(task, context);
     const remindBtn = findByTestAttr(card, "task-remind-btn");
-    const alertDot = findByTestAttr(card, "task-reminder-alert");
     assert.ok(remindBtn);
-    assert.ok(alertDot);
+    assert.strictEqual(card.classList.contains("task-card--reminder-alert"), true);
   });
 
   it("hides reminder alert when dismissed", () => {
@@ -365,8 +364,7 @@ describe("task card", () => {
     };
 
     const card = renderTaskCard(task, context);
-    const alertDot = findByTestAttr(card, "task-reminder-alert");
-    assert.strictEqual(alertDot, null);
+    assert.strictEqual(card.classList.contains("task-card--reminder-alert"), false);
   });
 
   it("skips details when not expanded", () => {

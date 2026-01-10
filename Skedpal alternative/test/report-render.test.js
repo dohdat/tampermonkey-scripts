@@ -132,6 +132,43 @@ describe("report render", () => {
     assert.strictEqual(domRefs.reportBadge.classList.contains("hidden"), false);
   });
 
+  it("does not render missed rows for future startFrom tasks", () => {
+    const OriginalDate = Date;
+    const fixedNow = new OriginalDate(Date.UTC(2026, 0, 5, 12, 0, 0));
+    global.Date = class extends OriginalDate {
+      constructor(...args) {
+        if (args.length === 0) {
+          return new OriginalDate(fixedNow.getTime());
+        }
+        return new OriginalDate(...args);
+      }
+      static now() {
+        return fixedNow.getTime();
+      }
+    };
+    try {
+      const task = {
+        id: "t110",
+        title: "Future task",
+        scheduleStatus: "unscheduled",
+        missedCount: 1,
+        expectedCount: 0,
+        missedLastRun: 0,
+        startFrom: "2026-02-02T12:00:00.000Z",
+        timeMapIds: []
+      };
+      renderReport([task]);
+      const row = findByTestAttr(domRefs.reportList, "report-missed-row");
+      const empty = findByTestAttr(domRefs.reportList, "report-empty");
+      assert.strictEqual(row, null);
+      assert.ok(empty);
+      assert.strictEqual(domRefs.reportBadge.textContent, "");
+      assert.strictEqual(domRefs.reportBadge.classList.contains("hidden"), true);
+    } finally {
+      global.Date = OriginalDate;
+    }
+  });
+
   it("renders timemap usage rows when data is available", () => {
     const OriginalDate = Date;
     const fixedNow = new OriginalDate(Date.UTC(2026, 0, 5, 12, 0, 0));

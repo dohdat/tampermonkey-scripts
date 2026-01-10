@@ -58,4 +58,23 @@ describe("background missed metrics", () => {
     });
     assert.strictEqual(shouldIncrement, false);
   });
+
+  it("does not increment when startFrom is in the future", () => {
+    const now = new Date("2026-01-10T10:00:00.000Z");
+    const task = {
+      id: "future-task",
+      completed: false,
+      startFrom: "2026-02-10T10:00:00.000Z"
+    };
+    const parentIds = new Set();
+    const shouldIncrement = shouldIncrementMissedCount({
+      task,
+      status: "unscheduled",
+      parentIds,
+      missedOccurrences: 0,
+      expectedCount: 0,
+      now
+    });
+    assert.strictEqual(shouldIncrement, false);
+  });
 });

@@ -140,8 +140,9 @@ function shouldIncludeMissedByStatus(task) {
   return missedCount > 0;
 }
 
-function shouldIncludeMissedTask(task, parentIds, nextChildByParent) {
+function shouldIncludeMissedTask(task, parentIds, nextChildByParent, now) {
   if (task.completed) {return false;}
+  if (isStartFromInFuture(task, now)) {return false;}
   if (parentIds.has(task.id)) {return false;}
   if (isSequentialSingleBlocked(task, nextChildByParent)) {return false;}
   return shouldIncludeMissedByStatus(task);
@@ -195,6 +196,13 @@ function getMissedFillPercent(row) {
     );
   }
   return row.missedCount > 0 ? ONE_HUNDRED : 0;
+}
+
+function isStartFromInFuture(task, now) {
+  if (!task?.startFrom) {return false;}
+  const startFrom = new Date(task.startFrom);
+  if (Number.isNaN(startFrom.getTime())) {return false;}
+  return startFrom > now;
 }
 
 function buildReportTaskContext(rows, timeMaps, expandedTaskDetails) {
@@ -302,13 +310,17 @@ export function getTimeMapUsageRows(tasks = [], timeMaps = [], settings = state.
   });
 }
 
-export function getMissedTaskRows(tasks = [], settings = state.settingsCache) {
+export function getMissedTaskRows(
+  tasks = [],
+  settings = state.settingsCache,
+  now = new Date()
+) {
   const parentIds = new Set(
     (tasks || []).filter((task) => task.subtaskParentId).map((task) => task.subtaskParentId)
   );
   const nextChildByParent = buildSequentialSingleNextChildMap(tasks);
   return (tasks || [])
-    .filter((task) => shouldIncludeMissedTask(task, parentIds, nextChildByParent))
+    .filter((task) => shouldIncludeMissedTask(task, parentIds, nextChildByParent, now))
     .map((task) => {
       const missedCount = getTaskNumber(task.missedCount);
       return {

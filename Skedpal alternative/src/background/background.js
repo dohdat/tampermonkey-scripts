@@ -123,7 +123,8 @@ async function persistSchedule(tasks, placements, unscheduled, ignored, deferred
         parentIds,
         missedOccurrences,
         expectedCount: expectedOccurrences,
-        deferredIds
+        deferredIds,
+        now
       })
     ) {
       task.missedCount = (Number(task.missedCount) || 0) + Math.max(1, missedOccurrences);

@@ -315,6 +315,50 @@ describe("task card", () => {
     assert.ok(indicator);
   });
 
+  it("shows future start indicator in the summary row", () => {
+    const OriginalDate = Date;
+    const fixedNow = new OriginalDate(Date.UTC(2026, 0, 5, 12, 0, 0));
+    global.Date = class extends OriginalDate {
+      constructor(...args) {
+        if (args.length === 0) {
+          return new OriginalDate(fixedNow.getTime());
+        }
+        return new OriginalDate(...args);
+      }
+      static now() {
+        return fixedNow.getTime();
+      }
+    };
+    try {
+      const task = {
+        id: "t8-future",
+        title: "Future start",
+        durationMin: 30,
+        timeMapIds: ["tm-1"],
+        completed: false,
+        startFrom: "2026-02-10T12:00:00.000Z"
+      };
+      const context = {
+        tasks: [task],
+        timeMapById: new Map([["tm-1", { id: "tm-1", name: "Focus" }]]),
+        collapsedTasks: new Set(),
+        expandedTaskDetails: new Set(),
+        computeTotalDuration: () => 0,
+        getTaskDepthById: () => 0,
+        getSectionName: () => "",
+        getSubsectionName: () => ""
+      };
+
+      const card = renderTaskCard(task, context);
+      const summary = findByTestAttr(card, "task-summary-row");
+      const indicator = findByTestAttr(card, "task-summary-future-start");
+      assert.ok(summary);
+      assert.ok(indicator);
+    } finally {
+      global.Date = OriginalDate;
+    }
+  });
+
   it("shows reminder controls and overdue indicator", () => {
     const past = new Date(Date.now() - 86400000).toISOString();
     const task = {

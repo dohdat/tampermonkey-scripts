@@ -249,8 +249,21 @@ function buildTaskDurationPill(displayDurationMin) {
   return durationPill;
 }
 
+function shouldShowFutureStartIcon(task, now) {
+  if (!task || task.completed) {return false;}
+  if (task.scheduledStart) {return false;}
+  if (!task.startFrom) {return false;}
+  const startFrom = new Date(task.startFrom);
+  if (Number.isNaN(startFrom.getTime())) {return false;}
+  return startFrom > now;
+}
+
 function buildTaskSummaryRow(task, options = {}) {
-  const { showOutOfRangeIcon = false, showUnscheduledIcon = false } = options;
+  const {
+    showOutOfRangeIcon = false,
+    showUnscheduledIcon = false,
+    showFutureStartIcon = false
+  } = options;
   const summaryRow = document.createElement("div");
   summaryRow.className = "task-summary-row";
   summaryRow.setAttribute("data-test-skedpal", "task-summary-row");
@@ -290,6 +303,18 @@ function buildTaskSummaryRow(task, options = {}) {
     summaryRow.appendChild(outOfRangeIcon);
     hasContent = true;
   }
+  if (showFutureStartIcon) {
+    const futureStartIcon = document.createElement("span");
+    futureStartIcon.className = "title-icon-btn";
+    futureStartIcon.title = "Starts in the future";
+    futureStartIcon.setAttribute("data-test-skedpal", "task-summary-future-start");
+    futureStartIcon.innerHTML = outOfRangeIconSvg;
+    futureStartIcon.style.borderColor = themeColors.lime400;
+    futureStartIcon.style.color = themeColors.lime400;
+    futureStartIcon.style.cursor = "default";
+    summaryRow.appendChild(futureStartIcon);
+    hasContent = true;
+  }
   if (showUnscheduledIcon) {
     const unscheduledIcon = document.createElement("span");
     unscheduledIcon.className = "title-icon-btn";
@@ -325,7 +350,8 @@ function buildTaskHeader(task, options) {
   if (!options.hideSummaryRow) {
     const summaryRow = buildTaskSummaryRow(task, {
       showOutOfRangeIcon: options.showOutOfRangeIcon,
-      showUnscheduledIcon: options.showUnscheduledIcon
+      showUnscheduledIcon: options.showUnscheduledIcon,
+      showFutureStartIcon: options.showFutureStartIcon
     });
     if (summaryRow) {
       actionsWrap.appendChild(summaryRow);
@@ -411,6 +437,7 @@ export function renderTaskCard(task, context) {
     getTaskDepthById,
     hideSummaryRow
   } = context;
+  const now = new Date();
   const childTasks = tasks.filter((t) => t.subtaskParentId === task.id);
   const hasChildren = childTasks.length > 0;
   const isCollapsed = collapsedTasks.has(task.id);
@@ -428,6 +455,7 @@ export function renderTaskCard(task, context) {
     taskCard.classList.add("task-card--reminder-alert");
     taskCard.dataset.reminderAlert = "true";
   }
+  const showFutureStartIcon = shouldShowFutureStartIcon(task, now);
   const showOutOfRangeIcon = Boolean(context.firstOccurrenceOutOfRangeByTaskId?.get(task.id));
   const showUnscheduledIcon = Boolean(context.firstOccurrenceUnscheduledByTaskId?.get(task.id));
   const header = buildTaskHeader(task, {
@@ -439,6 +467,7 @@ export function renderTaskCard(task, context) {
     detailsOpen,
     displayDurationMin,
     hideSummaryRow,
+    showFutureStartIcon,
     showOutOfRangeIcon,
     showUnscheduledIcon
   });

@@ -68,6 +68,7 @@ import {
 } from "./utils.js";
 import { closeTaskForm } from "./ui.js";
 import { indentTaskUnderPrevious, outdentTask } from "./tasks/tasks-sortable.js";
+import { indentSelectedTasks, outdentSelectedTasks } from "./tasks/task-multi-select.js";
 import { state } from "./state/page-state.js";
 import { initCalendarView, renderCalendar } from "./calendar.js";
 import { applyTheme } from "./theme.js";
@@ -320,9 +321,15 @@ async function handleTaskListTabIndent(event) {
   event.preventDefault();
   event.stopPropagation();
   if (event.shiftKey) {
-    await outdentTask(card);
+    const handled = await outdentSelectedTasks();
+    if (!handled) {
+      await outdentTask(card);
+    }
   } else {
-    await indentTaskUnderPrevious(card);
+    const handled = await indentSelectedTasks();
+    if (!handled) {
+      await indentTaskUnderPrevious(card);
+    }
   }
 }
 

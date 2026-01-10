@@ -2,6 +2,7 @@ import assert from "assert";
 import { describe, it } from "mocha";
 
 const { buildInheritedSubtaskUpdate } = await import("../src/ui/utils.js");
+const { computeTaskReorderUpdatesForMultiple } = await import("../src/ui/tasks/tasks.js");
 
 describe("task sortable", () => {
   it("inherits parent fields when becoming a subtask", () => {
@@ -51,5 +52,63 @@ describe("task sortable", () => {
     assert.strictEqual(updated.scheduledEnd, null);
     assert.strictEqual(updated.scheduledTimeMapId, null);
     assert.deepStrictEqual(updated.scheduledInstances, []);
+  });
+
+  it("reorders multiple tasks as a block", () => {
+    const tasks = [
+      { id: "t1", section: "s1", subsection: "", order: 1, subtaskParentId: null },
+      { id: "t2", section: "s1", subsection: "", order: 2, subtaskParentId: null },
+      { id: "t3", section: "s1", subsection: "", order: 3, subtaskParentId: null },
+      { id: "t4", section: "s1", subsection: "", order: 4, subtaskParentId: null }
+    ];
+    const result = computeTaskReorderUpdatesForMultiple(tasks, ["t2", "t3"], "s1", "", null);
+    const byId = new Map(result.updates.map((task) => [task.id, task]));
+    assert.strictEqual(byId.get("t4")?.order, 2);
+    assert.strictEqual(byId.get("t2")?.order, 3);
+    assert.strictEqual(byId.get("t3")?.order, 4);
+  });
+
+  it("ignores descendant ids when computing multi reorder", () => {
+    const tasks = [
+      { id: "t1", section: "s1", subsection: "", order: 1, subtaskParentId: null },
+      { id: "t1-1", section: "s1", subsection: "", order: 1.01, subtaskParentId: "t1" },
+      { id: "t2", section: "s1", subsection: "", order: 2, subtaskParentId: null }
+    ];
+    const resultRootOnly = computeTaskReorderUpdatesForMultiple(
+      tasks,
+      ["t1"],
+      "s1",
+      "",
+      null
+    );
+    const resultWithDescendant = computeTaskReorderUpdatesForMultiple(
+      tasks,
+      ["t1", "t1-1"],
+      "s1",
+      "",
+      null
+    );
+    const rootOrders = new Map(resultRootOnly.updates.map((task) => [task.id, task.order]));
+    const descendantOrders = new Map(
+      resultWithDescendant.updates.map((task) => [task.id, task.order])
+    );
+    assert.deepStrictEqual(descendantOrders, rootOrders);
+  });
+
+  it("returns no updates for empty multi reorder input", () => {
+    const tasks = [{ id: "t1", section: "s1", subsection: "", order: 1, subtaskParentId: null }];
+    const result = computeTaskReorderUpdatesForMultiple(tasks, [], "s1", "", null);
+    assert.strictEqual(result.changed, false);
+    assert.strictEqual(result.updates.length, 0);
+  });
+
+  it("returns no updates when moving tasks across mixed sections", () => {
+    const tasks = [
+      { id: "t1", section: "s1", subsection: "", order: 1, subtaskParentId: null },
+      { id: "t2", section: "s2", subsection: "", order: 1, subtaskParentId: null }
+    ];
+    const result = computeTaskReorderUpdatesForMultiple(tasks, ["t1", "t2"], "s1", "", null);
+    assert.strictEqual(result.changed, false);
+    assert.strictEqual(result.updates.length, 0);
   });
 });

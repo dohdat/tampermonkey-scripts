@@ -48,6 +48,13 @@ function normalizeDropBeforeId(dropBeforeId, movedIds, movedTaskId) {
   return dropBeforeId;
 }
 
+function normalizeDropBeforeIdForMultiple(dropBeforeId, movedIds) {
+  if (!dropBeforeId || movedIds.has(dropBeforeId)) {
+    return null;
+  }
+  return dropBeforeId;
+}
+
 function resolveInsertIndex(destinationList, dropBeforeId) {
   if (!dropBeforeId) {return destinationList.length;}
   const index = destinationList.findIndex((t) => t.id === dropBeforeId);
@@ -94,6 +101,107 @@ export function computeTaskReorderUpdates(
       remainingSource,
       movedTask.section || "",
       movedTask.subsection || "",
+      originalById,
+      updates
+    );
+    assignOrdersToUpdates(destinationList, targetSection, targetSubsection, originalById, updates);
+  }
+  return { updates, changed: updates.length > 0 };
+}
+
+function getMovedRootIds(movedTaskIds, tasks) {
+  const movedSet = new Set(movedTaskIds);
+  const byId = new Map((tasks || []).map((task) => [task.id, task]));
+  return movedTaskIds.filter((id) => {
+    const task = byId.get(id);
+    if (!task) {return false;}
+    let parentId = task.subtaskParentId || "";
+    while (parentId) {
+      if (movedSet.has(parentId)) {return false;}
+      parentId = byId.get(parentId)?.subtaskParentId || "";
+    }
+    return true;
+  });
+}
+
+function buildMultiMoveRoots(tasks, movedTaskIds) {
+  if (!Array.isArray(movedTaskIds) || movedTaskIds.length === 0) {return null;}
+  const byId = new Map((tasks || []).map((task) => [task.id, task]));
+  const rootIds = getMovedRootIds(movedTaskIds, tasks);
+  if (!rootIds.length) {return null;}
+  const rootTasks = rootIds.map((id) => byId.get(id)).filter(Boolean);
+  if (!rootTasks.length) {return null;}
+  const sourceKey = getContainerKey(rootTasks[0].section, rootTasks[0].subsection);
+  const hasMixedSources = rootTasks.some(
+    (task) => getContainerKey(task.section, task.subsection) !== sourceKey
+  );
+  if (hasMixedSources) {return null;}
+  return { rootIds, rootTasks, sourceKey };
+}
+
+function buildMultiMoveBlock(tasks, rootIds, targetSection, targetSubsection) {
+  const movedSubtrees = rootIds.map((id) => getTaskAndDescendants(id, tasks));
+  const movedIds = new Set(movedSubtrees.flat().map((task) => task.id));
+  const movedBlock = movedSubtrees.flatMap((subtree) =>
+    buildMovedBlock(subtree, targetSection, targetSubsection)
+  );
+  return { movedIds, movedBlock };
+}
+
+function buildMultiMoveLists(tasks, sourceKey, targetKey, movedIds) {
+  const remainingSource = sortTasksByOrder(
+    (tasks || []).filter(
+      (task) =>
+        getContainerKey(task.section, task.subsection) === sourceKey &&
+        !movedIds.has(task.id)
+    )
+  );
+  const destinationExisting = resolveDestinationExisting(
+    sourceKey,
+    targetKey,
+    remainingSource,
+    tasks,
+    movedIds
+  );
+  return { remainingSource, destinationExisting };
+}
+
+export function computeTaskReorderUpdatesForMultiple(
+  tasks,
+  movedTaskIds,
+  targetSection,
+  targetSubsection,
+  dropBeforeId
+) {
+  const roots = buildMultiMoveRoots(tasks, movedTaskIds);
+  if (!roots) {return { updates: [], changed: false };}
+  const { rootIds, rootTasks, sourceKey } = roots;
+  const { movedIds, movedBlock } = buildMultiMoveBlock(
+    tasks,
+    rootIds,
+    targetSection,
+    targetSubsection
+  );
+  const originalById = new Map((tasks || []).map((task) => [task.id, task]));
+  const targetKey = getContainerKey(targetSection, targetSubsection);
+  const { remainingSource, destinationExisting } = buildMultiMoveLists(
+    tasks,
+    sourceKey,
+    targetKey,
+    movedIds
+  );
+  const destinationList = [...destinationExisting];
+  const cleanedDropBeforeId = normalizeDropBeforeIdForMultiple(dropBeforeId, movedIds);
+  const insertAt = resolveInsertIndex(destinationList, cleanedDropBeforeId);
+  destinationList.splice(insertAt, 0, ...movedBlock);
+  const updates = [];
+  if (sourceKey === targetKey) {
+    assignOrdersToUpdates(destinationList, targetSection, targetSubsection, originalById, updates);
+  } else {
+    assignOrdersToUpdates(
+      remainingSource,
+      rootTasks[0].section || "",
+      rootTasks[0].subsection || "",
       originalById,
       updates
     );

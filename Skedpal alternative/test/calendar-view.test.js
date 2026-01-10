@@ -255,8 +255,9 @@ describe("calendar view", () => {
 
   it("renders with a scheduled event and split view", async () => {
     domRefs.tasksCalendarSplitWrap.dataset.split = "true";
-    state.calendarAnchorDate = new Date();
-    const now = new Date();
+    const anchor = new Date(2026, 0, 10, 12, 0, 0, 0);
+    state.calendarAnchorDate = new Date(anchor);
+    const now = new Date(anchor);
     const task = {
       id: "task-3",
       title: "Scheduled",

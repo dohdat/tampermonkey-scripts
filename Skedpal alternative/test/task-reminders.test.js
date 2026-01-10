@@ -275,6 +275,260 @@ describe("task reminders", () => {
     global.setTimeout = originalSetTimeout;
   });
 
+  it("anchors the reminder modal near the click position", async () => {
+    class FakeElement {
+      constructor(tagName = "div") {
+        this.tagName = tagName.toUpperCase();
+        this.children = [];
+        this.dataset = {};
+        this.attributes = {};
+        this.className = "";
+        this.textContent = "";
+        this.value = "";
+        this.style = {};
+        this._listeners = new Map();
+        this._classSet = new Set();
+        this.classList = {
+          add: (...names) => names.forEach((n) => this._classSet.add(n)),
+          remove: (...names) => names.forEach((n) => this._classSet.delete(n)),
+          toggle: (name, force) => {
+            if (force === undefined) {
+              if (this._classSet.has(name)) {this._classSet.delete(name);}
+              else {this._classSet.add(name);}
+              return;
+            }
+            if (force) {this._classSet.add(name);}
+            else {this._classSet.delete(name);}
+          },
+          contains: (name) => this._classSet.has(name)
+        };
+      }
+
+      appendChild(child) {
+        this.children.push(child);
+        return child;
+      }
+
+      setAttribute(name, value) {
+        this.attributes[name] = value;
+      }
+
+      querySelector(selector) {
+        if (selector === '[data-test-skedpal="task-reminder-panel"]') {
+          return this.children.find(
+            (child) => child.attributes?.["data-test-skedpal"] === "task-reminder-panel"
+          );
+        }
+        return null;
+      }
+
+      addEventListener(type, handler) {
+        if (!this._listeners.has(type)) {
+          this._listeners.set(type, new Set());
+        }
+        this._listeners.get(type).add(handler);
+      }
+
+      removeEventListener(type, handler) {
+        this._listeners.get(type)?.delete(handler);
+      }
+    }
+
+    const originalDocument = global.document;
+    const originalSetTimeout = global.setTimeout;
+    const originalRaf = global.requestAnimationFrame;
+    const originalWindow = global.window;
+    const originalHTMLElement = global.HTMLElement;
+
+    global.window = { innerWidth: 800, innerHeight: 600 };
+    global.HTMLElement = FakeElement;
+    global.requestAnimationFrame = (cb) => cb();
+    global.document = {
+      body: new FakeElement("body"),
+      createElement: (tag) => new FakeElement(tag),
+      addEventListener: () => {},
+      removeEventListener: () => {}
+    };
+    global.document.body.classList = {
+      add: () => {},
+      remove: () => {}
+    };
+    global.setTimeout = (handler) => {
+      handler();
+      return 0;
+    };
+
+    const taskReminderModal = new FakeElement("div");
+    taskReminderModal.classList.add("hidden");
+    const taskReminderPanel = new FakeElement("div");
+    taskReminderPanel.setAttribute("data-test-skedpal", "task-reminder-panel");
+    taskReminderPanel.getBoundingClientRect = () => ({ width: 360, height: 420 });
+    taskReminderModal.appendChild(taskReminderPanel);
+
+    const taskReminderDays = new FakeElement("div");
+    const taskReminderCustomInput = new FakeElement("input");
+    const taskReminderCustomAdd = new FakeElement("button");
+    const taskReminderExistingWrap = new FakeElement("div");
+    const taskReminderExistingList = new FakeElement("div");
+    const taskReminderSaveBtn = new FakeElement("button");
+    const closeBtn = new FakeElement("button");
+
+    domRefs.taskReminderModal = taskReminderModal;
+    domRefs.taskReminderDays = taskReminderDays;
+    domRefs.taskReminderCustomInput = taskReminderCustomInput;
+    domRefs.taskReminderCustomAdd = taskReminderCustomAdd;
+    domRefs.taskReminderExistingWrap = taskReminderExistingWrap;
+    domRefs.taskReminderExistingList = taskReminderExistingList;
+    domRefs.taskReminderSaveBtn = taskReminderSaveBtn;
+    domRefs.taskReminderCloseButtons = [closeBtn];
+
+    state.tasksCache = [{ id: "task-2", reminders: [] }];
+
+    const module = await import("../src/ui/tasks/task-reminders.js");
+    module.initTaskReminderModal();
+    module.openTaskReminderModal("task-2", { event: { clientX: 200, clientY: 150 } });
+
+    assert.strictEqual(taskReminderPanel.style.position, "fixed");
+    assert.ok(taskReminderPanel.style.left);
+    assert.ok(taskReminderPanel.style.top);
+
+    module.cleanupTaskReminderModal();
+    global.document = originalDocument;
+    global.setTimeout = originalSetTimeout;
+    global.requestAnimationFrame = originalRaf;
+    global.window = originalWindow;
+    global.HTMLElement = originalHTMLElement;
+  });
+
+  it("anchors the reminder modal using target bounds when click coords missing", async () => {
+    class FakeElement {
+      constructor(tagName = "div") {
+        this.tagName = tagName.toUpperCase();
+        this.children = [];
+        this.dataset = {};
+        this.attributes = {};
+        this.className = "";
+        this.textContent = "";
+        this.value = "";
+        this.style = {};
+        this._listeners = new Map();
+        this._classSet = new Set();
+        this.classList = {
+          add: (...names) => names.forEach((n) => this._classSet.add(n)),
+          remove: (...names) => names.forEach((n) => this._classSet.delete(n)),
+          toggle: (name, force) => {
+            if (force === undefined) {
+              if (this._classSet.has(name)) {this._classSet.delete(name);}
+              else {this._classSet.add(name);}
+              return;
+            }
+            if (force) {this._classSet.add(name);}
+            else {this._classSet.delete(name);}
+          },
+          contains: (name) => this._classSet.has(name)
+        };
+      }
+
+      appendChild(child) {
+        this.children.push(child);
+        return child;
+      }
+
+      setAttribute(name, value) {
+        this.attributes[name] = value;
+      }
+
+      querySelector(selector) {
+        if (selector === '[data-test-skedpal="task-reminder-panel"]') {
+          return this.children.find(
+            (child) => child.attributes?.["data-test-skedpal"] === "task-reminder-panel"
+          );
+        }
+        return null;
+      }
+
+      addEventListener(type, handler) {
+        if (!this._listeners.has(type)) {
+          this._listeners.set(type, new Set());
+        }
+        this._listeners.get(type).add(handler);
+      }
+
+      removeEventListener(type, handler) {
+        this._listeners.get(type)?.delete(handler);
+      }
+
+      getBoundingClientRect() {
+        return { left: 100, top: 120, width: 40, height: 20 };
+      }
+    }
+
+    const originalDocument = global.document;
+    const originalSetTimeout = global.setTimeout;
+    const originalRaf = global.requestAnimationFrame;
+    const originalWindow = global.window;
+    const originalHTMLElement = global.HTMLElement;
+
+    global.window = { innerWidth: 800, innerHeight: 600 };
+    global.HTMLElement = FakeElement;
+    global.requestAnimationFrame = (cb) => cb();
+    global.document = {
+      body: new FakeElement("body"),
+      createElement: (tag) => new FakeElement(tag),
+      addEventListener: () => {},
+      removeEventListener: () => {}
+    };
+    global.document.body.classList = {
+      add: () => {},
+      remove: () => {}
+    };
+    global.setTimeout = (handler) => {
+      handler();
+      return 0;
+    };
+
+    const taskReminderModal = new FakeElement("div");
+    taskReminderModal.classList.add("hidden");
+    const taskReminderPanel = new FakeElement("div");
+    taskReminderPanel.setAttribute("data-test-skedpal", "task-reminder-panel");
+    taskReminderPanel.getBoundingClientRect = () => ({ width: 360, height: 420 });
+    taskReminderModal.appendChild(taskReminderPanel);
+
+    const taskReminderDays = new FakeElement("div");
+    const taskReminderCustomInput = new FakeElement("input");
+    const taskReminderCustomAdd = new FakeElement("button");
+    const taskReminderExistingWrap = new FakeElement("div");
+    const taskReminderExistingList = new FakeElement("div");
+    const taskReminderSaveBtn = new FakeElement("button");
+    const closeBtn = new FakeElement("button");
+
+    domRefs.taskReminderModal = taskReminderModal;
+    domRefs.taskReminderDays = taskReminderDays;
+    domRefs.taskReminderCustomInput = taskReminderCustomInput;
+    domRefs.taskReminderCustomAdd = taskReminderCustomAdd;
+    domRefs.taskReminderExistingWrap = taskReminderExistingWrap;
+    domRefs.taskReminderExistingList = taskReminderExistingList;
+    domRefs.taskReminderSaveBtn = taskReminderSaveBtn;
+    domRefs.taskReminderCloseButtons = [closeBtn];
+
+    state.tasksCache = [{ id: "task-3", reminders: [] }];
+
+    const module = await import("../src/ui/tasks/task-reminders.js");
+    module.initTaskReminderModal();
+    module.openTaskReminderModal("task-3", { event: { target: new FakeElement("button") } });
+
+    assert.strictEqual(taskReminderPanel.style.position, "fixed");
+    assert.ok(taskReminderPanel.style.left);
+    assert.ok(taskReminderPanel.style.top);
+
+    module.cleanupTaskReminderModal();
+    global.document = originalDocument;
+    global.setTimeout = originalSetTimeout;
+    global.requestAnimationFrame = originalRaf;
+    global.window = originalWindow;
+    global.HTMLElement = originalHTMLElement;
+  });
+
   it("filters overdue reminders and skips dismissed entries", async () => {
     const originalDocument = global.document;
     global.document = {

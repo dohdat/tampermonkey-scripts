@@ -390,7 +390,7 @@ async function handleTaskActions(action, options = {}) {
     },
     {
       when: Boolean(action.remindTaskId),
-      run: () => openTaskReminderModal(action.remindTaskId)
+      run: () => openTaskReminderModal(action.remindTaskId, { event: options.event })
     },
     {
       when: Boolean(action.dismissReminderTaskId),
@@ -490,5 +490,5 @@ export async function handleTaskListClick(event, options = {}) {
   if (await handleChildSubsectionActions(action, btn)) {return;}
   if (await handleSectionSubsectionActions(action)) {return;}
   if (handleCollapseActions(btn, action)) {return;}
-  await handleTaskActionsWithClose(action, options);
+  await handleTaskActionsWithClose(action, { ...options, event });
 }

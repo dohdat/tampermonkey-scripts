@@ -10,6 +10,7 @@ const reminderDayButtons = new Map();
 const selectedDays = new Set();
 let reminderTargetId = "";
 let reminderModalCleanup = null;
+let reminderAnchor = null;
 
 async function reloadTasks() {
   const { loadTasks } = await import("./tasks-actions.js");
@@ -190,15 +191,70 @@ function closeTaskReminderModal() {
   if (taskReminderModal) {taskReminderModal.classList.add("hidden");}
   document.body.classList.remove("modal-open");
   reminderTargetId = "";
+  reminderAnchor = null;
+  resetReminderPanelPosition();
   resetReminderSelection();
 }
 
-export function openTaskReminderModal(taskId) {
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function getReminderPanel() {
+  const { taskReminderModal } = domRefs;
+  return taskReminderModal?.querySelector?.('[data-test-skedpal="task-reminder-panel"]') || null;
+}
+
+function resetReminderPanelPosition() {
+  const panel = getReminderPanel();
+  if (!panel) {return;}
+  panel.style.position = "";
+  panel.style.left = "";
+  panel.style.top = "";
+  panel.style.right = "";
+  panel.style.transform = "";
+  panel.style.margin = "";
+}
+
+function resolveAnchorFromEvent(event) {
+  if (!event) {return null;}
+  const { clientX, clientY } = event;
+  if (Number.isFinite(clientX) && Number.isFinite(clientY)) {
+    return { x: clientX, y: clientY };
+  }
+  const hasHTMLElement = typeof HTMLElement !== "undefined";
+  const target = hasHTMLElement && event.target instanceof HTMLElement ? event.target : null;
+  const rect = target?.getBoundingClientRect?.();
+  if (!rect) {return null;}
+  return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+}
+
+function applyReminderPanelPosition(anchor) {
+  const panel = getReminderPanel();
+  if (!panel || !anchor) {return;}
+  const padding = 12;
+  const rect = panel.getBoundingClientRect();
+  const panelWidth = rect.width || 360;
+  const panelHeight = rect.height || 420;
+  const maxLeft = window.innerWidth - panelWidth - padding;
+  const maxTop = window.innerHeight - panelHeight - padding;
+  const left = clamp(anchor.x - panelWidth / 2, padding, Math.max(padding, maxLeft));
+  const top = clamp(anchor.y - 24, padding, Math.max(padding, maxTop));
+  panel.style.position = "fixed";
+  panel.style.left = `${left}px`;
+  panel.style.top = `${top}px`;
+  panel.style.right = "auto";
+  panel.style.transform = "translate(0, 0)";
+  panel.style.margin = "0";
+}
+
+export function openTaskReminderModal(taskId, options = {}) {
   const { taskReminderModal, taskReminderCustomInput } = domRefs;
   if (!taskReminderModal) {return;}
   const task = state.tasksCache.find((entry) => entry.id === taskId);
   if (!task) {return;}
   reminderTargetId = taskId;
+  reminderAnchor = resolveAnchorFromEvent(options.event);
   ensureReminderButtons();
   resetReminderSelection();
   renderExistingReminders(task);
@@ -207,6 +263,10 @@ export function openTaskReminderModal(taskId) {
   }
   taskReminderModal.classList.remove("hidden");
   document.body.classList.add("modal-open");
+  resetReminderPanelPosition();
+  requestAnimationFrame(() => {
+    applyReminderPanelPosition(reminderAnchor);
+  });
   setTimeout(() => {
     taskReminderCustomInput?.focus?.();
   }, 50);

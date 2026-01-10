@@ -30,7 +30,11 @@ import {
 } from "./tasks/tasks-actions.js";
 import { initTaskTemplateSelect } from "./tasks/task-template-select.js";
 import { initTaskListAssistant } from "./tasks/task-ai.js";
-import { handleTaskListClick, handleTaskTitleDoubleClick } from "./tasks/task-list-actions.js";
+import {
+  handleTaskContainerDoubleClick,
+  handleTaskListClick,
+  handleTaskTitleDoubleClick
+} from "./tasks/task-list-actions.js";
 import { initTaskReminderModal } from "./tasks/task-reminders.js";
 import {
   renderTaskSubsectionOptions,
@@ -163,6 +167,7 @@ async function handleTaskListClickEvent(event) {
 
 function handleTaskListDoubleClickEvent(event) {
   handleTaskTitleDoubleClick(event);
+  handleTaskContainerDoubleClick(event);
 }
 
 async function handleTodayListClickEvent(event) {
@@ -171,6 +176,7 @@ async function handleTodayListClickEvent(event) {
 
 function handleTodayListDoubleClickEvent(event) {
   handleTaskTitleDoubleClick(event);
+  handleTaskContainerDoubleClick(event);
 }
 
 async function handleReportListClickEvent(event) {

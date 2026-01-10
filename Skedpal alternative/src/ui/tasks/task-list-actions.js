@@ -39,6 +39,64 @@ function runTaskDetailCleanup(taskId) {
   state.taskDetailCleanup.delete(taskId);
 }
 
+function isInteractiveTarget(target) {
+  if (!(target instanceof HTMLElement)) {return false;}
+  if (target.isContentEditable) {return true;}
+  return Boolean(target.closest("button, a, input, textarea, select"));
+}
+
+function getZoomFilterForTaskCard(card) {
+  const taskId = card?.dataset?.taskId || "";
+  if (!taskId) {return null;}
+  return {
+    type: "task",
+    taskId,
+    sectionId: card.dataset.sectionId || "",
+    subsectionId: card.dataset.subsectionId || ""
+  };
+}
+
+function shouldIgnoreContainerZoom(target) {
+  if (!(target instanceof HTMLElement)) {return true;}
+  if (target.closest?.('[data-test-skedpal="task-title"]')) {return true;}
+  return isInteractiveTarget(target);
+}
+
+function tryZoomTaskContainer(target) {
+  const taskCard = target.closest?.('[data-test-skedpal="task-card"]');
+  if (!taskCard) {return false;}
+  const filter = getZoomFilterForTaskCard(taskCard);
+  if (filter) {setZoomFilter(filter);}
+  return true;
+}
+
+function tryZoomSubsectionContainer(target) {
+  const subsectionCard = target.closest?.("[data-subsection-card]");
+  if (!subsectionCard) {return false;}
+  const subsectionId = subsectionCard.dataset.subsectionCard || "";
+  if (!subsectionId) {return true;}
+  const sectionId =
+    subsectionCard.closest?.("[data-section-card]")?.dataset?.sectionCard || "";
+  setZoomFilter({ type: "subsection", sectionId, subsectionId });
+  return true;
+}
+
+function tryZoomSectionContainer(target) {
+  const sectionCard = target.closest?.("[data-section-card]");
+  if (!sectionCard) {return false;}
+  const sectionId = sectionCard.dataset.sectionCard ?? "";
+  setZoomFilter({ type: "section", sectionId });
+  return true;
+}
+
+export function handleTaskContainerDoubleClick(event) {
+  const target = event.target;
+  if (shouldIgnoreContainerZoom(target)) {return;}
+  if (tryZoomTaskContainer(target)) {return;}
+  if (tryZoomSubsectionContainer(target)) {return;}
+  tryZoomSectionContainer(target);
+}
+
 function collapseTaskDetails(taskId) {
   if (!taskId) {return;}
   if (!state.expandedTaskDetails.has(taskId)) {return;}

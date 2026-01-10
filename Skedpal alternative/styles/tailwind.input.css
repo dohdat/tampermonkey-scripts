@@ -117,6 +117,7 @@ body.modal-open{overflow:hidden}
 .title-hover-group{display:inline-flex;align-items:center;gap:var(--space-0-5)}
 .title-actions{display:inline-flex;align-items:center;gap:var(--space-0-25);opacity:0;pointer-events:none;transition:opacity var(--motion-slow) ease}
 .title-hover-group:hover .title-actions{opacity:1;pointer-events:auto}
+.task-actions-menu-open .title-actions{opacity:1;pointer-events:auto}
 .title-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:var(--size-26px);height:var(--size-26px);border-radius:var(--size-9999px);border:var(--size-1px) solid var(--color-slate-600);background:var(--color-slate-800);color:var(--color-slate-300)}
 .title-icon-btn:hover{border-color:var(--color-sky-400);color:var(--color-slate-200)}
 .favorite-active{border-color:var(--color-amber-400);color:var(--color-amber-400);background:var(--color-amber-900)}

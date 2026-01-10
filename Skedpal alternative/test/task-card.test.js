@@ -337,7 +337,7 @@ describe("task card", () => {
     };
 
     const card = renderTaskCard(task, context);
-    const remindBtn = findByTestAttr(card, "task-remind-btn");
+    const remindBtn = findByTestAttr(card, "task-menu-remind");
     assert.ok(remindBtn);
     assert.strictEqual(card.classList.contains("task-card--reminder-alert"), true);
   });

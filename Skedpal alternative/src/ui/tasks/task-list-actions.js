@@ -55,6 +55,7 @@ function collapseOtherTaskDetails(taskId) {
 
 function parseTaskListClick(btn) {
   return {
+    taskMenuToggleId: btn.dataset.taskMenuToggle,
     completeTaskId: btn.dataset.completeTask,
     addSection: btn.dataset.addSection,
     addSubsectionFor: btn.dataset.addSubsection,
@@ -84,6 +85,75 @@ function parseTaskListClick(btn) {
     toggleTaskDetailsId: btn.dataset.toggleTaskDetails,
     toggleTaskCollapseId: btn.dataset.toggleTaskCollapse
   };
+}
+
+function closeTaskActionMenus(exceptTaskId = "") {
+  const menus = document.querySelectorAll?.("[data-task-menu]") || [];
+  menus.forEach((menu) => {
+    if (exceptTaskId && menu.dataset.taskMenu === exceptTaskId) {return;}
+    menu.classList.add("hidden");
+    menu.closest?.(".task-actions-wrap")?.classList.remove("task-actions-menu-open");
+  });
+  if (!exceptTaskId || state.taskMenuOpenId !== exceptTaskId) {
+    cleanupTaskMenuListeners();
+  }
+}
+
+function cleanupTaskMenuListeners() {
+  if (typeof state.taskMenuCleanup !== "function") {return;}
+  state.taskMenuCleanup();
+  state.taskMenuCleanup = null;
+  state.taskMenuOpenId = "";
+}
+
+function createTaskMenuHandlers(taskId) {
+  function onTaskMenuPointerDown(event) {
+    const menu = document.querySelector?.(`[data-task-menu="${taskId}"]`);
+    const toggleBtn = document.querySelector?.(`[data-task-menu-toggle="${taskId}"]`);
+    const target = event.target;
+    if (!menu || !toggleBtn) {
+      closeTaskActionMenus();
+      return;
+    }
+    if (menu.contains(target) || toggleBtn.contains(target)) {return;}
+    closeTaskActionMenus();
+  }
+
+  function onTaskMenuKeyDown(event) {
+    if (event.key !== "Escape") {return;}
+    closeTaskActionMenus();
+  }
+
+  return { onTaskMenuPointerDown, onTaskMenuKeyDown };
+}
+
+function setupTaskMenuListeners(taskId) {
+  if (!taskId) {return;}
+  cleanupTaskMenuListeners();
+  const { onTaskMenuPointerDown, onTaskMenuKeyDown } = createTaskMenuHandlers(taskId);
+  document.addEventListener("pointerdown", onTaskMenuPointerDown, true);
+  document.addEventListener("keydown", onTaskMenuKeyDown);
+  state.taskMenuCleanup = () => {
+    document.removeEventListener("pointerdown", onTaskMenuPointerDown, true);
+    document.removeEventListener("keydown", onTaskMenuKeyDown);
+  };
+  state.taskMenuOpenId = taskId;
+}
+
+function toggleTaskActionMenu(taskId) {
+  if (!taskId) {return;}
+  const menu = document.querySelector?.(`[data-task-menu="${taskId}"]`);
+  if (!menu) {return;}
+  const actionsWrap = menu.closest?.(".task-actions-wrap");
+  const willShow = menu.classList.contains("hidden");
+  closeTaskActionMenus(taskId);
+  menu.classList.toggle("hidden", !willShow);
+  actionsWrap?.classList.toggle("task-actions-menu-open", willShow);
+  if (willShow) {
+    setupTaskMenuListeners(taskId);
+  } else {
+    cleanupTaskMenuListeners();
+  }
 }
 
 async function handleTaskComplete(completeTaskId) {
@@ -331,26 +401,63 @@ async function deleteTaskWithUndo(taskId) {
   });
 }
 
+function handleMenuToggleAction(action) {
+  if (action.taskMenuToggleId === undefined) {return false;}
+  toggleTaskActionMenu(action.taskMenuToggleId);
+  return true;
+}
+
+async function handleCompleteAction(action) {
+  if (action.completeTaskId === undefined) {return false;}
+  await handleTaskComplete(action.completeTaskId);
+  closeTaskActionMenus();
+  return true;
+}
+
+function handleZoomActionWithClose(action) {
+  const handled = handleZoomAction(action);
+  if (handled) {
+    closeTaskActionMenus();
+  }
+  return handled;
+}
+
+async function handleChildSubsectionActions(action, btn) {
+  if (action.addChildSubsectionId !== undefined) {
+    const sectionId = action.addChildSectionId || "";
+    openSubsectionModal(sectionId, action.addChildSubsectionId);
+    return true;
+  }
+  if (action.submitChildSubsectionId !== undefined) {
+    await handleChildSubsectionSubmit(btn, action.submitChildSubsectionId);
+    return true;
+  }
+  return false;
+}
+
+async function handleSectionSubsectionActions(action) {
+  if (await handleSectionActions(action)) {return true;}
+  if (await handleSubsectionActions(action)) {return true;}
+  return false;
+}
+
+async function handleTaskActionsWithClose(action, options = {}) {
+  const handled = await handleTaskActions(action, options);
+  if (handled) {
+    closeTaskActionMenus();
+  }
+  return handled;
+}
+
 export async function handleTaskListClick(event, options = {}) {
   const btn = event.target.closest("button");
   if (!btn) {return;}
   const action = parseTaskListClick(btn);
-  if (action.completeTaskId !== undefined) {
-    await handleTaskComplete(action.completeTaskId);
-    return;
-  }
-  if (handleZoomAction(action)) {return;}
-  if (action.addChildSubsectionId !== undefined) {
-    const sectionId = action.addChildSectionId || "";
-    openSubsectionModal(sectionId, action.addChildSubsectionId);
-    return;
-  }
-  if (action.submitChildSubsectionId !== undefined) {
-    await handleChildSubsectionSubmit(btn, action.submitChildSubsectionId);
-    return;
-  }
-  if (await handleSectionActions(action)) {return;}
-  if (await handleSubsectionActions(action)) {return;}
+  if (handleMenuToggleAction(action)) {return;}
+  if (await handleCompleteAction(action)) {return;}
+  if (handleZoomActionWithClose(action)) {return;}
+  if (await handleChildSubsectionActions(action, btn)) {return;}
+  if (await handleSectionSubsectionActions(action)) {return;}
   if (handleCollapseActions(btn, action)) {return;}
-  await handleTaskActions(action, options);
+  await handleTaskActionsWithClose(action, options);
 }

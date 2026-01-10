@@ -14,6 +14,8 @@ export const state = {
   collapsedTasks: new Set(),
   expandedTaskDetails: new Set(),
   taskDetailCleanup: new Map(),
+  taskMenuCleanup: null,
+  taskMenuOpenId: "",
   draggingTaskId: null,
   notificationHideTimeout: null,
   notificationUndoHandler: null,

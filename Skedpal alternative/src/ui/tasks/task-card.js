@@ -91,19 +91,6 @@ function buildTaskCompleteButton(task) {
   return completeBtn;
 }
 
-function buildReminderControls(task) {
-  const remindTaskBtn = document.createElement("button");
-  remindTaskBtn.type = "button";
-  remindTaskBtn.dataset.remindTask = task.id;
-  remindTaskBtn.className = "title-icon-btn";
-  remindTaskBtn.title = "Remind me";
-  remindTaskBtn.setAttribute("data-test-skedpal", "task-remind-btn");
-  remindTaskBtn.innerHTML = reminderIconSvg;
-  remindTaskBtn.style.borderColor = themeColors.amber400;
-  remindTaskBtn.style.color = themeColors.amber400;
-  return { remindTaskBtn };
-}
-
 function buildTitleWrap(task, options) {
   const {
     hasChildren,
@@ -127,71 +114,126 @@ function buildTitleWrap(task, options) {
   return { titleWrap, isLongTitle, displayDurationMin, detailsOpen };
 }
 
-function buildTaskTitleActions(task, detailsOpen) {
-  const actionsWrap = document.createElement("div");
-  actionsWrap.className = "task-actions-wrap";
-  const titleActions = document.createElement("div");
-  titleActions.className = "title-actions task-title-actions";
-  titleActions.setAttribute("data-test-skedpal", "task-title-actions");
-  const zoomTaskBtn = document.createElement("button");
-  zoomTaskBtn.type = "button";
-  zoomTaskBtn.dataset.zoomTask = task.id;
-  zoomTaskBtn.dataset.zoomSection = task.section || "";
-  zoomTaskBtn.dataset.zoomSubsection = task.subsection || "";
-  zoomTaskBtn.className = "title-icon-btn";
-  zoomTaskBtn.title = "Zoom into task";
-  zoomTaskBtn.setAttribute("data-test-skedpal", "task-zoom-btn");
-  zoomTaskBtn.innerHTML = zoomInIconSvg;
-  const editTaskBtn = document.createElement("button");
-  editTaskBtn.type = "button";
-  editTaskBtn.dataset.edit = task.id;
-  editTaskBtn.className = "title-icon-btn";
-  editTaskBtn.title = "Edit task";
-  editTaskBtn.setAttribute("data-test-skedpal", "task-edit-btn");
-  editTaskBtn.innerHTML = editIconSvg;
-  editTaskBtn.style.borderColor = themeColors.green500;
-  editTaskBtn.style.color = themeColors.green500;
-  const duplicateTaskBtn = document.createElement("button");
-  duplicateTaskBtn.type = "button";
-  duplicateTaskBtn.dataset.duplicateTask = task.id;
-  duplicateTaskBtn.className = "title-icon-btn";
-  duplicateTaskBtn.title = "Duplicate task";
-  duplicateTaskBtn.setAttribute("data-test-skedpal", "task-duplicate-btn");
-  duplicateTaskBtn.innerHTML = duplicateIconSvg;
-  duplicateTaskBtn.style.borderColor = themeColors.blue500;
-  duplicateTaskBtn.style.color = themeColors.blue500;
-  const { remindTaskBtn } = buildReminderControls(task);
-  const deleteTaskBtn = document.createElement("button");
-  deleteTaskBtn.type = "button";
-  deleteTaskBtn.dataset.delete = task.id;
-  deleteTaskBtn.className = "title-icon-btn";
-  deleteTaskBtn.title = "Delete task";
-  deleteTaskBtn.setAttribute("data-test-skedpal", "task-delete-btn");
-  deleteTaskBtn.innerHTML = removeIconSvg;
-  deleteTaskBtn.style.borderColor = themeColors.orange500;
-  deleteTaskBtn.style.color = themeColors.orange500;
-  const addSubtaskBtn = document.createElement("button");
-  addSubtaskBtn.type = "button";
-  addSubtaskBtn.dataset.addSubtask = task.id;
-  addSubtaskBtn.className = "title-icon-btn";
-  addSubtaskBtn.title = "Add subtask";
-  addSubtaskBtn.setAttribute("aria-label", "Add subtask");
-  addSubtaskBtn.setAttribute("data-test-skedpal", "task-add-subtask-btn");
-  addSubtaskBtn.innerHTML = plusIconSvg;
+function buildMenuToggleButton(taskId) {
+  const menuToggleBtn = document.createElement("button");
+  menuToggleBtn.type = "button";
+  menuToggleBtn.dataset.taskMenuToggle = taskId;
+  menuToggleBtn.className = "title-icon-btn";
+  menuToggleBtn.title = "More actions";
+  menuToggleBtn.setAttribute("aria-label", "More actions");
+  menuToggleBtn.setAttribute("data-test-skedpal", "task-actions-menu-toggle");
+  menuToggleBtn.innerHTML = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><circle cx="4" cy="10" r="1.6"></circle><circle cx="10" cy="10" r="1.6"></circle><circle cx="16" cy="10" r="1.6"></circle></svg>`;
+  return menuToggleBtn;
+}
+
+function buildTaskActionButton({ label, dataset, iconSvg, testAttr, color }) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  Object.entries(dataset || {}).forEach(([key, value]) => {
+    btn.dataset[key] = value;
+  });
+  btn.className =
+    "flex w-full items-center gap-2 rounded-lg border-slate-800 px-2 py-1 text-left text-xs text-slate-200 hover:border-lime-400";
+  btn.title = label;
+  btn.setAttribute("data-test-skedpal", testAttr);
+  btn.innerHTML = `${iconSvg}<span>${label}</span>`;
+  if (color) {
+    btn.style.borderColor = color;
+    btn.style.color = color;
+  }
+  return btn;
+}
+
+function buildTaskActionsMenu(task) {
+  const menu = document.createElement("div");
+  menu.className =
+    "task-actions-menu absolute left-0 top-full z-20 mt-2 hidden w-44 rounded-xl border-slate-800 bg-slate-950/90 p-2 text-xs text-slate-200 shadow-lg";
+  menu.dataset.taskMenu = task.id;
+  menu.setAttribute("data-test-skedpal", "task-actions-menu");
+  const menuItems = [
+    buildTaskActionButton({
+      taskId: task.id,
+      label: "Zoom",
+      dataset: {
+        zoomTask: task.id,
+        zoomSection: task.section || "",
+        zoomSubsection: task.subsection || ""
+      },
+      iconSvg: zoomInIconSvg,
+      testAttr: "task-menu-zoom"
+    }),
+    buildTaskActionButton({
+      taskId: task.id,
+      label: "Add subtask",
+      dataset: { addSubtask: task.id },
+      iconSvg: plusIconSvg,
+      testAttr: "task-menu-add-subtask"
+    }),
+    buildTaskActionButton({
+      taskId: task.id,
+      label: "Duplicate",
+      dataset: { duplicateTask: task.id },
+      iconSvg: duplicateIconSvg,
+      testAttr: "task-menu-duplicate",
+      color: themeColors.blue500
+    }),
+    buildTaskActionButton({
+      taskId: task.id,
+      label: "Remind me",
+      dataset: { remindTask: task.id },
+      iconSvg: reminderIconSvg,
+      testAttr: "task-menu-remind",
+      color: themeColors.amber400
+    }),
+    buildTaskActionButton({
+      taskId: task.id,
+      label: "Edit",
+      dataset: { edit: task.id },
+      iconSvg: editIconSvg,
+      testAttr: "task-menu-edit",
+      color: themeColors.green500
+    }),
+    buildTaskActionButton({
+      taskId: task.id,
+      label: "Delete",
+      dataset: { delete: task.id },
+      iconSvg: removeIconSvg,
+      testAttr: "task-menu-delete",
+      color: themeColors.orange500
+    })
+  ];
+  menuItems.forEach((btn) => menu.appendChild(btn));
+  return menu;
+}
+
+function buildDetailsToggleButton(taskId, detailsOpen) {
   const detailsToggleBtn = document.createElement("button");
   detailsToggleBtn.type = "button";
-  detailsToggleBtn.dataset.toggleTaskDetails = task.id;
+  detailsToggleBtn.dataset.toggleTaskDetails = taskId;
   detailsToggleBtn.className = "title-icon-btn";
   detailsToggleBtn.title = detailsOpen ? "Hide details" : "Show details";
   detailsToggleBtn.setAttribute("aria-label", detailsOpen ? "Hide details" : "Show details");
   detailsToggleBtn.setAttribute("data-test-skedpal", "task-details-toggle");
   detailsToggleBtn.innerHTML = detailsOpen ? caretDownIconSvg : caretRightIconSvg;
-  titleActions.appendChild(zoomTaskBtn);
-  titleActions.appendChild(duplicateTaskBtn);
-  titleActions.appendChild(remindTaskBtn);
-  titleActions.appendChild(addSubtaskBtn);
-  titleActions.appendChild(editTaskBtn);
-  titleActions.appendChild(deleteTaskBtn);
+  return detailsToggleBtn;
+}
+
+function buildTaskTitleActions(task, detailsOpen) {
+  const actionsWrap = document.createElement("div");
+  actionsWrap.className = "task-actions-wrap relative";
+  actionsWrap.setAttribute("data-test-skedpal", "task-actions-wrap");
+  const titleActions = document.createElement("div");
+  titleActions.className = "title-actions task-title-actions";
+  titleActions.setAttribute("data-test-skedpal", "task-title-actions");
+  const menuWrap = document.createElement("div");
+  menuWrap.className = "relative inline-flex";
+  menuWrap.setAttribute("data-test-skedpal", "task-actions-menu-wrap");
+  const menuToggleBtn = buildMenuToggleButton(task.id);
+  const detailsToggleBtn = buildDetailsToggleButton(task.id, detailsOpen);
+  const menu = buildTaskActionsMenu(task);
+  menuWrap.appendChild(menuToggleBtn);
+  menuWrap.appendChild(menu);
+  titleActions.appendChild(menuWrap);
   titleActions.appendChild(detailsToggleBtn);
   actionsWrap.appendChild(titleActions);
   return actionsWrap;

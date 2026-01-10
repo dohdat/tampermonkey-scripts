@@ -66,6 +66,15 @@ class FakeElement {
     }
   }
 
+  dispatchEvent(event) {
+    this.lastDispatched = event;
+    const handler = this.listeners[event.type];
+    if (handler) {
+      handler(event);
+    }
+    return true;
+  }
+
   closest(selector) {
     let current = this;
     while (current) {
@@ -154,6 +163,12 @@ describe("calendar event modal", () => {
     };
     global.requestAnimationFrame = (cb) => cb();
     global.history = { replaceState: () => {} };
+    global.Event = class Event {
+      constructor(type, init) {
+        this.type = type;
+        this.bubbles = init?.bubbles || false;
+      }
+    };
     global.CustomEvent = class CustomEvent {
       constructor(type, init) {
         this.type = type;
@@ -239,10 +254,6 @@ describe("calendar event modal", () => {
     };
 
     initCalendarEventModal();
-    let pickerOpened = false;
-    refs.defer.showPicker = () => {
-      pickerOpened = true;
-    };
     refs.actions[2].listeners.click({ currentTarget: refs.actions[2] });
     assert.strictEqual(domRefs.calendarEventModal, refs.modal);
     assert.ok(typeof domRefs.calendarEventModal.classList.remove === "function");
@@ -262,20 +273,7 @@ describe("calendar event modal", () => {
     refs.actions.forEach((btn) => {
       assert.ok(btn.innerHTML.length > 0);
     });
-    assert.strictEqual(pickerOpened, true);
-  });
-
-  it("falls back to focus when the date picker is unavailable", () => {
-    let focused = false;
-    refs.defer.showPicker = undefined;
-    refs.defer.focus = () => {
-      focused = true;
-    };
-
-    initCalendarEventModal();
-    refs.actions[2].listeners.click({ currentTarget: refs.actions[2] });
-
-    assert.strictEqual(focused, true);
+    assert.strictEqual(refs.defer.lastDispatched?.type, "click");
   });
 
   it("renders detail rows without link markup", () => {

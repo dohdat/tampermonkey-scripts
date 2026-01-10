@@ -130,11 +130,23 @@
         </label>
         <label class="field">
           <span class="field-label">Start from</span>
-          <input id="task-start-from" type="date" class="field-input" />
+          <input
+            id="task-start-from"
+            type="text"
+            class="field-input"
+            data-date-picker="true"
+            data-test-skedpal="task-start-from-input"
+          />
         </label>
         <label class="field">
           <span class="field-label">Deadline</span>
-          <input id="task-deadline" type="date" class="field-input" />
+          <input
+            id="task-deadline"
+            type="text"
+            class="field-input"
+            data-date-picker="true"
+            data-test-skedpal="task-deadline-input"
+          />
         </label>
         <label class="field">
           <span class="field-label">Repeat</span>
@@ -273,7 +285,8 @@
           <input
             id="calendar-create-date"
             class="field-input"
-            type="date"
+            type="text"
+            data-date-picker="true"
             data-test-skedpal="calendar-create-date-input"
           />
         </label>
@@ -546,10 +559,148 @@
         ></button>
         <input
           id="calendar-event-modal-defer-date"
-          type="date"
+          type="text"
           class="calendar-event-modal__defer-input"
+          data-date-picker="true"
           data-test-skedpal="calendar-event-modal-defer-date"
         />
+      </div>
+    </div>
+  </div>
+</div>
+<div
+  id="date-picker-modal"
+  class="task-modal date-picker-modal hidden"
+  data-test-skedpal="date-picker-modal"
+>
+  <div class="task-modal__panel date-picker-panel" data-test-skedpal="date-picker-panel">
+    <div class="date-picker-header" data-test-skedpal="date-picker-header">
+      <div class="date-picker-header__icon" data-test-skedpal="date-picker-header-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true" data-test-skedpal="date-picker-icon">
+          <path
+            d="M7 3v3M17 3v3M4 9h16M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path>
+        </svg>
+      </div>
+      <div class="date-picker-header__text" data-test-skedpal="date-picker-header-text">
+        <p class="date-picker-title" data-test-skedpal="date-picker-title">Choose a Date</p>
+        <p
+          id="date-picker-subtitle"
+          class="date-picker-subtitle"
+          data-test-skedpal="date-picker-subtitle"
+        ></p>
+      </div>
+      <button
+        type="button"
+        class="modal-close-btn date-picker-close"
+        data-date-picker-close
+        aria-label="Close date picker"
+        data-test-skedpal="date-picker-close"
+      >
+        <svg
+          class="modal-close-icon"
+          aria-hidden="true"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          data-test-skedpal="date-picker-close-icon"
+        >
+          <path
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M6 18 17.94 6M18 18 6.06 6"
+          ></path>
+        </svg>
+        <span class="sr-only" data-test-skedpal="date-picker-close-label">Close date picker</span>
+      </button>
+    </div>
+    <div class="date-picker-body" data-test-skedpal="date-picker-body">
+      <div class="date-picker-quick" data-test-skedpal="date-picker-quick">
+        <div class="date-picker-card" data-test-skedpal="date-picker-card-soon">
+          <div class="date-picker-card-title" data-test-skedpal="date-picker-card-title-soon">
+            <span class="date-picker-card-label">Soon</span>
+          </div>
+          <div
+            id="date-picker-quick-soon"
+            class="date-picker-quick-list"
+            data-test-skedpal="date-picker-quick-soon"
+          ></div>
+        </div>
+        <div class="date-picker-card" data-test-skedpal="date-picker-card-month">
+          <div class="date-picker-card-title" data-test-skedpal="date-picker-card-title-month">
+            <span class="date-picker-card-label">This Month</span>
+          </div>
+          <div
+            id="date-picker-quick-month"
+            class="date-picker-quick-list"
+            data-test-skedpal="date-picker-quick-month"
+          ></div>
+        </div>
+        <div class="date-picker-card" data-test-skedpal="date-picker-card-later">
+          <div class="date-picker-card-title" data-test-skedpal="date-picker-card-title-later">
+            <span class="date-picker-card-label">Later</span>
+          </div>
+          <div
+            id="date-picker-quick-later"
+            class="date-picker-quick-list"
+            data-test-skedpal="date-picker-quick-later"
+          ></div>
+        </div>
+      </div>
+      <div class="date-picker-calendar" data-test-skedpal="date-picker-calendar">
+        <div class="date-picker-calendar-header" data-test-skedpal="date-picker-calendar-header">
+          <button
+            type="button"
+            class="date-picker-nav-btn"
+            data-date-picker-prev
+            aria-label="Previous month"
+            data-test-skedpal="date-picker-prev"
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true" data-test-skedpal="date-picker-prev-icon">
+              <path d="M12.5 4.5 7 10l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </button>
+          <div id="date-picker-month" class="date-picker-month" data-test-skedpal="date-picker-month"></div>
+          <button
+            type="button"
+            class="date-picker-nav-btn"
+            data-date-picker-next
+            aria-label="Next month"
+            data-test-skedpal="date-picker-next"
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true" data-test-skedpal="date-picker-next-icon">
+              <path d="M7.5 4.5 13 10l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="date-picker-weekdays" data-test-skedpal="date-picker-weekdays">
+          <span class="date-picker-weekday" data-test-skedpal="date-picker-weekday">S</span>
+          <span class="date-picker-weekday" data-test-skedpal="date-picker-weekday">M</span>
+          <span class="date-picker-weekday" data-test-skedpal="date-picker-weekday">T</span>
+          <span class="date-picker-weekday" data-test-skedpal="date-picker-weekday">W</span>
+          <span class="date-picker-weekday" data-test-skedpal="date-picker-weekday">T</span>
+          <span class="date-picker-weekday" data-test-skedpal="date-picker-weekday">F</span>
+          <span class="date-picker-weekday" data-test-skedpal="date-picker-weekday">S</span>
+        </div>
+        <div
+          id="date-picker-grid"
+          class="date-picker-grid"
+          data-test-skedpal="date-picker-grid"
+        ></div>
+        <button
+          type="button"
+          id="date-picker-jump"
+          class="date-picker-jump"
+          data-test-skedpal="date-picker-jump"
+        >
+          Jump to Today
+        </button>
       </div>
     </div>
   </div>
@@ -641,11 +792,23 @@
         </label>
         <label class="field">
           <span class="field-label">Default deadline</span>
-          <input id="subsection-task-deadline" type="date" class="field-input" />
+          <input
+            id="subsection-task-deadline"
+            type="text"
+            class="field-input"
+            data-date-picker="true"
+            data-test-skedpal="subsection-task-deadline-input"
+          />
         </label>
         <label class="field">
           <span class="field-label">Default start from</span>
-          <input id="subsection-task-start-from" type="date" class="field-input" />
+          <input
+            id="subsection-task-start-from"
+            type="text"
+            class="field-input"
+            data-date-picker="true"
+            data-test-skedpal="subsection-task-start-from-input"
+          />
         </label>
         <label class="field">
           <span class="field-label">Default repeat</span>
@@ -837,8 +1000,9 @@
             <span class="field-label">Range start</span>
             <input
               id="task-repeat-yearly-range-start"
-              type="date"
+              type="text"
               class="field-input"
+              data-date-picker="true"
               data-test-skedpal="task-repeat-yearly-range-start"
             />
           </label>
@@ -846,8 +1010,9 @@
             <span class="field-label">Range end</span>
             <input
               id="task-repeat-yearly-range-end"
-              type="date"
+              type="text"
               class="field-input"
+              data-date-picker="true"
               data-test-skedpal="task-repeat-yearly-range-end"
             />
           </label>
@@ -862,7 +1027,14 @@
         <label class="flex items-center gap-2 text-xs text-slate-200">
           <input type="radio" name="task-repeat-end" id="task-repeat-end-on" value="on" />
           <span>On</span>
-          <input type="date" id="task-repeat-end-date" class="field-input" style="max-width: 180px" />
+          <input
+            type="text"
+            id="task-repeat-end-date"
+            class="field-input"
+            style="max-width: 180px"
+            data-date-picker="true"
+            data-test-skedpal="task-repeat-end-date"
+          />
         </label>
         <label class="flex items-center gap-2 text-xs text-slate-200">
           <input type="radio" name="task-repeat-end" id="task-repeat-end-after" value="after" />

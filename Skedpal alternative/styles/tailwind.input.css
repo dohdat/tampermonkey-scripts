@@ -38,6 +38,38 @@ body.modal-open{overflow:hidden}
 @keyframes reminderBlink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.85)}}
 @keyframes reminderCardPulse{0%,100%{background-color:rgba(var(--color-slate-800-rgb), .7)}50%{background-color:rgba(var(--color-red-400-rgb), .16)}}
 .task-modal__panel{width:min(var(--size-900px),100%);max-height:calc(100vh - var(--space-2-5));background:linear-gradient(135deg,var(--color-slate-800),var(--color-slate-900));border:var(--size-1px) solid var(--color-slate-700);border-radius:var(--size-18px);box-shadow:var(--shadow-modal);color:var(--color-slate-200);overflow:hidden;overflow-y:auto}
+.date-picker-modal{align-items:center;justify-content:center}
+.date-picker-panel{width:min(920px,100%);background:linear-gradient(135deg,rgba(var(--color-slate-980-rgb),.95),rgba(var(--color-slate-800-rgb),.98));border:var(--size-1px) solid rgba(var(--color-slate-600-rgb),.7);border-radius:var(--size-18px);box-shadow:var(--shadow-modal)}
+.date-picker-header{display:flex;align-items:center;gap:var(--space-1);padding:var(--space-1) var(--space-1-25);border-bottom:var(--size-1px) solid rgba(var(--color-slate-700-rgb),.6)}
+.date-picker-header__icon{height:var(--size-38px);width:var(--size-38px);border-radius:var(--size-12px);border:var(--size-1px) solid rgba(var(--color-slate-600-rgb),.6);background:rgba(var(--color-slate-800-rgb),.7);display:flex;align-items:center;justify-content:center;color:var(--color-slate-100);box-shadow:0 8px 16px rgba(var(--color-black-rgb),.3)}
+.date-picker-header__icon svg{width:var(--size-18px);height:var(--size-18px)}
+.date-picker-title{font-size:var(--font-size-lg);font-weight:var(--font-weight-bold);color:var(--color-slate-100)}
+.date-picker-subtitle{font-size:var(--font-size-sm);color:var(--color-slate-400)}
+.date-picker-body{display:grid;gap:var(--space-1);padding:var(--space-1)}
+.date-picker-quick{display:flex;flex-direction:column;gap:var(--space-1)}
+.date-picker-card{border:var(--size-1px) solid rgba(var(--color-slate-700-rgb),.6);border-radius:var(--size-16px);background:rgba(var(--color-slate-800-rgb),.55);padding:var(--space-0-85)}
+.date-picker-card-title{display:flex;align-items:center;gap:var(--space-0-35);margin-bottom:var(--space-0-6);font-size:var(--font-size-xxs);text-transform:uppercase;letter-spacing:var(--letter-spacing-wide);color:var(--color-slate-400)}
+.date-picker-quick-list{display:flex;flex-direction:column;gap:var(--space-0-5)}
+.date-picker-quick-option{display:flex;align-items:center;justify-content:space-between;gap:var(--space-0-75);padding:var(--space-0-65) var(--space-0-85);border-radius:var(--size-12px);border:var(--size-1px) solid transparent;background:rgba(var(--color-slate-800-rgb),.7);color:var(--color-slate-100);font-size:var(--font-size-sm);transition:all var(--motion-base) ease}
+.date-picker-quick-option:hover{border-color:var(--color-lime-400);background:rgba(var(--color-slate-800-rgb),.9);color:var(--color-lime-200)}
+.date-picker-quick-date{font-size:var(--font-size-xs);color:var(--color-slate-400)}
+.date-picker-calendar{display:flex;flex-direction:column;gap:var(--space-0-75);border:var(--size-1px) solid rgba(var(--color-slate-700-rgb),.6);border-radius:var(--size-16px);background:rgba(var(--color-slate-800-rgb),.65);padding:var(--space-0-85)}
+.date-picker-calendar-header{display:flex;align-items:center;justify-content:space-between;gap:var(--space-0-75)}
+.date-picker-nav-btn{height:var(--size-30px);width:var(--size-30px);border-radius:var(--size-9999px);border:var(--size-1px) solid rgba(var(--color-slate-600-rgb),.7);background:rgba(var(--color-slate-800-rgb),.7);color:var(--color-slate-200);display:flex;align-items:center;justify-content:center;transition:all var(--motion-base) ease}
+.date-picker-nav-btn svg{width:var(--size-14px);height:var(--size-14px)}
+.date-picker-nav-btn:hover{border-color:var(--color-lime-400);color:var(--color-lime-200);background:rgba(var(--color-slate-800-rgb),.9)}
+.date-picker-month{font-size:var(--font-size-sm-plus);font-weight:var(--font-weight-semibold);color:var(--color-slate-100)}
+.date-picker-weekdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:var(--space-0-35);text-align:center;font-size:var(--font-size-xxs);text-transform:uppercase;letter-spacing:var(--letter-spacing-wide);color:var(--color-slate-500)}
+.date-picker-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:var(--space-0-35)}
+.date-picker-day{height:var(--size-30px);border-radius:var(--size-999px);border:var(--size-1px) solid transparent;background:transparent;color:var(--color-slate-200);font-size:var(--font-size-xs);display:flex;align-items:center;justify-content:center;transition:all var(--motion-base) ease}
+.date-picker-day:hover{border-color:rgba(var(--color-slate-500-rgb),.7);background:rgba(var(--color-slate-800-rgb),.65)}
+.date-picker-day--today{border-color:rgba(var(--color-lime-400-rgb),.7);color:var(--color-lime-200)}
+.date-picker-day--selected{border-color:var(--color-lime-400);background:rgba(var(--color-lime-400-rgb),.2);color:var(--color-lime-200);box-shadow:0 0 0 var(--size-1px) rgba(var(--color-lime-400-rgb),.35)}
+.date-picker-day--empty{visibility:hidden}
+.date-picker-jump{margin-top:var(--space-0-75);padding:var(--space-0-55) var(--space-1);border-radius:var(--size-999px);border:var(--size-1px) solid rgba(var(--color-slate-600-rgb),.6);background:rgba(var(--color-slate-800-rgb),.7);color:var(--color-slate-200);font-size:var(--font-size-xs);font-weight:var(--font-weight-semibold);transition:all var(--motion-base) ease}
+.date-picker-jump:hover{border-color:var(--color-lime-400);color:var(--color-lime-200);background:rgba(var(--color-slate-800-rgb),.9)}
+.date-picker-close{margin-left:auto}
+@media (min-width:768px){.date-picker-body{grid-template-columns:minmax(0,1fr) minmax(0,1.1fr)}}
 .task-modal__panel--task{width:min(var(--space-55),100%)}
 .calendar-create-modal{justify-content:flex-end;align-items:stretch}
 .calendar-create-modal .task-modal__panel{height:100%;max-height:100%;width:min(420px,100%);border-radius:var(--size-18px) 0 0 var(--size-18px);animation:calendarCreateSlideIn .2s ease-out}

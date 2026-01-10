@@ -430,11 +430,7 @@ function handleDeferAction() {
     "calendar-event-modal-defer-date"
   );
   if (!calendarEventModalDeferInput) {return;}
-  if (typeof calendarEventModalDeferInput.showPicker === "function") {
-    calendarEventModalDeferInput.showPicker();
-  } else {
-    calendarEventModalDeferInput.focus();
-  }
+  calendarEventModalDeferInput.dispatchEvent(new Event("click", { bubbles: true }));
 }
 
 function handleDeferChange(event) {

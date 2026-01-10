@@ -78,6 +78,7 @@ import { initCalendarView, renderCalendar } from "./calendar.js";
 import { applyTheme } from "./theme.js";
 import { initSidebarToggle } from "./sidebar-toggle.js";
 import { initDatePicker } from "./date-picker.js";
+import { initTaskModalSections } from "./task-modal-sections.js";
 
 const {
   timeMapDayRows,
@@ -527,6 +528,7 @@ function registerModalHandlers() {
   repeatCompleteList?.addEventListener("click", handleRepeatCompleteListClick);
   initTaskReminderModal();
   initDatePicker();
+  initTaskModalSections();
 }
 
 function registerKeyboardHandlers() {

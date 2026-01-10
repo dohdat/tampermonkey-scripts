@@ -39,190 +39,574 @@
     <form id="task-form" class="task-modal__form task-modal__form--task" data-test-skedpal="task-modal-form">
       <input type="hidden" id="task-id" />
       <input type="hidden" id="task-parent-id" />
-      <div class="task-form-grid task-form-grid--task" data-test-skedpal="task-form-grid">
-        <label class="field task-form-grid__full" data-test-skedpal="task-title-field">
-          <span class="field-label">Title</span>
-          <input
-            id="task-title"
-            required
-            placeholder="Write a short task title"
-            class="field-input"
-            data-test-skedpal="task-title-input"
-          />
-        </label>
-        <label class="field">
-          <span class="field-label">Link (optional)</span>
-          <div class="field-input-wrap" data-test-skedpal="task-link-wrap">
+      <div class="task-modal__body" data-test-skedpal="task-modal-body">
+        <div class="task-modal__section task-modal__section--title" data-test-skedpal="task-modal-section-title">
+          <label class="field task-form-grid__full" data-test-skedpal="task-title-field">
+            <span class="field-label">
+              Title
+              <span class="field-label__required" data-test-skedpal="task-title-required">*</span>
+            </span>
             <input
-              id="task-link"
-              placeholder="https://example.com/details"
-              class="field-input field-input--clearable"
-              data-test-skedpal="task-link-input"
+              id="task-title"
+              required
+              placeholder="Write a short task title"
+              class="field-input"
+              data-test-skedpal="task-title-input"
             />
-            <button
-              type="button"
-              class="modal-close-btn field-clear-btn hidden"
-              aria-label="Clear link"
-              data-test-skedpal="task-link-clear"
-            >
-              <svg
-                class="modal-close-icon"
-                aria-hidden="true"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                data-test-skedpal="modal-close-icon"
-              >
+          </label>
+        </div>
+        <div
+          class="task-modal__section"
+          data-test-skedpal="task-modal-section-time"
+          data-collapsible="true"
+          data-collapsed="false"
+        >
+          <div class="task-modal__section-header" data-test-skedpal="task-modal-section-time-header">
+            <div class="task-modal__section-icon" data-test-skedpal="task-modal-section-time-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true" data-test-skedpal="task-modal-section-time-icon-svg">
                 <path
+                  d="M12 7v5l3 2M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16Z"
+                  fill="none"
                   stroke="currentColor"
+                  stroke-width="1.6"
                   stroke-linecap="round"
                   stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M6 18 17.94 6M18 18 6.06 6"
                 ></path>
               </svg>
-              <span class="sr-only" data-test-skedpal="modal-close-label">Clear link</span>
+            </div>
+            <div class="task-modal__section-text" data-test-skedpal="task-modal-section-time-text">
+              <p class="task-modal__section-title" data-test-skedpal="task-modal-section-time-title">
+                Time & Duration
+              </p>
+              <p
+                class="task-modal__section-subtitle"
+                data-test-skedpal="task-modal-section-time-subtitle"
+              >
+                Tune how long this work should take.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="task-modal__section-toggle"
+              data-test-skedpal="task-modal-section-time-toggle"
+              aria-expanded="true"
+              aria-controls="task-modal-section-time-content"
+            >
+              <svg
+                viewBox="0 0 20 20"
+                aria-hidden="true"
+                class="task-modal__section-toggle-icon"
+                data-test-skedpal="task-modal-section-time-toggle-icon"
+              >
+                <path
+                  d="m5 7 5 5 5-5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ></path>
+              </svg>
             </button>
           </div>
-        </label>
-        <label class="field">
-          <span class="field-label">Duration (minutes)</span>
-          <input
-            id="task-duration"
-            type="number"
-            min="15"
-            step="15"
-            value="30"
-            required
-            placeholder="30"
-            class="field-input"
-          />
-          <span
-            id="task-duration-helper"
-            class="mt-1 text-xs text-slate-400"
-            data-test-skedpal="task-duration-helper"
-          ></span>
-        </label>
-        <label class="field">
-          <span class="field-label">Min block length (minutes)</span>
-          <input
-            id="task-min-block"
-            type="number"
-            min="15"
-            step="15"
-            value="30"
-            placeholder="30"
-            class="field-input"
-          />
-        </label>
-        <label class="field">
-          <span class="field-label">Priority (1 low – 5 high)</span>
-          <select
-            id="task-priority"
-            class="field-input priority-select"
-            data-test-skedpal="task-priority-select"
+          <div
+            class="task-modal__section-content"
+            id="task-modal-section-time-content"
+            data-test-skedpal="task-modal-section-time-content"
           >
-            <option value="5">5</option>
-            <option value="4">4</option>
-            <option value="3" selected>3</option>
-            <option value="2">2</option>
-            <option value="1">1</option>
-          </select>
-        </label>
-        <label class="field">
-          <span class="field-label">Start from</span>
-          <input
-            id="task-start-from"
-            type="text"
-            class="field-input"
-            data-date-picker="true"
-            data-test-skedpal="task-start-from-input"
-          />
-        </label>
-        <label class="field">
-          <span class="field-label">Deadline</span>
-          <input
-            id="task-deadline"
-            type="text"
-            class="field-input"
-            data-date-picker="true"
-            data-test-skedpal="task-deadline-input"
-          />
-        </label>
-        <label class="field">
-          <span class="field-label">Repeat</span>
-          <select id="task-repeat" class="field-input">
-            <option value="none" selected>Does not repeat</option>
-            <option value="custom">Saved pattern</option>
-            <option value="custom-new">Custom...</option>
-          </select>
-        </label>
-        <label class="field" data-test-skedpal="task-section-field">
-          <span class="field-label">Section</span>
-          <select id="task-section" class="field-input"></select>
-        </label>
-        <label class="field" data-test-skedpal="task-subsection-field">
-          <span class="field-label">Subsection</span>
-          <select id="task-subsection" class="field-input"></select>
-        </label>
-        <label
-          class="field hidden"
-          id="task-subtask-schedule-wrap"
-          data-test-skedpal="task-subtask-schedule-wrap"
-        >
-          <span class="field-label">Subtask scheduling</span>
-          <select
-            id="task-subtask-schedule"
-            class="field-input"
-            data-test-skedpal="task-subtask-schedule"
-          >
-            <option value="parallel">Parallel</option>
-            <option value="sequential">Sequential</option>
-            <option value="sequential-single">Sequential (One at a time)</option>
-          </select>
-        </label>
-        <label class="field" data-test-skedpal="task-template-field">
-          <span class="field-label" data-test-skedpal="task-template-label">Template (optional)</span>
-          <select
-            id="task-template-select"
-            class="field-input"
-            data-test-skedpal="task-template-select"
-          >
-            <option
-              value=""
-              selected
-              disabled
-              data-test-skedpal="task-template-select-placeholder"
+            <div
+              class="task-modal__section-grid task-modal__section-grid--three"
+              data-test-skedpal="task-modal-section-time-grid"
             >
-              Choose a template...
-            </option>
-          </select>
-        </label>
-      </div>
-      <div class="task-ai-panel" data-test-skedpal="task-ai-panel">
-        <div class="task-ai-header" data-test-skedpal="task-ai-header">
-          <div>
-            <div class="task-ai-title" data-test-skedpal="task-ai-title">Groq AI helper</div>
-            <p class="task-ai-subtitle" data-test-skedpal="task-ai-subtitle">
-              Use the title to generate a task list with subtasks.
-            </p>
+              <label class="field">
+                <span class="field-label">Duration (minutes)</span>
+                <input
+                  id="task-duration"
+                  type="number"
+                  min="15"
+                  step="15"
+                  value="30"
+                  required
+                  placeholder="30"
+                  class="field-input"
+                />
+                <span
+                  id="task-duration-helper"
+                  class="mt-1 text-xs text-slate-400"
+                  data-test-skedpal="task-duration-helper"
+                ></span>
+              </label>
+              <label class="field">
+                <span class="field-label">Min block length (min)</span>
+                <input
+                  id="task-min-block"
+                  type="number"
+                  min="15"
+                  step="15"
+                  value="30"
+                  placeholder="30"
+                  class="field-input"
+                />
+              </label>
+              <label class="field">
+                <span class="field-label">Priority (1-5)</span>
+                <select
+                  id="task-priority"
+                  class="field-input priority-select"
+                  data-test-skedpal="task-priority-select"
+                >
+                  <option value="5">5</option>
+                  <option value="4">4</option>
+                  <option value="3" selected>3</option>
+                  <option value="2">2</option>
+                  <option value="1">1</option>
+                </select>
+              </label>
+            </div>
           </div>
-          <button
-            type="button"
-            id="task-ai-generate"
-            class="btn ghost task-ai-btn"
-            data-test-skedpal="task-ai-generate"
-          >
-            Help me create a list
-          </button>
         </div>
-        <div id="task-ai-status" class="task-ai-status hidden" data-test-skedpal="task-ai-status"></div>
-        <div id="task-ai-output" class="task-ai-output hidden" data-test-skedpal="task-ai-output"></div>
+        <div
+          class="task-modal__section"
+          data-test-skedpal="task-modal-section-scheduling"
+          data-collapsible="true"
+          data-collapsed="true"
+        >
+          <div class="task-modal__section-header" data-test-skedpal="task-modal-section-scheduling-header">
+            <div class="task-modal__section-icon" data-test-skedpal="task-modal-section-scheduling-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true" data-test-skedpal="task-modal-section-scheduling-icon-svg">
+                <path
+                  d="M7 3v3M17 3v3M4 9h16M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ></path>
+              </svg>
+            </div>
+            <div class="task-modal__section-text" data-test-skedpal="task-modal-section-scheduling-text">
+              <p class="task-modal__section-title" data-test-skedpal="task-modal-section-scheduling-title">
+                Scheduling
+              </p>
+              <p
+                class="task-modal__section-subtitle"
+                data-test-skedpal="task-modal-section-scheduling-subtitle"
+              >
+                Choose start and deadline windows.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="task-modal__section-toggle"
+              data-test-skedpal="task-modal-section-scheduling-toggle"
+              aria-expanded="false"
+              aria-controls="task-modal-section-scheduling-content"
+            >
+              <svg
+                viewBox="0 0 20 20"
+                aria-hidden="true"
+                class="task-modal__section-toggle-icon"
+                data-test-skedpal="task-modal-section-scheduling-toggle-icon"
+              >
+                <path
+                  d="m5 7 5 5 5-5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ></path>
+              </svg>
+            </button>
+          </div>
+          <div
+            class="task-modal__section-content"
+            id="task-modal-section-scheduling-content"
+            data-test-skedpal="task-modal-section-scheduling-content"
+          >
+            <div
+              class="task-modal__section-grid task-modal__section-grid--two"
+              data-test-skedpal="task-modal-section-scheduling-grid"
+            >
+              <label class="field">
+                <span class="field-label">Start from</span>
+                <input
+                  id="task-start-from"
+                  type="text"
+                  class="field-input"
+                  data-date-picker="true"
+                  data-test-skedpal="task-start-from-input"
+                />
+              </label>
+              <label class="field">
+                <span class="field-label">Deadline (optional)</span>
+                <input
+                  id="task-deadline"
+                  type="text"
+                  class="field-input"
+                  data-date-picker="true"
+                  data-test-skedpal="task-deadline-input"
+                />
+              </label>
+              <label class="field task-modal__section-full">
+                <span class="field-label">Repeat</span>
+                <select id="task-repeat" class="field-input">
+                  <option value="none" selected>Does not repeat</option>
+                  <option value="custom">Saved pattern</option>
+                  <option value="custom-new">Custom...</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div
+          class="task-modal__section"
+          data-test-skedpal="task-modal-section-organization"
+          data-collapsible="true"
+          data-collapsed="true"
+        >
+          <div class="task-modal__section-header" data-test-skedpal="task-modal-section-organization-header">
+            <div class="task-modal__section-icon" data-test-skedpal="task-modal-section-organization-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true" data-test-skedpal="task-modal-section-organization-icon-svg">
+                <path
+                  d="M4 6h7v5H4zM13 6h7v5h-7zM4 13h7v5H4zM13 13h7v5h-7z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ></path>
+              </svg>
+            </div>
+            <div class="task-modal__section-text" data-test-skedpal="task-modal-section-organization-text">
+              <p class="task-modal__section-title" data-test-skedpal="task-modal-section-organization-title">
+                Organization
+              </p>
+              <p
+                class="task-modal__section-subtitle"
+                data-test-skedpal="task-modal-section-organization-subtitle"
+              >
+                Keep tasks grouped and templated.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="task-modal__section-toggle"
+              data-test-skedpal="task-modal-section-organization-toggle"
+              aria-expanded="false"
+              aria-controls="task-modal-section-organization-content"
+            >
+              <svg
+                viewBox="0 0 20 20"
+                aria-hidden="true"
+                class="task-modal__section-toggle-icon"
+                data-test-skedpal="task-modal-section-organization-toggle-icon"
+              >
+                <path
+                  d="m5 7 5 5 5-5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ></path>
+              </svg>
+            </button>
+          </div>
+          <div
+            class="task-modal__section-content"
+            id="task-modal-section-organization-content"
+            data-test-skedpal="task-modal-section-organization-content"
+          >
+            <div
+              class="task-modal__section-grid task-modal__section-grid--two"
+              data-test-skedpal="task-modal-section-organization-grid"
+            >
+              <label class="field" data-test-skedpal="task-section-field">
+                <span class="field-label">Section</span>
+                <select id="task-section" class="field-input"></select>
+              </label>
+              <label class="field" data-test-skedpal="task-subsection-field">
+                <span class="field-label">Subsection</span>
+                <select id="task-subsection" class="field-input"></select>
+              </label>
+              <label
+                class="field hidden"
+                id="task-subtask-schedule-wrap"
+                data-test-skedpal="task-subtask-schedule-wrap"
+              >
+                <span class="field-label">Subtask scheduling</span>
+                <select
+                  id="task-subtask-schedule"
+                  class="field-input"
+                  data-test-skedpal="task-subtask-schedule"
+                >
+                  <option value="parallel">Parallel</option>
+                  <option value="sequential">Sequential</option>
+                  <option value="sequential-single">Sequential (One at a time)</option>
+                </select>
+              </label>
+              <label class="field" data-test-skedpal="task-template-field">
+                <span class="field-label" data-test-skedpal="task-template-label">
+                  Template (optional)
+                </span>
+                <select
+                  id="task-template-select"
+                  class="field-input"
+                  data-test-skedpal="task-template-select"
+                >
+                  <option
+                    value=""
+                    selected
+                    disabled
+                    data-test-skedpal="task-template-select-placeholder"
+                  >
+                    Choose a template...
+                  </option>
+                </select>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div
+          class="task-modal__section"
+          data-test-skedpal="task-modal-section-link"
+          data-collapsible="true"
+          data-collapsed="true"
+        >
+          <div class="task-modal__section-header" data-test-skedpal="task-modal-section-link-header">
+            <div class="task-modal__section-icon" data-test-skedpal="task-modal-section-link-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true" data-test-skedpal="task-modal-section-link-icon-svg">
+                <path
+                  d="M10 14a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-1.5 1.5M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l1.5-1.5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ></path>
+              </svg>
+            </div>
+            <div class="task-modal__section-text" data-test-skedpal="task-modal-section-link-text">
+              <p class="task-modal__section-title" data-test-skedpal="task-modal-section-link-title">
+                Link (optional)
+              </p>
+              <p
+                class="task-modal__section-subtitle"
+                data-test-skedpal="task-modal-section-link-subtitle"
+              >
+                Attach a reference or spec.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="task-modal__section-toggle"
+              data-test-skedpal="task-modal-section-link-toggle"
+              aria-expanded="false"
+              aria-controls="task-modal-section-link-content"
+            >
+              <svg
+                viewBox="0 0 20 20"
+                aria-hidden="true"
+                class="task-modal__section-toggle-icon"
+                data-test-skedpal="task-modal-section-link-toggle-icon"
+              >
+                <path
+                  d="m5 7 5 5 5-5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ></path>
+              </svg>
+            </button>
+          </div>
+          <div
+            class="task-modal__section-content"
+            id="task-modal-section-link-content"
+            data-test-skedpal="task-modal-section-link-content"
+          >
+            <label class="field" data-test-skedpal="task-link-field">
+              <div class="field-input-wrap" data-test-skedpal="task-link-wrap">
+                <input
+                  id="task-link"
+                  placeholder="https://example.com/details"
+                  class="field-input field-input--clearable"
+                  data-test-skedpal="task-link-input"
+                />
+                <button
+                  type="button"
+                  class="modal-close-btn field-clear-btn hidden"
+                  aria-label="Clear link"
+                  data-test-skedpal="task-link-clear"
+                >
+                  <svg
+                    class="modal-close-icon"
+                    aria-hidden="true"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    data-test-skedpal="modal-close-icon"
+                  >
+                    <path
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18 17.94 6M18 18 6.06 6"
+                    ></path>
+                  </svg>
+                  <span class="sr-only" data-test-skedpal="modal-close-label">Clear link</span>
+                </button>
+              </div>
+            </label>
+          </div>
+        </div>
+        <div
+          class="task-modal__section"
+          data-test-skedpal="task-modal-section-assistant"
+          data-collapsible="true"
+          data-collapsed="true"
+        >
+          <div class="task-modal__section-header" data-test-skedpal="task-modal-section-assistant-header">
+            <div class="task-modal__section-icon" data-test-skedpal="task-modal-section-assistant-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true" data-test-skedpal="task-modal-section-assistant-icon-svg">
+                <path
+                  d="M12 3v2M4.5 7.5 6 9M19.5 7.5 18 9M4 14h3m10 0h3M8.5 18.5 7 20m9.5-1.5 1.5 1.5M9 14a3 3 0 1 0 6 0c0-2-1.5-3-3-3s-3 1-3 3Z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ></path>
+              </svg>
+            </div>
+            <div class="task-modal__section-text" data-test-skedpal="task-modal-section-assistant-text">
+              <p class="task-modal__section-title" data-test-skedpal="task-modal-section-assistant-title">
+                Assistant
+              </p>
+              <p
+                class="task-modal__section-subtitle"
+                data-test-skedpal="task-modal-section-assistant-subtitle"
+              >
+                Generate subtasks from the title.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="task-modal__section-toggle"
+              data-test-skedpal="task-modal-section-assistant-toggle"
+              aria-expanded="false"
+              aria-controls="task-modal-section-assistant-content"
+            >
+              <svg
+                viewBox="0 0 20 20"
+                aria-hidden="true"
+                class="task-modal__section-toggle-icon"
+                data-test-skedpal="task-modal-section-assistant-toggle-icon"
+              >
+                <path
+                  d="m5 7 5 5 5-5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ></path>
+              </svg>
+            </button>
+          </div>
+          <div
+            class="task-modal__section-content"
+            id="task-modal-section-assistant-content"
+            data-test-skedpal="task-modal-section-assistant-content"
+          >
+            <div class="task-ai-panel" data-test-skedpal="task-ai-panel">
+              <div class="task-ai-header" data-test-skedpal="task-ai-header">
+                <div>
+                  <div class="task-ai-title" data-test-skedpal="task-ai-title">Groq AI helper</div>
+                  <p class="task-ai-subtitle" data-test-skedpal="task-ai-subtitle">
+                    Use the title to generate a task list with subtasks.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  id="task-ai-generate"
+                  class="btn ghost task-ai-btn"
+                  data-test-skedpal="task-ai-generate"
+                >
+                  Help me create a list
+                </button>
+              </div>
+              <div id="task-ai-status" class="task-ai-status hidden" data-test-skedpal="task-ai-status"></div>
+              <div id="task-ai-output" class="task-ai-output hidden" data-test-skedpal="task-ai-output"></div>
+            </div>
+          </div>
+        </div>
+        <div
+          class="task-modal__section"
+          data-test-skedpal="task-modal-section-timemaps"
+          data-collapsible="true"
+          data-collapsed="true"
+        >
+          <div class="task-modal__section-header" data-test-skedpal="task-modal-section-timemaps-header">
+            <div class="task-modal__section-icon" data-test-skedpal="task-modal-section-timemaps-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true" data-test-skedpal="task-modal-section-timemaps-icon-svg">
+                <path
+                  d="M4 6h10M4 12h16M4 18h7"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ></path>
+              </svg>
+            </div>
+            <div class="task-modal__section-text" data-test-skedpal="task-modal-section-timemaps-text">
+              <p class="task-modal__section-title" data-test-skedpal="task-modal-section-timemaps-title">
+                Allowed TimeMaps
+              </p>
+              <p
+                class="task-modal__section-subtitle"
+                data-test-skedpal="task-modal-section-timemaps-subtitle"
+              >
+                Select time windows this task can use.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="task-modal__section-toggle"
+              data-test-skedpal="task-modal-section-timemaps-toggle"
+              aria-expanded="false"
+              aria-controls="task-modal-section-timemaps-content"
+            >
+              <svg
+                viewBox="0 0 20 20"
+                aria-hidden="true"
+                class="task-modal__section-toggle-icon"
+                data-test-skedpal="task-modal-section-timemaps-toggle-icon"
+              >
+                <path
+                  d="m5 7 5 5 5-5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ></path>
+              </svg>
+            </button>
+          </div>
+          <div
+            class="task-modal__section-content"
+            id="task-modal-section-timemaps-content"
+            data-test-skedpal="task-modal-section-timemaps-content"
+          >
+            <div id="task-timemap-options" class="timemap-pills" data-test-skedpal="task-timemap-options"></div>
+          </div>
+        </div>
       </div>
-      <div class="field">
-        <span class="field-label">Allowed TimeMaps</span>
-        <div id="task-timemap-options" class="timemap-pills"></div>
-      </div>
-      <div class="task-modal__actions">
+      <div class="task-modal__actions task-modal__actions--spaced" data-test-skedpal="task-modal-actions">
         <button type="button" class="btn muted" data-task-modal-close>Cancel</button>
         <button type="submit" class="btn primary" data-test-skedpal="task-modal-submit">Save Task</button>
       </div>

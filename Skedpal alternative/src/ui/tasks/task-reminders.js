@@ -43,7 +43,6 @@ function normalizeReminders(reminders = []) {
 }
 
 export function getOverdueReminders(task, now = new Date()) {
-  console.log('📢[task-reminders.js:46]: task: ', task);
   if (task?.completed) {return [];}
   const reminders = normalizeReminders(task?.reminders || []);
   const nowTime = now instanceof Date ? now.getTime() : new Date(now).getTime();

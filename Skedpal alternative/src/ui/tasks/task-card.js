@@ -357,8 +357,7 @@ function buildTaskSummaryRow(task, options = {}) {
     outOfRangeIcon.style.cursor = "default";
     summaryRow.appendChild(outOfRangeIcon);
     hasContent = true;
-  }
-  if (showFutureStartIcon) {
+  } else if (showFutureStartIcon) {
     const futureStartIcon = document.createElement("span");
     futureStartIcon.className = "title-icon-btn";
     futureStartIcon.title = "Starts in the future";
@@ -369,8 +368,7 @@ function buildTaskSummaryRow(task, options = {}) {
     futureStartIcon.style.cursor = "default";
     summaryRow.appendChild(futureStartIcon);
     hasContent = true;
-  }
-  if (showUnscheduledIcon) {
+  } else if (showUnscheduledIcon) {
     const unscheduledIcon = document.createElement("span");
     unscheduledIcon.className = "title-icon-btn";
     unscheduledIcon.title = "First occurrence is unscheduled";

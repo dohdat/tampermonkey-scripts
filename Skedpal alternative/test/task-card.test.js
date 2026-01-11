@@ -280,6 +280,37 @@ describe("task card", () => {
     assert.ok(indicator);
   });
 
+  it("prioritizes summary indicators when multiple are true", () => {
+    const task = {
+      id: "t7-priority",
+      title: "Repeat warning",
+      durationMin: 30,
+      timeMapIds: ["tm-1"],
+      completed: false,
+      repeat: { type: "custom", unit: "week", interval: 1 }
+    };
+    const context = {
+      tasks: [task],
+      timeMapById: new Map([["tm-1", { id: "tm-1", name: "Focus" }]]),
+      collapsedTasks: new Set(),
+      expandedTaskDetails: new Set(),
+      computeTotalDuration: () => 0,
+      getTaskDepthById: () => 0,
+      getSectionName: () => "",
+      getSubsectionName: () => "",
+      firstOccurrenceOutOfRangeByTaskId: new Map([["t7-priority", true]]),
+      firstOccurrenceUnscheduledByTaskId: new Map([["t7-priority", true]])
+    };
+
+    const card = renderTaskCard(task, context);
+    const outOfRange = findByTestAttr(card, "task-summary-out-of-range");
+    const unscheduled = findByTestAttr(card, "task-summary-unscheduled");
+    const futureStart = findByTestAttr(card, "task-summary-future-start");
+    assert.ok(outOfRange);
+    assert.strictEqual(unscheduled, null);
+    assert.strictEqual(futureStart, null);
+  });
+
   it("hides summary indicators for repeating parent tasks", () => {
     const task = {
       id: "t7-parent",

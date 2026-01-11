@@ -48,16 +48,6 @@ function findByTestAttr(root, value) {
   return null;
 }
 
-function findByInnerHTML(root, text) {
-  if (!root) {return null;}
-  if ((root.innerHTML || "").includes(text)) {return root;}
-  for (const child of root.children || []) {
-    const found = findByInnerHTML(child, text);
-    if (found) {return found;}
-  }
-  return null;
-}
-
 function installDomStubs() {
   global.document = {
     createElement: (tag) => new FakeElement(tag),
@@ -197,8 +187,8 @@ describe("task card", () => {
     const card = renderTaskCard(task, context);
     assert.strictEqual(card.style.marginLeft, "10px");
     assert.strictEqual(card.style.borderStyle, "dashed");
-    assert.ok(findByInnerHTML(card, "Start"));
-    assert.ok(findByInnerHTML(card, "Start from"));
+    assert.ok(findByTestAttr(card, "task-detail-schedule-value"));
+    assert.ok(findByTestAttr(card, "task-start-from"));
   });
 
   it("renders link markup, repeat summary, and unknown timemap names", () => {
@@ -225,8 +215,12 @@ describe("task card", () => {
     const card = renderTaskCard(task, context);
     const title = findByTestAttr(card, "task-title");
     assert.ok(title.innerHTML.includes('href="https://example.com"'));
-    assert.ok(findByInnerHTML(card, "Repeat: Every 2 weeks"));
-    assert.ok(findByInnerHTML(card, "TimeMaps: Unknown"));
+    const repeat = findByTestAttr(card, "task-repeat");
+    const timeMaps = findByTestAttr(card, "task-timemaps");
+    assert.ok(repeat);
+    assert.ok(timeMaps);
+    assert.ok(repeat.textContent.includes("Every 2 weeks"));
+    assert.ok(timeMaps.textContent.includes("Unknown"));
   });
 
   it("shows scheduled summary row and collapsed caret when configured", () => {

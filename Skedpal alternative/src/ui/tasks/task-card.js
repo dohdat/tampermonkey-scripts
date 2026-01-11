@@ -21,6 +21,12 @@ import { getRepeatSummary } from "../repeat.js";
 import { themeColors } from "../theme.js";
 import { getOverdueReminders } from "./task-reminders.js";
 
+const detailClockIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 6v4l2.5 2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
+const detailFlagIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 3v14" stroke-linecap="round"></path><path d="M4 4h9l-1.5 3L13 10H4" stroke-linejoin="round"></path></svg>`;
+const detailStackIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="5" width="12" height="4" rx="1.5"></rect><rect x="4" y="11" width="12" height="4" rx="1.5"></rect></svg>`;
+const detailGaugeIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 13a6 6 0 1 1 12 0" stroke-linecap="round"></path><path d="M10 8l3 3" stroke-linecap="round"></path><circle cx="10" cy="13" r="1"></circle></svg>`;
+const detailMapIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5l4-2 4 2 4-2v12l-4 2-4-2-4 2V5Z" stroke-linejoin="round"></path><path d="M8 3v12M12 5v12" stroke-linecap="round"></path></svg>`;
+const detailRepeatIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 8a6 6 0 0 1 10-2" stroke-linecap="round"></path><path d="M14 3v3h-3" stroke-linecap="round" stroke-linejoin="round"></path><path d="M16 12a6 6 0 0 1-10 2" stroke-linecap="round"></path><path d="M6 17v-3h3" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
 function buildTitleMarkup(task) {
   if (!task.link) {
     return task.title;
@@ -249,6 +255,40 @@ function buildTaskDurationPill(displayDurationMin) {
   return durationPill;
 }
 
+function buildDetailItemElement({ key, label, iconSvg, extraClass = "", valueTestId }) {
+  const item = document.createElement("div");
+  item.className = extraClass ? `task-details__item ${extraClass}` : "task-details__item";
+  item.setAttribute("data-test-skedpal", `task-detail-${key}`);
+
+  const icon = document.createElement("span");
+  icon.className = "task-details__icon";
+  icon.setAttribute("data-test-skedpal", `task-detail-${key}-icon`);
+  icon.innerHTML = iconSvg;
+
+  const content = document.createElement("div");
+  content.className = "task-details__content";
+  content.setAttribute("data-test-skedpal", `task-detail-${key}-content`);
+
+  const labelEl = document.createElement("span");
+  labelEl.className = "task-details__label";
+  labelEl.setAttribute("data-test-skedpal", `task-detail-${key}-label`);
+  labelEl.textContent = label;
+
+  const valueEl = document.createElement("span");
+  valueEl.className = "task-details__value";
+  valueEl.setAttribute(
+    "data-test-skedpal",
+    valueTestId || `task-detail-${key}-value`
+  );
+
+  content.appendChild(labelEl);
+  content.appendChild(valueEl);
+  item.appendChild(icon);
+  item.appendChild(content);
+
+  return { item, valueEl };
+}
+
 function shouldShowFutureStartIcon(task, now) {
   if (!task || task.completed) {return false;}
   if (task.scheduledStart) {return false;}
@@ -364,55 +404,110 @@ function buildTaskHeader(task, options) {
 
 function buildTaskMeta(task, timeMapNames, repeatSummary) {
   const meta = document.createElement("div");
-  meta.className = "mt-2 flex flex-wrap gap-2 text-xs text-slate-400";
+  meta.className = "task-details__grid";
   meta.setAttribute("data-test-skedpal", "task-meta");
-  const deadlineMarkup = task.deadline
-    ? `<span data-test-skedpal="task-deadline">Deadline: ${formatDateTime(task.deadline)}</span>`
-    : "";
-  const startFromMarkup = task.startFrom
-    ? `<span data-test-skedpal="task-start-from">Start from: ${formatDateTime(
-        task.startFrom
-      )}</span>`
-    : "";
-    const minBlockMarkup = task.minBlockMin
-      ? `<span data-test-skedpal="task-min-block">Min block: ${task.minBlockMin}m</span>`
-      : "";
-    const priorityValue = Number(task.priority) || 0;
-    const priorityMarkup = priorityValue
-      ? `Priority: <span class="priority-text" data-priority="${priorityValue}" data-test-skedpal="task-priority-value">${priorityValue}</span>`
-      : "Priority: 0";
-    meta.innerHTML = `
-            ${deadlineMarkup}
-            ${startFromMarkup}
-            ${minBlockMarkup}
-            <span data-test-skedpal="task-priority">${priorityMarkup}</span>
-            <span data-test-skedpal="task-timemaps">TimeMaps: ${timeMapNames.join(", ")}</span>
-            <span data-test-skedpal="task-repeat">Repeat: ${repeatSummary}</span>
-          `;
+  if (task.deadline) {
+    const { item, valueEl } = buildDetailItemElement({
+      key: "deadline",
+      label: "Deadline",
+      iconSvg: detailFlagIconSvg,
+      valueTestId: "task-deadline"
+    });
+    valueEl.textContent = formatDateTime(task.deadline);
+    meta.appendChild(item);
+  }
+  if (task.startFrom) {
+    const { item, valueEl } = buildDetailItemElement({
+      key: "start-from",
+      label: "Start from",
+      iconSvg: detailClockIconSvg,
+      valueTestId: "task-start-from"
+    });
+    valueEl.textContent = formatDateTime(task.startFrom);
+    meta.appendChild(item);
+  }
+  if (task.minBlockMin) {
+    const { item, valueEl } = buildDetailItemElement({
+      key: "min-block",
+      label: "Min block",
+      iconSvg: detailStackIconSvg,
+      valueTestId: "task-min-block"
+    });
+    valueEl.textContent = `${task.minBlockMin}m`;
+    meta.appendChild(item);
+  }
+  const priorityValue = Number(task.priority) || 0;
+  const { item: priorityItem, valueEl: priorityValueEl } = buildDetailItemElement({
+    key: "priority",
+    label: "Priority",
+    iconSvg: detailGaugeIconSvg,
+    valueTestId: "task-priority"
+  });
+  const priorityValueSpan = document.createElement("span");
+  priorityValueSpan.setAttribute("data-test-skedpal", "task-priority-value");
+  priorityValueSpan.textContent = String(priorityValue);
+  if (priorityValue) {
+    priorityValueSpan.className = "priority-text";
+    priorityValueSpan.dataset.priority = String(priorityValue);
+  }
+  priorityValueEl.appendChild(priorityValueSpan);
+  meta.appendChild(priorityItem);
+  const timeMapsLabel = timeMapNames.length ? timeMapNames.join(", ") : "None";
+  const { item: timeMapsItem, valueEl: timeMapsValueEl } = buildDetailItemElement({
+    key: "timemaps",
+    label: "TimeMaps",
+    iconSvg: detailMapIconSvg,
+    valueTestId: "task-timemaps"
+  });
+  timeMapsValueEl.textContent = timeMapsLabel;
+  meta.appendChild(timeMapsItem);
+
+  const { item: repeatItem, valueEl: repeatValueEl } = buildDetailItemElement({
+    key: "repeat",
+    label: "Repeat",
+    iconSvg: detailRepeatIconSvg,
+    valueTestId: "task-repeat"
+  });
+  repeatValueEl.textContent = repeatSummary;
+  meta.appendChild(repeatItem);
   return meta;
 }
 
 function buildTaskScheduleDetails(task) {
-  const scheduledStartMarkup = task.scheduledStart
-    ? `<span data-test-skedpal="task-scheduled-start">Start: ${formatDateTime(
-        task.scheduledStart
-      )}</span>`
-    : "";
-  const scheduledEndMarkup = task.scheduledEnd
-    ? `<span data-test-skedpal="task-scheduled-end">End: ${formatDateTime(
-        task.scheduledEnd
-      )}</span>`
-    : "";
-  if (!scheduledStartMarkup && !scheduledEndMarkup) {
+  const scheduledStart = task.scheduledStart ? formatDateTime(task.scheduledStart) : "";
+  const scheduledEnd = task.scheduledEnd ? formatDateTime(task.scheduledEnd) : "";
+  if (!scheduledStart && !scheduledEnd) {
     return null;
   }
+  const rangeMarkup =
+    scheduledStart && scheduledEnd
+      ? `${scheduledStart} → ${scheduledEnd}`
+      : scheduledStart || scheduledEnd;
   const statusRow = document.createElement("div");
-  statusRow.className = "mt-1 flex flex-wrap gap-3 text-xs text-slate-400";
-  statusRow.innerHTML = `
-          ${scheduledStartMarkup}
-          ${scheduledEndMarkup}
-        `;
+  statusRow.className = "task-details__schedule";
   statusRow.setAttribute("data-test-skedpal", "task-status-details");
+  const { item, valueEl } = buildDetailItemElement({
+    key: "schedule",
+    label: "Schedule",
+    iconSvg: calendarIconSvg,
+    extraClass: "task-details__item--schedule"
+  });
+  valueEl.textContent = rangeMarkup;
+  if (scheduledStart) {
+    const legacyStart = document.createElement("span");
+    legacyStart.className = "sr-only";
+    legacyStart.setAttribute("data-test-skedpal", "task-scheduled-start");
+    legacyStart.textContent = scheduledStart;
+    valueEl.appendChild(legacyStart);
+  }
+  if (scheduledEnd) {
+    const legacyEnd = document.createElement("span");
+    legacyEnd.className = "sr-only";
+    legacyEnd.setAttribute("data-test-skedpal", "task-scheduled-end");
+    legacyEnd.textContent = scheduledEnd;
+    valueEl.appendChild(legacyEnd);
+  }
+  statusRow.appendChild(item);
   return statusRow;
 }
 
@@ -473,15 +568,19 @@ export function renderTaskCard(task, context) {
   });
   taskCard.appendChild(header);
   if (detailsOpen) {
+    const detailsWrap = document.createElement("div");
+    detailsWrap.className = "task-details";
+    detailsWrap.setAttribute("data-test-skedpal", "task-details");
     const meta = buildTaskMeta(task, timeMapNames, repeatSummary);
-    taskCard.appendChild(meta);
+    detailsWrap.appendChild(meta);
     const isRepeating = task.repeat && task.repeat.type !== TASK_REPEAT_NONE;
     if (!isRepeating) {
       const statusRow = buildTaskScheduleDetails(task);
       if (statusRow) {
-        taskCard.appendChild(statusRow);
+        detailsWrap.appendChild(statusRow);
       }
     }
+    taskCard.appendChild(detailsWrap);
   }
   return taskCard;
 }

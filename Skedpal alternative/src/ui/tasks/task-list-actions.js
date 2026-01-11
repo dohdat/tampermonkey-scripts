@@ -165,7 +165,9 @@ function cleanupTaskMenuListeners() {
   state.taskMenuOpenId = "";
 }
 
-function createTaskMenuHandlers(taskId) {
+function createTaskMenuHandlers(taskId, options = {}) {
+  const scopedMenu = options.menu || null;
+  const scopedToggle = options.toggleBtn || null;
   function isEditableTarget(target) {
     if (!(target instanceof HTMLElement)) {return false;}
     if (target.isContentEditable) {return true;}
@@ -188,8 +190,9 @@ function createTaskMenuHandlers(taskId) {
   }
 
   function onTaskMenuPointerDown(event) {
-    const menu = document.querySelector?.(`[data-task-menu="${taskId}"]`);
-    const toggleBtn = document.querySelector?.(`[data-task-menu-toggle="${taskId}"]`);
+    const menu = scopedMenu || document.querySelector?.(`[data-task-menu="${taskId}"]`);
+    const toggleBtn =
+      scopedToggle || document.querySelector?.(`[data-task-menu-toggle="${taskId}"]`);
     const target = event.target;
     if (!menu || !toggleBtn) {
       closeTaskActionMenus();
@@ -202,7 +205,7 @@ function createTaskMenuHandlers(taskId) {
   function onTaskMenuKeyDown(event) {
     if (isEditableTarget(event.target)) {return;}
     const key = event.key.toLowerCase();
-    const menu = document.querySelector?.(`[data-task-menu="${taskId}"]`);
+    const menu = scopedMenu || document.querySelector?.(`[data-task-menu="${taskId}"]`);
     if (!menu || menu.classList.contains("hidden")) {return;}
     if (key === "escape") {
       closeTaskActionMenus();
@@ -217,10 +220,10 @@ function createTaskMenuHandlers(taskId) {
   return { onTaskMenuPointerDown, onTaskMenuKeyDown };
 }
 
-function setupTaskMenuListeners(taskId) {
+function setupTaskMenuListeners(taskId, options = {}) {
   if (!taskId) {return;}
   cleanupTaskMenuListeners();
-  const { onTaskMenuPointerDown, onTaskMenuKeyDown } = createTaskMenuHandlers(taskId);
+  const { onTaskMenuPointerDown, onTaskMenuKeyDown } = createTaskMenuHandlers(taskId, options);
   document.addEventListener("pointerdown", onTaskMenuPointerDown, true);
   document.addEventListener("keydown", onTaskMenuKeyDown);
   state.taskMenuCleanup = () => {
@@ -230,9 +233,9 @@ function setupTaskMenuListeners(taskId) {
   state.taskMenuOpenId = taskId;
 }
 
-function toggleTaskActionMenu(taskId) {
+function toggleTaskActionMenu(taskId, options = {}) {
   if (!taskId) {return;}
-  const menu = document.querySelector?.(`[data-task-menu="${taskId}"]`);
+  const menu = options.menu || document.querySelector?.(`[data-task-menu="${taskId}"]`);
   if (!menu) {return;}
   const actionsWrap = menu.closest?.(".task-actions-wrap");
   const willShow = menu.classList.contains("hidden");
@@ -240,7 +243,7 @@ function toggleTaskActionMenu(taskId) {
   menu.classList.toggle("hidden", !willShow);
   actionsWrap?.classList.toggle("task-actions-menu-open", willShow);
   if (willShow) {
-    setupTaskMenuListeners(taskId);
+    setupTaskMenuListeners(taskId, options);
   } else {
     cleanupTaskMenuListeners();
   }
@@ -521,6 +524,19 @@ function handleMenuToggleAction(action) {
   return true;
 }
 
+function handleMenuToggleActionForButton(btn) {
+  const taskId = btn?.dataset?.taskMenuToggle || "";
+  if (!taskId) {return false;}
+  const card = btn.closest?.('[data-test-skedpal="task-card"]');
+  const scopedMenu = card?.querySelector?.(`[data-task-menu="${taskId}"]`) || null;
+  if (scopedMenu) {
+    toggleTaskActionMenu(taskId, { menu: scopedMenu, toggleBtn: btn });
+    return true;
+  }
+  toggleTaskActionMenu(taskId);
+  return true;
+}
+
 async function handleCompleteAction(action) {
   if (action.completeTaskId === undefined) {return false;}
   await handleTaskComplete(action.completeTaskId);
@@ -567,6 +583,9 @@ export async function handleTaskListClick(event, options = {}) {
   const btn = event.target.closest("button");
   if (!btn) {return;}
   const action = parseTaskListClick(btn);
+  if (action.taskMenuToggleId !== undefined) {
+    if (handleMenuToggleActionForButton(btn)) {return;}
+  }
   if (handleMenuToggleAction(action)) {return;}
   if (await handleCompleteAction(action)) {return;}
   if (handleZoomActionWithClose(action)) {return;}

@@ -208,6 +208,19 @@ async function handleReportListClickEvent(event) {
   await handleTaskListClick(event, { switchView: false });
 }
 
+function handleReportListDoubleClickEvent(event) {
+  const card = event.target.closest?.('[data-test-skedpal="task-card"]');
+  if (!card) {return;}
+  const taskId = card.dataset.taskId || "";
+  if (!taskId) {return;}
+  setZoomFilter({
+    type: "task",
+    taskId,
+    sectionId: card.dataset.sectionId || "",
+    subsectionId: card.dataset.subsectionId || ""
+  });
+}
+
 function handleSectionFormToggleClick() {
   if (sectionFormToggle.classList.contains("hidden")) {return;}
   if (sectionFormToggle.textContent?.includes("Hide")) {
@@ -486,11 +499,13 @@ function registerTaskFormHandlers() {
   todayList?.addEventListener("click", handleTodayListClickEvent);
   todayList?.addEventListener("dblclick", handleTodayListDoubleClickEvent);
   reportList?.addEventListener("click", handleReportListClickEvent);
+  reportList?.addEventListener("dblclick", handleReportListDoubleClickEvent);
   rescheduleButtons.forEach((btn) => btn.addEventListener("click", handleReschedule));
   cleanupFns.push(initTaskTemplateSelect());
   cleanupFns.push(initTaskListAssistant());
   cleanupFns.push(() => taskList?.removeEventListener("dblclick", handleTaskListDoubleClickEvent));
   cleanupFns.push(() => todayList?.removeEventListener("dblclick", handleTodayListDoubleClickEvent));
+  cleanupFns.push(() => reportList?.removeEventListener("dblclick", handleReportListDoubleClickEvent));
   return () => {
     cleanupFns.forEach((cleanup) => cleanup());
   };

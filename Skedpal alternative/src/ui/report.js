@@ -353,7 +353,9 @@ export function getMissedTaskRows(
 
 function buildReportRow(row, context) {
   const card = renderTaskCard(row, context);
-  card.setAttribute("data-test-skedpal", "report-missed-row");
+  const wrapper = document.createElement("div");
+  wrapper.setAttribute("data-test-skedpal", "report-missed-row");
+  wrapper.appendChild(card);
   const fillPercent = getMissedFillPercent(row);
   if (fillPercent > 0) {
     const fillColor = "rgba(var(--color-orange-500-rgb), 0.18)";
@@ -397,7 +399,7 @@ function buildReportRow(row, context) {
     `;
     card.appendChild(meta);
   }
-  return card;
+  return wrapper;
 }
 
 function formatMinutesSummary(scheduledMinutes, capacityMinutes) {

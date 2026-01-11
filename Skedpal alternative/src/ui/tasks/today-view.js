@@ -177,7 +177,7 @@ function buildExternalEventBadge(styles) {
 
 function buildExternalEventCard(event, dayStart, dayEnd) {
   const card = document.createElement("div");
-  card.className = "rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2 shadow-sm";
+  card.className = "rounded-xl px-3 py-2 shadow-sm";
   card.setAttribute("data-test-skedpal", "today-external-card");
   card.dataset.eventId = event?.id || "";
   card.dataset.calendarId = event?.calendarId || "";

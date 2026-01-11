@@ -13,6 +13,9 @@ class FakeElement {
     this.style = {
       setProperty: () => {}
     };
+    this.scrollTop = 0;
+    this._rectTop = 0;
+    this._rectHeight = 0;
     this._handlers = {};
     this._classSet = new Set();
     this.classList = {
@@ -70,6 +73,13 @@ class FakeElement {
 
   removeEventListener(type) {
     delete this._handlers[type];
+  }
+
+  getBoundingClientRect() {
+    return {
+      top: this._rectTop,
+      height: this._rectHeight
+    };
   }
 
   querySelector(selector) {
@@ -174,6 +184,7 @@ describe("calendar view", () => {
     domRefs.calendarGrid.children = [];
     domRefs.calendarGrid.querySelectorAll = FakeElement.prototype.querySelectorAll;
     domRefs.calendarGrid.querySelector = FakeElement.prototype.querySelector;
+    domRefs.tasksCalendarSplitWrap.dataset.split = "false";
     state.calendarAnchorDate = new Date(2026, 0, 6);
     state.calendarViewMode = "week";
     state.tasksTimeMapsCache = [];
@@ -204,6 +215,19 @@ describe("calendar view", () => {
     const result = focusCalendarNow({ behavior: "auto", block: "center" });
     assert.strictEqual(result, true);
     assert.strictEqual(called, true);
+  });
+
+  it("scrolls within the grid for split view with an offset", () => {
+    domRefs.tasksCalendarSplitWrap.dataset.split = "true";
+    const indicator = new FakeElement("div");
+    indicator.setAttribute("data-test-skedpal", "calendar-now-indicator");
+    indicator._rectTop = 400;
+    domRefs.calendarGrid._rectTop = 100;
+    domRefs.calendarGrid.scrollTop = 0;
+    domRefs.calendarGrid.appendChild(indicator);
+    const result = focusCalendarNow({ offsetPx: 20 });
+    assert.strictEqual(result, true);
+    assert.strictEqual(domRefs.calendarGrid.scrollTop, 280);
   });
 
   it("returns false when the indicator cannot scroll", () => {

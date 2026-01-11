@@ -49,6 +49,8 @@ import {
 let nowIndicatorTimer = null;
 let calendarViewInitialized = false;
 let externalDeletePending = false;
+const SPLIT_VIEW_FOCUS_OFFSET_PX = 72;
+const SPLIT_VIEW_FOCUS_PADDING_PX = 16;
 
 function getEventMetaFromBlock(block) {
   if (!block?.dataset) {return null;}
@@ -243,6 +245,29 @@ function getExternalFetchRange() {
   const end = addCalendarDays(start, safeDays);
   return { start, end };
 }
+
+function getSplitViewFocusOffsetPx() {
+  const header = domRefs.appHeader;
+  if (header?.getBoundingClientRect) {
+    const rect = header.getBoundingClientRect();
+    if (Number.isFinite(rect?.height) && rect.height > 0) {
+      return rect.height + SPLIT_VIEW_FOCUS_PADDING_PX;
+    }
+  }
+  return SPLIT_VIEW_FOCUS_OFFSET_PX;
+}
+
+function scrollCalendarGridToIndicator(calendarGrid, indicator, offsetPx) {
+  if (!calendarGrid || !indicator || !indicator.getBoundingClientRect) {return false;}
+  const gridRect = calendarGrid.getBoundingClientRect?.();
+  const indicatorRect = indicator.getBoundingClientRect?.();
+  if (!gridRect || !indicatorRect) {return false;}
+  const delta = indicatorRect.top - gridRect.top - offsetPx;
+  if (!Number.isFinite(delta)) {return false;}
+  const nextTop = Math.max(0, (calendarGrid.scrollTop || 0) + delta);
+  calendarGrid.scrollTop = nextTop;
+  return true;
+}
 function handleCalendarTodayClick() {
   state.calendarAnchorDate = new Date();
   renderCalendar();
@@ -276,7 +301,15 @@ export function focusCalendarNow(options = {}) {
   const indicator = calendarGrid.querySelector(
     '[data-test-skedpal="calendar-now-indicator"]'
   );
-  if (!indicator || typeof indicator.scrollIntoView !== "function") {return false;}
+  if (!indicator) {return false;}
+  if (isCalendarSplitVisible()) {
+    const offsetPx =
+      Number.isFinite(options.offsetPx) && options.offsetPx >= 0
+        ? options.offsetPx
+        : getSplitViewFocusOffsetPx();
+    return scrollCalendarGridToIndicator(calendarGrid, indicator, offsetPx);
+  }
+  if (typeof indicator.scrollIntoView !== "function") {return false;}
   indicator.scrollIntoView({ block, inline: "nearest", behavior });
   return true;
 }

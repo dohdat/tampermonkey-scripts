@@ -1,4 +1,4 @@
-import {
+﻿import {
   MOUSE_BUTTON_BACK,
   MOUSE_BUTTON_FORWARD,
   domRefs,
@@ -17,7 +17,7 @@ import { getSectionName, getSubsectionsFor } from "./sections-data.js";
 import { isTypingTarget } from "./notifications.js";
 import { focusCalendarNow, renderCalendar } from "./calendar.js";
 import { refreshTodayView } from "./tasks/today-view.js";
-import { getActiveViewId } from "./navigation-helpers.js";
+import { getActiveViewId, shouldResetScroll } from "./navigation-helpers.js";
 
 function getViews() {
   return domRefs.views || [];
@@ -97,7 +97,13 @@ function updateSplitControls(resolvedTarget, showCalendarSplit) {
 function updateSplitToggleLabel() {
   const { tasksCalendarToggleBtn } = domRefs;
   if (!tasksCalendarToggleBtn) {return;}
-  tasksCalendarToggleBtn.textContent = state.tasksCalendarSplit ? "x" : "🗓️";
+  tasksCalendarToggleBtn.textContent = state.tasksCalendarSplit ? "x" : "Split";
+}
+
+function maybeResetScroll(previousView, nextView) {
+  if (!shouldResetScroll(previousView, nextView)) {return;}
+  if (typeof window === "undefined" || typeof window.scrollTo !== "function") {return;}
+  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
 }
 
 function applyCalendarView(resolvedTarget, showCalendarSplit, calendarAnchorDate, focusCalendar) {
@@ -151,6 +157,7 @@ export function switchView(target, options = {}) {
   updateSplitControls(resolvedTarget, isCalendarSplit);
   updateSplitToggleLabel();
   applyCalendarView(resolvedTarget, isCalendarSplit, calendarAnchorDate, focusCalendar);
+  maybeResetScroll(currentView, resolvedTarget);
   if (resolvedTarget === "today") {
     refreshTodayView(state.tasksCache, state.tasksTimeMapsCache, {
       collapsedTasks: state.collapsedTasks,
@@ -409,3 +416,7 @@ export function initViewFromUrl(parseViewFromUrl) {
   const initialView = parseViewFromUrl("tasks");
   switchView(initialView, { historyMode: "replace" });
 }
+
+
+
+

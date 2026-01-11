@@ -62,7 +62,7 @@ installDomStubs();
 
 const { domRefs } = await import("../src/ui/constants.js");
 const { state } = await import("../src/ui/state/page-state.js");
-const { renderTodayView } = await import("../src/ui/tasks/today-view.js");
+const { refreshTodayView, renderTodayView } = await import("../src/ui/tasks/today-view.js");
 
 describe("today view", () => {
   beforeEach(() => {
@@ -71,6 +71,9 @@ describe("today view", () => {
     todayList.children = [];
     todayList.attributes = {};
     state.settingsCache = { ...state.settingsCache, sections: [], subsections: {} };
+    state.calendarExternalEvents = [];
+    state.calendarExternalRange = null;
+    state.calendarExternalRangeKey = "";
   });
 
   it("renders tasks scheduled for today", () => {
@@ -109,6 +112,90 @@ describe("today view", () => {
     const tasks = [];
     renderTodayView(tasks, [], { now });
     assert.ok(findByTestAttr(todayList, "today-empty"));
+  });
+
+  it("renders external events scheduled for today", () => {
+    const now = new Date(2026, 0, 6, 9, 0);
+    const dayStart = new Date(2026, 0, 6, 0, 0);
+    const dayEnd = new Date(2026, 0, 6, 23, 59, 59, 999);
+    state.calendarExternalRange = { start: dayStart, end: dayEnd };
+    state.calendarExternalEvents = [
+      {
+        id: "evt-1",
+        calendarId: "cal-1",
+        title: "Standup",
+        link: "https://calendar.google.com/event?eid=evt-1",
+        start: new Date(2026, 0, 6, 10, 0),
+        end: new Date(2026, 0, 6, 10, 30),
+        source: "external"
+      }
+    ];
+
+    renderTodayView([], [], { now });
+
+    assert.ok(findByTestAttr(todayList, "today-external-card"));
+    assert.strictEqual(findByTestAttr(todayList, "today-empty"), null);
+  });
+
+  it("renders external events without links", () => {
+    const now = new Date(2026, 0, 6, 9, 0);
+    const dayStart = new Date(2026, 0, 6, 0, 0);
+    const dayEnd = new Date(2026, 0, 6, 23, 59, 59, 999);
+    state.calendarExternalRange = { start: dayStart, end: dayEnd };
+    state.calendarExternalEvents = [
+      {
+        id: "evt-2",
+        calendarId: "cal-1",
+        title: "Overnight",
+        link: "",
+        start: new Date(2026, 0, 5, 23, 0),
+        end: new Date(2026, 0, 6, 1, 0),
+        source: "external"
+      }
+    ];
+
+    renderTodayView([], [], { now });
+
+    assert.ok(findByTestAttr(todayList, "today-external-title"));
+    assert.strictEqual(findByTestAttr(todayList, "today-external-title-link"), null);
+  });
+
+  it("refreshes today view external events on demand", async () => {
+    const now = new Date(2026, 0, 6, 9, 0);
+    const previousChrome = global.chrome;
+    global.chrome = {
+      runtime: {
+        lastError: null,
+        sendMessage: (_message, callback) => callback({ ok: true, events: [] })
+      }
+    };
+
+    try {
+      const updated = await refreshTodayView([], [], { now });
+      assert.strictEqual(updated, true);
+      assert.ok(state.calendarExternalRange);
+    } finally {
+      if (previousChrome === undefined) {
+        delete global.chrome;
+      } else {
+        global.chrome = previousChrome;
+      }
+    }
+  });
+
+  it("returns false when external events cannot refresh", async () => {
+    const now = new Date(2026, 0, 6, 9, 0);
+    const previousChrome = global.chrome;
+    delete global.chrome;
+
+    try {
+      const updated = await refreshTodayView([], [], { now });
+      assert.strictEqual(updated, false);
+    } finally {
+      if (previousChrome !== undefined) {
+        global.chrome = previousChrome;
+      }
+    }
   });
 
   it("honors expanded task details state", () => {

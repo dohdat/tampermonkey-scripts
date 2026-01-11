@@ -16,6 +16,7 @@ import { renderTasks } from "./tasks/tasks-render.js";
 import { getSectionName, getSubsectionsFor } from "./sections-data.js";
 import { isTypingTarget } from "./notifications.js";
 import { focusCalendarNow, renderCalendar } from "./calendar.js";
+import { refreshTodayView } from "./tasks/today-view.js";
 import { getActiveViewId } from "./navigation-helpers.js";
 
 function getViews() {
@@ -150,6 +151,14 @@ export function switchView(target, options = {}) {
   updateSplitControls(resolvedTarget, isCalendarSplit);
   updateSplitToggleLabel();
   applyCalendarView(resolvedTarget, isCalendarSplit, calendarAnchorDate, focusCalendar);
+  if (resolvedTarget === "today") {
+    refreshTodayView(state.tasksCache, state.tasksTimeMapsCache, {
+      collapsedTasks: state.collapsedTasks,
+      expandedTaskDetails: state.expandedTaskDetails
+    }).catch((error) => {
+      console.warn("Failed to refresh today view external events.", error);
+    });
+  }
 }
 
 export function getZoomLabel() {

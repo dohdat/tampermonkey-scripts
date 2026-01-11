@@ -44,7 +44,7 @@ import {
 import { renderFavoriteShortcuts } from "../sections-favorites.js";
 import { renderTaskTimeMapOptions, collectSelectedValues } from "../time-maps.js";
 import { renderTasks } from "./tasks-render.js";
-import { renderTodayView } from "./today-view.js";
+import { refreshTodayView, renderTodayView } from "./today-view.js";
 import { renderCalendar } from "../calendar.js";
 import { ensureTaskIds, migrateSectionsAndTasks } from "./tasks.js";
 import { renderBreadcrumb } from "../navigation.js";
@@ -252,10 +252,18 @@ export async function applyTaskTemplateToSubsection(templateId, sectionId = "", 
 export function renderTimeMapsAndTasks(timeMaps) {
   renderTasks(state.tasksCache, timeMaps);
   renderBreadcrumb();
-  renderTodayView(state.tasksCache, timeMaps, {
+  const todayOptions = {
     collapsedTasks: state.collapsedTasks,
     expandedTaskDetails: state.expandedTaskDetails
-  });
+  };
+  const isTodayActive = domRefs.appShell?.dataset?.activeView === "today";
+  if (isTodayActive) {
+    refreshTodayView(state.tasksCache, timeMaps, todayOptions).catch((error) => {
+      console.warn("Failed to refresh today view external events.", error);
+    });
+  } else {
+    renderTodayView(state.tasksCache, timeMaps, todayOptions);
+  }
   renderCalendar(state.tasksCache);
   renderReport(state.tasksCache);
   renderTaskReminderBadge(state.tasksCache);

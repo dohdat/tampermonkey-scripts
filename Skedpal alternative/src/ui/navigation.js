@@ -17,7 +17,11 @@ import { getSectionName, getSubsectionsFor } from "./sections-data.js";
 import { isTypingTarget } from "./notifications.js";
 import { focusCalendarNow, renderCalendar } from "./calendar.js";
 import { refreshTodayView } from "./tasks/today-view.js";
-import { getActiveViewId, shouldResetScroll } from "./navigation-helpers.js";
+import {
+  getActiveViewId,
+  resolveCalendarAnchorDate,
+  shouldResetScroll
+} from "./navigation-helpers.js";
 
 function getViews() {
   return domRefs.views || [];
@@ -122,6 +126,33 @@ function applyCalendarView(resolvedTarget, showCalendarSplit, calendarAnchorDate
   }
 }
 
+function setActiveViewShell(resolvedTarget) {
+  if (domRefs.appShell) {
+    domRefs.appShell.dataset.activeView = resolvedTarget;
+  }
+}
+
+function maybeClearZoomFilterForView(resolvedTarget, updateUrl) {
+  if (resolvedTarget !== "tasks" && state.zoomFilter) {
+    clearZoomFilter({ record: false, updateUrl, historyMode: "replace" });
+  }
+}
+
+function maybeUpdateViewUrl(updateUrl, currentView, resolvedTarget, historyMode) {
+  if (updateUrl && currentView !== resolvedTarget) {
+    updateUrlWithView(resolvedTarget, { replace: historyMode === "replace" });
+  }
+}
+
+function maybeRefreshTodayView(resolvedTarget) {
+  if (resolvedTarget !== "today") {return;}
+  refreshTodayView(state.tasksCache, state.tasksTimeMapsCache, {
+    collapsedTasks: state.collapsedTasks,
+    expandedTaskDetails: state.expandedTaskDetails
+  }).catch((error) => {
+    console.warn("Failed to refresh today view external events.", error);
+  });
+}
 
 export function pushNavigation(filter) {
   state.navStack = state.navStack.slice(0, state.navIndex + 1);
@@ -141,31 +172,24 @@ export function switchView(target, options = {}) {
   const views = getViews();
   const allowedViews = navButtons.map((btn) => btn.dataset.view);
   const resolvedTarget = allowedViews.includes(target) ? target : "tasks";
-  if (domRefs.appShell) {
-    domRefs.appShell.dataset.activeView = resolvedTarget;
-  }
+  setActiveViewShell(resolvedTarget);
   const isCalendarSplit = shouldShowCalendarSplit(resolvedTarget);
   const currentView = getActiveViewId(views);
-  if (resolvedTarget !== "tasks" && state.zoomFilter) {
-    clearZoomFilter({ record: false, updateUrl, historyMode: "replace" });
-  }
+  const nextCalendarAnchor = resolveCalendarAnchorDate(
+    calendarAnchorDate,
+    resolvedTarget,
+    isCalendarSplit,
+    currentView
+  );
+  maybeClearZoomFilterForView(resolvedTarget, updateUrl);
   applyViewVisibility(views, resolvedTarget, isCalendarSplit);
   updateNavButtonState(navButtons, resolvedTarget);
-  if (updateUrl && currentView !== resolvedTarget) {
-    updateUrlWithView(resolvedTarget, { replace: historyMode === "replace" });
-  }
+  maybeUpdateViewUrl(updateUrl, currentView, resolvedTarget, historyMode);
   updateSplitControls(resolvedTarget, isCalendarSplit);
   updateSplitToggleLabel();
-  applyCalendarView(resolvedTarget, isCalendarSplit, calendarAnchorDate, focusCalendar);
+  applyCalendarView(resolvedTarget, isCalendarSplit, nextCalendarAnchor, focusCalendar);
   maybeResetScroll(currentView, resolvedTarget);
-  if (resolvedTarget === "today") {
-    refreshTodayView(state.tasksCache, state.tasksTimeMapsCache, {
-      collapsedTasks: state.collapsedTasks,
-      expandedTaskDetails: state.expandedTaskDetails
-    }).catch((error) => {
-      console.warn("Failed to refresh today view external events.", error);
-    });
-  }
+  maybeRefreshTodayView(resolvedTarget);
 }
 
 export function getZoomLabel() {

@@ -6,3 +6,23 @@ export function getActiveViewId(views = []) {
 export function shouldResetScroll(previousView, nextView) {
   return previousView === "calendar" && nextView === "tasks";
 }
+
+export function resolveCalendarAnchorDate(
+  calendarAnchorDate,
+  resolvedTarget,
+  isCalendarSplit,
+  currentView
+) {
+  if (calendarAnchorDate !== null && calendarAnchorDate !== undefined) {
+    return calendarAnchorDate;
+  }
+  if (
+    resolvedTarget === "tasks" &&
+    isCalendarSplit &&
+    currentView &&
+    currentView !== "tasks"
+  ) {
+    return new Date();
+  }
+  return null;
+}

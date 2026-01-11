@@ -1,7 +1,11 @@
 import assert from "assert";
 import { describe, it } from "mocha";
 
-const { getActiveViewId, shouldResetScroll } = await import("../src/ui/navigation-helpers.js");
+const {
+  getActiveViewId,
+  resolveCalendarAnchorDate,
+  shouldResetScroll
+} = await import("../src/ui/navigation-helpers.js");
 
 class FakeElement {
   constructor(id = "", hidden = false) {
@@ -27,5 +31,19 @@ describe("navigation helpers", () => {
   it("identifies when scroll should reset", () => {
     assert.strictEqual(shouldResetScroll("calendar", "tasks"), true);
     assert.strictEqual(shouldResetScroll("tasks", "calendar"), false);
+  });
+
+  it("resolves anchor dates for split calendar navigation", () => {
+    const fixed = new Date(2026, 0, 14);
+    assert.strictEqual(
+      resolveCalendarAnchorDate(fixed, "tasks", true, "calendar"),
+      fixed
+    );
+    const resolved = resolveCalendarAnchorDate(null, "tasks", true, "calendar");
+    const now = new Date();
+    assert.strictEqual(resolved.getFullYear(), now.getFullYear());
+    assert.strictEqual(resolved.getMonth(), now.getMonth());
+    assert.strictEqual(resolved.getDate(), now.getDate());
+    assert.strictEqual(resolveCalendarAnchorDate(null, "tasks", true, "tasks"), null);
   });
 });

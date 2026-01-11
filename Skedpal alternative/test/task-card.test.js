@@ -405,6 +405,31 @@ describe("task card", () => {
     assert.strictEqual(card.classList.contains("task-card--reminder-alert"), false);
   });
 
+  it("skips reminder alerts for completed tasks", () => {
+    const past = new Date(Date.now() - 86400000).toISOString();
+    const task = {
+      id: "t11",
+      title: "Completed reminder",
+      durationMin: 20,
+      timeMapIds: ["tm-1"],
+      completed: true,
+      reminders: [{ id: "r1", days: 1, remindAt: past, dismissedAt: "" }]
+    };
+    const context = {
+      tasks: [task],
+      timeMapById: new Map([["tm-1", { id: "tm-1", name: "Focus" }]]),
+      collapsedTasks: new Set(),
+      expandedTaskDetails: new Set(),
+      computeTotalDuration: () => 0,
+      getTaskDepthById: () => 0,
+      getSectionName: () => "",
+      getSubsectionName: () => ""
+    };
+
+    const card = renderTaskCard(task, context);
+    assert.strictEqual(card.classList.contains("task-card--reminder-alert"), false);
+  });
+
   it("skips details when not expanded", () => {
     const task = {
       id: "t6",

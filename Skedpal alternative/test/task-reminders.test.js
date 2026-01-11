@@ -46,6 +46,12 @@ describe("task reminders", () => {
     renderTaskReminderBadge([{ reminders: [{ id: "r1", days: 1, remindAt: past, dismissedAt: past }] }]);
     assert.strictEqual(badge.classList.contains("hidden"), true);
     assert.strictEqual(badge.textContent, "");
+
+    renderTaskReminderBadge([
+      { completed: true, reminders: [{ id: "r1", days: 1, remindAt: past, dismissedAt: "" }] }
+    ]);
+    assert.strictEqual(badge.classList.contains("hidden"), true);
+    assert.strictEqual(badge.textContent, "");
   });
 
   it("hides the existing reminder list when empty", async () => {
@@ -551,6 +557,9 @@ describe("task reminders", () => {
     const overdue = getOverdueReminders(task, now);
     assert.strictEqual(overdue.length, 1);
     assert.strictEqual(overdue[0].id, "r1");
+
+    const completedOverdue = getOverdueReminders({ ...task, completed: true }, now);
+    assert.deepStrictEqual(completedOverdue, []);
   });
 
   it("returns empty overdue list for invalid dates", async () => {

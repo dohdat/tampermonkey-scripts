@@ -1,36 +1,12 @@
-import { domRefs } from "../constants.js";
 import { state } from "../state/page-state.js";
 import { getNextSubtaskOrder, getTaskDepth, buildInheritedSubtaskUpdate } from "../utils.js";
 import { saveTask } from "../../data/db.js";
+import { getSelectedTaskCards, getSelectedRootTaskIds } from "./task-selection-utils.js";
 import {
   findIndentParentId,
   getOutdentContextByTaskId,
   buildOutdentUpdates
 } from "./tasks-sortable.js";
-
-const { taskList } = domRefs;
-
-function getSelectedTaskCards() {
-  if (!taskList) {return [];}
-  return [...taskList.querySelectorAll(".sortable-selected[data-task-id]")];
-}
-
-function getSelectedRootTaskIds(cards) {
-  const selectedIds = new Set(cards.map((card) => card.dataset.taskId).filter(Boolean));
-  const byId = new Map(state.tasksCache.map((task) => [task.id, task]));
-  return cards
-    .map((card) => card.dataset.taskId)
-    .filter(Boolean)
-    .filter((taskId) => {
-      const task = byId.get(taskId);
-      let parentId = task?.subtaskParentId || "";
-      while (parentId) {
-        if (selectedIds.has(parentId)) {return false;}
-        parentId = byId.get(parentId)?.subtaskParentId || "";
-      }
-      return true;
-    });
-}
 
 function areRootTasksInSameContainer(rootTaskIds) {
   if (rootTaskIds.length <= 1) {return true;}

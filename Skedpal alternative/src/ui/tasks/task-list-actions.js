@@ -491,6 +491,30 @@ async function deleteTaskWithUndo(taskId) {
   });
 }
 
+export async function deleteTasksWithUndo(taskIds = []) {
+  const rootIds = [...new Set(taskIds.filter(Boolean))];
+  if (!rootIds.length) {return false;}
+  const affectedById = new Map();
+  rootIds.forEach((taskId) => {
+    getTaskAndDescendants(taskId, state.tasksCache).forEach((task) => {
+      affectedById.set(task.id, task);
+    });
+  });
+  const snapshot = [...affectedById.values()].map((t) => JSON.parse(JSON.stringify(t)));
+  if (!snapshot.length) {return false;}
+  await Promise.all(snapshot.map((task) => deleteTask(task.id)));
+  await loadTasks();
+  const headline =
+    rootIds.length === 1
+      ? `Deleted "${snapshot[0]?.title || "Untitled task"}".`
+      : `Deleted ${rootIds.length} tasks.`;
+  showUndoBanner(headline, async () => {
+    await Promise.all(snapshot.map((task) => saveTask(task)));
+    await loadTasks();
+  });
+  return true;
+}
+
 function handleMenuToggleAction(action) {
   if (action.taskMenuToggleId === undefined) {return false;}
   toggleTaskActionMenu(action.taskMenuToggleId);

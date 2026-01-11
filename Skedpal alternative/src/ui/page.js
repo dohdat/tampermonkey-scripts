@@ -72,7 +72,10 @@ import {
 } from "./utils.js";
 import { closeTaskForm } from "./ui.js";
 import { indentTaskUnderPrevious, outdentTask } from "./tasks/tasks-sortable.js";
-import { indentSelectedTasks, outdentSelectedTasks } from "./tasks/task-multi-select.js";
+import {
+  indentSelectedTasks,
+  outdentSelectedTasks,
+} from "./tasks/task-multi-select.js";
 import { state } from "./state/page-state.js";
 import { initCalendarView, renderCalendar } from "./calendar.js";
 import { applyTheme } from "./theme.js";
@@ -80,6 +83,7 @@ import { initSidebarToggle } from "./sidebar-toggle.js";
 import { initDatePicker } from "./date-picker.js";
 import { initTaskModalSections } from "./task-modal-sections.js";
 import { initTaskPriorityDropdown } from "./tasks/task-priority-dropdown.js";
+import { initTaskDeleteShortcut } from "./tasks/task-delete-shortcut.js";
 
 const {
   timeMapDayRows,
@@ -585,6 +589,10 @@ function registerKeyboardHandlers() {
   document.addEventListener("keydown", handleDocumentKeydown);
   window.addEventListener("keydown", handleNavigationShortcuts);
   window.addEventListener("auxclick", handleNavigationMouseButtons);
+  if (typeof state.taskDeleteShortcutCleanup === "function") {
+    state.taskDeleteShortcutCleanup();
+  }
+  state.taskDeleteShortcutCleanup = initTaskDeleteShortcut();
 }
 
 function registerCustomEventHandlers() {

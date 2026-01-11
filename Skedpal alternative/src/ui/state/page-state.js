@@ -23,6 +23,7 @@ export const state = {
   navStack: [],
   navIndex: -1,
   sortableInstances: [],
+  taskDeleteShortcutCleanup: null,
   tasksCalendarSplit: true,
   calendarViewMode: "day",
   calendarAnchorDate: new Date(),

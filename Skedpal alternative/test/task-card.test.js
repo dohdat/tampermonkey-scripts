@@ -280,6 +280,45 @@ describe("task card", () => {
     assert.ok(indicator);
   });
 
+  it("hides summary indicators for repeating parent tasks", () => {
+    const task = {
+      id: "t7-parent",
+      title: "Repeat parent",
+      durationMin: 30,
+      timeMapIds: ["tm-1"],
+      completed: false,
+      repeat: { type: "custom", unit: "month", interval: 1 }
+    };
+    const child = {
+      id: "t7-child",
+      title: "Child task",
+      durationMin: 15,
+      timeMapIds: ["tm-1"],
+      completed: false,
+      subtaskParentId: "t7-parent"
+    };
+    const context = {
+      tasks: [task, child],
+      timeMapById: new Map([["tm-1", { id: "tm-1", name: "Focus" }]]),
+      collapsedTasks: new Set(),
+      expandedTaskDetails: new Set(),
+      computeTotalDuration: () => 0,
+      getTaskDepthById: () => 0,
+      getSectionName: () => "",
+      getSubsectionName: () => "",
+      firstOccurrenceOutOfRangeByTaskId: new Map([["t7-parent", true]]),
+      firstOccurrenceUnscheduledByTaskId: new Map([["t7-parent", true]])
+    };
+
+    const card = renderTaskCard(task, context);
+    const summary = findByTestAttr(card, "task-summary-row");
+    const outOfRange = findByTestAttr(card, "task-summary-out-of-range");
+    const unscheduled = findByTestAttr(card, "task-summary-unscheduled");
+    assert.strictEqual(summary, null);
+    assert.strictEqual(outOfRange, null);
+    assert.strictEqual(unscheduled, null);
+  });
+
   it("shows unscheduled indicator in the summary row", () => {
     const task = {
       id: "t8",

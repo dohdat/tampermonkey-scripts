@@ -298,6 +298,21 @@ function shouldShowFutureStartIcon(task, now) {
   return startFrom > now;
 }
 
+function buildSummaryIconFlags(task, options) {
+  const { hasChildren, now, context } = options;
+  const isRepeating = task.repeat && task.repeat.type !== TASK_REPEAT_NONE;
+  const suppressSummaryIcons = isRepeating && hasChildren;
+  return {
+    showFutureStartIcon: suppressSummaryIcons ? false : shouldShowFutureStartIcon(task, now),
+    showOutOfRangeIcon: suppressSummaryIcons
+      ? false
+      : Boolean(context.firstOccurrenceOutOfRangeByTaskId?.get(task.id)),
+    showUnscheduledIcon: suppressSummaryIcons
+      ? false
+      : Boolean(context.firstOccurrenceUnscheduledByTaskId?.get(task.id))
+  };
+}
+
 function buildTaskSummaryRow(task, options = {}) {
   const {
     showOutOfRangeIcon = false,
@@ -550,9 +565,14 @@ export function renderTaskCard(task, context) {
     taskCard.classList.add("task-card--reminder-alert");
     taskCard.dataset.reminderAlert = "true";
   }
-  const showFutureStartIcon = shouldShowFutureStartIcon(task, now);
-  const showOutOfRangeIcon = Boolean(context.firstOccurrenceOutOfRangeByTaskId?.get(task.id));
-  const showUnscheduledIcon = Boolean(context.firstOccurrenceUnscheduledByTaskId?.get(task.id));
+  const { showFutureStartIcon, showOutOfRangeIcon, showUnscheduledIcon } = buildSummaryIconFlags(
+    task,
+    {
+      hasChildren,
+      now,
+      context
+    }
+  );
   const header = buildTaskHeader(task, {
     hasChildren,
     isCollapsed,

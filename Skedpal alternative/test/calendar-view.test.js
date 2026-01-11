@@ -137,12 +137,14 @@ elements.set("calendar-day", new FakeElement("button"));
 elements.set("calendar-three", new FakeElement("button"));
 elements.set("calendar-week", new FakeElement("button"));
 elements.set("tasks-calendar-split", new FakeElement("div"));
+elements.set("app-header", new FakeElement("div"));
 elements.get("calendar-grid").setAttribute("data-test-skedpal", "calendar-grid");
 elements.get("calendar-title").setAttribute("data-test-skedpal", "calendar-title");
 elements.get("calendar-day").setAttribute("data-test-skedpal", "calendar-day");
 elements.get("calendar-three").setAttribute("data-test-skedpal", "calendar-three");
 elements.get("calendar-week").setAttribute("data-test-skedpal", "calendar-week");
 elements.get("tasks-calendar-split").setAttribute("data-test-skedpal", "tasks-calendar-split");
+elements.get("app-header").setAttribute("data-test-skedpal", "app-header");
 
 function installDomStubs() {
   global.document = {
@@ -162,6 +164,7 @@ domRefs.calendarDayBtn = elements.get("calendar-day");
 domRefs.calendarThreeBtn = elements.get("calendar-three");
 domRefs.calendarWeekBtn = elements.get("calendar-week");
 domRefs.tasksCalendarSplitWrap = elements.get("tasks-calendar-split");
+domRefs.appHeader = elements.get("app-header");
 
 const calendar = await import("../src/ui/calendar.js");
 const {
@@ -185,6 +188,7 @@ describe("calendar view", () => {
     domRefs.calendarGrid.querySelectorAll = FakeElement.prototype.querySelectorAll;
     domRefs.calendarGrid.querySelector = FakeElement.prototype.querySelector;
     domRefs.tasksCalendarSplitWrap.dataset.split = "false";
+    domRefs.appHeader = elements.get("app-header");
     state.calendarAnchorDate = new Date(2026, 0, 6);
     state.calendarViewMode = "week";
     state.tasksTimeMapsCache = [];
@@ -228,6 +232,20 @@ describe("calendar view", () => {
     const result = focusCalendarNow({ offsetPx: 20 });
     assert.strictEqual(result, true);
     assert.strictEqual(domRefs.calendarGrid.scrollTop, 280);
+  });
+
+  it("uses the app header height for split view offset", () => {
+    domRefs.tasksCalendarSplitWrap.dataset.split = "true";
+    domRefs.appHeader._rectHeight = 40;
+    const indicator = new FakeElement("div");
+    indicator.setAttribute("data-test-skedpal", "calendar-now-indicator");
+    indicator._rectTop = 500;
+    domRefs.calendarGrid._rectTop = 100;
+    domRefs.calendarGrid.scrollTop = 10;
+    domRefs.calendarGrid.appendChild(indicator);
+    const result = focusCalendarNow();
+    assert.strictEqual(result, true);
+    assert.strictEqual(domRefs.calendarGrid.scrollTop, 354);
   });
 
   it("returns false when the indicator cannot scroll", () => {

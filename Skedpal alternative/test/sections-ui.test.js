@@ -304,6 +304,24 @@ describe("sections ui", () => {
     assert.strictEqual(button.innerHTML.includes(">0<"), false);
   });
 
+  it("counts only parent tasks in favorite badges", () => {
+    state.settingsCache.sections = [
+      { id: "s1", name: "Work", favorite: true, favoriteOrder: 1 }
+    ];
+    state.settingsCache.subsections = { s1: [] };
+    state.tasksCache = [
+      { id: "t1", section: "s1", completed: false },
+      { id: "t2", section: "s1", completed: false, subtaskParentId: "t1" }
+    ];
+
+    favoritesModule.renderFavoriteShortcuts();
+
+    const sidebar = elementMap.get("sidebar-favorites");
+    const row = findByTestAttr(sidebar, "sidebar-fav-row");
+    const button = findByTestAttr(row, "sidebar-fav-button");
+    assert.ok(button.innerHTML.includes(">1<"));
+  });
+
   it("renders collapsible favorite subsections", () => {
     state.settingsCache.sections = [
       { id: "s1", name: "Work", favorite: true, favoriteOrder: 1 }

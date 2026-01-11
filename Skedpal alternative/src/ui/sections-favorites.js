@@ -148,7 +148,7 @@ function resolveExpandedSubsections(items) {
 
 function getTaskCountForFavorite(item, tasks) {
   if (!item || !Array.isArray(tasks)) {return 0;}
-  const visibleTasks = tasks.filter((task) => !task.completed);
+  const visibleTasks = tasks.filter((task) => !task.completed && !task.subtaskParentId);
   if (item.type === "subsection") {
     const subsectionList = state.settingsCache.subsections?.[item.sectionId] || [];
     const descendantIds = getSubsectionDescendantIds(subsectionList, item.subsectionId);

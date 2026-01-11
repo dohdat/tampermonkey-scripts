@@ -147,7 +147,7 @@ function buildExternalEventTitle(event) {
   if (linkUrl) {
     const title = document.createElement("a");
     title.className =
-      "text-sm font-semibold text-lime-300 hover:text-lime-200 underline decoration-lime-400";
+      "min-w-0 truncate text-sm font-semibold text-lime-300 hover:text-lime-200 underline decoration-lime-400";
     title.href = linkUrl;
     title.target = "_blank";
     title.rel = "noopener noreferrer";
@@ -156,7 +156,7 @@ function buildExternalEventTitle(event) {
     return title;
   }
   const title = document.createElement("div");
-  title.className = "text-sm font-semibold text-slate-100";
+  title.className = "min-w-0 truncate text-sm font-semibold text-slate-100";
   title.textContent = fallbackTitle;
   title.setAttribute("data-test-skedpal", "today-external-title");
   return title;
@@ -165,7 +165,7 @@ function buildExternalEventTitle(event) {
 function buildExternalEventBadge(styles) {
   const badge = document.createElement("span");
   badge.className =
-    "inline-flex items-center rounded-full border border-slate-700 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300";
+    "inline-flex shrink-0 items-center rounded-full border border-slate-700 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300";
   badge.textContent = "Google Calendar";
   badge.setAttribute("data-test-skedpal", "today-external-badge");
   if (styles?.borderColor) {
@@ -177,7 +177,7 @@ function buildExternalEventBadge(styles) {
 
 function buildExternalEventCard(event, dayStart, dayEnd) {
   const card = document.createElement("div");
-  card.className = "rounded-2xl border-slate-800 bg-slate-900/70 p-4 shadow";
+  card.className = "rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2 shadow-sm";
   card.setAttribute("data-test-skedpal", "today-external-card");
   card.dataset.eventId = event?.id || "";
   card.dataset.calendarId = event?.calendarId || "";
@@ -188,23 +188,28 @@ function buildExternalEventCard(event, dayStart, dayEnd) {
   }
 
   const header = document.createElement("div");
-  header.className = "flex flex-wrap items-start justify-between gap-2";
+  header.className = "flex items-center justify-between gap-3";
   header.setAttribute("data-test-skedpal", "today-external-header");
 
-  const titleWrap = document.createElement("div");
-  titleWrap.className = "flex min-w-0 flex-col gap-1";
-  titleWrap.setAttribute("data-test-skedpal", "today-external-title-wrap");
-  titleWrap.appendChild(buildExternalEventTitle(event));
+  const left = document.createElement("div");
+  left.className = "flex min-w-0 flex-1 items-center gap-2";
+  left.setAttribute("data-test-skedpal", "today-external-left");
+
+  const content = document.createElement("div");
+  content.className = "flex min-w-0 flex-1 items-center gap-2";
+  content.setAttribute("data-test-skedpal", "today-external-content");
+  content.appendChild(buildExternalEventTitle(event));
 
   const time = document.createElement("div");
   const displayStart = event.start < dayStart ? dayStart : event.start;
   const displayEnd = event.end > dayEnd ? dayEnd : event.end;
-  time.className = "text-xs text-slate-400";
+  time.className = "whitespace-nowrap text-xs text-slate-400";
   time.textContent = formatEventTimeRange(displayStart, displayEnd);
   time.setAttribute("data-test-skedpal", "today-external-time");
-  titleWrap.appendChild(time);
+  content.appendChild(time);
 
-  header.appendChild(titleWrap);
+  left.appendChild(content);
+  header.appendChild(left);
   header.appendChild(buildExternalEventBadge(styles));
   card.appendChild(header);
   return card;

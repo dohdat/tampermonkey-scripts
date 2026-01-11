@@ -1,11 +1,13 @@
 import assert from "assert";
 import { describe, it } from "mocha";
+import { setTimeout as realSetTimeout, clearTimeout as realClearTimeout } from "timers";
 
 import {
   applyPrioritySelectColor,
   getInheritedSubtaskFields,
   getLocalDateKey,
   normalizeHorizonDays,
+  debounce,
   renderInBatches,
   toggleClearButtonVisibility
 } from "../src/ui/utils.js";
@@ -162,5 +164,43 @@ describe("renderInBatches", () => {
       assert.strictEqual(completed, false);
       done();
     }, 20);
+  });
+});
+
+describe("debounce", () => {
+  it("invokes once with the latest args", (done) => {
+    const originalSetTimeout = global.setTimeout;
+    const originalClearTimeout = global.clearTimeout;
+    global.setTimeout = realSetTimeout;
+    global.clearTimeout = realClearTimeout;
+    const calls = [];
+    const debounced = debounce((value) => calls.push(value), 20);
+    debounced("first");
+    debounced("second");
+    setTimeout(() => {
+      assert.deepStrictEqual(calls, ["second"]);
+      global.setTimeout = originalSetTimeout;
+      global.clearTimeout = originalClearTimeout;
+      done();
+    }, 40);
+  });
+
+  it("cancels pending callbacks", (done) => {
+    const originalSetTimeout = global.setTimeout;
+    const originalClearTimeout = global.clearTimeout;
+    global.setTimeout = realSetTimeout;
+    global.clearTimeout = realClearTimeout;
+    let called = false;
+    const debounced = debounce(() => {
+      called = true;
+    }, 20);
+    debounced();
+    debounced.cancel();
+    setTimeout(() => {
+      assert.strictEqual(called, false);
+      global.setTimeout = originalSetTimeout;
+      global.clearTimeout = originalClearTimeout;
+      done();
+    }, 40);
   });
 });

@@ -281,6 +281,26 @@ export function renderInBatches({
   step();
 }
 
+export function debounce(callback, wait = 0) {
+  let timeoutId = null;
+  const debounced = function debouncedCallback(...args) {
+    const context = this;
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    timeoutId = setTimeout(() => {
+      timeoutId = null;
+      callback.apply(context, args);
+    }, wait);
+  };
+  debounced.cancel = () => {
+    if (!timeoutId) {return;}
+    clearTimeout(timeoutId);
+    timeoutId = null;
+  };
+  return debounced;
+}
+
 export function toggleClearButtonVisibility(input, button) {
   if (!input || !button) {return false;}
   const hasValue = Boolean((input.value || "").trim());

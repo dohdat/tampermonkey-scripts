@@ -12,7 +12,7 @@ import {
 } from "../data/db.js";
 import { SIXTY, domRefs } from "./constants.js";
 import { state } from "./state/page-state.js";
-import { normalizeHorizonDays } from "./utils.js";
+import { normalizeHorizonDays, debounce } from "./utils.js";
 import { invalidateExternalEventsCache } from "./calendar-external.js";
 import { loadTasks, updateScheduleSummary } from "./tasks/tasks-actions.js";
 import { initTaskTemplates, loadTaskTemplates } from "./task-templates.js";
@@ -28,6 +28,8 @@ const {
   backupRestoreBtn,
   backupStatus
 } = domRefs;
+
+const HORIZON_PERSIST_DEBOUNCE_MS = 250;
 
 function getRuntime() {
   return globalThis.chrome?.runtime || null;
@@ -227,7 +229,7 @@ function createSettingsPersistor() {
 }
 
 function initHorizonSettings(persistSettings) {
-  if (!horizonInput) {return;}
+  if (!horizonInput) {return () => {};}
   const min = Number(horizonInput.min) || 1;
   const max = Number(horizonInput.max) || SIXTY;
   const fallback = DEFAULT_SCHEDULING_HORIZON_DAYS;
@@ -247,8 +249,14 @@ function initHorizonSettings(persistSettings) {
     void persist().catch((error) =>
       console.warn("Failed to save horizon setting.", error)
     );
-  horizonInput.addEventListener("input", persistSafely);
+  const debouncedPersist = debounce(persistSafely, HORIZON_PERSIST_DEBOUNCE_MS);
+  horizonInput.addEventListener("input", debouncedPersist);
   horizonInput.addEventListener("change", persistSafely);
+  return () => {
+    horizonInput.removeEventListener("input", debouncedPersist);
+    horizonInput.removeEventListener("change", persistSafely);
+    debouncedPersist.cancel?.();
+  };
 }
 
 function initGoogleCalendarSettings(persistSettingsSafely) {
@@ -420,8 +428,16 @@ export async function initSettings(prefetchedSettings) {
   state.settingsCache = { ...DEFAULT_SETTINGS, ...settings };
   applyCollapsedPreferences(state.settingsCache);
   const { persistSettings, persistSettingsSafely } = createSettingsPersistor();
-  initHorizonSettings(persistSettings);
+  const cleanupFns = [];
+  if (typeof state.settingsCleanup === "function") {
+    state.settingsCleanup();
+    state.settingsCleanup = null;
+  }
+  cleanupFns.push(initHorizonSettings(persistSettings));
   initGoogleCalendarSettings(persistSettingsSafely);
   initBackupSettings();
   state.taskTemplatesCleanup = initTaskTemplates();
+  state.settingsCleanup = () => {
+    cleanupFns.forEach((cleanup) => cleanup?.());
+  };
 }

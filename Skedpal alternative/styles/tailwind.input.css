@@ -316,6 +316,8 @@ body.modal-open{overflow:hidden}
   [data-test-skedpal="tasks-view"] .task-title-main{font-size:var(--font-size-sm-plus)}
   [data-test-skedpal="tasks-view"] .task-title-text{font-size:var(--font-size-sm);line-height:var(--line-height-tight)}
   [data-test-skedpal="tasks-view"] .task-title-text--subtask{font-size:var(--font-size-xs)}
+  [data-test-skedpal="tasks-view"] [data-test-skedpal="section-title-text"]{font-size:var(--font-size-sm-plus)}
+  [data-test-skedpal="tasks-view"] [data-test-skedpal="subsection-title-text"]{font-size:var(--font-size-sm)}
   [data-test-skedpal="tasks-view"] .task-actions-wrap{flex:1 1 100%;width:100%;flex-wrap:wrap;justify-content:flex-start}
   [data-test-skedpal="tasks-view"] .task-title-actions{gap:var(--space-0-25)}
   [data-test-skedpal="tasks-view"] .title-icon-btn{width:var(--size-24px);height:var(--size-24px)}
@@ -323,6 +325,13 @@ body.modal-open{overflow:hidden}
   [data-test-skedpal="tasks-view"] .task-summary-row{gap:var(--space-0-35);font-size:var(--font-size-xxs)}
   [data-test-skedpal="tasks-view"] [data-test-skedpal="task-meta"],
   [data-test-skedpal="tasks-view"] [data-test-skedpal="task-status-details"]{font-size:var(--font-size-xxs);gap:var(--space-0-35)}
+}
+
+@media (min-width:1400px){
+  [data-test-skedpal="tasks-view"] .task-title-text,
+  [data-test-skedpal="tasks-view"] .task-title-text--subtask,
+  [data-test-skedpal="tasks-view"] [data-test-skedpal="section-title-text"],
+  [data-test-skedpal="tasks-view"] [data-test-skedpal="subsection-title-text"]{font-size:var(--font-size-sm)}
 }
 
 /* Calendar view */

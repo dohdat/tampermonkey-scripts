@@ -17,6 +17,7 @@ import { invalidateExternalEventsCache } from "./calendar-external.js";
 import { loadTasks, updateScheduleSummary, renderTimeMapsAndTasks } from "./tasks/tasks-actions.js";
 import { initTaskTemplates, loadTaskTemplates } from "./task-templates.js";
 import { initTimeMapSectionToggle } from "./time-map-settings-toggle.js";
+import { buildBackupExportPayload, parseBackupImportJson } from "./backup-transfer.js";
 
 const {
   horizonInput,
@@ -26,6 +27,9 @@ const {
   googleCalendarStatus,
   googleCalendarList,
   backupNowBtn,
+  backupExportBtn,
+  backupImportBtn,
+  backupImportInput,
   backupRestoreBtn,
   backupStatus,
   taskBackgroundModeSelect
@@ -62,6 +66,14 @@ function setBackupButtonsState(disabled) {
   if (backupNowBtn) {
     backupNowBtn.disabled = Boolean(disabled);
     backupNowBtn.classList.toggle("opacity-60", Boolean(disabled));
+  }
+  if (backupExportBtn) {
+    backupExportBtn.disabled = Boolean(disabled);
+    backupExportBtn.classList.toggle("opacity-60", Boolean(disabled));
+  }
+  if (backupImportBtn) {
+    backupImportBtn.disabled = Boolean(disabled);
+    backupImportBtn.classList.toggle("opacity-60", Boolean(disabled));
   }
   if (backupRestoreBtn) {
     backupRestoreBtn.disabled = Boolean(disabled);
@@ -390,6 +402,34 @@ function confirmBackupRestore() {
   return window.confirm("Restore the latest backup? This will replace current data.");
 }
 
+function confirmBackupImport() {
+  if (typeof window === "undefined") {return true;}
+  return window.confirm("Import this backup file? This will replace current data.");
+}
+
+function formatBackupFilename(value) {
+  const date = new Date(value || Date.now());
+  if (Number.isNaN(date.getTime())) {
+    return "skedpal-backup.json";
+  }
+  const padLength = 2;
+  const pad = (num) => String(num).padStart(padLength, "0");
+  const stamp = `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+  return `skedpal-backup-${stamp}.json`;
+}
+
+function triggerJsonDownload(payload, filename) {
+  const blob = new Blob([payload], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
 async function applyBackupSnapshot(latest) {
   await restoreBackup(latest);
   state.settingsCache = { ...DEFAULT_SETTINGS, ...(latest.settings || {}) };
@@ -418,6 +458,52 @@ async function handleBackupNowClick() {
   }
 }
 
+async function handleBackupExportClick() {
+  setBackupButtonsState(true);
+  setBackupStatus("Preparing export...");
+  try {
+    const snapshot = await createBackupSnapshot();
+    const payload = buildBackupExportPayload(snapshot);
+    triggerJsonDownload(payload, formatBackupFilename(snapshot.createdAt));
+    setBackupStatus(`Exported backup ${formatBackupTimestamp(snapshot.createdAt)}.`);
+  } catch (error) {
+    console.warn("Failed to export backup.", error);
+    setBackupStatus("Failed to export backup.");
+  } finally {
+    setBackupButtonsState(false);
+  }
+}
+
+function handleBackupImportClick() {
+  if (!backupImportInput) {return;}
+  backupImportInput.value = "";
+  backupImportInput.click();
+}
+
+async function handleBackupImportChange(event) {
+  const input = event?.currentTarget;
+  const file = input?.files?.[0];
+  if (!file) {return;}
+  setBackupButtonsState(true);
+  setBackupStatus("Importing backup...");
+  try {
+    const text = await file.text();
+    const snapshot = parseBackupImportJson(text);
+    if (!confirmBackupImport()) {
+      setBackupStatus("Import canceled.");
+      return;
+    }
+    await applyBackupSnapshot(snapshot);
+    setBackupStatus(`Imported backup from ${formatBackupTimestamp(snapshot.createdAt)}.`);
+  } catch (error) {
+    console.warn("Failed to import backup.", error);
+    setBackupStatus("Failed to import backup.");
+  } finally {
+    setBackupButtonsState(false);
+    await refreshBackupStatus();
+  }
+}
+
 async function handleRestoreLatestClick() {
   setBackupButtonsState(true);
   setBackupStatus("Restoring backup...");
@@ -443,9 +529,31 @@ async function handleRestoreLatestClick() {
 }
 
 function initBackupSettings() {
-  backupNowBtn?.addEventListener("click", handleBackupNowClick);
-  backupRestoreBtn?.addEventListener("click", handleRestoreLatestClick);
+  const cleanupFns = [];
+  if (backupNowBtn) {
+    backupNowBtn.addEventListener("click", handleBackupNowClick);
+    cleanupFns.push(() => backupNowBtn.removeEventListener("click", handleBackupNowClick));
+  }
+  if (backupExportBtn) {
+    backupExportBtn.addEventListener("click", handleBackupExportClick);
+    cleanupFns.push(() => backupExportBtn.removeEventListener("click", handleBackupExportClick));
+  }
+  if (backupImportBtn) {
+    backupImportBtn.addEventListener("click", handleBackupImportClick);
+    cleanupFns.push(() => backupImportBtn.removeEventListener("click", handleBackupImportClick));
+  }
+  if (backupImportInput) {
+    backupImportInput.addEventListener("change", handleBackupImportChange);
+    cleanupFns.push(() => backupImportInput.removeEventListener("change", handleBackupImportChange));
+  }
+  if (backupRestoreBtn) {
+    backupRestoreBtn.addEventListener("click", handleRestoreLatestClick);
+    cleanupFns.push(() => backupRestoreBtn.removeEventListener("click", handleRestoreLatestClick));
+  }
   void refreshBackupStatus();
+  return () => {
+    cleanupFns.forEach((cleanup) => cleanup());
+  };
 }
 
 export async function initSettings(prefetchedSettings) {
@@ -462,7 +570,7 @@ export async function initSettings(prefetchedSettings) {
   cleanupFns.push(initTaskBackgroundSetting(persistSettingsSafely));
   cleanupFns.push(initTimeMapSectionToggle());
   initGoogleCalendarSettings(persistSettingsSafely);
-  initBackupSettings();
+  cleanupFns.push(initBackupSettings());
   state.taskTemplatesCleanup = initTaskTemplates();
   state.settingsCleanup = () => {
     cleanupFns.forEach((cleanup) => cleanup?.());

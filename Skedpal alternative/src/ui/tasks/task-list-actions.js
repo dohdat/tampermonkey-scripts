@@ -29,6 +29,7 @@ import {
   viewTaskOnCalendar
 } from "./tasks-actions.js";
 import { openTaskReminderModal, dismissOverdueTaskReminders } from "./task-reminders.js";
+import { handleAddTaskRowClick } from "./task-add-row.js";
 export { handleTaskTitleDoubleClick } from "./task-inline-edit.js";
 
 function runTaskDetailCleanup(taskId) {
@@ -144,7 +145,8 @@ function parseTaskListClick(btn) {
     dismissReminderTaskId: btn.dataset.dismissReminder,
     addSubtaskId: btn.dataset.addSubtask,
     toggleTaskDetailsId: btn.dataset.toggleTaskDetails,
-    toggleTaskCollapseId: btn.dataset.toggleTaskCollapse
+    toggleTaskCollapseId: btn.dataset.toggleTaskCollapse,
+    addTaskRow: btn.dataset.addTaskRow
   };
 }
 
@@ -613,6 +615,7 @@ export async function handleTaskListClick(event, options = {}) {
   if (!btn) {return;}
   const action = parseTaskListClick(btn);
   const handlers = [
+    () => handleAddTaskRowClick(btn),
     () => handleTaskMenuToggle(action, btn),
     () => handleCompleteAction(action),
     () => handleZoomActionWithClose(action),

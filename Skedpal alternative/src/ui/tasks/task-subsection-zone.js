@@ -2,6 +2,7 @@ import { TASK_PLACEHOLDER_CLASS, TASK_ZONE_CLASS } from "../constants.js";
 import { sortTasksByOrder } from "../utils.js";
 import { renderTaskCards } from "./task-cards-render.js";
 import { registerTaskVirtualizer, shouldVirtualizeTaskList } from "./task-virtualization.js";
+import { buildAddTaskRow } from "./task-add-row.js";
 
 export function buildChildSubsectionInput(sub, sectionId, isNoSection) {
   const childSubsectionInputWrap = document.createElement("div");
@@ -31,7 +32,7 @@ export function buildSubsectionZone(
   const { enableVirtualization, isCollapsed, shouldCancel } = options;
   const subZone = document.createElement("div");
   subZone.className =
-    "rounded-lg border-dashed border-slate-700 bg-slate-900/40 px-2 py-2";
+    "rounded-lg border-dashed border-slate-700 bg-slate-900/40 px-2 py-2 space-y-2";
   subZone.setAttribute("data-test-skedpal", "subsection-task-zone-wrap");
   const subZoneList = document.createElement("div");
   subZoneList.dataset.dropSection = isNoSection ? "" : sectionId;
@@ -60,5 +61,11 @@ export function buildSubsectionZone(
     });
   }
   subZone.appendChild(subZoneList);
+  subZone.appendChild(
+    buildAddTaskRow({
+      sectionId: isNoSection ? "" : sectionId,
+      subsectionId: sub.id
+    })
+  );
   return subZone;
 }

@@ -36,17 +36,17 @@ import {
   handleTaskListClick,
   handleTaskTitleDoubleClick
 } from "./tasks/task-list-actions.js";
+import { handleTaskListInputKeydown } from "./tasks/task-list-inputs.js";
 import { initTaskReminderModal } from "./tasks/task-reminders.js";
 import {
   renderTaskSubsectionOptions,
   openSectionForm,
   closeSectionForm,
   handleAddSection,
-  handleRemoveSection,
   closeSubsectionModal,
-  handleSubsectionFormSubmit,
-  handleAddSubsection
+  handleSubsectionFormSubmit
 } from "./sections.js";
+import { handleSectionInputKeydown, handleSectionListClick } from "./section-inputs.js";
 import {
   updateFavoriteOrder,
   toggleFavoriteGroup,
@@ -229,19 +229,6 @@ function handleSectionFormToggleClick() {
   } else {
     openSectionForm();
   }
-}
-
-function handleSectionInputKeydown(event) {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    handleAddSection();
-  }
-}
-
-function handleSectionListClick(event) {
-  const btn = event.target.closest("button[data-remove-section]");
-  if (!btn) {return;}
-  handleRemoveSection(btn.dataset.removeSection);
 }
 
 function handleTaskSectionSelectChange() {
@@ -550,44 +537,7 @@ function registerListHandlers() {
     applyPriority();
   }
   subsectionForm?.addEventListener("submit", handleSubsectionFormSubmitEvent);
-  taskList?.addEventListener("keydown", handleSubsectionInputKeydown);
-}
-
-async function handleSubsectionInputKeydown(event) {
-  if (event.key !== "Enter") {return;}
-  const input = event.target;
-  if (!(input instanceof HTMLElement)) {return;}
-  if (input.matches("[data-subsection-input]")) {
-    event.preventDefault();
-    await handleSubsectionInputSubmit(input);
-    return;
-  }
-  if (input.matches("[data-child-subsection-input]")) {
-    event.preventDefault();
-    await handleChildSubsectionInputSubmit(input);
-  }
-}
-
-async function handleSubsectionInputSubmit(input) {
-  const sectionId = input.dataset.subsectionInput || "";
-  const value = input.value || "";
-  if (!value.trim()) {return;}
-  await handleAddSubsection(sectionId, value);
-  input.value = "";
-  const wrap = input.closest(`[data-subsection-form="${sectionId}"]`);
-  wrap?.classList.add("hidden");
-}
-
-async function handleChildSubsectionInputSubmit(input) {
-  const parentSubId = input.dataset.childSubsectionInput || "";
-  const card = input.closest(`[data-subsection-card="${parentSubId}"]`);
-  const parentSectionId = card?.closest("[data-section-card]")?.dataset.sectionCard || "";
-  const value = input.value || "";
-  if (!value.trim()) {return;}
-  await handleAddSubsection(parentSectionId, value, parentSubId);
-  input.value = "";
-  const wrap = input.closest(`[data-child-subsection-form="${parentSubId}"]`);
-  wrap?.classList.add("hidden");
+  taskList?.addEventListener("keydown", handleTaskListInputKeydown);
 }
 
 function registerSubsectionHandlers() {

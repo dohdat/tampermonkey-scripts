@@ -6,6 +6,7 @@ import {
 import { domRefs } from "./constants.js";
 import { state } from "./state/page-state.js";
 import { openTemplateEditor, openTemplateSubtaskEditor } from "./tasks/tasks-actions.js";
+import { toggleTemplateSubtaskList, getExpandedTemplateIds } from "./task-templates-utils.js";
 
 function getTemplateTitle(template) {
   return template?.title || "Untitled template";
@@ -130,16 +131,7 @@ function renderSubtaskTree(container, templateId, subtasks) {
   roots.forEach((subtask) => appendSubtask(subtask, container));
 }
 
-function buildTemplateCard(template) {
-  const card = document.createElement("div");
-  card.className = "rounded-2xl border-slate-800 bg-slate-900/70 p-4 shadow space-y-3";
-  card.setAttribute("data-test-skedpal", "task-template-card");
-  card.dataset.templateId = template.id || "";
-
-  const header = document.createElement("div");
-  header.className = "flex flex-wrap items-center justify-between gap-2";
-  header.setAttribute("data-test-skedpal", "task-template-header");
-
+function buildTemplateTitle(template, subtaskCount) {
   const titleWrap = document.createElement("div");
   titleWrap.className = "flex flex-wrap items-center gap-2";
   titleWrap.setAttribute("data-test-skedpal", "task-template-title-wrap");
@@ -150,15 +142,29 @@ function buildTemplateCard(template) {
   const count = document.createElement("span");
   count.className =
     "rounded-full border-slate-700 bg-slate-800/70 px-2 py-1 text-xs font-semibold text-slate-200";
-  const subtaskCount = (template.subtasks || []).length;
   count.textContent = `${subtaskCount} ${subtaskCount === 1 ? "subtask" : "subtasks"}`;
   count.setAttribute("data-test-skedpal", "task-template-subtask-count");
   titleWrap.appendChild(title);
   titleWrap.appendChild(count);
+  return titleWrap;
+}
 
+function buildTemplateActions(template, subtaskCount, isExpanded) {
   const actions = document.createElement("div");
   actions.className = "task-template-actions flex flex-wrap items-center gap-2";
   actions.setAttribute("data-test-skedpal", "task-template-actions");
+
+  if (subtaskCount > 0) {
+    const toggleBtn = document.createElement("button");
+    toggleBtn.type = "button";
+    toggleBtn.dataset.templateToggleSubtasks = template.id || "";
+    toggleBtn.className =
+      "rounded-lg border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
+    toggleBtn.textContent = isExpanded ? "Collapse" : "Expand";
+    toggleBtn.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+    toggleBtn.setAttribute("data-test-skedpal", "task-template-toggle");
+    actions.appendChild(toggleBtn);
+  }
 
   const addSubtaskBtn = document.createElement("button");
   addSubtaskBtn.type = "button";
@@ -187,15 +193,38 @@ function buildTemplateCard(template) {
   actions.appendChild(addSubtaskBtn);
   actions.appendChild(editBtn);
   actions.appendChild(deleteBtn);
+  return actions;
+}
+
+function buildTemplateSubtaskList(template, isExpanded) {
+  if (!Array.isArray(template.subtasks) || template.subtasks.length === 0) {return null;}
+  const subtaskList = document.createElement("div");
+  subtaskList.className = `grid gap-2${isExpanded ? "" : " hidden"}`;
+  subtaskList.dataset.templateSubtaskList = template.id || "";
+  subtaskList.setAttribute("data-test-skedpal", "task-template-subtask-list");
+  renderSubtaskTree(subtaskList, template.id, template.subtasks);
+  return subtaskList;
+}
+
+function buildTemplateCard(template, isExpanded) {
+  const card = document.createElement("div");
+  card.className = "rounded-2xl border-slate-800 bg-slate-900/70 p-4 shadow space-y-3";
+  card.setAttribute("data-test-skedpal", "task-template-card");
+  card.dataset.templateId = template.id || "";
+
+  const header = document.createElement("div");
+  header.className = "flex flex-wrap items-center justify-between gap-2";
+  header.setAttribute("data-test-skedpal", "task-template-header");
+
+  const subtaskCount = (template.subtasks || []).length;
+  const titleWrap = buildTemplateTitle(template, subtaskCount);
+  const actions = buildTemplateActions(template, subtaskCount, isExpanded);
   header.appendChild(titleWrap);
   header.appendChild(actions);
   card.appendChild(header);
 
-  if (Array.isArray(template.subtasks) && template.subtasks.length) {
-    const subtaskList = document.createElement("div");
-    subtaskList.className = "grid gap-2";
-    subtaskList.setAttribute("data-test-skedpal", "task-template-subtask-list");
-    renderSubtaskTree(subtaskList, template.id, template.subtasks);
+  const subtaskList = buildTemplateSubtaskList(template, isExpanded);
+  if (subtaskList) {
     card.appendChild(subtaskList);
   }
 
@@ -205,6 +234,7 @@ function buildTemplateCard(template) {
 export function renderTaskTemplates() {
   const list = domRefs.taskTemplateList;
   if (!list) {return;}
+  const expandedIds = getExpandedTemplateIds(list);
   list.innerHTML = "";
   const templates = sortTemplates(state.taskTemplatesCache || []);
   if (!templates.length) {
@@ -212,7 +242,10 @@ export function renderTaskTemplates() {
     return;
   }
   const fragment = document.createDocumentFragment();
-  templates.forEach((template) => fragment.appendChild(buildTemplateCard(template)));
+  templates.forEach((template) => {
+    const isExpanded = expandedIds.has(template.id || "");
+    fragment.appendChild(buildTemplateCard(template, isExpanded));
+  });
   list.appendChild(fragment);
 }
 
@@ -242,6 +275,13 @@ function findTemplateSubtask(templateId, subtaskId) {
 }
 
 const templateClickHandlers = [
+  {
+    when: (btn) => Boolean(btn.dataset.templateToggleSubtasks),
+    run: (btn) => {
+      const card = btn.closest?.("[data-template-id]");
+      toggleTemplateSubtaskList(card, btn);
+    }
+  },
   {
     when: (btn) => Boolean(btn.dataset.templateEdit),
     run: (btn) => {

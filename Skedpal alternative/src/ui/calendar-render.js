@@ -7,12 +7,15 @@ import {
   MINUTES_PER_HOUR,
   ONE_TWENTY,
   OPACITY_TWENTY_TWO,
+  SEVEN,
   SIXTEEN,
   TWENTY,
   TWO,
   TWO_FIFTY_FIVE,
   removeIconSvg
 } from "./constants.js";
+import { themeColors } from "./theme.js";
+import { state } from "./state/page-state.js";
 
 export const HOUR_HEIGHT = ONE_TWENTY;
 const EVENT_GUTTER = TWO;
@@ -40,6 +43,27 @@ const FALLBACK_EXTERNAL_RGB_VARS = [
   "--color-green-400-rgb",
   "--color-orange-400-rgb"
 ];
+
+const PRIORITY_COLORS = {
+  1: themeColors.slate400,
+  2: themeColors.blue400,
+  3: themeColors.sky400,
+  4: themeColors.amber400,
+  5: themeColors.orange500
+};
+
+function resolveTaskBackgroundMode() {
+  const mode = state.settingsCache?.taskBackgroundMode || "priority";
+  if (mode === "priority" || mode === "timemap" || mode === "none") {
+    return mode;
+  }
+  return "priority";
+}
+
+function resolvePriorityBackgroundColor(priorityValue) {
+  const color = PRIORITY_COLORS[priorityValue];
+  return color ? `${color}1a` : "";
+}
 
 function getPaletteIndex(value, count) {
   if (!count) {return 0;}
@@ -90,6 +114,21 @@ function getExternalEventStyles(event) {
 export function getCalendarEventStyles(event, timeMapColorById) {
   if (event?.source === "external") {
     return getExternalEventStyles(event);
+  }
+  const backgroundMode = resolveTaskBackgroundMode();
+  if (backgroundMode === "priority") {
+    const color = resolvePriorityBackgroundColor(Number(event?.priority) || 0);
+    if (!color) {return null;}
+    return {
+      backgroundColor: color,
+      borderColor: color.slice(0, SEVEN)
+    };
+  }
+  if (backgroundMode === "none") {
+    return {
+      backgroundColor: `${themeColors.slate400}1a`,
+      borderColor: themeColors.slate400
+    };
   }
   const color = timeMapColorById?.get?.(event?.timeMapId || "");
   if (!color) {return null;}

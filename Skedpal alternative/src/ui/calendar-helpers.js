@@ -35,6 +35,7 @@ export function buildScheduledEvent(task, instance, index, completedOccurrences)
     taskId: task.id,
     title: task.title || "Untitled task",
     link: task.link || "",
+    priority: Number(task.priority) || 0,
     start: dates.start,
     end: dates.end,
     timeMapId: instance.timeMapId || "",

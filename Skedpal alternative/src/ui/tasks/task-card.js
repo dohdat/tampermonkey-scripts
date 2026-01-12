@@ -11,8 +11,8 @@ import {
   plusIconSvg,
   reminderIconSvg,
   removeIconSvg,
+  TWO,
   TASK_CHILD_INDENT_PX,
-  TASK_TITLE_LONG_THRESHOLD,
   unscheduledIconSvg,
   zoomInIconSvg
 } from "../constants.js";
@@ -100,7 +100,6 @@ function buildTitleWrap(task, options) {
   const {
     hasChildren,
     isCollapsed,
-    isLongTitle,
     isSubtask,
     titleMarkup,
     detailsOpen,
@@ -116,7 +115,7 @@ function buildTitleWrap(task, options) {
   }
   titleWrap.appendChild(buildTaskCompleteButton(task));
   titleWrap.appendChild(buildTaskTitleText(task, titleMarkup, isSubtask));
-  return { titleWrap, isLongTitle, displayDurationMin, detailsOpen };
+  return { titleWrap, displayDurationMin, detailsOpen };
 }
 
 function buildMenuToggleButton(taskId) {
@@ -385,11 +384,11 @@ function buildTaskSummaryRow(task, options = {}) {
 
 function buildTaskHeader(task, options) {
   const header = document.createElement("div");
-  header.className = `task-title-row title-hover-group${options.isLongTitle ? " task-title-row--stacked" : ""}`;
-  const { titleWrap, displayDurationMin, detailsOpen, isLongTitle } = buildTitleWrap(task, options);
+  header.className = "task-title-row title-hover-group";
+  const { titleWrap, displayDurationMin, detailsOpen } = buildTitleWrap(task, options);
   const actionsWrap = buildTaskTitleActions(task, detailsOpen);
   actionsWrap.style.flex = "1";
-  actionsWrap.style.flexWrap = isLongTitle ? "nowrap" : "wrap";
+  actionsWrap.style.flexWrap = "wrap";
   actionsWrap.style.justifyContent = "flex-start";
   const durationPill = buildTaskDurationPill(displayDurationMin);
   if (actionsWrap.firstChild) {
@@ -410,6 +409,22 @@ function buildTaskHeader(task, options) {
   header.appendChild(titleWrap);
   header.appendChild(actionsWrap);
   return header;
+}
+
+function applyTaskHeaderLayout(header) {
+  if (!header || typeof window === "undefined") {return;}
+  if (typeof window.requestAnimationFrame !== "function") {return;}
+  window.requestAnimationFrame(() => {
+    if (!header.isConnected) {return;}
+    const titleWrap = header.querySelector('[data-test-skedpal="task-title-wrap"]');
+    const actionsWrap = header.querySelector('[data-test-skedpal="task-actions-wrap"]');
+    if (!titleWrap || !actionsWrap) {return;}
+    const titleTop = Number(titleWrap.offsetTop) || 0;
+    const actionsTop = Number(actionsWrap.offsetTop) || 0;
+    const isStacked = actionsTop > titleTop + TWO;
+    header.classList.toggle("task-title-row--stacked", isStacked);
+    actionsWrap.style.flexWrap = isStacked ? "nowrap" : "wrap";
+  });
 }
 
 function buildTaskMeta(task, timeMapNames, repeatSummary) {
@@ -553,7 +568,6 @@ export function renderTaskCard(task, context) {
   const repeatSummary = getRepeatSummary(task.repeat);
   const taskCard = buildTaskCardShell(task, { depth, timeMapById });
   const titleMarkup = buildTitleMarkup(task);
-  const isLongTitle = (task.title || "").length > TASK_TITLE_LONG_THRESHOLD;
   const detailsOpen = expandedTaskDetails.has(task.id);
   const overdueReminders = getOverdueReminders(task);
   if (overdueReminders.length) {
@@ -571,7 +585,6 @@ export function renderTaskCard(task, context) {
   const header = buildTaskHeader(task, {
     hasChildren,
     isCollapsed,
-    isLongTitle,
     isSubtask: depth > 0,
     titleMarkup,
     detailsOpen,
@@ -582,6 +595,7 @@ export function renderTaskCard(task, context) {
     showUnscheduledIcon
   });
   taskCard.appendChild(header);
+  applyTaskHeaderLayout(header);
   if (detailsOpen) {
     const detailsWrap = document.createElement("div");
     detailsWrap.className = "task-details";

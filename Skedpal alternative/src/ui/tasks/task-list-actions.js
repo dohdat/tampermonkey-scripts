@@ -30,6 +30,7 @@ import {
 } from "./tasks-actions.js";
 import { openTaskReminderModal, dismissOverdueTaskReminders } from "./task-reminders.js";
 import { handleAddTaskRowClick } from "./task-add-row.js";
+import { computeSingleExpandedCollapsedSet } from "./task-collapse-utils.js";
 export { handleTaskTitleDoubleClick } from "./task-inline-edit.js";
 
 function runTaskDetailCleanup(taskId) {
@@ -441,7 +442,11 @@ function handleCollapseActions(btn, action) {
     {
       when: action.toggleTaskCollapseId !== undefined,
       run: () => {
-        toggleSetEntry(state.collapsedTasks, action.toggleTaskCollapseId);
+        state.collapsedTasks = computeSingleExpandedCollapsedSet(
+          state.collapsedTasks,
+          action.toggleTaskCollapseId,
+          state.tasksCache
+        );
         persistCollapsedState("collapsedTasks", state.collapsedTasks);
       }
     }

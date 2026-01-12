@@ -20,7 +20,6 @@ import { destroySectionSortables, setupSectionSortables } from "../sections-sort
 import { themeColors } from "../theme.js";
 import { destroyTaskVirtualizers, initializeTaskVirtualizers } from "./task-virtualization.js";
 import { buildChildSubsectionInput, buildSubsectionZone } from "./task-subsection-zone.js";
-import { buildAddTaskRow } from "./task-add-row.js";
 import {
   buildParentMap,
   buildTaskDepthGetter,
@@ -279,12 +278,6 @@ function buildUngroupedZone(context, options, renderToken) {
     batchSize: 30,
     shouldCancel: buildShouldCancel(renderToken)
   });
-  ungroupedZone.appendChild(
-    buildAddTaskRow({
-      sectionId: options.dropSection || "",
-      subsectionId: options.dropSubsection || ""
-    })
-  );
   return ungroupedZone;
 }
 
@@ -377,6 +370,7 @@ function renderSubsection(sub, section, sectionTasks, context, options) {
   subBody.dataset.subsectionBody = sub.id;
   subBody.style.display = subCollapsed ? "none" : "";
   subBody.appendChild(buildChildSubsectionInput(sub, section.id, isNoSection));
+  const children = buildChildren(sub.id);
   subBody.appendChild(
     buildSubsectionZone(
       sub,
@@ -389,11 +383,11 @@ function renderSubsection(sub, section, sectionTasks, context, options) {
       {
         enableVirtualization,
         isCollapsed,
-        shouldCancel: buildShouldCancel(renderToken)
+        shouldCancel: buildShouldCancel(renderToken),
+        showAddTaskRow: children.length === 0
       }
     )
   );
-  const children = buildChildren(sub.id);
   if (children.length) {
     const childWrap = document.createElement("div");
     childWrap.className =
@@ -432,7 +426,7 @@ function renderSectionCard(section, context, options) {
   }
   const { subsections, taskSubsections } = buildSubsections(section, sectionTasks);
   const filteredSubs = filterSubsectionsForZoom(subsections, taskSubsections, section.id);
-  appendUngroupedTasks(sectionBody, sectionTasks, isNoSection, context, renderToken, section.id);
+  appendUngroupedTasks(sectionBody, sectionTasks, isNoSection, context, renderToken);
   appendSubsections(sectionBody, filteredSubs, section, sectionTasks, context, {
     isNoSection,
     suppressPlaceholders,
@@ -462,14 +456,7 @@ function buildSectionCardContainer(section, isSubsectionZoom) {
   return card;
 }
 
-function appendUngroupedTasks(
-  sectionBody,
-  sectionTasks,
-  isNoSection,
-  context,
-  renderToken,
-  sectionId
-) {
+function appendUngroupedTasks(sectionBody, sectionTasks, isNoSection, context, renderToken) {
   const ungroupedTasks = sortTasksByOrder(sectionTasks.filter((t) => !t.subsection));
   if (isNoSection) {
     const ungroupedZone = buildUngroupedZone(context, {
@@ -487,12 +474,6 @@ function appendUngroupedTasks(
       shouldCancel: buildShouldCancel(renderToken)
     });
   }
-  sectionBody.appendChild(
-    buildAddTaskRow({
-      sectionId: sectionId || "",
-      subsectionId: ""
-    })
-  );
 }
 
 function appendSubsections(sectionBody, filteredSubs, section, sectionTasks, context, options) {

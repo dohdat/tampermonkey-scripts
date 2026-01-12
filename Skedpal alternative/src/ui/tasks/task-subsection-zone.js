@@ -29,7 +29,7 @@ export function buildSubsectionZone(
   renderToken,
   options = {}
 ) {
-  const { enableVirtualization, isCollapsed, shouldCancel } = options;
+  const { enableVirtualization, isCollapsed, shouldCancel, showAddTaskRow } = options;
   const subZone = document.createElement("div");
   subZone.className =
     "rounded-lg border-dashed border-slate-700 bg-slate-900/40 px-2 py-2 space-y-2";
@@ -55,11 +55,13 @@ export function buildSubsectionZone(
     });
   }
   subZone.appendChild(subZoneList);
-  subZone.appendChild(
-    buildAddTaskRow({
-      sectionId: isNoSection ? "" : sectionId,
-      subsectionId: sub.id
-    })
-  );
+  if (showAddTaskRow) {
+    subZone.appendChild(
+      buildAddTaskRow({
+        sectionId: isNoSection ? "" : sectionId,
+        subsectionId: sub.id
+      })
+    );
+  }
   return subZone;
 }

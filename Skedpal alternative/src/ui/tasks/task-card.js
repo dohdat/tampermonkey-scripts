@@ -48,7 +48,7 @@ function applyTaskCardBaseStyles(taskCard, task, depth, timeMapById, options = {
   taskCard.dataset.subsectionId = task.subsection || "";
   taskCard.tabIndex = 0;
   taskCard.style.minHeight = "fit-content";
-  taskCard.style.padding = "5px";
+  taskCard.style.padding = "2px";
   if (isSubtask) {
     taskCard.style.marginLeft = `${depth * TASK_CHILD_INDENT_PX}px`;
     taskCard.style.borderStyle = "dashed";

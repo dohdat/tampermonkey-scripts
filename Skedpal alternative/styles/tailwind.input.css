@@ -311,7 +311,7 @@ body.modal-open{overflow:hidden}
   [data-test-skedpal="tasks-calendar-split"][data-split="true"] [data-test-skedpal="calendar-now-indicator"]{scroll-margin-top:calc(var(--space-1) + var(--app-header-height))}
   [data-test-skedpal="tasks-view"] > :not([hidden]) ~ :not([hidden]){margin-top:var(--space-0-6)}
   [data-test-skedpal="task-list"]{gap:var(--space-0-65)}
-  [data-test-skedpal="tasks-view"] [data-test-skedpal="task-card"]{padding:var(--space-0-75);border-radius:var(--size-14px)}
+  [data-test-skedpal="tasks-view"] [data-test-skedpal="task-card"]{padding:var(--space-0-55);border-radius:var(--size-14px)}
   [data-test-skedpal="tasks-view"] .task-title-row{gap:var(--space-0-25)}
   [data-test-skedpal="tasks-view"] .task-title-main{font-size:var(--font-size-sm-plus)}
   [data-test-skedpal="tasks-view"] .task-title-text{font-size:var(--font-size-sm);line-height:var(--line-height-tight)}

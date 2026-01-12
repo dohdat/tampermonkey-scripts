@@ -1,5 +1,5 @@
 import { saveTask } from "../../data/db.js";
-import { INDEX_NOT_FOUND } from "../constants.js";
+import { INDEX_NOT_FOUND, TASK_TITLE_MAX_LENGTH } from "../constants.js";
 import { state } from "../state/page-state.js";
 import { loadTasks } from "./tasks-actions.js";
 
@@ -100,6 +100,7 @@ function startInlineTitleEdit(titleEl, task, options = {}) {
   input.value = originalTitle;
   input.className =
     "w-full rounded-md border border-slate-700 bg-slate-900/70 px-2 py-1 text-sm text-slate-100 focus:border-lime-400 focus:outline-none";
+  input.maxLength = TASK_TITLE_MAX_LENGTH;
   input.setAttribute("data-test-skedpal", "task-title-inline-input");
   titleEl.dataset.inlineEditing = "true";
   titleEl.dataset.inlineEditingTaskId = task.id;
@@ -119,7 +120,7 @@ function startInlineTitleEdit(titleEl, task, options = {}) {
       restoreInlineTitle(titleEl, originalTitle);
       return;
     }
-    const nextTitle = input.value.trim();
+    const nextTitle = input.value.trim().slice(0, TASK_TITLE_MAX_LENGTH);
     if (!nextTitle || nextTitle === originalTitle) {
       restoreInlineTitle(titleEl, originalTitle);
       return;

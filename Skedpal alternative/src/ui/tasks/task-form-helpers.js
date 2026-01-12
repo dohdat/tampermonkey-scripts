@@ -3,7 +3,8 @@ import {
   DEFAULT_TASK_MIN_BLOCK_MIN,
   DEFAULT_TASK_PRIORITY,
   DEFAULT_TASK_REPEAT,
-  TASK_DURATION_STEP_MIN
+  TASK_DURATION_STEP_MIN,
+  TASK_TITLE_MAX_LENGTH
 } from "../constants.js";
 import { isStartAfterDeadline, normalizeSubtaskScheduleMode } from "../utils.js";
 
@@ -63,6 +64,9 @@ export function shouldShowSubtaskSchedule(task, isParentTask) {
 export function validateTaskForm(values) {
   if (!values.title || !values.durationMin) {
     return "Title and duration are required.";
+  }
+  if (values.title.length > TASK_TITLE_MAX_LENGTH) {
+    return `Title must be ${TASK_TITLE_MAX_LENGTH} characters or less.`;
   }
   if (!values.subsection) {
     return "Select a subsection.";

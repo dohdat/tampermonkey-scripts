@@ -118,6 +118,19 @@ describe("task form helpers", () => {
     assert.strictEqual(error, "Start from cannot be after deadline.");
   });
 
+  it("rejects titles longer than 90 characters", () => {
+    const error = validateTaskForm({
+      title: "a".repeat(91),
+      durationMin: 30,
+      timeMapIds: ["tm-1"],
+      subsection: "sub-1",
+      startFrom: "",
+      deadline: ""
+    });
+
+    assert.strictEqual(error, "Title must be 90 characters or less.");
+  });
+
   it("returns an empty string when the task values are valid", () => {
     const error = validateTaskForm({
       title: "Task",

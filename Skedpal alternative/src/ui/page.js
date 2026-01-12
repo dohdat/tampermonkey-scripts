@@ -30,6 +30,7 @@ import {
 } from "./tasks/tasks-actions.js";
 import { initTaskTemplateSelect } from "./tasks/task-template-select.js";
 import { initTaskListAssistant } from "./tasks/task-ai.js";
+import { updateTaskTitleHelper } from "./tasks/task-form-ui.js";
 import {
   handleTaskContainerDoubleClick,
   handleTaskListClick,
@@ -487,6 +488,12 @@ function registerTaskFormHandlers() {
   if (taskDurationInput) {
     taskDurationInput.addEventListener("input", syncTaskDurationHelper);
     syncTaskDurationHelper();
+  }
+  if (domRefs.taskTitleInput) {
+    const handleTitleInput = () => updateTaskTitleHelper();
+    domRefs.taskTitleInput.addEventListener("input", handleTitleInput);
+    updateTaskTitleHelper();
+    cleanupFns.push(() => domRefs.taskTitleInput?.removeEventListener("input", handleTitleInput));
   }
   if (taskPriorityInput) {
     const applyPriority = () => applyPrioritySelectColor(taskPriorityInput);

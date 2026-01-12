@@ -4,6 +4,7 @@ import {
   DEFAULT_TASK_PRIORITY,
   DEFAULT_TASK_REPEAT,
   SUBTASK_SCHEDULE_PARALLEL,
+  TASK_TITLE_MAX_LENGTH,
   TEN,
   domRefs
 } from "../constants.js";
@@ -42,6 +43,7 @@ const {
   taskMinBlockInput,
   taskPriorityInput,
   taskParentIdInput,
+  taskTitleInput,
   taskSectionSelect,
   taskSubsectionSelect,
   taskSectionField,
@@ -52,7 +54,8 @@ const {
   taskModalTitle,
   taskModalSubtitle,
   taskModalSubmit,
-  taskTemplateSelect
+  taskTemplateSelect,
+  taskTitleHelper
 } = domRefs;
 
 const TASK_FORM_COPY = {
@@ -73,6 +76,20 @@ const TEMPLATE_SUBTASK_COPY = {
   subtitle: "Define a reusable subtask for this template.",
   submit: "Save subtask"
 };
+
+function setTaskTitleValue(value) {
+  if (!taskTitleInput) {return;}
+  taskTitleInput.maxLength = TASK_TITLE_MAX_LENGTH;
+  taskTitleInput.value = value;
+  updateTaskTitleHelper();
+}
+
+export function updateTaskTitleHelper() {
+  if (!taskTitleInput || !taskTitleHelper) {return;}
+  const length = taskTitleInput.value?.length || 0;
+  taskTitleHelper.textContent = `${length}/${TASK_TITLE_MAX_LENGTH}`;
+  taskTitleHelper.classList.toggle("text-orange-300", length >= TASK_TITLE_MAX_LENGTH);
+}
 
 function setTaskFormCopy(copy) {
   if (taskModalEyebrow) {taskModalEyebrow.textContent = copy.eyebrow;}
@@ -151,7 +168,7 @@ export function resetTaskForm(shouldClose = false) {
   if (taskTemplateSelect) {
     taskTemplateSelect.value = "";
   }
-  document.getElementById("task-title").value = "";
+  setTaskTitleValue("");
   taskLinkInput.value = "";
   syncTaskLinkClear();
   document.getElementById("task-duration").value = String(DEFAULT_TASK_DURATION_MIN);
@@ -190,7 +207,7 @@ function setTaskFormBasics({
 }) {
   document.getElementById("task-id").value = id;
   taskParentIdInput.value = parentId;
-  document.getElementById("task-title").value = title;
+  setTaskTitleValue(title);
   taskLinkInput.value = link;
   syncTaskLinkClear();
   document.getElementById("task-duration").value = durationMin || String(DEFAULT_TASK_DURATION_MIN);
@@ -266,7 +283,7 @@ export function openTaskEdit(task, options = {}) {
   const { switchView: shouldSwitchView = true } = options;
   const isParentTask = state.tasksCache.some((t) => t.subtaskParentId === task.id);
   document.getElementById("task-id").value = task.id;
-  document.getElementById("task-title").value = task.title;
+  setTaskTitleValue(task.title);
   taskLinkInput.value = task.link || "";
   syncTaskLinkClear();
   document.getElementById("task-duration").value = task.durationMin;

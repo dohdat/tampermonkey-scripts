@@ -77,6 +77,9 @@ export const domRefs = {
     : null,
   taskTimeMapOptions: document.getElementById("task-timemap-options"),
   taskTitleInput: document.getElementById("task-title"),
+  taskTitleHelper: document.querySelector
+    ? document.querySelector("[data-test-skedpal='task-title-helper']")
+    : null,
   taskDurationInput: document.getElementById("task-duration"),
   taskDurationHelper: document.getElementById("task-duration-helper"),
   taskDeadlineInput: document.getElementById("task-deadline"),

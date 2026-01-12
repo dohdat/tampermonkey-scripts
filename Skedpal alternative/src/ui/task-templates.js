@@ -153,19 +153,6 @@ function buildTemplateActions(template, subtaskCount, isExpanded) {
   const actions = document.createElement("div");
   actions.className = "task-template-actions flex flex-wrap items-center gap-2";
   actions.setAttribute("data-test-skedpal", "task-template-actions");
-
-  if (subtaskCount > 0) {
-    const toggleBtn = document.createElement("button");
-    toggleBtn.type = "button";
-    toggleBtn.dataset.templateToggleSubtasks = template.id || "";
-    toggleBtn.className =
-      "rounded-lg border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
-    toggleBtn.textContent = isExpanded ? "Collapse" : "Expand";
-    toggleBtn.setAttribute("aria-expanded", isExpanded ? "true" : "false");
-    toggleBtn.setAttribute("data-test-skedpal", "task-template-toggle");
-    actions.appendChild(toggleBtn);
-  }
-
   const addSubtaskBtn = document.createElement("button");
   addSubtaskBtn.type = "button";
   addSubtaskBtn.dataset.templateAddSubtask = template.id || "";
@@ -193,6 +180,17 @@ function buildTemplateActions(template, subtaskCount, isExpanded) {
   actions.appendChild(addSubtaskBtn);
   actions.appendChild(editBtn);
   actions.appendChild(deleteBtn);
+  if (subtaskCount > 0) {
+    const toggleBtn = document.createElement("button");
+    toggleBtn.type = "button";
+    toggleBtn.dataset.templateToggleSubtasks = template.id || "";
+    toggleBtn.className =
+      "rounded-lg border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
+    toggleBtn.textContent = isExpanded ? "Collapse" : "Expand";
+    toggleBtn.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+    toggleBtn.setAttribute("data-test-skedpal", "task-template-toggle");
+    actions.appendChild(toggleBtn);
+  }
   return actions;
 }
 

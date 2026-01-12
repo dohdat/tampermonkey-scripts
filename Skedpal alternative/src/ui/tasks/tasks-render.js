@@ -402,6 +402,8 @@ function renderSubsection(sub, section, sectionTasks, context, options) {
     const childWrap = document.createElement("div");
     childWrap.className =
       "space-y-2 border-l border-slate-800/60 pl-4 md:pl-6 border-lime-500/10";
+    childWrap.dataset.subsectionChildren = "true";
+    childWrap.setAttribute("data-test-skedpal", "subsection-children");
     const childOptions = { ...options, isAncestorCollapsed: isCollapsed };
     children.forEach((child) =>
       childWrap.appendChild(renderSubsection(child, section, sectionTasks, context, childOptions))

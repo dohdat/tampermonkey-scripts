@@ -21,6 +21,7 @@ import { getRepeatSummary } from "../repeat.js";
 import { themeColors } from "../theme.js";
 import { getOverdueReminders } from "./task-reminders.js";
 import { applyTaskBackgroundStyle } from "./task-card-styles.js";
+import { buildReminderDetailItem } from "./task-card-details.js";
 
 const detailClockIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 6v4l2.5 2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
 const detailFlagIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 3v14" stroke-linecap="round"></path><path d="M4 4h9l-1.5 3L13 10H4" stroke-linejoin="round"></path></svg>`;
@@ -431,6 +432,15 @@ function buildTaskMeta(task, timeMapNames, repeatSummary) {
   const meta = document.createElement("div");
   meta.className = "task-details__grid";
   meta.setAttribute("data-test-skedpal", "task-meta");
+  const reminderItem = buildReminderDetailItem({
+    task,
+    buildDetailItemElement,
+    formatDateTime,
+    reminderIconSvg
+  });
+  if (reminderItem) {
+    meta.appendChild(reminderItem);
+  }
   if (task.deadline) {
     const { item, valueEl } = buildDetailItemElement({
       key: "deadline",

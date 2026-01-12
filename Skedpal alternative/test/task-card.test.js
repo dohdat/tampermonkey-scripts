@@ -585,4 +585,34 @@ describe("task card", () => {
     assert.strictEqual(findByTestAttr(card, "task-meta"), null);
     assert.strictEqual(findByTestAttr(card, "task-status-details"), null);
   });
+
+  it("shows reminders in details when expanded", () => {
+    const future = new Date(Date.now() + 86400000).toISOString();
+    const task = {
+      id: "t12",
+      title: "Reminder details",
+      durationMin: 15,
+      timeMapIds: ["tm-1"],
+      completed: false,
+      reminders: [
+        { id: "r1", days: 1, remindAt: future, dismissedAt: "" },
+        { id: "r2", days: 2, remindAt: future, dismissedAt: future }
+      ]
+    };
+    const context = {
+      tasks: [task],
+      timeMapById: new Map([["tm-1", { id: "tm-1", name: "Focus" }]]),
+      collapsedTasks: new Set(),
+      expandedTaskDetails: new Set([task.id]),
+      computeTotalDuration: () => 0,
+      getTaskDepthById: () => 0,
+      getSectionName: () => "",
+      getSubsectionName: () => ""
+    };
+
+    const card = renderTaskCard(task, context);
+    const reminders = findByTestAttr(card, "task-reminders");
+    assert.ok(reminders);
+    assert.ok(reminders.textContent.includes("1 reminder"));
+  });
 });

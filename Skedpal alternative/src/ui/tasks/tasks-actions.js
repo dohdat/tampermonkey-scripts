@@ -31,7 +31,6 @@ import {
   getLocalDateKey,
   isStartAfterDeadline,
   normalizeTimeMap,
-  normalizeSubtaskScheduleMode,
   uuid,
   parseLocalDateInput
 } from "../utils.js";
@@ -56,6 +55,12 @@ import { renderReport } from "../report.js";
 import { renderTaskReminderBadge } from "./task-reminders.js";
 import { requestCreateTaskOverlayClose } from "../overlay-messaging.js";
 import { buildTasksFromAiList } from "./task-ai-helpers.js";
+import { getNextTemplateOrder } from "../task-templates-utils.js";
+import {
+  buildTemplatePayload,
+  buildTemplateSubtaskPayload,
+  cloneTemplateSubtasks
+} from "./task-template-payload.js";
 import {
   buildTasksFromTemplate,
   buildSubtasksFromTemplateForParent
@@ -106,7 +111,6 @@ export {
   openTemplateSubtaskEditor
 };
 export { viewTaskOnCalendar } from "./task-calendar-actions.js";
-
 export function closeRepeatCompleteModal() {
   if (repeatCompleteModal) {repeatCompleteModal.classList.add("hidden");}
   document.body.classList.remove("modal-open");
@@ -287,7 +291,6 @@ function getTaskFormValues() {
 }
 
 export { validateTaskForm };
-
 function validateTemplateForm(values) {
   if (!values.title || !values.durationMin) {
     return "Title and duration are required.";
@@ -303,56 +306,6 @@ function validateTemplateForm(values) {
   }
   return "";
 }
-
-function buildTemplatePayload(values, existing = null) {
-  const repeat = repeatStore.lastRepeatSelection || { ...DEFAULT_TASK_REPEAT };
-  return {
-    id: values.id,
-    title: values.title,
-    link: values.link || "",
-    durationMin: values.durationMin,
-    minBlockMin: values.minBlockMin,
-    priority: values.priority,
-    deadline: parseLocalDateInput(values.deadline),
-    startFrom: parseLocalDateInput(values.startFrom),
-    timeMapIds: values.timeMapIds,
-    repeat,
-    subtaskScheduleMode: normalizeSubtaskScheduleMode(taskSubtaskScheduleSelect?.value),
-    subtasks: existing?.subtasks || []
-  };
-}
-
-function getTemplateRepeatSelection() {
-  return repeatStore.lastRepeatSelection || { ...DEFAULT_TASK_REPEAT };
-}
-
-function cloneTemplateSubtasks(subtasks) {
-  return Array.isArray(subtasks) ? [...subtasks] : [];
-}
-
-function resolveTemplateSubtaskParentId(parentId, existingSubtask) {
-  if (parentId !== null && parentId !== undefined) {return parentId;}
-  if (existingSubtask && existingSubtask.subtaskParentId) {return existingSubtask.subtaskParentId;}
-  return null;
-}
-
-function buildTemplateSubtaskPayload(values, subtaskId, parentId, existingSubtask) {
-  return {
-    id: subtaskId || values.id,
-    title: values.title,
-    link: values.link || "",
-    durationMin: values.durationMin,
-    minBlockMin: values.minBlockMin,
-    priority: values.priority,
-    deadline: parseLocalDateInput(values.deadline),
-    startFrom: parseLocalDateInput(values.startFrom),
-    timeMapIds: values.timeMapIds,
-    repeat: getTemplateRepeatSelection(),
-    subtaskScheduleMode: normalizeSubtaskScheduleMode(taskSubtaskScheduleSelect?.value),
-    subtaskParentId: resolveTemplateSubtaskParentId(parentId, existingSubtask)
-  };
-}
-
 function resolveTaskOrder(existingTask, parentTask, section, subsection) {
   const targetKey = getContainerKey(section, subsection);
   const isEditingInPlace =
@@ -432,7 +385,10 @@ async function updateParentTaskDescendants(taskId, updatedTask) {
 
 async function handleTemplateParentSubmit(values) {
   const existing = state.taskTemplatesCache.find((entry) => entry.id === values.id) || null;
-  const template = buildTemplatePayload(values, existing);
+  const template = buildTemplatePayload(values, existing, {
+    subtaskScheduleMode: taskSubtaskScheduleSelect?.value,
+    nextOrder: getNextTemplateOrder(state.taskTemplatesCache)
+  });
   await saveTaskTemplate(template);
   window.dispatchEvent(new CustomEvent("skedpal:templates-updated"));
   resetTaskForm(true);
@@ -453,7 +409,8 @@ async function handleTemplateSubtaskSubmit(
     values,
     subtaskId,
     subtaskParentId,
-    existingSubtask
+    existingSubtask,
+    taskSubtaskScheduleSelect?.value
   );
   const subtasks = cloneTemplateSubtasks(template.subtasks);
   const idx = subtasks.findIndex((entry) => entry.id === subtaskPayload.id);

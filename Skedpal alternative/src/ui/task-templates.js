@@ -3,17 +3,37 @@ import {
   saveTaskTemplate,
   deleteTaskTemplate
 } from "../data/db.js";
+import Sortable from "../../vendor/sortable.esm.js";
 import { domRefs } from "./constants.js";
 import { state } from "./state/page-state.js";
 import { openTemplateEditor, openTemplateSubtaskEditor } from "./tasks/tasks-actions.js";
 import { toggleTemplateSubtaskList, getExpandedTemplateIds } from "./task-templates-utils.js";
 
+const TEMPLATE_SORTABLE_STYLE_ID = "task-template-sortable-styles";
+const SORT_BEFORE = -1;
+const SORT_AFTER = 1;
+let templateSortableInstances = [];
+
 function getTemplateTitle(template) {
   return template?.title || "Untitled template";
 }
 
+function getTemplateOrder(template) {
+  const order = Number(template?.order);
+  return Number.isFinite(order) ? order : null;
+}
+
 function sortTemplates(list) {
-  return [...list].sort((a, b) => getTemplateTitle(a).localeCompare(getTemplateTitle(b)));
+  return [...list].sort((a, b) => {
+    const orderA = getTemplateOrder(a);
+    const orderB = getTemplateOrder(b);
+    if (orderA !== null && orderB !== null && orderA !== orderB) {
+      return orderA - orderB;
+    }
+    if (orderA !== null && orderB === null) {return SORT_BEFORE;}
+    if (orderA === null && orderB !== null) {return SORT_AFTER;}
+    return getTemplateTitle(a).localeCompare(getTemplateTitle(b));
+  });
 }
 
 function renderEmptyTemplateList(container) {
@@ -28,10 +48,23 @@ function renderEmptyTemplateList(container) {
 function buildSubtaskRow(subtask, templateId) {
   const row = document.createElement("div");
   row.className =
-    "flex flex-wrap items-center justify-between gap-2 rounded-xl border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-200";
+    "group flex flex-wrap items-center justify-between gap-2 rounded-xl border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-200";
   row.setAttribute("data-test-skedpal", "task-template-subtask-row");
-  row.dataset.templateId = templateId;
+  row.setAttribute("data-template-subtask-row", "true");
   row.dataset.subtaskId = subtask.id || "";
+
+  const content = document.createElement("div");
+  content.className = "flex flex-wrap items-center gap-2";
+  content.setAttribute("data-test-skedpal", "task-template-subtask-content");
+
+  const dragHandle = document.createElement("button");
+  dragHandle.type = "button";
+  dragHandle.className =
+    "cursor-grab rounded-lg border-slate-800 px-2 py-1 text-xs font-semibold text-slate-400 opacity-0 transition group-hover:opacity-100 hover:border-lime-400 hover:text-lime-300";
+  dragHandle.setAttribute("aria-label", "Drag subtask");
+  dragHandle.innerHTML = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path d="M7 4.5a1.25 1.25 0 1 1-2.5 0A1.25 1.25 0 0 1 7 4.5ZM7 10a1.25 1.25 0 1 1-2.5 0A1.25 1.25 0 0 1 7 10Zm-1.25 6.75a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5ZM15.5 4.5a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0ZM14.25 11.25a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5Zm1.25 4a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Z"></path></svg>`;
+  dragHandle.setAttribute("data-template-subtask-drag-handle", "true");
+  dragHandle.setAttribute("data-test-skedpal", "task-template-subtask-drag-handle");
 
   const label = document.createElement("div");
   label.className = "text-sm font-semibold text-slate-100";
@@ -72,7 +105,9 @@ function buildSubtaskRow(subtask, templateId) {
   actions.appendChild(addChildBtn);
   actions.appendChild(editBtn);
   actions.appendChild(removeBtn);
-  row.appendChild(label);
+  content.appendChild(dragHandle);
+  content.appendChild(label);
+  row.appendChild(content);
   row.appendChild(actions);
   return row;
 }
@@ -118,23 +153,40 @@ function renderSubtaskTree(container, templateId, subtasks) {
   const appendSubtask = (subtask, parentContainer) => {
     if (subtask.id && visited.has(subtask.id)) {return;}
     if (subtask.id) {visited.add(subtask.id);}
-    parentContainer.appendChild(buildSubtaskRow(subtask, templateId));
+    const node = document.createElement("div");
+    node.className = "space-y-2";
+    node.dataset.subtaskId = subtask.id || "";
+    node.setAttribute("data-template-subtask-node", "true");
+    node.setAttribute("data-test-skedpal", "task-template-subtask-node");
+    node.appendChild(buildSubtaskRow(subtask, templateId));
     const children = childrenByParent.get(subtask.id) || [];
-    if (!children.length) {return;}
-    const childWrap = document.createElement("div");
-    childWrap.className = "ml-4 space-y-2 border-l border-slate-800/60 pl-4";
-    childWrap.setAttribute("data-test-skedpal", "task-template-subtask-children");
-    childWrap.dataset.parentSubtaskId = subtask.id || "";
-    parentContainer.appendChild(childWrap);
-    children.forEach((child) => appendSubtask(child, childWrap));
+    if (children.length) {
+      const childWrap = document.createElement("div");
+      childWrap.className = "ml-4 space-y-2 border-l border-slate-800/60 pl-4";
+      childWrap.setAttribute("data-test-skedpal", "task-template-subtask-children");
+      childWrap.setAttribute("data-template-subtask-container", "true");
+      childWrap.dataset.parentSubtaskId = subtask.id || "";
+      childWrap.dataset.templateId = templateId || "";
+      node.appendChild(childWrap);
+      children.forEach((child) => appendSubtask(child, childWrap));
+    }
+    parentContainer.appendChild(node);
   };
   roots.forEach((subtask) => appendSubtask(subtask, container));
 }
 
 function buildTemplateTitle(template, subtaskCount) {
   const titleWrap = document.createElement("div");
-  titleWrap.className = "flex flex-wrap items-center gap-2";
+  titleWrap.className = "group flex flex-wrap items-center gap-2";
   titleWrap.setAttribute("data-test-skedpal", "task-template-title-wrap");
+  const dragHandle = document.createElement("button");
+  dragHandle.type = "button";
+  dragHandle.className =
+    "cursor-grab rounded-lg border-slate-700 px-2 py-1 text-xs font-semibold text-slate-300 opacity-0 transition group-hover:opacity-100 hover:border-lime-400 hover:text-lime-300";
+  dragHandle.setAttribute("aria-label", "Drag template");
+  dragHandle.innerHTML = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path d="M7 4.5a1.25 1.25 0 1 1-2.5 0A1.25 1.25 0 0 1 7 4.5ZM7 10a1.25 1.25 0 1 1-2.5 0A1.25 1.25 0 0 1 7 10Zm-1.25 6.75a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5ZM15.5 4.5a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0ZM14.25 11.25a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5Zm1.25 4a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Z"></path></svg>`;
+  dragHandle.setAttribute("data-template-drag-handle", "true");
+  dragHandle.setAttribute("data-test-skedpal", "task-template-drag-handle");
   const title = document.createElement("span");
   title.className = "text-base font-semibold text-slate-100";
   title.textContent = getTemplateTitle(template);
@@ -144,6 +196,7 @@ function buildTemplateTitle(template, subtaskCount) {
     "rounded-full border-slate-700 bg-slate-800/70 px-2 py-1 text-xs font-semibold text-slate-200";
   count.textContent = `${subtaskCount} ${subtaskCount === 1 ? "subtask" : "subtasks"}`;
   count.setAttribute("data-test-skedpal", "task-template-subtask-count");
+  titleWrap.appendChild(dragHandle);
   titleWrap.appendChild(title);
   titleWrap.appendChild(count);
   return titleWrap;
@@ -199,6 +252,9 @@ function buildTemplateSubtaskList(template, isExpanded) {
   const subtaskList = document.createElement("div");
   subtaskList.className = `grid gap-2${isExpanded ? "" : " hidden"}`;
   subtaskList.dataset.templateSubtaskList = template.id || "";
+  subtaskList.dataset.templateId = template.id || "";
+  subtaskList.dataset.parentSubtaskId = "";
+  subtaskList.setAttribute("data-template-subtask-container", "true");
   subtaskList.setAttribute("data-test-skedpal", "task-template-subtask-list");
   renderSubtaskTree(subtaskList, template.id, template.subtasks);
   return subtaskList;
@@ -208,6 +264,7 @@ function buildTemplateCard(template, isExpanded) {
   const card = document.createElement("div");
   card.className = "rounded-2xl border-slate-800 bg-slate-900/70 p-4 shadow space-y-3";
   card.setAttribute("data-test-skedpal", "task-template-card");
+  card.setAttribute("data-template-card", "true");
   card.dataset.templateId = template.id || "";
 
   const header = document.createElement("div");
@@ -229,6 +286,166 @@ function buildTemplateCard(template, isExpanded) {
   return card;
 }
 
+function ensureTemplateSortableStyles() {
+  if (document.getElementById(TEMPLATE_SORTABLE_STYLE_ID)) {return;}
+  const style = document.createElement("style");
+  style.id = TEMPLATE_SORTABLE_STYLE_ID;
+  style.setAttribute("data-test-skedpal", "task-template-sortable-styles");
+  style.textContent = `
+.template-sortable-ghost { opacity: 0.55; }
+.template-sortable-drag { opacity: 0.9; }
+.template-sortable-chosen {
+  box-shadow: 0 10px 25px rgba(var(--color-lime-400-rgb), 0.25);
+  outline: 2px solid rgba(var(--color-lime-400-rgb), 0.35);
+  outline-offset: 2px;
+}
+`;
+  document.head.appendChild(style);
+}
+
+function destroyTemplateSortables() {
+  templateSortableInstances.forEach((instance) => instance?.destroy?.());
+  templateSortableInstances = [];
+}
+
+function collectTemplateCards(list) {
+  return [...(list?.querySelectorAll?.(":scope > [data-template-id]") || [])];
+}
+
+async function handleTemplateListSortEnd(event) {
+  if (!event?.to || (event.from === event.to && event.oldIndex === event.newIndex)) {return;}
+  const list = event.to;
+  const cards = collectTemplateCards(list);
+  if (!cards.length) {return;}
+  const templatesById = new Map(
+    (state.taskTemplatesCache || []).map((template) => [template.id, template])
+  );
+  const updates = [];
+  cards.forEach((card, index) => {
+    const templateId = card.dataset.templateId;
+    if (!templateId) {return;}
+    const template = templatesById.get(templateId);
+    if (!template) {return;}
+    const order = index + 1;
+    if (getTemplateOrder(template) !== order) {
+      updates.push({ ...template, order });
+    }
+  });
+  if (!updates.length) {return;}
+  await Promise.all(updates.map((template) => saveTaskTemplate(template)));
+  await loadTaskTemplates();
+  window.dispatchEvent(new CustomEvent("skedpal:templates-updated"));
+}
+
+function getTemplateSubtaskList(card) {
+  return card?.querySelector?.("[data-template-subtask-list]") || null;
+}
+
+function buildSubtaskOrderFromDom(container, template, parentId, store) {
+  const nodes = [...(container?.children || [])].filter(
+    (node) => node?.dataset?.templateSubtaskNode === "true"
+  );
+  nodes.forEach((node) => {
+    const subtaskId = node.dataset.subtaskId;
+    if (!subtaskId) {return;}
+    const original = store.subtasksById.get(subtaskId);
+    if (!original) {return;}
+    const desiredParentId = parentId || null;
+    const updated =
+      (original.subtaskParentId || null) === desiredParentId
+        ? original
+        : { ...original, subtaskParentId: desiredParentId };
+    store.nextSubtasks.push(updated);
+    const childContainer = node.querySelector(":scope > [data-template-subtask-container]");
+    if (childContainer) {
+      buildSubtaskOrderFromDom(childContainer, template, subtaskId, store);
+    }
+  });
+}
+
+function buildTemplateSubtasksFromDom(card, template) {
+  const list = getTemplateSubtaskList(card);
+  if (!list) {return Array.isArray(template.subtasks) ? template.subtasks : [];}
+  const subtasksById = new Map(
+    (template.subtasks || []).map((subtask) => [subtask.id, subtask])
+  );
+  const store = { subtasksById, nextSubtasks: [] };
+  buildSubtaskOrderFromDom(list, template, "", store);
+  return store.nextSubtasks;
+}
+
+function hasSubtaskOrderChanged(currentSubtasks, nextSubtasks) {
+  if (currentSubtasks.length !== nextSubtasks.length) {return true;}
+  for (let i = 0; i < currentSubtasks.length; i += 1) {
+    const current = currentSubtasks[i];
+    const next = nextSubtasks[i];
+    if (current?.id !== next?.id) {return true;}
+    if ((current?.subtaskParentId || null) !== (next?.subtaskParentId || null)) {return true;}
+  }
+  return false;
+}
+
+function isSubtaskMoveValid(event) {
+  const dragged = event?.dragged;
+  const targetContainer = event?.to;
+  if (!dragged || !targetContainer) {return true;}
+  return !dragged.contains(targetContainer);
+}
+
+async function handleTemplateSubtaskSortEnd(event) {
+  if (!event?.to) {return;}
+  if (event.from === event.to && event.oldIndex === event.newIndex) {return;}
+  const container = event.to;
+  const card = container.closest?.("[data-template-id]");
+  const templateId = card?.dataset?.templateId || "";
+  if (!templateId || !card) {return;}
+  const template = findTemplateById(templateId);
+  if (!template) {return;}
+  const nextSubtasks = buildTemplateSubtasksFromDom(card, template);
+  if (!hasSubtaskOrderChanged(template.subtasks || [], nextSubtasks)) {return;}
+  await saveTaskTemplate({ ...template, subtasks: nextSubtasks });
+  await loadTaskTemplates();
+  window.dispatchEvent(new CustomEvent("skedpal:templates-updated"));
+}
+
+function setupTemplateSortables(list) {
+  destroyTemplateSortables();
+  if (!list || typeof list.addEventListener !== "function") {return;}
+  if (typeof window === "undefined" || typeof document === "undefined") {return;}
+  ensureTemplateSortableStyles();
+  const listSortable = new Sortable(list, {
+    animation: 150,
+    draggable: "[data-template-id]",
+    handle: "[data-template-drag-handle]",
+    ghostClass: "template-sortable-ghost",
+    chosenClass: "template-sortable-chosen",
+    dragClass: "template-sortable-drag",
+    swapThreshold: 0.65,
+    onEnd: handleTemplateListSortEnd
+  });
+  templateSortableInstances.push(listSortable);
+  const containers = list.querySelectorAll("[data-template-subtask-container]");
+  containers.forEach((container) => {
+    const sortable = new Sortable(container, {
+      group: {
+        name: `template-subtasks-${container.dataset.templateId || "default"}`,
+        pull: true,
+        put: true
+      },
+      animation: 150,
+      draggable: "[data-template-subtask-node]",
+      handle: "[data-template-subtask-drag-handle]",
+      ghostClass: "template-sortable-ghost",
+      chosenClass: "template-sortable-chosen",
+      dragClass: "template-sortable-drag",
+      swapThreshold: 0.65,
+      onMove: isSubtaskMoveValid,
+      onEnd: handleTemplateSubtaskSortEnd
+    });
+    templateSortableInstances.push(sortable);
+  });
+}
+
 export function renderTaskTemplates() {
   const list = domRefs.taskTemplateList;
   if (!list) {return;}
@@ -237,6 +454,7 @@ export function renderTaskTemplates() {
   const templates = sortTemplates(state.taskTemplatesCache || []);
   if (!templates.length) {
     renderEmptyTemplateList(list);
+    destroyTemplateSortables();
     return;
   }
   const fragment = document.createDocumentFragment();
@@ -245,6 +463,7 @@ export function renderTaskTemplates() {
     fragment.appendChild(buildTemplateCard(template, isExpanded));
   });
   list.appendChild(fragment);
+  setupTemplateSortables(list);
 }
 
 export async function loadTaskTemplates() {
@@ -381,6 +600,7 @@ export function initTaskTemplates() {
   window.addEventListener("skedpal:templates-updated", handleTemplatesUpdated);
   cleanupFns.push(() => window.removeEventListener("skedpal:templates-updated", handleTemplatesUpdated));
   return () => {
+    destroyTemplateSortables();
     cleanupFns.forEach((cleanup) => cleanup());
   };
 }

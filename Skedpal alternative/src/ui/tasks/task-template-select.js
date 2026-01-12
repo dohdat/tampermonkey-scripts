@@ -5,8 +5,25 @@ function getTemplateTitle(template) {
   return template?.title || "Untitled template";
 }
 
+const SORT_BEFORE = -1;
+const SORT_AFTER = 1;
+
+function getTemplateOrder(template) {
+  const order = Number(template?.order);
+  return Number.isFinite(order) ? order : null;
+}
+
 function sortTemplates(list) {
-  return [...list].sort((a, b) => getTemplateTitle(a).localeCompare(getTemplateTitle(b)));
+  return [...list].sort((a, b) => {
+    const orderA = getTemplateOrder(a);
+    const orderB = getTemplateOrder(b);
+    if (orderA !== null && orderB !== null && orderA !== orderB) {
+      return orderA - orderB;
+    }
+    if (orderA !== null && orderB === null) {return SORT_BEFORE;}
+    if (orderA === null && orderB !== null) {return SORT_AFTER;}
+    return getTemplateTitle(a).localeCompare(getTemplateTitle(b));
+  });
 }
 
 function buildPlaceholderOption() {

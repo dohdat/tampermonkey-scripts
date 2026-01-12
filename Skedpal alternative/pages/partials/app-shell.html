@@ -305,9 +305,6 @@
             <div>
               <p class="text-xs uppercase tracking-wide text-slate-500" data-test-skedpal="task-templates-eyebrow">Settings</p>
               <h3 class="text-base font-semibold" data-test-skedpal="task-templates-title">Task Templates</h3>
-              <p class="text-sm text-slate-400" data-test-skedpal="task-templates-subtitle">
-                Build reusable parent tasks with subtasks. Use "Add task from template" inside a subsection to insert them.
-              </p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
               <button
@@ -589,13 +586,6 @@
                 Deletes previous scheduled task events (source=personal-skedpal), fetches FreeBusy, and fills the earliest valid slots.
               </p>
             </div>
-            <button
-              data-reschedule-btn
-              class="rounded-xl bg-lime-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow hover:bg-lime-300"
-              type="button"
-            >
-              Reschedule Now
-            </button>
           </div>
           <div class="grid gap-3 md:grid-cols-[200px_1fr]">
             <label class="grid gap-2 text-sm text-slate-300">
@@ -609,7 +599,6 @@
                 data-test-skedpal="horizon-input"
               />
             </label>
-            <div class="text-sm text-slate-400" id="schedule-status">Idle</div>
           </div>
         </div>
         <div id="scheduled-summary" class="rounded-2xl border-slate-800 bg-slate-900/70 p-4 shadow-lg"></div>

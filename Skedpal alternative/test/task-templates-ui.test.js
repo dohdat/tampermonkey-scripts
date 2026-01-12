@@ -1,6 +1,10 @@
 import assert from "assert";
 import { describe, it } from "mocha";
-import { toggleTemplateSubtaskList, getExpandedTemplateIds } from "../src/ui/task-templates-utils.js";
+import {
+  toggleTemplateSubtaskList,
+  getExpandedTemplateIds,
+  getNextTemplateOrder
+} from "../src/ui/task-templates-utils.js";
 
 class FakeElement {
   constructor() {
@@ -61,22 +65,31 @@ describe("task template ui", () => {
 
     const cards = [
       {
-        dataset: { templateId: "t1" },
+        dataset: { templateId: "t1", templateCard: "true" },
         querySelector: (selector) =>
           selector === "[data-template-subtask-list]" ? expandedList : null
       },
       {
-        dataset: { templateId: "t2" },
+        dataset: { templateId: "t2", templateCard: "true" },
         querySelector: (selector) =>
           selector === "[data-template-subtask-list]" ? collapsedList : null
       }
     ];
 
     const list = {
-      querySelectorAll: (selector) => (selector === "[data-template-id]" ? cards : [])
+      querySelectorAll: (selector) => (selector === "[data-template-card]" ? cards : [])
     };
 
     const expanded = getExpandedTemplateIds(list);
     assert.deepStrictEqual([...expanded], ["t1"]);
+  });
+
+  it("computes the next template order from existing items", () => {
+    const templates = [{ order: 2 }, { order: "5" }, { order: null }];
+    assert.strictEqual(getNextTemplateOrder(templates), 6);
+  });
+
+  it("defaults to order 1 for empty template lists", () => {
+    assert.strictEqual(getNextTemplateOrder([]), 1);
   });
 });

@@ -7,9 +7,17 @@ export function toggleTemplateSubtaskList(card, btn) {
   btn.setAttribute("aria-expanded", String(!isHidden));
 }
 
+export function getNextTemplateOrder(templates) {
+  const orders = (templates || [])
+    .map((template) => Number(template?.order))
+    .filter((order) => Number.isFinite(order));
+  const maxOrder = orders.length ? Math.max(...orders) : 0;
+  return maxOrder + 1;
+}
+
 export function getExpandedTemplateIds(list) {
   const expanded = new Set();
-  const cards = list?.querySelectorAll?.("[data-template-id]") || [];
+  const cards = list?.querySelectorAll?.("[data-template-card]") || [];
   cards.forEach((card) => {
     const templateId = card?.dataset?.templateId || "";
     if (!templateId) {return;}

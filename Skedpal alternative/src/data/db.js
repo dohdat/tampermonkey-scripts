@@ -12,6 +12,7 @@ const DEFAULT_SETTINGS = {
   collapsedSections: [],
   collapsedSubsections: [],
   collapsedTasks: [],
+  lastPrunedAt: null,
   groqApiKey: "",
   taskBackgroundMode: "priority",
   sections: DEFAULT_SECTIONS,

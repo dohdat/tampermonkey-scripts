@@ -2,7 +2,9 @@ import {
   getAllTasks,
   getAllTimeMaps,
   getSettings,
+  saveSettings,
   saveTask,
+  deleteTask,
   DEFAULT_SCHEDULING_HORIZON_DAYS
 } from "../data/db.js";
 import { scheduleTasks, getUpcomingOccurrences } from "../core/scheduler.js";
@@ -32,6 +34,12 @@ import {
 } from "./google-calendar.js";
 import { buildCreateTaskUrl } from "./context-menu.js";
 import { buildSequentialSingleDeferredIds } from "./deferred-utils.js";
+import {
+  COMPLETED_TASK_RETENTION_DAYS,
+  getPrunableCompletedTaskIds,
+  pruneSettingsCollapsedTasks,
+  shouldRunDailyPrune
+} from "./prune.js";
 
 function getMissedOccurrences(expectedOccurrences, scheduledOccurrences, isDeferred) {
   if (isDeferred) {return 0;}
@@ -138,15 +146,62 @@ async function persistSchedule(tasks, placements, unscheduled, ignored, deferred
   }
 }
 
+async function runCompletedTaskPrune(tasks, settings, now) {
+  if (!shouldRunDailyPrune(settings?.lastPrunedAt, now)) {
+    return { remaining: tasks, settings, prunedCount: 0 };
+  }
+  const prunableIds = getPrunableCompletedTaskIds(
+    tasks,
+    COMPLETED_TASK_RETENTION_DAYS,
+    now
+  );
+  let removedIds = new Set();
+  if (prunableIds.length) {
+    await Promise.all(prunableIds.map((id) => deleteTask(id)));
+    removedIds = new Set(prunableIds);
+  }
+  const nextSettings = pruneSettingsCollapsedTasks(settings, removedIds);
+  const updatedSettings = {
+    ...nextSettings,
+    lastPrunedAt: now.toISOString()
+  };
+  if (
+    updatedSettings !== settings ||
+    updatedSettings.lastPrunedAt !== settings?.lastPrunedAt
+  ) {
+    await saveSettings(updatedSettings);
+  }
+  const remaining = prunableIds.length
+    ? tasks.filter((task) => !removedIds.has(task.id))
+    : tasks;
+  return {
+    remaining,
+    settings: updatedSettings,
+    prunedCount: prunableIds.length
+  };
+}
+
+function runBackgroundPrune() {
+  const now = new Date();
+  return Promise.all([getAllTasks(), getSettings()])
+    .then(([tasks, settings]) => runCompletedTaskPrune(tasks, settings, now))
+    .catch((error) => {
+      console.warn("Failed to prune completed tasks.", error);
+    });
+}
+
 async function runReschedule() {
   const now = new Date();
-  const [tasks, timeMaps, settings] = await Promise.all([
+  let [tasks, timeMaps, settings] = await Promise.all([
     getAllTasks(),
     getAllTimeMaps(),
     getSettings()
   ]);
 
-  const deleted = 0;
+  const pruneResult = await runCompletedTaskPrune(tasks, settings, now);
+  tasks = pruneResult.remaining;
+  settings = pruneResult.settings;
+  const deleted = pruneResult.prunedCount;
 
   if (timeMaps.length === 0 || tasks.length === 0) {
     return {
@@ -320,10 +375,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 chrome.runtime.onInstalled.addListener(() => {
   ensureContextMenu();
+  runBackgroundPrune();
 });
 
 chrome.runtime.onStartup.addListener(() => {
   ensureContextMenu();
+  runBackgroundPrune();
 });
 
 function getTabTitle(tabId) {

@@ -83,8 +83,12 @@ function buildReminderEntry(days, now = new Date()) {
 
 function buildReminderLabel(entry) {
   const date = new Date(entry.remindAt);
-  const dateLabel = Number.isNaN(date.getTime()) ? "Unknown date" : date.toLocaleDateString();
-  return `In ${entry.days} day${entry.days === 1 ? "" : "s"} · ${dateLabel}`;
+  const isValid = !Number.isNaN(date.getTime());
+  const dateLabel = isValid ? date.toLocaleDateString() : "Unknown date";
+  const timeLabel = isValid
+    ? date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+    : "Unknown time";
+  return `In ${entry.days} day${entry.days === 1 ? "" : "s"} at ${dateLabel} ${timeLabel}`;
 }
 
 function ensureReminderButtons() {

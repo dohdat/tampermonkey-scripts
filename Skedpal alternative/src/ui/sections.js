@@ -161,6 +161,7 @@ export function renderTaskSubsectionOptions(selected) {
   const { taskSectionSelect, taskSubsectionSelect } = domRefs;
   const section = taskSectionSelect.value;
   const subsections = section ? getSubsectionsFor(section) : [];
+  const subsectionsWithChildren = new Set(subsections.map((sub) => sub.parentId || "").filter(Boolean));
   const selectedSubsection =
     selected && section
       ? subsections.find((s) => s.id === selected) || subsections.find((s) => s.name === selected)
@@ -174,6 +175,7 @@ export function renderTaskSubsectionOptions(selected) {
       opt.value = sub.id;
       const prefix = depth > 0 ? `${"-- ".repeat(depth)}` : "";
       opt.textContent = `${prefix}${sub.name}`;
+      opt.disabled = subsectionsWithChildren.has(sub.id);
       opt.setAttribute("data-test-skedpal", "task-subsection-option");
       if (selectedSubsection) {opt.selected = selectedSubsection.id === sub.id;}
       taskSubsectionSelect.appendChild(opt);

@@ -249,6 +249,8 @@ describe("sections ui", () => {
     assert.strictEqual(subsectionSelect.children.length, 2);
     assert.strictEqual(subsectionSelect.children[0].textContent, "Morning");
     assert.strictEqual(subsectionSelect.children[1].textContent, "-- Deep");
+    assert.strictEqual(subsectionSelect.children[0].disabled, true);
+    assert.strictEqual(subsectionSelect.children[1].disabled, false);
 
     sectionsModule.renderTaskSubsectionOptions("sub2");
     assert.strictEqual(subsectionSelect.value, "sub2");

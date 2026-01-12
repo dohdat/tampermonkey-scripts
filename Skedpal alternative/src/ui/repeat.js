@@ -2,10 +2,10 @@ import {
   DEFAULT_TASK_REPEAT,
   TASK_REPEAT_NONE,
   TEN,
-  THIRTY_ONE,
   domRefs
 } from "./constants.js";
-import { formatRRuleDate, getLocalDateKey, getNthWeekday } from "./utils.js";
+import { formatRRuleDate, getNthWeekday } from "./utils.js";
+export { registerRepeatEventHandlers } from "./repeat-events.js";
 import {
   buildMonthlyRule,
   buildMonthlySummaryPart,
@@ -60,8 +60,6 @@ const {
   taskRepeatEndDate,
   taskRepeatEndCount,
   repeatModal,
-  repeatModalCloseBtns,
-  repeatModalSaveBtn,
   subsectionTaskRepeatSelect
 } = domRefs;
 export function getStartDate() {
@@ -381,216 +379,8 @@ export function enableDeadlinePicker() {
   };
   taskDeadlineInput.addEventListener("click", openPicker);
   taskDeadlineInput.addEventListener("keydown", handleKeyDown);
-}
-function handleTaskRepeatSelectChange() {
-  const value = taskRepeatSelect.value;
-  const baseSelection =
-    repeatStore.lastRepeatSelection?.type === "custom"
-      ? repeatStore.lastRepeatSelection
-      : { ...DEFAULT_TASK_REPEAT };
-  if (value === "custom" || value === "custom-new") {
-    repeatStore.repeatTarget = "task";
-    repeatStore.repeatSelectionBeforeModal = baseSelection;
-    openRepeatModal();
-    const initial =
-      repeatStore.lastRepeatSelection?.type === "custom"
-        ? repeatStore.lastRepeatSelection
-        : {
-          type: "custom",
-          unit:
-            repeatStore.repeatState.unit === TASK_REPEAT_NONE
-              ? "week"
-              : repeatStore.repeatState.unit
-        };
-    setRepeatFromSelection(initial);
-  } else {
-    setRepeatFromSelection({ ...DEFAULT_TASK_REPEAT });
-  }
-}
-function handleSubsectionRepeatSelectChange() {
-  const value = subsectionTaskRepeatSelect.value;
-  const baseSelection =
-    repeatStore.subsectionRepeatSelection?.type === "custom"
-      ? repeatStore.subsectionRepeatSelection
-      : { ...DEFAULT_TASK_REPEAT };
-  if (value === "custom" || value === "custom-new") {
-    repeatStore.repeatTarget = "subsection";
-    repeatStore.subsectionRepeatBeforeModal = baseSelection;
-    openRepeatModal();
-    const initial =
-      repeatStore.subsectionRepeatSelection?.type === "custom"
-        ? repeatStore.subsectionRepeatSelection
-        : {
-          type: "custom",
-          unit:
-            repeatStore.repeatState.unit === TASK_REPEAT_NONE
-              ? "week"
-              : repeatStore.repeatState.unit
-        };
-    setRepeatFromSelection(initial, "subsection");
-  } else {
-    repeatStore.repeatTarget = "subsection";
-    setRepeatFromSelection({ ...DEFAULT_TASK_REPEAT }, "subsection");
-    syncSubsectionRepeatLabel();
-  }
-}
-function handleRepeatUnitChange() {
-  const unit = taskRepeatUnit.value || "week";
-  repeatStore.repeatState.unit = unit;
-  if (unit === "week" && (!repeatStore.repeatState.weeklyDays || repeatStore.repeatState.weeklyDays.length === 0)) {
-    repeatStore.repeatState.weeklyDays = [getStartDate().getDay()];
-  }
-  if (unit === "month") {
-    const start = getStartDate();
-    repeatStore.repeatState.monthlyDay = start.getDate();
-    const { nth, weekday } = getNthWeekday(start);
-    repeatStore.repeatState.monthlyNth = nth;
-    repeatStore.repeatState.monthlyWeekday = weekday;
-    repeatStore.repeatState.monthlyRangeStart = start.getDate();
-    repeatStore.repeatState.monthlyRangeEnd = start.getDate();
-    repeatStore.repeatState.monthlyRangeStartDate = "";
-    repeatStore.repeatState.monthlyRangeEndDate = "";
-  }
-  if (unit === "year") {
-    const start = getStartDate();
-    repeatStore.repeatState.yearlyMonth = start.getMonth() + 1;
-    repeatStore.repeatState.yearlyDay = start.getDate();
-    const fallback = getLocalDateKey(start);
-    repeatStore.repeatState.yearlyRangeStartDate = fallback;
-    repeatStore.repeatState.yearlyRangeEndDate = fallback;
-  }
-  renderRepeatUI();
-}
-function handleRepeatIntervalInput() { const parsed = Math.max(1, Number(taskRepeatInterval.value) || 1); repeatStore.repeatState.interval = parsed; taskRepeatInterval.value = parsed; }
-function handleRepeatWeekdaysClick(event) {
-  const btn = event.target.closest("button[data-day-value]");
-  if (!btn) {return;}
-  const day = Number(btn.dataset.dayValue);
-  const set = new Set(repeatStore.repeatState.weeklyDays || []);
-  if (set.has(day)) {
-    set.delete(day);
-  } else {
-    set.add(day);
-  }
-  if (set.size === 0) {set.add(getStartDate().getDay());}
-  repeatStore.repeatState.weeklyDays = Array.from(set);
-  renderRepeatUI();
-}
-function handleRepeatWeeklyModeAnyChange() { if (taskRepeatWeeklyModeAny.checked) { repeatStore.repeatState.weeklyMode = "any"; renderRepeatUI(); } }
-function handleRepeatWeeklyModeAllChange() { if (taskRepeatWeeklyModeAll.checked) { repeatStore.repeatState.weeklyMode = "all"; renderRepeatUI(); } }
-function handleRepeatMonthlyModeChange() { repeatStore.repeatState.monthlyMode = taskRepeatMonthlyMode.value || "day"; renderRepeatUI(); }
-function handleRepeatMonthlyDayInput() { const val = Math.min(THIRTY_ONE, Math.max(1, Number(taskRepeatMonthlyDay.value) || 1)); repeatStore.repeatState.monthlyDay = val; taskRepeatMonthlyDay.value = val; }
-function handleRepeatMonthlyNthChange() { repeatStore.repeatState.monthlyNth = Number(taskRepeatMonthlyNth.value) || 1; }
-function handleRepeatMonthlyWeekdayChange() { repeatStore.repeatState.monthlyWeekday = Number(taskRepeatMonthlyWeekday.value) || 0; }
-function handleRepeatYearlyRangeStartInput() {
-  const baseDate = getStartDate();
-  repeatStore.repeatState.yearlyRangeStartDate =
-    taskRepeatYearlyRangeStart.value || getLocalDateKey(baseDate);
-  syncYearlyRangeInputs(repeatStore.repeatState, baseDate, taskRepeatYearlyRangeStart, taskRepeatYearlyRangeEnd);
-}
-function handleRepeatYearlyRangeEndInput() {
-  const baseDate = getStartDate();
-  const endValue = taskRepeatYearlyRangeEnd.value || getLocalDateKey(baseDate);
-  repeatStore.repeatState.yearlyRangeEndDate = endValue;
-  const parts = getDateParts(endValue);
-  if (parts) {
-    repeatStore.repeatState.yearlyMonth = parts.month;
-    repeatStore.repeatState.yearlyDay = parts.day;
-  }
-  syncYearlyRangeInputs(repeatStore.repeatState, baseDate, taskRepeatYearlyRangeStart, taskRepeatYearlyRangeEnd);
-}
-function updateRepeatEnd() {
-  if (taskRepeatEndAfter.checked) {
-    repeatStore.repeatState.end = {
-      type: "after",
-      count: Math.max(1, Number(taskRepeatEndCount.value) || 1)
-    };
-  } else if (taskRepeatEndOn.checked) {
-    repeatStore.repeatState.end = { type: "on", date: taskRepeatEndDate.value };
-  } else {
-    repeatStore.repeatState.end = { type: "never", date: "", count: 1 };
-  }
-}
-function handleRepeatEndCountInput() { taskRepeatEndCount.value = Math.max(1, Number(taskRepeatEndCount.value) || 1); updateRepeatEnd(); }
-function handleRepeatModalCloseClick() {
-  closeRepeatModal();
-  if (repeatStore.repeatTarget === "subsection") {
-    setRepeatFromSelection(repeatStore.subsectionRepeatBeforeModal || { ...DEFAULT_TASK_REPEAT }, "subsection");
-    const prev = repeatStore.subsectionRepeatBeforeModal || { ...DEFAULT_TASK_REPEAT };
-    subsectionTaskRepeatSelect.value = prev.type === "custom" ? "custom" : TASK_REPEAT_NONE;
-    syncSubsectionRepeatLabel();
-  } else {
-    setRepeatFromSelection(repeatStore.repeatSelectionBeforeModal || { ...DEFAULT_TASK_REPEAT }, "task");
-    const prev = repeatStore.repeatSelectionBeforeModal || { ...DEFAULT_TASK_REPEAT };
-    taskRepeatSelect.value = prev.type === "custom" ? "custom" : TASK_REPEAT_NONE;
-    syncRepeatSelectLabel();
-  }
-  repeatStore.repeatTarget = "task";
-}
-function handleRepeatModalSaveClick() {
-  const repeat = buildRepeatFromState();
-  if (repeatStore.repeatTarget === "subsection") {
-    repeatStore.subsectionRepeatSelection = repeat;
-    setRepeatFromSelection(repeat, "subsection");
-    subsectionTaskRepeatSelect.value = "custom";
-    syncSubsectionRepeatLabel();
-  } else {
-    repeatStore.lastRepeatSelection = repeat;
-    setRepeatFromSelection(repeat, "task");
-    taskRepeatSelect.value = "custom";
-    syncRepeatSelectLabel();
-  }
-  closeRepeatModal();
-  repeatStore.repeatTarget = "task";
-}
-export function registerRepeatEventHandlers() {
-  registerRepeatSelectHandlers();
-  registerRepeatStateHandlers();
-  registerRepeatModalHandlers();
-}
-function registerRepeatSelectHandlers() {
-  taskRepeatSelect?.addEventListener("change", handleTaskRepeatSelectChange);
-  subsectionTaskRepeatSelect?.addEventListener("change", handleSubsectionRepeatSelectChange);
-}
-function registerRepeatUnitHandlers() {
-  taskRepeatUnit?.addEventListener("change", handleRepeatUnitChange);
-}
-function registerRepeatIntervalHandlers() {
-  taskRepeatInterval?.addEventListener("input", handleRepeatIntervalInput);
-}
-function registerRepeatWeeklyHandlers() {
-  taskRepeatWeekdays?.addEventListener("click", handleRepeatWeekdaysClick);
-  taskRepeatWeeklyModeAny?.addEventListener("change", handleRepeatWeeklyModeAnyChange);
-  taskRepeatWeeklyModeAll?.addEventListener("change", handleRepeatWeeklyModeAllChange);
-}
-function registerRepeatMonthlyHandlers() {
-  taskRepeatMonthlyMode?.addEventListener("change", handleRepeatMonthlyModeChange);
-  taskRepeatMonthlyDay?.addEventListener("input", handleRepeatMonthlyDayInput);
-  taskRepeatMonthlyNth?.addEventListener("change", handleRepeatMonthlyNthChange);
-  taskRepeatMonthlyWeekday?.addEventListener("change", handleRepeatMonthlyWeekdayChange);
-}
-function registerRepeatYearlyHandlers() {
-  taskRepeatYearlyRangeStart?.addEventListener("input", handleRepeatYearlyRangeStartInput);
-  taskRepeatYearlyRangeEnd?.addEventListener("input", handleRepeatYearlyRangeEndInput);
-}
-function registerRepeatEndHandlers() {
-  taskRepeatEndNever?.addEventListener("change", updateRepeatEnd);
-  taskRepeatEndOn?.addEventListener("change", updateRepeatEnd);
-  taskRepeatEndAfter?.addEventListener("change", updateRepeatEnd);
-  taskRepeatEndDate?.addEventListener("input", updateRepeatEnd);
-  taskRepeatEndCount?.addEventListener("input", handleRepeatEndCountInput);
-}
-function registerRepeatStateHandlers() {
-  registerRepeatUnitHandlers();
-  registerRepeatIntervalHandlers();
-  registerRepeatWeeklyHandlers();
-  registerRepeatMonthlyHandlers();
-  registerRepeatYearlyHandlers();
-  registerRepeatEndHandlers();
-}
-function registerRepeatModalHandlers() {
-  repeatModalCloseBtns.forEach((btn) =>
-    btn.addEventListener("click", handleRepeatModalCloseClick)
-  );
-  repeatModalSaveBtn?.addEventListener("click", handleRepeatModalSaveClick);
+  return () => {
+    taskDeadlineInput.removeEventListener("click", openPicker);
+    taskDeadlineInput.removeEventListener("keydown", handleKeyDown);
+  };
 }

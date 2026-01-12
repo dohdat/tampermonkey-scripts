@@ -21,6 +21,7 @@ export const state = {
   notificationUndoHandler: null,
   taskTitleEditCleanup: null,
   settingsCleanup: null,
+  pageCleanup: null,
   navStack: [],
   navIndex: -1,
   sortableInstances: [],

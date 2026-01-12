@@ -333,6 +333,32 @@
             <div id="task-template-list" class="grid gap-3" data-test-skedpal="task-template-list"></div>
           </div>
         </div>
+        <div class="rounded-2xl border-slate-800 bg-slate-900/70 p-4 shadow-lg space-y-3" data-test-skedpal="settings-task-background">
+          <div class="flex flex-col gap-2">
+            <p class="text-xs uppercase tracking-wide text-slate-500" data-test-skedpal="task-background-eyebrow">Settings</p>
+            <h3 class="text-base font-semibold" data-test-skedpal="task-background-title">Task background color</h3>
+            <p class="text-sm text-slate-400" data-test-skedpal="task-background-subtitle">
+              Choose how task cards are tinted in the Tasks and Today views.
+            </p>
+          </div>
+          <div class="grid gap-3 md:grid-cols-[220px_1fr] md:items-center">
+            <label class="field" data-test-skedpal="task-background-label">
+              <span class="field-label">Color source</span>
+              <select
+                id="task-background-mode"
+                class="field-input"
+                data-test-skedpal="task-background-select"
+              >
+                <option value="priority">Priority (default)</option>
+                <option value="timemap">TimeMap</option>
+                <option value="none">No background color</option>
+              </select>
+            </label>
+            <p class="text-sm text-slate-400" data-test-skedpal="task-background-note">
+              Priority uses your task priority colors. TimeMap uses each task's first TimeMap.
+            </p>
+          </div>
+        </div>
         <div class="rounded-2xl border-slate-800 bg-slate-900/70 p-4 shadow-lg space-y-3" data-test-skedpal="settings-timemaps">
           <div class="flex items-center justify-between">
             <div>

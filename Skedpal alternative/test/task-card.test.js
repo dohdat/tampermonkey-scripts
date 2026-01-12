@@ -60,6 +60,8 @@ installDomStubs();
 
 const { renderTaskCard } = await import("../src/ui/tasks/task-card.js");
 const { caretRightIconSvg } = await import("../src/ui/constants.js");
+const { themeColors } = await import("../src/ui/theme.js");
+const { state } = await import("../src/ui/state/page-state.js");
 
 describe("task card", () => {
   beforeEach(() => {
@@ -189,6 +191,66 @@ describe("task card", () => {
     assert.strictEqual(card.style.borderStyle, "dashed");
     assert.ok(findByTestAttr(card, "task-detail-schedule-value"));
     assert.ok(findByTestAttr(card, "task-start-from"));
+  });
+
+  it("uses priority colors for task backgrounds when selected", () => {
+    const previousMode = state.settingsCache.taskBackgroundMode;
+    state.settingsCache.taskBackgroundMode = "priority";
+    const task = {
+      id: "t-priority",
+      title: "Priority task",
+      durationMin: 30,
+      timeMapIds: ["tm-1"],
+      completed: false,
+      priority: 4
+    };
+    const context = {
+      tasks: [task],
+      timeMapById: new Map([["tm-1", { id: "tm-1", name: "Focus", color: "#22c55e" }]]),
+      collapsedTasks: new Set(),
+      expandedTaskDetails: new Set(),
+      computeTotalDuration: () => 0,
+      getTaskDepthById: () => 0,
+      getSectionName: () => "",
+      getSubsectionName: () => ""
+    };
+
+    try {
+      const card = renderTaskCard(task, context);
+      assert.strictEqual(card.style.backgroundColor, `${themeColors.amber400}1a`);
+    } finally {
+      state.settingsCache.taskBackgroundMode = previousMode;
+    }
+  });
+
+  it("uses slate background for no-color mode", () => {
+    const previousMode = state.settingsCache.taskBackgroundMode;
+    state.settingsCache.taskBackgroundMode = "none";
+    const task = {
+      id: "t-none",
+      title: "No background",
+      durationMin: 25,
+      timeMapIds: ["tm-1"],
+      completed: false,
+      priority: 2
+    };
+    const context = {
+      tasks: [task],
+      timeMapById: new Map([["tm-1", { id: "tm-1", name: "Focus", color: "#22c55e" }]]),
+      collapsedTasks: new Set(),
+      expandedTaskDetails: new Set(),
+      computeTotalDuration: () => 0,
+      getTaskDepthById: () => 0,
+      getSectionName: () => "",
+      getSubsectionName: () => ""
+    };
+
+    try {
+      const card = renderTaskCard(task, context);
+      assert.strictEqual(card.style.backgroundColor, `${themeColors.slate400}1a`);
+    } finally {
+      state.settingsCache.taskBackgroundMode = previousMode;
+    }
   });
 
   it("renders link markup, repeat summary, and unknown timemap names", () => {

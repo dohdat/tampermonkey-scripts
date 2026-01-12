@@ -14,7 +14,7 @@ import { SIXTY, domRefs } from "./constants.js";
 import { state } from "./state/page-state.js";
 import { normalizeHorizonDays, debounce } from "./utils.js";
 import { invalidateExternalEventsCache } from "./calendar-external.js";
-import { loadTasks, updateScheduleSummary } from "./tasks/tasks-actions.js";
+import { loadTasks, updateScheduleSummary, renderTimeMapsAndTasks } from "./tasks/tasks-actions.js";
 import { initTaskTemplates, loadTaskTemplates } from "./task-templates.js";
 import { initTimeMapSectionToggle } from "./time-map-settings-toggle.js";
 
@@ -27,7 +27,8 @@ const {
   googleCalendarList,
   backupNowBtn,
   backupRestoreBtn,
-  backupStatus
+  backupStatus,
+  taskBackgroundModeSelect
 } = domRefs;
 
 const HORIZON_PERSIST_DEBOUNCE_MS = 250;
@@ -326,6 +327,29 @@ function initGoogleCalendarSettings(persistSettingsSafely) {
   googleCalendarDisconnectBtn?.addEventListener("click", handleCalendarDisconnect);
 }
 
+function initTaskBackgroundSetting(persistSettingsSafely) {
+  if (!taskBackgroundModeSelect) {return () => {};}
+  const allowed = new Set(["priority", "timemap", "none"]);
+  const resolveMode = (value) => (allowed.has(value) ? value : "priority");
+  const applyMode = (value) => {
+    taskBackgroundModeSelect.value = resolveMode(value);
+  };
+  applyMode(state.settingsCache.taskBackgroundMode);
+  const handleChange = () => {
+    const nextMode = resolveMode(taskBackgroundModeSelect.value);
+    taskBackgroundModeSelect.value = nextMode;
+    persistSettingsSafely(
+      { taskBackgroundMode: nextMode },
+      "Failed to save task background preference."
+    );
+    renderTimeMapsAndTasks(state.tasksTimeMapsCache || []);
+  };
+  taskBackgroundModeSelect.addEventListener("change", handleChange);
+  return () => {
+    taskBackgroundModeSelect.removeEventListener("change", handleChange);
+  };
+}
+
 async function refreshBackupStatus() {
   try {
     const latest = await getLatestBackup();
@@ -435,6 +459,7 @@ export async function initSettings(prefetchedSettings) {
     state.settingsCleanup = null;
   }
   cleanupFns.push(initHorizonSettings(persistSettings));
+  cleanupFns.push(initTaskBackgroundSetting(persistSettingsSafely));
   cleanupFns.push(initTimeMapSectionToggle());
   initGoogleCalendarSettings(persistSettingsSafely);
   initBackupSettings();

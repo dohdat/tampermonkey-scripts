@@ -20,6 +20,7 @@ import { formatDateTime, formatDurationShort } from "../utils.js";
 import { getRepeatSummary } from "../repeat.js";
 import { themeColors } from "../theme.js";
 import { getOverdueReminders } from "./task-reminders.js";
+import { applyTaskBackgroundStyle } from "./task-card-styles.js";
 
 const detailClockIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 6v4l2.5 2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
 const detailFlagIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 3v14" stroke-linecap="round"></path><path d="M4 4h9l-1.5 3L13 10H4" stroke-linejoin="round"></path></svg>`;
@@ -51,11 +52,7 @@ function applyTaskCardBaseStyles(taskCard, task, depth, timeMapById, options = {
     taskCard.style.marginLeft = `${depth * TASK_CHILD_INDENT_PX}px`;
     taskCard.style.borderStyle = "dashed";
   }
-  const timeMapIds = Array.isArray(task.timeMapIds) ? task.timeMapIds : [];
-  const color = timeMapById.get(timeMapIds[0])?.color;
-  if (color) {
-    taskCard.style.backgroundColor = `${color}1a`;
-  }
+  applyTaskBackgroundStyle(taskCard, task, timeMapById);
 }
 
 function buildTaskTitleText(task, titleMarkup, isSubtask) {

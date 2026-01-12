@@ -217,6 +217,7 @@ export const domRefs = {
   taskTemplateToggleBtn: document.getElementById("task-template-toggle"),
   taskTemplateList: document.getElementById("task-template-list"),
   taskTemplateListWrap: document.getElementById("task-template-list-wrap"),
+  taskBackgroundModeSelect: document.getElementById("task-background-mode"),
   calendarView: document.getElementById("calendar"),
   calendarGrid: document.getElementById("calendar-grid"),
   calendarTitle: document.getElementById("calendar-title"),

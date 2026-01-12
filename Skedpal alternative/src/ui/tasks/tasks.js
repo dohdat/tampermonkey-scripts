@@ -1,6 +1,7 @@
 import { DEFAULT_SETTINGS, saveTask } from "../../data/db.js";
 import {
   DEFAULT_TASK_MIN_BLOCK_MIN,
+  DEFAULT_TASK_PRIORITY,
   DEFAULT_TASK_REPEAT,
   TASK_STATUS_UNSCHEDULED
 } from "../constants.js";
@@ -207,6 +208,45 @@ export function computeTaskReorderUpdatesForMultiple(
     );
     assignOrdersToUpdates(destinationList, targetSection, targetSubsection, originalById, updates);
   }
+  return { updates, changed: updates.length > 0 };
+}
+
+function getPriorityValue(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : DEFAULT_TASK_PRIORITY;
+}
+
+function getOrderValue(value) {
+  return Number.isFinite(value) ? value : Number.MAX_SAFE_INTEGER;
+}
+
+export function computeSubsectionPrioritySortUpdates(tasks, sectionId, subsectionId) {
+  const key = getContainerKey(sectionId, subsectionId);
+  const inContainer = (tasks || []).filter(
+    (task) => getContainerKey(task.section, task.subsection) === key
+  );
+  if (inContainer.length <= 1) {return { updates: [], changed: false };}
+  const idsInContainer = new Set(inContainer.map((task) => task.id));
+  const roots = inContainer.filter(
+    (task) => !task.subtaskParentId || !idsInContainer.has(task.subtaskParentId)
+  );
+  if (roots.length <= 1) {return { updates: [], changed: false };}
+  const sortedRoots = [...roots].sort((a, b) => {
+    const priorityDiff = getPriorityValue(b.priority) - getPriorityValue(a.priority);
+    if (priorityDiff) {return priorityDiff;}
+    const orderDiff = getOrderValue(a.order) - getOrderValue(b.order);
+    if (orderDiff) {return orderDiff;}
+    return (a.title || "").localeCompare(b.title || "");
+  });
+  const originalById = new Map((tasks || []).map((task) => [task.id, task]));
+  const updates = [];
+  sortedRoots.forEach((task, index) => {
+    const desiredOrder = index + 1;
+    const original = originalById.get(task.id);
+    if (!original || original.order !== desiredOrder) {
+      updates.push({ ...task, order: desiredOrder });
+    }
+  });
   return { updates, changed: updates.length > 0 };
 }
 

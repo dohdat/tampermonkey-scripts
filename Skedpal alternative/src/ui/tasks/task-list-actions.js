@@ -7,6 +7,7 @@ import {
 import { state } from "../state/page-state.js";
 import { getTaskAndDescendants } from "../utils.js";
 import { showUndoBanner } from "../notifications.js";
+import { computeSubsectionPrioritySortUpdates } from "./tasks.js";
 import {
   openSubsectionModal,
   handleAddSubsection,
@@ -135,6 +136,7 @@ function parseTaskListClick(btn) {
     favoriteSubsectionId: btn.dataset.favoriteSubsection,
     removeSubsectionId: btn.dataset.removeSubsection,
     parentSectionId: btn.dataset.parentSection,
+    sortSubsectionPriorityId: btn.dataset.sortSubsectionPriority,
     editId: btn.dataset.edit,
     deleteId: btn.dataset.delete,
     duplicateTaskId: btn.dataset.duplicateTask,
@@ -364,6 +366,27 @@ async function handleSubsectionActions(action) {
   return false;
 }
 
+async function sortSubsectionTasksByPriority(sectionId, subsectionId) {
+  if (!sectionId || !subsectionId) {return false;}
+  const { updates, changed } = computeSubsectionPrioritySortUpdates(
+    state.tasksCache,
+    sectionId,
+    subsectionId
+  );
+  if (!changed) {return false;}
+  await Promise.all(updates.map((task) => saveTask(task)));
+  await loadTasks();
+  return true;
+}
+
+async function handleSubsectionSortAction(action) {
+  if (action.sortSubsectionPriorityId === undefined) {return false;}
+  return sortSubsectionTasksByPriority(
+    action.parentSectionId || "",
+    action.sortSubsectionPriorityId || ""
+  );
+}
+
 function handleCollapseActions(btn, action) {
   const toggleSetEntry = (set, value) => {
     if (set.has(value)) {
@@ -524,6 +547,12 @@ function handleMenuToggleAction(action) {
   return true;
 }
 
+function handleTaskMenuToggle(action, btn) {
+  if (action.taskMenuToggleId === undefined) {return false;}
+  if (handleMenuToggleActionForButton(btn)) {return true;}
+  return handleMenuToggleAction(action);
+}
+
 function handleMenuToggleActionForButton(btn) {
   const taskId = btn?.dataset?.taskMenuToggle || "";
   if (!taskId) {return false;}
@@ -583,14 +612,18 @@ export async function handleTaskListClick(event, options = {}) {
   const btn = event.target.closest("button");
   if (!btn) {return;}
   const action = parseTaskListClick(btn);
-  if (action.taskMenuToggleId !== undefined) {
-    if (handleMenuToggleActionForButton(btn)) {return;}
+  const handlers = [
+    () => handleTaskMenuToggle(action, btn),
+    () => handleCompleteAction(action),
+    () => handleZoomActionWithClose(action),
+    () => handleChildSubsectionActions(action, btn),
+    () => handleSectionSubsectionActions(action),
+    () => handleSubsectionSortAction(action),
+    () => handleCollapseActions(btn, action),
+    () => handleTaskActionsWithClose(action, { ...options, event })
+  ];
+  for (const handler of handlers) {
+    const handled = await handler();
+    if (handled) {return;}
   }
-  if (handleMenuToggleAction(action)) {return;}
-  if (await handleCompleteAction(action)) {return;}
-  if (handleZoomActionWithClose(action)) {return;}
-  if (await handleChildSubsectionActions(action, btn)) {return;}
-  if (await handleSectionSubsectionActions(action)) {return;}
-  if (handleCollapseActions(btn, action)) {return;}
-  await handleTaskActionsWithClose(action, { ...options, event });
 }

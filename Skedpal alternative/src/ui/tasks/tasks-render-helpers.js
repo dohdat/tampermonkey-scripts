@@ -133,6 +133,20 @@ export function buildFirstOccurrenceUnscheduledMap(tasks, settings) {
   return unscheduledById;
 }
 
+function buildSubsectionSortButton({ subsectionId, sectionId, themeColors, icons }) {
+  const sortSubBtn = document.createElement("button");
+  sortSubBtn.type = "button";
+  sortSubBtn.dataset.sortSubsectionPriority = subsectionId;
+  sortSubBtn.dataset.parentSection = sectionId;
+  sortSubBtn.className = "title-icon-btn";
+  sortSubBtn.title = "Sort tasks by priority";
+  sortSubBtn.innerHTML = icons.sortIconSvg;
+  sortSubBtn.style.borderColor = themeColors.sky400;
+  sortSubBtn.style.color = themeColors.sky400;
+  sortSubBtn.setAttribute("data-test-skedpal", "subsection-sort-priority-btn");
+  return sortSubBtn;
+}
+
 export function buildSubsectionActionButtons({
   sub,
   sectionId,
@@ -140,6 +154,12 @@ export function buildSubsectionActionButtons({
   themeColors,
   icons
 }) {
+  const sortSubBtn = buildSubsectionSortButton({
+    subsectionId: sub.id,
+    sectionId,
+    themeColors,
+    icons
+  });
   const editSubBtn = document.createElement("button");
   editSubBtn.type = "button";
   editSubBtn.dataset.editSubsection = sub.id;
@@ -203,6 +223,7 @@ export function buildSubsectionActionButtons({
   addChildSubBtn.setAttribute("data-test-skedpal", "subsection-add-child");
 
   return {
+    sortSubBtn,
     editSubBtn,
     zoomSubBtn,
     favoriteSubBtn,

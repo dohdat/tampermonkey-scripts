@@ -14,6 +14,7 @@ global.crypto = {
 
 const {
   computeTaskReorderUpdates,
+  computeSubsectionPrioritySortUpdates,
   ensureTaskIds,
   migrateSectionsAndTasks
 } = await import("../src/ui/tasks/tasks.js");
@@ -80,6 +81,34 @@ describe("task reorder", () => {
     const tasks = [{ id: "t1", section: "s1", subsection: "", order: 1 }];
     const result = computeTaskReorderUpdates(tasks, "missing", "s1", "", null);
     assert.deepStrictEqual(result, { updates: [], changed: false });
+  });
+});
+
+describe("subsection priority sort", () => {
+  it("sorts root tasks by priority without touching subtasks", () => {
+    const tasks = [
+      { id: "p1", title: "Parent", section: "s1", subsection: "sub1", order: 1, priority: 3 },
+      {
+        id: "c1",
+        title: "Child",
+        section: "s1",
+        subsection: "sub1",
+        order: 1.01,
+        subtaskParentId: "p1",
+        priority: 1
+      },
+      { id: "t2", title: "High", section: "s1", subsection: "sub1", order: 2, priority: 1 },
+      { id: "t3", title: "Low", section: "s1", subsection: "sub1", order: 3, priority: 5 },
+      { id: "t4", title: "Other", section: "s1", subsection: "sub2", order: 1, priority: 1 }
+    ];
+
+    const result = computeSubsectionPrioritySortUpdates(tasks, "s1", "sub1");
+    const byId = new Map(result.updates.map((task) => [task.id, task]));
+    assert.strictEqual(result.changed, true);
+    assert.strictEqual(byId.get("t3").order, 1);
+    assert.strictEqual(byId.get("p1").order, 2);
+    assert.strictEqual(byId.get("t2").order, 3);
+    assert.strictEqual(byId.has("c1"), false);
   });
 });
 

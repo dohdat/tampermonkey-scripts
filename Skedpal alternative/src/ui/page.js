@@ -373,11 +373,6 @@ async function handleTaskListTabIndent(event) {
   }
 }
 
-function handleTaskFormWrapClick(event) {
-  if (event.target === taskFormWrap) {
-    closeTaskForm();
-  }
-}
 
 async function handleRepeatCompleteListClick(event) {
   const btn = event.target.closest("[data-repeat-complete-date]");
@@ -545,7 +540,6 @@ function registerSubsectionHandlers() {
 }
 
 function registerModalHandlers() {
-  taskFormWrap?.addEventListener("click", handleTaskFormWrapClick);
   taskModalCloseButtons.forEach((btn) => btn.addEventListener("click", closeTaskForm));
   repeatCompleteCloseBtns.forEach((btn) =>
     btn.addEventListener("click", closeRepeatCompleteModal)

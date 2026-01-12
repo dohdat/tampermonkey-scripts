@@ -46,14 +46,16 @@
               Title
               <span class="field-label__required" data-test-skedpal="task-title-required">*</span>
             </span>
-            <input
-              id="task-title"
-              required
-              placeholder="Write a short task title"
-              class="field-input"
-              data-test-skedpal="task-title-input"
-            />
-            <p class="mt-1 text-xs text-slate-500" data-test-skedpal="task-title-helper"></p>
+            <div class="field-input-wrap" data-test-skedpal="task-title-input-wrap">
+              <input
+                id="task-title"
+                required
+                placeholder="Write a short task title"
+                class="field-input field-input--with-helper"
+                data-test-skedpal="task-title-input"
+              />
+              <span class="field-input-helper" data-test-skedpal="task-title-helper"></span>
+            </div>
           </label>
         </div>
         <div

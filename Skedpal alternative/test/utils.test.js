@@ -104,6 +104,21 @@ describe("utils url helpers", () => {
     assert.strictEqual(parseViewFromUrl("tasks"), "tasks");
   });
 
+  it("clears zoom when switching away from tasks view", () => {
+    global.window = {
+      location: { href: "https://example.com/app?view=tasks&zoom=task:t1:s1:sub1" }
+    };
+    global.history = {
+      replaceState: (_state, _title, url) => {
+        global.window.location.href = url;
+      }
+    };
+
+    updateUrlWithView("calendar");
+    assert.strictEqual(parseViewFromUrl(), "calendar");
+    assert.strictEqual(parseZoomFromUrl(), null);
+  });
+
   it("reads new task params", () => {
     global.window = {
       location: { href: "https://example.com/app?newTask=1&title=Hello&url=https%3A%2F%2Fexample.com" }

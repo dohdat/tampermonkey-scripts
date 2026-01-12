@@ -132,9 +132,9 @@ function setActiveViewShell(resolvedTarget) {
   }
 }
 
-function maybeClearZoomFilterForView(resolvedTarget, updateUrl) {
+function maybeClearZoomFilterForView(resolvedTarget) {
   if (resolvedTarget !== "tasks" && state.zoomFilter) {
-    clearZoomFilter({ record: false, updateUrl, historyMode: "replace" });
+    clearZoomFilter({ record: false, updateUrl: false, historyMode: "replace" });
   }
 }
 
@@ -181,7 +181,7 @@ export function switchView(target, options = {}) {
     isCalendarSplit,
     currentView
   );
-  maybeClearZoomFilterForView(resolvedTarget, updateUrl);
+  maybeClearZoomFilterForView(resolvedTarget);
   applyViewVisibility(views, resolvedTarget, isCalendarSplit);
   updateNavButtonState(navButtons, resolvedTarget);
   maybeUpdateViewUrl(updateUrl, currentView, resolvedTarget, historyMode);

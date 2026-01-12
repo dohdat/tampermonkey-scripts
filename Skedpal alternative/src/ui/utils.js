@@ -66,6 +66,9 @@ export function updateUrlWithView(view, options = {}) {
   const url = new URL(window.location.href);
   if (view) {
     url.searchParams.set("view", view);
+    if (view !== "tasks") {
+      url.searchParams.delete("zoom");
+    }
   } else {
     url.searchParams.delete("view");
   }

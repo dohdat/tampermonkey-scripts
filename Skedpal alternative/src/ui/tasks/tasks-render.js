@@ -20,6 +20,7 @@ import { destroySectionSortables, setupSectionSortables } from "../sections-sort
 import { themeColors } from "../theme.js";
 import { destroyTaskVirtualizers, initializeTaskVirtualizers } from "./task-virtualization.js";
 import { buildChildSubsectionInput, buildSubsectionZone } from "./task-subsection-zone.js";
+import { buildAddTaskRow } from "./task-add-row.js";
 import {
   buildParentMap,
   buildTaskDepthGetter,
@@ -128,6 +129,17 @@ function renderZoomTasks(filteredTasks, context, renderToken) {
     batchSize: 30,
     shouldCancel: buildShouldCancel(renderToken)
   });
+  if (state.zoomFilter) {
+    const parentId =
+      state.zoomFilter.type === "task" ? state.zoomFilter.taskId || "" : "";
+    zoomWrap.appendChild(
+      buildAddTaskRow({
+        sectionId: state.zoomFilter.sectionId || "",
+        subsectionId: state.zoomFilter.subsectionId || "",
+        parentId
+      })
+    );
+  }
   taskList.appendChild(zoomWrap);
 }
 
@@ -371,6 +383,9 @@ function renderSubsection(sub, section, sectionTasks, context, options) {
   subBody.style.display = subCollapsed ? "none" : "";
   subBody.appendChild(buildChildSubsectionInput(sub, section.id, isNoSection));
   const children = buildChildren(sub.id);
+  const showAddTaskRow =
+    children.length === 0 ||
+    (state.zoomFilter?.type === "subsection" && state.zoomFilter.subsectionId === sub.id);
   subBody.appendChild(
     buildSubsectionZone(
       sub,
@@ -384,7 +399,7 @@ function renderSubsection(sub, section, sectionTasks, context, options) {
         enableVirtualization,
         isCollapsed,
         shouldCancel: buildShouldCancel(renderToken),
-        showAddTaskRow: children.length === 0
+        showAddTaskRow
       }
     )
   );

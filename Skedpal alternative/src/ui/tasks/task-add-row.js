@@ -11,7 +11,14 @@ import {
 import { saveTask } from "../../data/db.js";
 import { state } from "../state/page-state.js";
 import { getSubsectionTemplate } from "../sections.js";
-import { getNextOrder, normalizeSubtaskScheduleMode, parseLocalDateInput, uuid } from "../utils.js";
+import {
+  buildInheritedSubtaskUpdate,
+  getNextOrder,
+  getNextSubtaskOrder,
+  normalizeSubtaskScheduleMode,
+  parseLocalDateInput,
+  uuid
+} from "../utils.js";
 
 const ADD_TASK_ROW_TEST_ID = "task-add-row";
 const ADD_TASK_BUTTON_TEST_ID = "task-add-button";
@@ -90,17 +97,39 @@ function resolveNumber(value, fallback) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-export function buildQuickAddTaskPayload({
+function resolveQuickAddContext(sectionId, subsectionId, parentTask, template) {
+  const inheritedSection = parentTask?.section || sectionId;
+  const inheritedSubsection = parentTask?.subsection || subsectionId;
+  const resolvedTemplate = resolveTemplateForLocation(
+    inheritedSection,
+    inheritedSubsection,
+    template
+  );
+  return { inheritedSection, inheritedSubsection, resolvedTemplate };
+}
+
+function resolveQuickAddOrder(parentTask, sectionId, subsectionId, tasks) {
+  if (parentTask) {
+    return getNextSubtaskOrder(parentTask, sectionId, subsectionId, tasks);
+  }
+  return getNextOrder(sectionId, subsectionId, tasks);
+}
+
+function buildQuickAddBasePayload({
+  id,
   title,
-  sectionId = "",
-  subsectionId = "",
-  tasks = [],
-  id = uuid(),
-  template = null,
-  settings = state.settingsCache
-} = {}) {
-  const trimmedTitle = (title || "").trim().slice(0, TASK_TITLE_MAX_LENGTH);
-  const resolvedTemplate = resolveTemplateForLocation(sectionId, subsectionId, template);
+  sectionId,
+  subsectionId,
+  tasks,
+  template,
+  settings
+}) {
+  const { inheritedSection, inheritedSubsection, resolvedTemplate } = resolveQuickAddContext(
+    sectionId,
+    subsectionId,
+    null,
+    template
+  );
   const durationMin = resolveNumber(
     resolvedTemplate?.durationMin,
     DEFAULT_TASK_DURATION_MIN
@@ -117,10 +146,10 @@ export function buildQuickAddTaskPayload({
   );
   const deadline = parseLocalDateInput(resolvedTemplate?.deadline || "");
   const startFrom = parseLocalDateInput(resolvedTemplate?.startFrom || "");
-  const order = getNextOrder(sectionId, subsectionId, tasks);
+  const order = resolveQuickAddOrder(null, inheritedSection, inheritedSubsection, tasks);
   return {
     id,
-    title: trimmedTitle,
+    title,
     durationMin,
     minBlockMin,
     priority,
@@ -128,8 +157,8 @@ export function buildQuickAddTaskPayload({
     startFrom,
     link: resolvedTemplate?.link || "",
     timeMapIds,
-    section: sectionId || "",
-    subsection: subsectionId || "",
+    section: inheritedSection || "",
+    subsection: inheritedSubsection || "",
     order,
     subtaskParentId: null,
     subtaskScheduleMode,
@@ -146,6 +175,98 @@ export function buildQuickAddTaskPayload({
   };
 }
 
+function buildQuickAddParentPayload({
+  id,
+  title,
+  parentTask,
+  tasks,
+  template,
+  settings
+}) {
+  const { inheritedSection, inheritedSubsection, resolvedTemplate } = resolveQuickAddContext(
+    "",
+    "",
+    parentTask,
+    template
+  );
+  const durationMin = resolveNumber(
+    resolvedTemplate?.durationMin,
+    DEFAULT_TASK_DURATION_MIN
+  );
+  const minBlockMin = resolveNumber(
+    resolvedTemplate?.minBlockMin,
+    DEFAULT_TASK_MIN_BLOCK_MIN
+  );
+  const priority = resolveNumber(resolvedTemplate?.priority, DEFAULT_TASK_PRIORITY);
+  const timeMapIds = resolveTimeMapIds(resolvedTemplate, settings);
+  const repeat = resolvedTemplate?.repeat ? { ...resolvedTemplate.repeat } : { ...DEFAULT_TASK_REPEAT };
+  const subtaskScheduleMode = normalizeSubtaskScheduleMode(
+    resolvedTemplate?.subtaskScheduleMode || SUBTASK_SCHEDULE_PARALLEL
+  );
+  const deadline = parseLocalDateInput(resolvedTemplate?.deadline || "");
+  const startFrom = parseLocalDateInput(resolvedTemplate?.startFrom || "");
+  const order = resolveQuickAddOrder(parentTask, inheritedSection, inheritedSubsection, tasks);
+  const basePayload = {
+    id,
+    title,
+    durationMin,
+    minBlockMin,
+    priority,
+    deadline,
+    startFrom,
+    link: resolvedTemplate?.link || "",
+    timeMapIds,
+    section: inheritedSection || "",
+    subsection: inheritedSubsection || "",
+    order,
+    subtaskParentId: null,
+    subtaskScheduleMode,
+    repeat,
+    reminders: [],
+    completed: false,
+    completedAt: null,
+    completedOccurrences: [],
+    scheduleStatus: TASK_STATUS_UNSCHEDULED,
+    scheduledStart: null,
+    scheduledEnd: null,
+    scheduledTimeMapId: null,
+    scheduledInstances: []
+  };
+  return buildInheritedSubtaskUpdate(basePayload, parentTask) || basePayload;
+}
+
+export function buildQuickAddTaskPayload({
+  title,
+  sectionId = "",
+  subsectionId = "",
+  tasks = [],
+  id = uuid(),
+  parentTask = null,
+  template = null,
+  settings = state.settingsCache
+} = {}) {
+  const trimmedTitle = (title || "").trim().slice(0, TASK_TITLE_MAX_LENGTH);
+  if (parentTask) {
+    return buildQuickAddParentPayload({
+      id,
+      title: trimmedTitle,
+      parentTask,
+      tasks,
+      template,
+      settings
+    });
+  }
+  return buildQuickAddBasePayload({
+    id,
+    title: trimmedTitle,
+    sectionId,
+    subsectionId,
+    tasks,
+    template,
+    settings
+  });
+}
+
 export async function handleAddTaskInputSubmit(input) {
   if (!input) {return false;}
   const rawTitle = input.value || "";
@@ -155,11 +276,16 @@ export async function handleAddTaskInputSubmit(input) {
   }
   const sectionId = input.dataset.addTaskSection || "";
   const subsectionId = input.dataset.addTaskSubsection || "";
+  const parentId = input.dataset.addTaskParent || "";
+  const parentTask = parentId
+    ? state.tasksCache.find((task) => task.id === parentId)
+    : null;
   const payload = buildQuickAddTaskPayload({
     title: rawTitle,
     sectionId,
     subsectionId,
-    tasks: state.tasksCache
+    tasks: state.tasksCache,
+    parentTask
   });
   await saveTask(payload);
   collapseAddTaskRowForInput(input);
@@ -167,7 +293,11 @@ export async function handleAddTaskInputSubmit(input) {
   return true;
 }
 
-export function buildAddTaskRow({ sectionId = "", subsectionId = "" } = {}) {
+export function buildAddTaskRow({
+  sectionId = "",
+  subsectionId = "",
+  parentId = ""
+} = {}) {
   const row = document.createElement("div");
   row.className =
     "task-add-row group opacity-40 transition-opacity hover:opacity-90 focus-within:opacity-100";
@@ -180,6 +310,7 @@ export function buildAddTaskRow({ sectionId = "", subsectionId = "" } = {}) {
   button.type = "button";
   button.dataset.addTaskSection = sectionId;
   button.dataset.addTaskSubsection = subsectionId;
+  button.dataset.addTaskParent = parentId;
   button.dataset.addTaskButton = "true";
   button.className =
     "flex w-full items-center gap-2 rounded-lg border border-transparent bg-transparent px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500/80 hover:text-lime-300 hover:bg-slate-900/30";
@@ -201,6 +332,7 @@ export function buildAddTaskRow({ sectionId = "", subsectionId = "" } = {}) {
   input.dataset.addTaskInput = "true";
   input.dataset.addTaskSection = sectionId;
   input.dataset.addTaskSubsection = subsectionId;
+  input.dataset.addTaskParent = parentId;
   input.className =
     "hidden w-full rounded-lg border-slate-800 bg-slate-950/80 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none";
   input.setAttribute("data-test-skedpal", ADD_TASK_INPUT_TEST_ID);

@@ -551,7 +551,7 @@ export function renderTasks(tasks, timeMaps) {
   const parentById = buildParentMap(tasks);
   const getTaskDepthById = buildTaskDepthGetter(parentById);
   const hasCollapsedAncestor = buildCollapsedAncestorChecker(parentById, state.collapsedTasks);
-  const childrenByParent = buildChildrenByParent(tasks);
+  const childrenByParent = buildChildrenByParent(baseTasks);
   const computeTotalDuration = buildDurationCalculator(childrenByParent);
   const filteredTasks = filterTasksByZoom(baseTasks, hasCollapsedAncestor);
   const context = buildTaskCardContext(baseTasks, timeMapById, computeTotalDuration, getTaskDepthById);

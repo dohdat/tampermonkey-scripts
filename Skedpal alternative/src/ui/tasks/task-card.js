@@ -75,7 +75,7 @@ function buildTaskCollapseButton(task, isCollapsed) {
   const collapseTaskBtn = document.createElement("button");
   collapseTaskBtn.type = "button";
   collapseTaskBtn.dataset.toggleTaskCollapse = task.id;
-  collapseTaskBtn.className = "title-icon-btn";
+  collapseTaskBtn.className = "title-icon-btn task-collapse-btn";
   collapseTaskBtn.title = "Expand/collapse subtasks";
   collapseTaskBtn.setAttribute("data-test-skedpal", "task-collapse-btn");
   collapseTaskBtn.innerHTML = isCollapsed ? caretRightIconSvg : caretDownIconSvg;

@@ -16,6 +16,7 @@ import { normalizeHorizonDays, debounce } from "./utils.js";
 import { invalidateExternalEventsCache } from "./calendar-external.js";
 import { loadTasks, updateScheduleSummary } from "./tasks/tasks-actions.js";
 import { initTaskTemplates, loadTaskTemplates } from "./task-templates.js";
+import { initTimeMapSectionToggle } from "./time-map-settings-toggle.js";
 
 const {
   horizonInput,
@@ -434,6 +435,7 @@ export async function initSettings(prefetchedSettings) {
     state.settingsCleanup = null;
   }
   cleanupFns.push(initHorizonSettings(persistSettings));
+  cleanupFns.push(initTimeMapSectionToggle());
   initGoogleCalendarSettings(persistSettingsSafely);
   initBackupSettings();
   state.taskTemplatesCleanup = initTaskTemplates();

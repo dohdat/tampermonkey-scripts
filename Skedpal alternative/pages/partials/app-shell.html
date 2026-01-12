@@ -333,120 +333,133 @@
             <div id="task-template-list" class="grid gap-3" data-test-skedpal="task-template-list"></div>
           </div>
         </div>
-        <div class="rounded-2xl border-slate-800 bg-slate-900/70 p-4 shadow-lg space-y-3">
+        <div class="rounded-2xl border-slate-800 bg-slate-900/70 p-4 shadow-lg space-y-3" data-test-skedpal="settings-timemaps">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-xs uppercase tracking-wide text-slate-500" data-test-skedpal="nav-timemaps">TimeMaps</p>
               <h3 class="text-base font-semibold" data-test-skedpal="nav-timemaps">Availability maps</h3>
               <p class="text-sm text-slate-400">Create and edit TimeMaps to control when tasks can be scheduled.</p>
             </div>
-            <button
-              id="timemap-toggle"
-              class="rounded-lg border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
-              type="button"
-              data-test-skedpal="timemap-toggle"
-            >
-              New TimeMap
-            </button>
-          </div>
-          <div id="timemap-form-wrap" class="hidden rounded-2xl border-slate-800 bg-slate-900/70 p-4 shadow-lg">
-            <div class="flex items-center justify-between gap-3">
-              <div>
-                <p class="text-xs uppercase tracking-wide text-slate-500">New TimeMap</p>
-                <h4 class="text-base font-semibold">Define available windows</h4>
-              </div>
-              <button id="timemap-reset" type="button" class="text-sm text-lime-300 hover:text-lime-200">Reset</button>
+            <div class="flex flex-wrap items-center gap-2" data-test-skedpal="timemap-actions">
+              <button
+                id="timemap-section-toggle"
+                class="rounded-xl border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
+                type="button"
+                data-test-skedpal="timemap-section-toggle"
+                aria-expanded="false"
+              >
+                Expand
+              </button>
+              <button
+                id="timemap-toggle"
+                class="rounded-lg border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
+                type="button"
+                data-test-skedpal="timemap-toggle"
+              >
+                New TimeMap
+              </button>
             </div>
-            <form id="timemap-form" class="space-y-3">
-              <input id="timemap-id" type="hidden" data-test-skedpal="timemap-id" />
-              <label class="field">
-                <span class="field-label">Name</span>
-                <input
-                  id="timemap-name"
-                  required
-                  placeholder="Morning focus"
-                  class="field-input"
-                  data-test-skedpal="timemap-name"
-                />
-              </label>
-              <div class="grid gap-3 md:grid-cols-[160px_1fr] md:items-center">
-                <div class="field" data-test-skedpal="timemap-color-field">
-                  <span class="field-label">Color</span>
-                  <div class="flex items-center gap-3">
-                    <input
-                      id="timemap-color"
-                      type="hidden"
-                      value="#a3e635"
-                      data-test-skedpal="timemap-color"
-                    />
-                    <span
-                      id="timemap-color-swatch"
-                      class="h-10 w-16 rounded-lg border-slate-700 bg-slate-900"
-                      data-test-skedpal="timemap-color-swatch"
-                    ></span>
-                    <span class="text-xs text-slate-400" data-test-skedpal="timemap-color-note">
-                      Auto-assigned
-                    </span>
+          </div>
+          <div id="timemap-section-content" class="hidden space-y-3" data-test-skedpal="timemap-section-content">
+            <div id="timemap-form-wrap" class="hidden rounded-2xl border-slate-800 bg-slate-900/70 p-4 shadow-lg">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <p class="text-xs uppercase tracking-wide text-slate-500">New TimeMap</p>
+                  <h4 class="text-base font-semibold">Define available windows</h4>
+                </div>
+                <button id="timemap-reset" type="button" class="text-sm text-lime-300 hover:text-lime-200">Reset</button>
+              </div>
+              <form id="timemap-form" class="space-y-3">
+                <input id="timemap-id" type="hidden" data-test-skedpal="timemap-id" />
+                <label class="field">
+                  <span class="field-label">Name</span>
+                  <input
+                    id="timemap-name"
+                    required
+                    placeholder="Morning focus"
+                    class="field-input"
+                    data-test-skedpal="timemap-name"
+                  />
+                </label>
+                <div class="grid gap-3 md:grid-cols-[160px_1fr] md:items-center">
+                  <div class="field" data-test-skedpal="timemap-color-field">
+                    <span class="field-label">Color</span>
+                    <div class="flex items-center gap-3">
+                      <input
+                        id="timemap-color"
+                        type="hidden"
+                        value="#a3e635"
+                        data-test-skedpal="timemap-color"
+                      />
+                      <span
+                        id="timemap-color-swatch"
+                        class="h-10 w-16 rounded-lg border-slate-700 bg-slate-900"
+                        data-test-skedpal="timemap-color-swatch"
+                      ></span>
+                      <span class="text-xs text-slate-400" data-test-skedpal="timemap-color-note">
+                        Auto-assigned
+                      </span>
+                    </div>
+                  </div>
+                  <div class="flex items-end gap-2">
+                    <div class="field w-full">
+                      <span class="field-label">Add day</span>
+                      <select
+                        id="timemap-day-select"
+                        class="field-input"
+                        data-test-skedpal="timemap-day-select"
+                      >
+                        <option value="0">Sunday</option>
+                        <option value="1">Monday</option>
+                        <option value="2">Tuesday</option>
+                        <option value="3">Wednesday</option>
+                        <option value="4">Thursday</option>
+                        <option value="5">Friday</option>
+                        <option value="6">Saturday</option>
+                      </select>
+                    </div>
+                    <button
+                      type="button"
+                      class="rounded-lg border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
+                      id="timemap-day-add"
+                      data-test-skedpal="timemap-day-add"
+                    >
+                      +
+                    </button>
                   </div>
                 </div>
-                <div class="flex items-end gap-2">
-                  <div class="field w-full">
-                    <span class="field-label">Add day</span>
-                    <select
-                      id="timemap-day-select"
-                      class="field-input"
-                      data-test-skedpal="timemap-day-select"
-                    >
-                      <option value="0">Sunday</option>
-                      <option value="1">Monday</option>
-                      <option value="2">Tuesday</option>
-                      <option value="3">Wednesday</option>
-                      <option value="4">Thursday</option>
-                      <option value="5">Friday</option>
-                      <option value="6">Saturday</option>
-                    </select>
-                  </div>
+                <div>
+                  <span class="field-label block">Time ranges</span>
+                  <div id="timemap-day-rows" class="grid gap-2"></div>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
                   <button
+                    class="rounded-xl border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
                     type="button"
-                    class="rounded-lg border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
-                    id="timemap-day-add"
-                    data-test-skedpal="timemap-day-add"
+                    id="timemap-cancel"
+                    data-test-skedpal="timemap-cancel"
                   >
-                    +
+                    Cancel
+                  </button>
+                  <button
+                    class="rounded-xl border-lime-400/60 px-4 py-2 text-sm font-semibold text-lime-300 hover:border-lime-400"
+                    type="button"
+                    id="timemap-set-default"
+                    data-test-skedpal="timemap-set-default"
+                  >
+                    Set as default
+                  </button>
+                  <button
+                    class="rounded-xl bg-lime-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow hover:bg-lime-300"
+                    type="submit"
+                  >
+                    Save TimeMap
                   </button>
                 </div>
-              </div>
-              <div>
-                <span class="field-label block">Time ranges</span>
-                <div id="timemap-day-rows" class="grid gap-2"></div>
-              </div>
-              <div class="flex flex-wrap items-center gap-2">
-                <button
-                  class="rounded-xl border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
-                  type="button"
-                  id="timemap-cancel"
-                  data-test-skedpal="timemap-cancel"
-                >
-                  Cancel
-                </button>
-                <button
-                  class="rounded-xl border-lime-400/60 px-4 py-2 text-sm font-semibold text-lime-300 hover:border-lime-400"
-                  type="button"
-                  id="timemap-set-default"
-                  data-test-skedpal="timemap-set-default"
-                >
-                  Set as default
-                </button>
-                <button
-                  class="rounded-xl bg-lime-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow hover:bg-lime-300"
-                  type="submit"
-                >
-                  Save TimeMap
-                </button>
-              </div>
-            </form>
+              </form>
+            </div>
+            <div id="timemap-list" class="grid gap-3"></div>
           </div>
-          <div id="timemap-list" class="grid gap-3"></div>
         </div>
 
         <div class="rounded-2xl border-slate-800 bg-slate-900/70 p-4 shadow-lg space-y-3">

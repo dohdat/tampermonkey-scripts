@@ -11,7 +11,6 @@ import {
   plusIconSvg,
   reminderIconSvg,
   removeIconSvg,
-  TWO,
   TASK_CHILD_INDENT_PX,
   unscheduledIconSvg,
   zoomInIconSvg
@@ -412,22 +411,6 @@ function buildTaskHeader(task, options) {
   return header;
 }
 
-function applyTaskHeaderLayout(header) {
-  if (!header || typeof window === "undefined") {return;}
-  if (typeof window.requestAnimationFrame !== "function") {return;}
-  window.requestAnimationFrame(() => {
-    if (!header.isConnected) {return;}
-    const titleWrap = header.querySelector('[data-test-skedpal="task-title-wrap"]');
-    const actionsWrap = header.querySelector('[data-test-skedpal="task-actions-wrap"]');
-    if (!titleWrap || !actionsWrap) {return;}
-    const titleTop = Number(titleWrap.offsetTop) || 0;
-    const actionsTop = Number(actionsWrap.offsetTop) || 0;
-    const isStacked = actionsTop > titleTop + TWO;
-    header.classList.toggle("task-title-row--stacked", isStacked);
-    actionsWrap.style.flexWrap = isStacked ? "nowrap" : "wrap";
-  });
-}
-
 function buildTaskMeta(task, timeMapNames, repeatSummary) {
   const meta = document.createElement("div");
   meta.className = "task-details__grid";
@@ -605,7 +588,6 @@ export function renderTaskCard(task, context) {
     showUnscheduledIcon
   });
   taskCard.appendChild(header);
-  applyTaskHeaderLayout(header);
   if (detailsOpen) {
     const detailsWrap = document.createElement("div");
     detailsWrap.className = "task-details";

@@ -243,9 +243,9 @@ function buildTaskTitleActions(task, detailsOpen) {
   return actionsWrap;
 }
 
-function buildTaskDurationPill(displayDurationMin) {
+function buildTaskDurationPill(displayDurationMin, isSubtask) {
   const durationPill = document.createElement("span");
-  durationPill.className = "pill pill-muted";
+  durationPill.className = isSubtask ? "pill pill-muted pill--subtask" : "pill pill-muted";
   durationPill.setAttribute("data-test-skedpal", "task-duration");
   durationPill.textContent = formatDurationShort(displayDurationMin);
   return durationPill;
@@ -390,7 +390,7 @@ function buildTaskHeader(task, options) {
   actionsWrap.style.flex = "1";
   actionsWrap.style.flexWrap = "wrap";
   actionsWrap.style.justifyContent = "flex-start";
-  const durationPill = buildTaskDurationPill(displayDurationMin);
+  const durationPill = buildTaskDurationPill(displayDurationMin, options.isSubtask);
   if (actionsWrap.firstChild) {
     actionsWrap.insertBefore(durationPill, actionsWrap.firstChild);
   } else {

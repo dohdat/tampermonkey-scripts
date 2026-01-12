@@ -107,7 +107,7 @@ function buildTitleWrap(task, options) {
     displayDurationMin
   } = options;
   const titleWrap = document.createElement("h3");
-  const titleWeightClass = isSubtask && !hasChildren ? "font-normal" : "font-semibold";
+  const titleWeightClass = hasChildren ? "font-semibold" : "font-normal";
   const titleSizeClass = isSubtask ? "text-sm" : "text-base";
   titleWrap.className = `task-title-main ${titleSizeClass} ${titleWeightClass}`;
   titleWrap.setAttribute("data-test-skedpal", "task-title-wrap");

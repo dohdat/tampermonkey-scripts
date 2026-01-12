@@ -1,6 +1,11 @@
 import assert from "assert";
 import { describe, it } from "mocha";
-import { getMissedTaskRows, getTimeMapUsageRows } from "../src/ui/report.js";
+import {
+  getMissedTaskRows,
+  getTimeMapUsageRows,
+  getUniqueAvailabilityMinutes
+} from "../src/ui/report.js";
+import { state } from "../src/ui/state/page-state.js";
 
 describe("report", () => {
   it("ranks missed tasks by missed percentage then priority", () => {
@@ -298,8 +303,8 @@ describe("report", () => {
           scheduleStatus: "scheduled",
           scheduledInstances: [
             {
-              start: "2026-01-05T09:00:00.000Z",
-              end: "2026-01-05T10:00:00.000Z",
+              start: "2026-01-05T09:00:00",
+              end: "2026-01-05T10:00:00",
               timeMapId: "tm-1"
             }
           ]
@@ -316,6 +321,151 @@ describe("report", () => {
       assert.strictEqual(rows[0].percent, 50);
     } finally {
       global.Date = OriginalDate;
+    }
+  });
+
+  it("adds external calendar minutes to timemap usage", () => {
+    const OriginalDate = Date;
+    const fixedNow = new OriginalDate(Date.UTC(2026, 0, 5, 12, 0, 0));
+    const previousExternalRange = state.calendarExternalRange;
+    const previousExternalEvents = state.calendarExternalEvents;
+    const previousExternalKey = state.calendarExternalRangeKey;
+    global.Date = class extends OriginalDate {
+      constructor(...args) {
+        if (args.length === 0) {
+          return new OriginalDate(fixedNow.getTime());
+        }
+        return new OriginalDate(...args);
+      }
+      static now() {
+        return fixedNow.getTime();
+      }
+    };
+    try {
+      const scheduledStart = new OriginalDate("2026-01-05T09:00:00");
+      const scheduledEnd = new OriginalDate("2026-01-05T10:00:00");
+      const ruleDay = scheduledStart.getDay();
+      const timeMaps = [
+        {
+          id: "tm-1",
+          name: "Focus",
+          rules: [
+            { day: ruleDay, startTime: "09:00", endTime: "11:00" },
+            { day: ruleDay, startTime: "11:00", endTime: "10:00" }
+          ]
+        }
+      ];
+      const tasks = [
+        {
+          id: "t1",
+          scheduleStatus: "scheduled",
+          scheduledInstances: [
+            {
+              start: scheduledStart.toISOString(),
+              end: scheduledEnd.toISOString(),
+              timeMapId: "tm-1"
+            }
+          ]
+        }
+      ];
+      const rangeStart = new OriginalDate(scheduledStart);
+      rangeStart.setHours(0, 0, 0, 0);
+      const rangeEnd = new OriginalDate(rangeStart);
+      rangeEnd.setDate(rangeEnd.getDate() + 1);
+      state.calendarExternalRange = {
+        start: rangeStart,
+        end: rangeEnd
+      };
+      state.calendarExternalRangeKey = "report-test";
+      state.calendarExternalEvents = [
+        {
+          start: new OriginalDate(scheduledStart.getTime() + 30 * 60 * 1000),
+          end: new OriginalDate(scheduledEnd),
+          source: "external"
+        },
+        {
+          start: new OriginalDate(2026, 0, 5, 12, 0, 0),
+          end: new OriginalDate(2026, 0, 5, 12, 30, 0),
+          source: "external"
+        },
+        {
+          start: new OriginalDate("bad"),
+          end: new OriginalDate("bad"),
+          source: "external"
+        }
+      ];
+      const settings = { schedulingHorizonDays: 1 };
+
+      const rows = getTimeMapUsageRows(tasks, timeMaps, settings);
+
+      assert.strictEqual(rows[0].scheduledMinutes, 60);
+      assert.strictEqual(rows[0].capacityMinutes, 120);
+    } finally {
+      global.Date = OriginalDate;
+      state.calendarExternalRange = previousExternalRange;
+      state.calendarExternalEvents = previousExternalEvents;
+      state.calendarExternalRangeKey = previousExternalKey;
+    }
+  });
+
+  it("ignores external events that do not overlap timemap availability", () => {
+    const OriginalDate = Date;
+    const fixedNow = new OriginalDate(2026, 0, 5, 12, 0, 0);
+    const previousExternalRange = state.calendarExternalRange;
+    const previousExternalEvents = state.calendarExternalEvents;
+    const previousExternalKey = state.calendarExternalRangeKey;
+    global.Date = class extends OriginalDate {
+      constructor(...args) {
+        if (args.length === 0) {
+          return new OriginalDate(fixedNow.getTime());
+        }
+        return new OriginalDate(...args);
+      }
+      static now() {
+        return fixedNow.getTime();
+      }
+    };
+    try {
+      const ruleDay = new OriginalDate(2026, 0, 5).getDay();
+      const nextRuleDay = (ruleDay + 1) % 7;
+      const timeMaps = [
+        {
+          id: "tm-2",
+          name: "Bounds",
+          rules: [
+            { day: ruleDay, startTime: "09:00", endTime: "10:00" },
+            { day: nextRuleDay, startTime: "09:00", endTime: "10:00" }
+          ]
+        }
+      ];
+      state.calendarExternalRange = {
+        start: new OriginalDate(2026, 0, 5, 0, 0, 0),
+        end: new OriginalDate(2026, 0, 6, 0, 0, 0)
+      };
+      state.calendarExternalRangeKey = "report-test-2";
+      state.calendarExternalEvents = [
+        {
+          start: new OriginalDate(2026, 0, 5, 10, 0, 0),
+          end: new OriginalDate(2026, 0, 5, 9, 0, 0),
+          source: "external"
+        },
+        {
+          start: new OriginalDate(2026, 0, 5, 23, 0, 0),
+          end: new OriginalDate(2026, 0, 6, 0, 0, 0),
+          source: "external"
+        }
+      ];
+      const settings = { schedulingHorizonDays: 1 };
+
+      const rows = getTimeMapUsageRows([], timeMaps, settings);
+
+      assert.strictEqual(rows[0].scheduledMinutes, 0);
+      assert.strictEqual(rows[0].capacityMinutes, 120);
+    } finally {
+      global.Date = OriginalDate;
+      state.calendarExternalRange = previousExternalRange;
+      state.calendarExternalEvents = previousExternalEvents;
+      state.calendarExternalRangeKey = previousExternalKey;
     }
   });
 
@@ -410,6 +560,46 @@ describe("report", () => {
       assert.strictEqual(rows[1].id, "tm-empty");
       assert.strictEqual(rows[1].capacityMinutes, 0);
       assert.strictEqual(rows[1].percent, 0);
+    } finally {
+      global.Date = OriginalDate;
+    }
+  });
+
+  it("computes unique availability across overlapping timemaps", () => {
+    const OriginalDate = Date;
+    const fixedNow = new OriginalDate(2026, 0, 5, 12, 0, 0);
+    global.Date = class extends OriginalDate {
+      constructor(...args) {
+        if (args.length === 0) {
+          return new OriginalDate(fixedNow.getTime());
+        }
+        return new OriginalDate(...args);
+      }
+      static now() {
+        return fixedNow.getTime();
+      }
+    };
+    try {
+      const ruleDay = new OriginalDate(2026, 0, 5).getDay();
+      const timeMaps = [
+        { id: "tm-a", name: "A", rules: [{ day: ruleDay, startTime: "07:00", endTime: "11:00" }] },
+        { id: "tm-b", name: "B", rules: [{ day: ruleDay, startTime: "09:00", endTime: "13:00" }] }
+      ];
+      const settings = { schedulingHorizonDays: 1 };
+
+      const rows = getTimeMapUsageRows([], timeMaps, settings);
+      const horizonStart = new OriginalDate(fixedNow.getTime());
+      horizonStart.setHours(0, 0, 0, 0);
+      const horizonEnd = new OriginalDate(horizonStart);
+      horizonEnd.setDate(horizonEnd.getDate() + 1);
+      const uniqueMinutes = getUniqueAvailabilityMinutes(
+        timeMaps,
+        horizonStart,
+        horizonEnd
+      );
+
+      assert.strictEqual(rows.length, 2);
+      assert.strictEqual(uniqueMinutes, 360);
     } finally {
       global.Date = OriginalDate;
     }

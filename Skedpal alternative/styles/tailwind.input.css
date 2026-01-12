@@ -235,8 +235,8 @@ body.modal-open{overflow:hidden}
 @media (hover: none){.task-summary-calendar{opacity:1;pointer-events:auto}}
 .task-summary-row--stacked{flex-basis:100%}
 .tasks-layout-tight [data-section-card] > :not([hidden]) ~ :not([hidden]){margin-top:var(--space-0-5)}
-.tasks-layout-tight [data-subsection-card] > :not([hidden]) ~ :not([hidden]){margin-top:var(--space-0-35)}
-.tasks-layout-tight [data-subsection-body] > :not([hidden]) ~ :not([hidden]){margin-top:var(--space-0-35)}
+.tasks-layout-tight [data-subsection-card] > :not([hidden]) ~ :not([hidden]){margin-top:var(--space-0-25)}
+.tasks-layout-tight [data-subsection-body] > :not([hidden]) ~ :not([hidden]){margin-top:var(--space-0-25)}
 .tasks-layout-tight [data-subsection-card]{padding-left:var(--space-0-5)}
 .tasks-layout-tight [data-subsection-children]{padding-left:var(--space-0-5)}
 @media (min-width:768px){

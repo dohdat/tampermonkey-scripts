@@ -531,7 +531,9 @@ export async function handleReschedule() {
     btn.disabled = true;
     btn.classList.add("opacity-60", "cursor-not-allowed");
   });
-  scheduleStatus.textContent = "Scheduling...";
+  if (scheduleStatus) {
+    scheduleStatus.textContent = "Scheduling...";
+  }
   try {
     if (state.pendingSettingsSave) {
       await state.pendingSettingsSave.catch((error) => {
@@ -552,9 +554,14 @@ export async function handleReschedule() {
     }
     const blockInfo =
       typeof response.placements === "number" ? ` (${response.placements} blocks)` : "";
-    scheduleStatus.textContent = `Scheduled ${response.scheduled}${blockInfo}, unscheduled ${response.unscheduled}, ignored ${response.ignored}.`;
+    if (scheduleStatus) {
+      scheduleStatus.textContent =
+        `Scheduled ${response.scheduled}${blockInfo}, unscheduled ${response.unscheduled}, ignored ${response.ignored}.`;
+    }
   } catch (error) {
-    scheduleStatus.textContent = `Error: ${error.message}`;
+    if (scheduleStatus) {
+      scheduleStatus.textContent = `Error: ${error.message}`;
+    }
   } finally {
     rescheduleButtons.forEach((btn) => {
       btn.disabled = false;

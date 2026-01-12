@@ -5,6 +5,7 @@
   homeIconSvg
 } from "./constants.js";
 import { state } from "./state/page-state.js";
+import { saveSettings } from "../data/db.js";
 import {
   parseCalendarViewFromUrl,
   parseViewFromUrl,
@@ -216,6 +217,7 @@ export function setZoomFilter(filter, options = {}) {
   if (getActiveViewId(getViews()) !== "tasks") {
     switchView("tasks", { focusCalendar: false, updateUrl, historyMode });
   }
+  maybeExpandZoomedTask(filter);
   state.zoomFilter = filter;
   if (updateUrl) {
     updateUrlWithZoom(filter, { replace: historyMode === "replace" });
@@ -223,6 +225,24 @@ export function setZoomFilter(filter, options = {}) {
   renderTasks(state.tasksCache, state.tasksTimeMapsCache);
   renderBreadcrumb();
   if (record) {pushNavigation(filter);}
+}
+
+function maybeExpandZoomedTask(filter) {
+  if (filter?.type !== "task") {return;}
+  const taskId = filter.taskId || "";
+  if (!taskId || !state.collapsedTasks.has(taskId)) {return;}
+  state.collapsedTasks.delete(taskId);
+  state.settingsCache = {
+    ...state.settingsCache,
+    collapsedTasks: Array.from(state.collapsedTasks)
+  };
+  const promise = saveSettings(state.settingsCache);
+  state.pendingSettingsSave = promise;
+  promise.finally(() => {
+    if (state.pendingSettingsSave === promise) {
+      state.pendingSettingsSave = null;
+    }
+  });
 }
 
 export function clearZoomFilter(options = {}) {

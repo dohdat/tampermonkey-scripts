@@ -87,6 +87,22 @@ function applyParentTaskOverrides(subtask, parentTask) {
   };
 }
 
+function applyTemplateParentMapping(createdMeta) {
+  if (!Array.isArray(createdMeta) || createdMeta.length === 0) {return;}
+  const templateToTaskId = new Map();
+  createdMeta.forEach(({ task, templateId }) => {
+    if (!task?.id || !templateId) {return;}
+    templateToTaskId.set(templateId, task.id);
+  });
+  createdMeta.forEach(({ task, templateParentId }) => {
+    if (!task || !templateParentId) {return;}
+    const parentTaskId = templateToTaskId.get(templateParentId);
+    if (parentTaskId) {
+      task.subtaskParentId = parentTaskId;
+    }
+  });
+}
+
 function buildTaskFromTemplate(template, overrides) {
   return {
     id: overrides.id,
@@ -126,7 +142,8 @@ function buildTemplateSubtasks({
   uuidFn,
   getOrderForChild,
   created,
-  visited
+  visited,
+  createdMeta
 }) {
   const children = getTemplateChildren(childrenByParent, templateParentId);
   children.forEach((childTemplate) => {
@@ -143,6 +160,13 @@ function buildTemplateSubtasks({
     });
     tasksForOrder.push(subtask);
     created.push(subtask);
+    if (createdMeta) {
+      createdMeta.push({
+        task: subtask,
+        templateId: childTemplate.id || "",
+        templateParentId: childTemplate.subtaskParentId || null
+      });
+    }
     if (childTemplate.id) {
       buildTemplateSubtasks({
         childrenByParent,
@@ -155,7 +179,8 @@ function buildTemplateSubtasks({
         uuidFn,
         getOrderForChild,
         created,
-        visited
+        visited,
+        createdMeta
       });
     }
   });
@@ -184,6 +209,7 @@ export function buildTasksFromTemplate(
   const normalizedSubtasks = template.subtasks.map((sub) => normalizeTemplateInput(sub));
   const childrenByParent = buildChildrenByParent(normalizedSubtasks);
   const created = [];
+  const createdMeta = [];
   const visited = new Set();
   const getOrderForChild = (parentTaskInstance, tasksForOrderList) =>
     parentTaskInstance
@@ -201,8 +227,10 @@ export function buildTasksFromTemplate(
       uuidFn,
       getOrderForChild,
       created,
-      visited
+      visited,
+      createdMeta
     });
+    applyTemplateParentMapping(createdMeta);
     return [parentTask, ...created];
   }
   buildTemplateSubtasks({
@@ -216,8 +244,10 @@ export function buildTasksFromTemplate(
     uuidFn,
     getOrderForChild,
     created,
-    visited
+    visited,
+    createdMeta
   });
+  applyTemplateParentMapping(createdMeta);
   return [...created];
 }
 
@@ -232,6 +262,7 @@ export function buildSubtasksFromTemplateForParent(
   const normalizedSubtasks = template.subtasks.map((sub) => normalizeTemplateInput(sub));
   const childrenByParent = buildChildrenByParent(normalizedSubtasks);
   const created = [];
+  const createdMeta = [];
   const visited = new Set();
   const tasksForOrder = [...tasks];
   const getOrderForChild = (parentTaskInstance, tasksForOrderList) =>
@@ -252,7 +283,9 @@ export function buildSubtasksFromTemplateForParent(
     uuidFn,
     getOrderForChild,
     created,
-    visited
+    visited,
+    createdMeta
   });
+  applyTemplateParentMapping(createdMeta);
   return created.map((subtask) => applyParentTaskOverrides(subtask, parentTask));
 }

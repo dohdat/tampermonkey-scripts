@@ -359,6 +359,38 @@ export function sortTasksByOrder(list = []) {
   });
 }
 
+export function sortTasksByHierarchy(list = []) {
+  const tasks = Array.isArray(list) ? list : [];
+  if (tasks.length <= 1) {return [...tasks];}
+  const ids = new Set(tasks.map((task) => task.id).filter(Boolean));
+  const childrenByParent = tasks.reduce((map, task) => {
+    const parentId =
+      task.subtaskParentId && ids.has(task.subtaskParentId) ? task.subtaskParentId : "";
+    if (!map.has(parentId)) {map.set(parentId, []);}
+    map.get(parentId).push(task);
+    return map;
+  }, new Map());
+  const ordered = [];
+  const visited = new Set();
+  const pushChildren = (parentId) => {
+    const children = sortTasksByOrder(childrenByParent.get(parentId) || []);
+    children.forEach((child) => {
+      if (!child?.id || visited.has(child.id)) {return;}
+      visited.add(child.id);
+      ordered.push(child);
+      pushChildren(child.id);
+    });
+  };
+  pushChildren("");
+  tasks.forEach((task) => {
+    if (!task?.id || visited.has(task.id)) {return;}
+    visited.add(task.id);
+    ordered.push(task);
+    pushChildren(task.id);
+  });
+  return ordered;
+}
+
 export function getContainerKey(section, subsection) {
   return `${section || ""}__${subsection || ""}`;
 }

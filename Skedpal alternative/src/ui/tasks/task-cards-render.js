@@ -1,9 +1,9 @@
 import { renderTaskCard } from "./task-card.js";
-import { sortTasksByOrder, renderInBatches } from "../utils.js";
+import { sortTasksByHierarchy, renderInBatches } from "../utils.js";
 import { FORTY } from "../constants.js";
 
 export function renderTaskCards(container, tasks, context, options = {}) {
-  const sorted = sortTasksByOrder(tasks);
+  const sorted = sortTasksByHierarchy(tasks);
   if (!sorted.length) {return;}
   const { batchSize = FORTY, shouldCancel } = options;
   const cancelCheck = typeof shouldCancel === "function" ? shouldCancel : null;

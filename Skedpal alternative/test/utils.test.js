@@ -22,6 +22,7 @@ const {
   parseLocalDateInput,
   isStartAfterDeadline,
   sortTasksByOrder,
+  sortTasksByHierarchy,
   getNextOrder,
   getNextSubtaskOrder,
   getTaskDepth,
@@ -230,6 +231,22 @@ describe("utils task ordering helpers", () => {
     assert.strictEqual(getNextOrder("s2", "", tasks), 2);
     assert.strictEqual(getNextSubtaskOrder(tasks[3], "s1", "", tasks), 6.02);
     assert.strictEqual(getNextSubtaskOrder(null, "s1", "", tasks), 7.01);
+  });
+
+  it("sorts tasks by hierarchy with siblings grouped", () => {
+    const tasks = [
+      { id: "p1", title: "Parent A", order: 1 },
+      { id: "c1", title: "Child A1", subtaskParentId: "p1", order: 1.01 },
+      { id: "p2", title: "Parent B", order: 2 },
+      { id: "c2", title: "Child B1", subtaskParentId: "p2", order: 2.01 },
+      { id: "c3", title: "Child A2", subtaskParentId: "p1", order: 1.02 },
+      { id: "orphan", title: "Orphan", subtaskParentId: "missing", order: 3 }
+    ];
+    const ordered = sortTasksByHierarchy(tasks);
+    assert.deepStrictEqual(
+      ordered.map((task) => task.id),
+      ["p1", "c1", "c3", "p2", "c2", "orphan"]
+    );
   });
 
   it("computes task depth and descendants", () => {

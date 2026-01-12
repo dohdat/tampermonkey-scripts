@@ -88,6 +88,58 @@ describe("task template helpers", () => {
     assert.deepStrictEqual(tasks[2].timeMapIds, ["tm-1"]);
   });
 
+  it("keeps template subtask groups attached to the right parent", () => {
+    let counter = 0;
+    const nextId = () => {
+      counter += 1;
+      return `t-${counter}`;
+    };
+    const template = {
+      title: "Story/Bug",
+      durationMin: 30,
+      timeMapIds: ["tm-1"],
+      subtasks: [
+        { id: "mr", title: "MR Tasks", durationMin: 30, timeMapIds: ["tm-1"] },
+        { id: "verify", title: "Verification", durationMin: 30, timeMapIds: ["tm-1"] },
+        {
+          id: "create",
+          title: "Create MR",
+          durationMin: 30,
+          timeMapIds: [],
+          subtaskParentId: "mr"
+        },
+        {
+          id: "resolve",
+          title: "Resolve MR comments",
+          durationMin: 30,
+          timeMapIds: [],
+          subtaskParentId: "mr"
+        },
+        {
+          id: "ask",
+          title: "Ask for verification",
+          durationMin: 30,
+          timeMapIds: [],
+          subtaskParentId: "verify"
+        }
+      ]
+    };
+
+    const tasks = buildTasksFromTemplate(template, "sec-1", "sub-1", [], nextId, {
+      includeParent: false
+    });
+    const mrTask = tasks.find((task) => task.title === "MR Tasks");
+    const verification = tasks.find((task) => task.title === "Verification");
+    const createMr = tasks.find((task) => task.title === "Create MR");
+    const resolveMr = tasks.find((task) => task.title === "Resolve MR comments");
+    const ask = tasks.find((task) => task.title === "Ask for verification");
+    assert.ok(mrTask);
+    assert.ok(verification);
+    assert.strictEqual(createMr.subtaskParentId, mrTask.id);
+    assert.strictEqual(resolveMr.subtaskParentId, mrTask.id);
+    assert.strictEqual(ask.subtaskParentId, verification.id);
+  });
+
   it("skips the parent task when requested", () => {
     let counter = 0;
     const nextId = () => {

@@ -280,16 +280,22 @@ export function renderTimeMaps(timeMaps) {
   });
 }
 
-export async function loadTimeMaps() {
-  const [timeMapsRaw, tasks] = await Promise.all([getAllTimeMaps(), getAllTasks()]);
-  const timeMaps = timeMapsRaw.map(normalizeTimeMap);
+export function getTimeMapUsageCounts(tasks) {
   const usageCounts = new Map();
   (tasks || []).forEach((task) => {
+    if (task?.subtaskParentId) {return;}
     const ids = Array.isArray(task.timeMapIds) ? task.timeMapIds : [];
     ids.forEach((id) => {
       usageCounts.set(id, (usageCounts.get(id) || 0) + 1);
     });
   });
+  return usageCounts;
+}
+
+export async function loadTimeMaps() {
+  const [timeMapsRaw, tasks] = await Promise.all([getAllTimeMaps(), getAllTasks()]);
+  const timeMaps = timeMapsRaw.map(normalizeTimeMap);
+  const usageCounts = getTimeMapUsageCounts(tasks);
   const timeMapsWithCounts = timeMaps.map((tm) => ({
     ...tm,
     taskCount: usageCounts.get(tm.id) || 0

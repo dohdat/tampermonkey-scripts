@@ -168,7 +168,8 @@ const {
   renderTimeMapOptions,
   openTimeMapForm,
   closeTimeMapForm,
-  resetTimeMapForm
+  resetTimeMapForm,
+  getTimeMapUsageCounts
 } = timeMaps;
 
 describe("time maps", () => {
@@ -299,6 +300,17 @@ describe("time maps", () => {
     const container = new FakeElement("div");
     renderTimeMapOptions(container, ["tm-1"], timeMapsData);
     assert.strictEqual(container.children.length, 1);
+  });
+
+  it("counts timemap usage for parent tasks only", () => {
+    const tasks = [
+      { id: "t1", timeMapIds: ["tm-1", "tm-2"] },
+      { id: "t2", timeMapIds: ["tm-1"], subtaskParentId: "t1" },
+      { id: "t3", timeMapIds: ["tm-2"] }
+    ];
+    const counts = getTimeMapUsageCounts(tasks);
+    assert.strictEqual(counts.get("tm-1"), 1);
+    assert.strictEqual(counts.get("tm-2"), 2);
   });
 
   it("opens, closes, and resets the time map form", () => {

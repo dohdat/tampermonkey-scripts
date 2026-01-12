@@ -1,4 +1,4 @@
-import { TASK_PLACEHOLDER_CLASS, TASK_ZONE_CLASS } from "../constants.js";
+import { TASK_ZONE_CLASS } from "../constants.js";
 import { sortTasksByOrder } from "../utils.js";
 import { renderTaskCards } from "./task-cards-render.js";
 import { registerTaskVirtualizer, shouldVirtualizeTaskList } from "./task-virtualization.js";
@@ -41,13 +41,7 @@ export function buildSubsectionZone(
   subZoneList.classList.add(TASK_ZONE_CLASS);
   subZoneList.setAttribute("data-test-skedpal", "subsection-task-zone");
   const subTasks = sortTasksByOrder(sectionTasks.filter((t) => t.subsection === sub.id));
-  if (subTasks.length === 0 && !suppressPlaceholders) {
-    const empty = document.createElement("div");
-    empty.className = `text-xs text-slate-500 ${TASK_PLACEHOLDER_CLASS}`;
-    empty.textContent = "Drag tasks here or add new.";
-    empty.setAttribute("data-test-skedpal", "subsection-task-empty");
-    subZoneList.appendChild(empty);
-  } else if (
+  if (
     enableVirtualization &&
     !isCollapsed &&
     shouldVirtualizeTaskList(subTasks.length)

@@ -169,7 +169,8 @@ export async function handleAddTaskInputSubmit(input) {
 
 export function buildAddTaskRow({ sectionId = "", subsectionId = "" } = {}) {
   const row = document.createElement("div");
-  row.className = "task-add-row";
+  row.className =
+    "task-add-row group opacity-40 transition-opacity hover:opacity-90 focus-within:opacity-100";
   row.dataset.addTaskRow = "true";
   row.dataset.sectionId = sectionId;
   row.dataset.subsectionId = subsectionId;
@@ -181,10 +182,10 @@ export function buildAddTaskRow({ sectionId = "", subsectionId = "" } = {}) {
   button.dataset.addTaskSubsection = subsectionId;
   button.dataset.addTaskButton = "true";
   button.className =
-    "flex w-full items-center gap-2 rounded-lg border border-dashed border-slate-800/70 bg-slate-900/40 px-3 py-2 text-xs font-semibold text-slate-400 hover:border-lime-400 hover:text-lime-300";
+    "flex w-full items-center gap-2 rounded-lg border border-transparent bg-transparent px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500/80 hover:text-lime-300 hover:bg-slate-900/30";
   button.setAttribute("data-test-skedpal", ADD_TASK_BUTTON_TEST_ID);
   const iconWrap = document.createElement("span");
-  iconWrap.className = "inline-flex items-center text-lime-300/80";
+  iconWrap.className = "inline-flex items-center text-slate-500/80 group-hover:text-lime-300";
   iconWrap.setAttribute("data-test-skedpal", "task-add-icon");
   iconWrap.innerHTML = plusIconSvg;
   const label = document.createElement("span");

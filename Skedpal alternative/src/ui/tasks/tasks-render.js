@@ -15,6 +15,7 @@ import { sortTasksByOrder, normalizeTimeMap, getSubsectionDescendantIds, renderI
 import { state } from "../state/page-state.js";
 import { getSubsectionsFor, getSectionName } from "../sections-data.js";
 import { destroyTaskSortables, setupTaskSortables } from "./tasks-sortable.js";
+import { destroySectionSortables, setupSectionSortables } from "../sections-sortable.js";
 import { themeColors } from "../theme.js";
 import { destroyTaskVirtualizers, initializeTaskVirtualizers } from "./task-virtualization.js";
 import { buildChildSubsectionInput, buildSubsectionZone } from "./task-subsection-zone.js";
@@ -26,7 +27,9 @@ import {
   buildDurationCalculator,
   buildFirstOccurrenceOutOfRangeMap,
   buildFirstOccurrenceUnscheduledMap,
-  buildSubsectionActionButtons
+  buildSubsectionActionButtons,
+  buildDragHandleButton,
+  buildSectionActionButtons
 } from "./tasks-render-helpers.js";
 const { taskList } = domRefs;
 let taskRenderToken = 0;
@@ -167,62 +170,35 @@ function buildSectionHeader(section, options) {
   }
   const titleActions = document.createElement("div");
   titleActions.className = "title-actions";
-  const collapseBtn = document.createElement("button");
-  collapseBtn.type = "button";
-  collapseBtn.dataset.toggleSectionCollapse = section.id;
-  collapseBtn.className = "title-icon-btn";
-  collapseBtn.title = "Expand/collapse section";
-  collapseBtn.innerHTML = isCollapsed ? caretRightIconSvg : caretDownIconSvg;
-  const isDefaultSection =
-    section.id === "section-work-default" || section.id === "section-personal-default";
-  const editSectionBtn = document.createElement("button");
-  editSectionBtn.type = "button";
-  editSectionBtn.dataset.editSection = section.id;
-  editSectionBtn.className = "title-icon-btn";
-  editSectionBtn.title = "Edit section";
-  editSectionBtn.innerHTML = editIconSvg;
-  editSectionBtn.style.borderColor = themeColors.green500;
-  editSectionBtn.style.color = themeColors.green500;
-  const zoomSectionBtn = document.createElement("button");
-  zoomSectionBtn.type = "button";
-  zoomSectionBtn.dataset.zoomSection = section.id;
-  zoomSectionBtn.dataset.zoomSubsection = "";
-  zoomSectionBtn.className = "title-icon-btn";
-  zoomSectionBtn.title = "Zoom into section";
-  zoomSectionBtn.innerHTML = zoomInIconSvg;
-  const favoriteSectionBtn = document.createElement("button");
-  favoriteSectionBtn.type = "button";
-  favoriteSectionBtn.dataset.favoriteSection = section.id;
-  favoriteSectionBtn.className = `title-icon-btn${section.favorite ? " favorite-active" : ""}`;
-  favoriteSectionBtn.title = section.favorite ? "Unfavorite section" : "Favorite section";
-  favoriteSectionBtn.innerHTML = favoriteIconSvg;
-  const removeSectionBtn = document.createElement("button");
-  removeSectionBtn.type = "button";
-  removeSectionBtn.dataset.removeSection = section.id;
-  removeSectionBtn.className = "title-icon-btn";
-  removeSectionBtn.title = "Remove section";
-  removeSectionBtn.innerHTML = removeIconSvg;
-  removeSectionBtn.style.borderColor = themeColors.orange500;
-  removeSectionBtn.style.color = themeColors.orange500;
-  if (isDefaultSection) {
-    removeSectionBtn.disabled = true;
-    removeSectionBtn.classList.add("opacity-50", "cursor-not-allowed");
-  }
-  const addSubsectionToggle = document.createElement("button");
-  addSubsectionToggle.type = "button";
-  addSubsectionToggle.dataset.toggleSubsection = section.id;
-  addSubsectionToggle.className = "title-icon-btn";
-  addSubsectionToggle.title = "Add subsection";
-  addSubsectionToggle.innerHTML = subtaskIconSvg;
-  addSubsectionToggle.style.borderColor = themeColors.lime400;
-  addSubsectionToggle.style.color = themeColors.lime400;
-  addSubsectionToggle.setAttribute("data-test-skedpal", "section-add-subsection-btn");
+  const {
+    addSubsectionToggle,
+    collapseBtn,
+    dragHandle,
+    editSectionBtn,
+    favoriteSectionBtn,
+    removeSectionBtn,
+    zoomSectionBtn
+  } = buildSectionActionButtons({
+    section,
+    isCollapsed,
+    themeColors,
+    icons: {
+      caretDownIconSvg,
+      caretRightIconSvg,
+      editIconSvg,
+      favoriteIconSvg,
+      zoomInIconSvg,
+      removeIconSvg,
+      subtaskIconSvg
+    }
+  });
   titleActions.appendChild(collapseBtn);
   titleActions.appendChild(favoriteSectionBtn);
   titleActions.appendChild(editSectionBtn);
   titleActions.appendChild(zoomSectionBtn);
   titleActions.appendChild(addSubsectionToggle);
   titleActions.appendChild(removeSectionBtn);
+  titleActions.appendChild(dragHandle);
   title.appendChild(titleActions);
   header.appendChild(title);
   return header;
@@ -318,6 +294,12 @@ function buildSubsectionHeader(sub, section, isNoSection) {
   const subTitleActions = document.createElement("div");
   subTitleActions.className = "title-actions";
   subTitleActions.setAttribute("data-test-skedpal", "subsection-title-actions");
+  const dragHandle = buildDragHandleButton({
+    label: "Drag subsection",
+    datasetKey: "subsectionDragHandle",
+    datasetValue: sub.id,
+    testId: "subsection-drag-handle"
+  });
   const collapseSubBtn = document.createElement("button");
   collapseSubBtn.type = "button";
   collapseSubBtn.dataset.toggleSubsectionCollapse = sub.id;
@@ -355,6 +337,7 @@ function buildSubsectionHeader(sub, section, isNoSection) {
   subTitleActions.appendChild(addSubTaskBtn);
   subTitleActions.appendChild(editSubBtn);
   subTitleActions.appendChild(removeSubBtn);
+  subTitleActions.appendChild(dragHandle);
   subTitle.appendChild(subTitleText);
   subTitle.appendChild(subTitleActions);
   subHeader.appendChild(subTitle);
@@ -374,6 +357,8 @@ function renderSubsection(sub, section, sectionTasks, context, options) {
   subWrap.className =
     "space-y-2 rounded-xl border-slate-800 bg-slate-900/60 p-3 pl-4 md:pl-6";
   subWrap.dataset.subsectionCard = sub.id;
+  subWrap.dataset.sectionId = section.id || "";
+  subWrap.setAttribute("data-test-skedpal", "subsection-card");
   const { subHeader, subCollapsed } = buildSubsectionHeader(sub, section, isNoSection);
   const isCollapsed = Boolean(isAncestorCollapsed || subCollapsed);
   subWrap.appendChild(subHeader);
@@ -403,6 +388,9 @@ function renderSubsection(sub, section, sectionTasks, context, options) {
     childWrap.className =
       "space-y-2 border-l border-slate-800/60 pl-4 md:pl-6 border-lime-500/10";
     childWrap.dataset.subsectionChildren = "true";
+    childWrap.dataset.subsectionContainer = "true";
+    childWrap.dataset.parentSubsectionId = sub.id || "";
+    childWrap.dataset.sectionId = section.id || "";
     childWrap.setAttribute("data-test-skedpal", "subsection-children");
     const childOptions = { ...options, isAncestorCollapsed: isCollapsed };
     children.forEach((child) =>
@@ -494,11 +482,17 @@ function appendSubsections(sectionBody, filteredSubs, section, sectionTasks, con
   } = options;
   const buildChildren = (parentId = "") =>
     filteredSubs.filter((s) => (s.parentId || "") === (parentId || ""));
+  const subsectionContainer = document.createElement("div");
+  subsectionContainer.className = "space-y-2";
+  subsectionContainer.dataset.subsectionContainer = "true";
+  subsectionContainer.dataset.parentSubsectionId = "";
+  subsectionContainer.dataset.sectionId = section.id || "";
+  subsectionContainer.setAttribute("data-test-skedpal", "subsection-container");
   if (isSubsectionZoom) {
     const targetId = state.zoomFilter.subsectionId || "";
     const targetSub = filteredSubs.find((sub) => sub.id === targetId);
     if (targetSub) {
-      sectionBody.appendChild(
+      subsectionContainer.appendChild(
         renderSubsection(targetSub, section, sectionTasks, context, {
           isNoSection,
           suppressPlaceholders,
@@ -509,10 +503,11 @@ function appendSubsections(sectionBody, filteredSubs, section, sectionTasks, con
         })
       );
     }
+    sectionBody.appendChild(subsectionContainer);
     return;
   }
   buildChildren().forEach((sub) => {
-    sectionBody.appendChild(
+    subsectionContainer.appendChild(
       renderSubsection(sub, section, sectionTasks, context, {
         isNoSection,
         suppressPlaceholders,
@@ -523,9 +518,11 @@ function appendSubsections(sectionBody, filteredSubs, section, sectionTasks, con
       })
     );
   });
+  sectionBody.appendChild(subsectionContainer);
 }
 export function renderTasks(tasks, timeMaps) {
   destroyTaskSortables();
+  destroySectionSortables();
   destroyTaskVirtualizers();
   taskList.innerHTML = "";
   const timeMapById = new Map(timeMaps.map((tm) => [tm.id, normalizeTimeMap(tm)]));
@@ -571,6 +568,7 @@ export function renderTasks(tasks, timeMaps) {
       if (renderToken !== taskRenderToken) {return;}
       initializeTaskVirtualizers();
       setupTaskSortables();
+      setupSectionSortables(taskList);
     }
   });
 }

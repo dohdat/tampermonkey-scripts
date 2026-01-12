@@ -211,3 +211,90 @@ export function buildSubsectionActionButtons({
     addChildSubBtn
   };
 }
+
+const dragHandleIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path d="M7 4.5a1.25 1.25 0 1 1-2.5 0A1.25 1.25 0 0 1 7 4.5ZM7 10a1.25 1.25 0 1 1-2.5 0A1.25 1.25 0 0 1 7 10Zm-1.25 6.75a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5ZM15.5 4.5a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0ZM14.25 11.25a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5Zm1.25 4a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Z"></path></svg>`;
+
+export function buildDragHandleButton({ label, datasetKey, datasetValue, testId }) {
+  const dragHandle = document.createElement("button");
+  dragHandle.type = "button";
+  dragHandle.className = "title-icon-btn cursor-grab";
+  dragHandle.dataset[datasetKey] = datasetValue;
+  dragHandle.title = label;
+  dragHandle.setAttribute("aria-label", label);
+  dragHandle.innerHTML = dragHandleIconSvg;
+  dragHandle.setAttribute("data-test-skedpal", testId);
+  return dragHandle;
+}
+
+export function buildSectionActionButtons({ section, isCollapsed, themeColors, icons }) {
+  const dragHandle = buildDragHandleButton({
+    label: "Drag section",
+    datasetKey: "sectionDragHandle",
+    datasetValue: section.id,
+    testId: "section-drag-handle"
+  });
+  const collapseBtn = document.createElement("button");
+  collapseBtn.type = "button";
+  collapseBtn.dataset.toggleSectionCollapse = section.id;
+  collapseBtn.className = "title-icon-btn";
+  collapseBtn.title = "Expand/collapse section";
+  collapseBtn.innerHTML = isCollapsed ? icons.caretRightIconSvg : icons.caretDownIconSvg;
+  collapseBtn.setAttribute("data-test-skedpal", "section-collapse-btn");
+  const isDefaultSection =
+    section.id === "section-work-default" || section.id === "section-personal-default";
+  const editSectionBtn = document.createElement("button");
+  editSectionBtn.type = "button";
+  editSectionBtn.dataset.editSection = section.id;
+  editSectionBtn.className = "title-icon-btn";
+  editSectionBtn.title = "Edit section";
+  editSectionBtn.innerHTML = icons.editIconSvg;
+  editSectionBtn.style.borderColor = themeColors.green500;
+  editSectionBtn.style.color = themeColors.green500;
+  editSectionBtn.setAttribute("data-test-skedpal", "section-edit-btn");
+  const zoomSectionBtn = document.createElement("button");
+  zoomSectionBtn.type = "button";
+  zoomSectionBtn.dataset.zoomSection = section.id;
+  zoomSectionBtn.dataset.zoomSubsection = "";
+  zoomSectionBtn.className = "title-icon-btn";
+  zoomSectionBtn.title = "Zoom into section";
+  zoomSectionBtn.innerHTML = icons.zoomInIconSvg;
+  zoomSectionBtn.setAttribute("data-test-skedpal", "section-zoom-btn");
+  const favoriteSectionBtn = document.createElement("button");
+  favoriteSectionBtn.type = "button";
+  favoriteSectionBtn.dataset.favoriteSection = section.id;
+  favoriteSectionBtn.className = `title-icon-btn${section.favorite ? " favorite-active" : ""}`;
+  favoriteSectionBtn.title = section.favorite ? "Unfavorite section" : "Favorite section";
+  favoriteSectionBtn.innerHTML = icons.favoriteIconSvg;
+  favoriteSectionBtn.setAttribute("data-test-skedpal", "section-favorite-btn");
+  const removeSectionBtn = document.createElement("button");
+  removeSectionBtn.type = "button";
+  removeSectionBtn.dataset.removeSection = section.id;
+  removeSectionBtn.className = "title-icon-btn";
+  removeSectionBtn.title = "Remove section";
+  removeSectionBtn.innerHTML = icons.removeIconSvg;
+  removeSectionBtn.style.borderColor = themeColors.orange500;
+  removeSectionBtn.style.color = themeColors.orange500;
+  removeSectionBtn.setAttribute("data-test-skedpal", "section-remove-btn");
+  if (isDefaultSection) {
+    removeSectionBtn.disabled = true;
+    removeSectionBtn.classList.add("opacity-50", "cursor-not-allowed");
+  }
+  const addSubsectionToggle = document.createElement("button");
+  addSubsectionToggle.type = "button";
+  addSubsectionToggle.dataset.toggleSubsection = section.id;
+  addSubsectionToggle.className = "title-icon-btn";
+  addSubsectionToggle.title = "Add subsection";
+  addSubsectionToggle.innerHTML = icons.subtaskIconSvg;
+  addSubsectionToggle.style.borderColor = themeColors.lime400;
+  addSubsectionToggle.style.color = themeColors.lime400;
+  addSubsectionToggle.setAttribute("data-test-skedpal", "section-add-subsection-btn");
+  return {
+    addSubsectionToggle,
+    collapseBtn,
+    dragHandle,
+    editSectionBtn,
+    favoriteSectionBtn,
+    removeSectionBtn,
+    zoomSectionBtn
+  };
+}

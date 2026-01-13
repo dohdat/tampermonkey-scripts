@@ -20,7 +20,7 @@ import { destroySectionSortables, setupSectionSortables } from "../sections-sort
 import { themeColors } from "../theme.js";
 import { destroyTaskVirtualizers, initializeTaskVirtualizers } from "./task-virtualization.js";
 import { buildChildSubsectionInput, buildSubsectionZone } from "./task-subsection-zone.js";
-import { buildAddTaskRow } from "./task-add-row.js";
+import { buildZoomTaskZone } from "./tasks-zoom-zone.js";
 import {
   buildParentMap,
   buildTaskDepthGetter,
@@ -120,27 +120,15 @@ function buildShouldCancel(renderToken) {
   return () => renderToken !== taskRenderToken;
 }
 
-function renderZoomTasks(filteredTasks, context, renderToken) {
-  const zoomWrap = document.createElement("div");
-  zoomWrap.className = "space-y-2";
-  zoomWrap.setAttribute("data-test-skedpal", "task-zoom-list");
-  renderTaskCards(zoomWrap, filteredTasks, context, {
+function renderZoomTasks(filteredTasks, context, renderToken, zoomMeta) {
+  const zone = buildZoomTaskZone(
+    filteredTasks,
+    context,
     renderToken,
-    batchSize: 30,
-    shouldCancel: buildShouldCancel(renderToken)
-  });
-  if (state.zoomFilter) {
-    const parentId =
-      state.zoomFilter.type === "task" ? state.zoomFilter.taskId || "" : "";
-    zoomWrap.appendChild(
-      buildAddTaskRow({
-        sectionId: state.zoomFilter.sectionId || "",
-        subsectionId: state.zoomFilter.subsectionId || "",
-        parentId
-      })
-    );
-  }
-  taskList.appendChild(zoomWrap);
+    zoomMeta,
+    buildShouldCancel(renderToken)
+  );
+  taskList.appendChild(zone);
 }
 
 function buildSectionsList(sections, filteredTasks) {
@@ -556,7 +544,14 @@ export function renderTasks(tasks, timeMaps) {
   const filteredTasks = filterTasksByZoom(baseTasks, hasCollapsedAncestor);
   const context = buildTaskCardContext(baseTasks, timeMapById, computeTotalDuration, getTaskDepthById);
   if (state.zoomFilter?.type === "task") {
-    renderZoomTasks(filteredTasks, context, renderToken);
+    const zoomTask = baseTasks.find((task) => task.id === state.zoomFilter?.taskId) || null;
+    renderZoomTasks(filteredTasks, context, renderToken, {
+      sectionId: state.zoomFilter.sectionId || zoomTask?.section || "",
+      subsectionId: state.zoomFilter.subsectionId || zoomTask?.subsection || "",
+      parentId: state.zoomFilter.taskId || ""
+    });
+    initializeTaskVirtualizers();
+    setupTaskSortables();
     return;
   }
   const suppressPlaceholders = Boolean(state.zoomFilter);

@@ -61,6 +61,7 @@ installDomStubs();
 const { renderTaskCard } = await import("../src/ui/tasks/task-card.js");
 const { caretRightIconSvg } = await import("../src/ui/constants.js");
 const { themeColors } = await import("../src/ui/theme.js");
+const { parseLocalDateInput } = await import("../src/ui/utils.js");
 const { state } = await import("../src/ui/state/page-state.js");
 
 describe("task card", () => {
@@ -121,6 +122,58 @@ describe("task card", () => {
     const completeBtn = findByTestAttr(card, "task-complete-btn");
     assert.strictEqual(title.style.textDecoration, "line-through");
     assert.strictEqual(completeBtn.classList.contains("task-complete-btn--checked"), true);
+  });
+
+  it("dims tasks when start-from is not today", () => {
+    const task = {
+      id: "t-start",
+      title: "Future task",
+      durationMin: 30,
+      minBlockMin: 30,
+      timeMapIds: ["tm-1"],
+      completed: false,
+      scheduleStatus: "unscheduled",
+      startFrom: parseLocalDateInput("2099-01-01")
+    };
+    const context = {
+      tasks: [task],
+      timeMapById: new Map([["tm-1", { id: "tm-1", name: "Focus" }]]),
+      collapsedTasks: new Set(),
+      expandedTaskDetails: new Set(),
+      computeTotalDuration: () => 0,
+      getTaskDepthById: () => 0,
+      getSectionName: () => "",
+      getSubsectionName: () => ""
+    };
+
+    const card = renderTaskCard(task, context);
+    assert.strictEqual(card.classList.contains("task-card--start-from-not-today"), true);
+  });
+
+  it("does not dim tasks with invalid start-from", () => {
+    const task = {
+      id: "t-invalid",
+      title: "Bad date",
+      durationMin: 30,
+      minBlockMin: 30,
+      timeMapIds: ["tm-1"],
+      completed: false,
+      scheduleStatus: "unscheduled",
+      startFrom: "not-a-date"
+    };
+    const context = {
+      tasks: [task],
+      timeMapById: new Map([["tm-1", { id: "tm-1", name: "Focus" }]]),
+      collapsedTasks: new Set(),
+      expandedTaskDetails: new Set(),
+      computeTotalDuration: () => 0,
+      getTaskDepthById: () => 0,
+      getSectionName: () => "",
+      getSubsectionName: () => ""
+    };
+
+    const card = renderTaskCard(task, context);
+    assert.strictEqual(card.classList.contains("task-card--start-from-not-today"), false);
   });
 
   it("shows collapse toggle and aggregates child duration", () => {

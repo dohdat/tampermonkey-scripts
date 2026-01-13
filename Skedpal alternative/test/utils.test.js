@@ -20,6 +20,7 @@ const {
   formatOrdinal,
   getSectionColorMap,
   parseLocalDateInput,
+  isStartFromNotToday,
   isStartAfterDeadline,
   sortTasksByOrder,
   sortTasksByHierarchy,
@@ -63,6 +64,15 @@ describe("utils date parsing", () => {
     assert.strictEqual(isStartAfterDeadline("2026-01-08", "2026-01-07"), true);
     assert.strictEqual(isStartAfterDeadline("2026-01-07", "2026-01-07"), false);
     assert.strictEqual(isStartAfterDeadline("", "2026-01-07"), false);
+  });
+
+  it("detects start-from dates that are not today", () => {
+    const today = new Date(2026, 0, 7, 10, 0, 0);
+    const todayStart = parseLocalDateInput("2026-01-07");
+    const otherStart = parseLocalDateInput("2026-01-08");
+    assert.strictEqual(isStartFromNotToday(todayStart, today), false);
+    assert.strictEqual(isStartFromNotToday(otherStart, today), true);
+    assert.strictEqual(isStartFromNotToday(null, today), false);
   });
 
   it("formats local date input values", () => {

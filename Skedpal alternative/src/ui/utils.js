@@ -232,6 +232,15 @@ export function getLocalDateKey(value) {
   return `${year}-${month}-${day}`;
 }
 
+export function isStartFromNotToday(startFrom, now) {
+  if (!startFrom) {return false;}
+  const startKey = getLocalDateKey(startFrom);
+  if (!startKey) {return false;}
+  const todayKey = getLocalDateKey(now || new Date());
+  if (!todayKey) {return false;}
+  return startKey !== todayKey;
+}
+
 export function parseLocalDateInput(value) {
   if (!value) {return null;}
   const parts = value.split("-").map((part) => Number(part));

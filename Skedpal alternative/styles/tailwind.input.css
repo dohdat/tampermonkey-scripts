@@ -415,6 +415,7 @@ body.modal-open{overflow:hidden}
 .calendar-event-modal__detail-link--zoom{display:inline-flex;align-items:center;gap:var(--space-0-25);padding:var(--space-0-15) var(--space-0-55);border-radius:var(--size-999px);border:var(--size-1px) solid rgba(var(--color-slate-600-rgb),.6);background:rgba(var(--color-slate-800-rgb),.6);color:var(--color-slate-100);text-decoration:none}
 .calendar-event-modal__detail-link--zoom:hover{color:var(--color-lime-300);border-color:var(--color-lime-400);background:rgba(var(--color-slate-800-rgb),.85)}
 .task-card--reminder-alert{animation:reminderCardPulse 1.2s ease-in-out infinite}
+.task-card--start-from-not-today{opacity:0.6}
 .task-reminder-remove-btn{border:var(--size-1px) solid var(--color-slate-600);border-radius:var(--size-999px);padding:var(--space-0-1) var(--space-0-45);font-size:var(--font-size-tw-10px);text-transform:uppercase;letter-spacing:var(--letter-spacing-wide);color:var(--color-slate-300);background:transparent;opacity:0;pointer-events:none;transition:opacity var(--motion-base) ease}
 .task-reminder-remove-btn:hover{border-color:var(--color-orange-400);color:var(--color-orange-300)}
 .task-reminder-row:hover .task-reminder-remove-btn,

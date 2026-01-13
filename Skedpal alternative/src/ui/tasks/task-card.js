@@ -10,19 +10,23 @@ import {
   editIconSvg,
   eyeIconSvg,
   eyeOffIconSvg,
-  outOfRangeIconSvg,
   plusIconSvg,
   reminderIconSvg,
   removeIconSvg,
-  TASK_CHILD_INDENT_PX,
-  unscheduledIconSvg
+  TASK_CHILD_INDENT_PX
 } from "../constants.js";
-import { formatDateTime, formatDurationShort, isExternalCalendarTimeMapId } from "../utils.js";
+import {
+  formatDateTime,
+  formatDurationShort,
+  isExternalCalendarTimeMapId,
+  isStartFromNotToday
+} from "../utils.js";
 import { getRepeatSummary } from "../repeat.js";
 import { themeColors } from "../theme.js";
 import { getOverdueReminders } from "./task-reminders.js";
 import { applyTaskBackgroundStyle } from "./task-card-styles.js";
 import { buildReminderDetailItem } from "./task-card-details.js";
+import { buildSummaryIconFlags, buildTaskSummaryRow } from "./task-card-summary.js";
 import { state } from "../state/page-state.js";
 
 const detailClockIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 6v4l2.5 2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
@@ -49,7 +53,6 @@ function buildTitleMarkup(task) {
           <span>${task.title}</span>
         </a>`;
 }
-
 function applyTaskCardBaseStyles(taskCard, task, depth, timeMapById, options = {}) {
   const isSubtask = depth > 0;
   const dataTest = options.dataTest || "task-card";
@@ -67,7 +70,6 @@ function applyTaskCardBaseStyles(taskCard, task, depth, timeMapById, options = {
   }
   applyTaskBackgroundStyle(taskCard, task, timeMapById);
 }
-
 function buildTaskTitleText(task, titleMarkup, isSubtask) {
   const titleTextWrap = document.createElement("div");
   titleTextWrap.className = "task-title-text";
@@ -83,7 +85,6 @@ function buildTaskTitleText(task, titleMarkup, isSubtask) {
   }
   return titleTextWrap;
 }
-
 function buildTaskCollapseButton(task, isCollapsed) {
   const collapseTaskBtn = document.createElement("button");
   collapseTaskBtn.type = "button";
@@ -94,7 +95,6 @@ function buildTaskCollapseButton(task, isCollapsed) {
   collapseTaskBtn.innerHTML = isCollapsed ? caretRightIconSvg : caretDownIconSvg;
   return collapseTaskBtn;
 }
-
 function buildTaskCompleteButton(task) {
   const completeBtn = document.createElement("button");
   completeBtn.type = "button";
@@ -295,103 +295,6 @@ function buildDetailItemElement({ key, label, iconSvg, extraClass = "", valueTes
   return { item, valueEl };
 }
 
-function shouldShowFutureStartIcon(task, now) {
-  if (!task || task.completed) {return false;}
-  if (task.scheduledStart) {return false;}
-  if (!task.startFrom) {return false;}
-  const startFrom = new Date(task.startFrom);
-  if (Number.isNaN(startFrom.getTime())) {return false;}
-  return startFrom > now;
-}
-
-function buildSummaryIconFlags(task, options) {
-  const { hasChildren, now, context } = options;
-  const isRepeating = task.repeat && task.repeat.type !== TASK_REPEAT_NONE;
-  const suppressSummaryIcons = isRepeating && hasChildren;
-  return {
-    showFutureStartIcon: suppressSummaryIcons ? false : shouldShowFutureStartIcon(task, now),
-    showOutOfRangeIcon: suppressSummaryIcons
-      ? false
-      : Boolean(context.firstOccurrenceOutOfRangeByTaskId?.get(task.id)),
-    showUnscheduledIcon: suppressSummaryIcons
-      ? false
-      : Boolean(context.firstOccurrenceUnscheduledByTaskId?.get(task.id))
-  };
-}
-
-function buildTaskSummaryRow(task, options = {}) {
-  const {
-    showOutOfRangeIcon = false,
-    showUnscheduledIcon = false,
-    showFutureStartIcon = false
-  } = options;
-  const summaryRow = document.createElement("div");
-  summaryRow.className = "task-summary-row";
-  summaryRow.setAttribute("data-test-skedpal", "task-summary-row");
-  summaryRow.style.display = "flex";
-  summaryRow.style.alignItems = "center";
-  summaryRow.style.marginTop = "0";
-  summaryRow.style.marginLeft = "auto";
-  summaryRow.style.gap = "0.35rem";
-  let hasContent = false;
-  let viewCalendarBtn = null;
-  if (task.scheduledStart) {
-    const scheduledDate = new Date(task.scheduledStart);
-    if (!Number.isNaN(scheduledDate)) {
-      summaryRow.textContent = scheduledDate.toLocaleTimeString([], {
-        hour: "numeric",
-        minute: "2-digit"
-      });
-      hasContent = true;
-      viewCalendarBtn = document.createElement("button");
-      viewCalendarBtn.type = "button";
-      viewCalendarBtn.className = "title-icon-btn task-summary-calendar";
-      viewCalendarBtn.title = "View on calendar";
-      viewCalendarBtn.dataset.viewCalendarTask = task.id;
-      viewCalendarBtn.setAttribute("data-test-skedpal", "task-summary-view-calendar");
-      viewCalendarBtn.innerHTML = calendarIconSvg;
-    }
-  }
-  if (showOutOfRangeIcon) {
-    const outOfRangeIcon = document.createElement("span");
-    outOfRangeIcon.className = "title-icon-btn";
-    outOfRangeIcon.title = "First occurrence is outside the scheduling horizon";
-    outOfRangeIcon.setAttribute("data-test-skedpal", "task-summary-out-of-range");
-    outOfRangeIcon.innerHTML = outOfRangeIconSvg;
-    outOfRangeIcon.style.borderColor = themeColors.amber400;
-    outOfRangeIcon.style.color = themeColors.amber400;
-    outOfRangeIcon.style.cursor = "default";
-    summaryRow.appendChild(outOfRangeIcon);
-    hasContent = true;
-  } else if (showFutureStartIcon) {
-    const futureStartIcon = document.createElement("span");
-    futureStartIcon.className = "title-icon-btn";
-    futureStartIcon.title = "Starts in the future";
-    futureStartIcon.setAttribute("data-test-skedpal", "task-summary-future-start");
-    futureStartIcon.innerHTML = outOfRangeIconSvg;
-    futureStartIcon.style.borderColor = themeColors.lime400;
-    futureStartIcon.style.color = themeColors.lime400;
-    futureStartIcon.style.cursor = "default";
-    summaryRow.appendChild(futureStartIcon);
-    hasContent = true;
-  } else if (showUnscheduledIcon) {
-    const unscheduledIcon = document.createElement("span");
-    unscheduledIcon.className = "title-icon-btn";
-    unscheduledIcon.title = "First occurrence is unscheduled";
-    unscheduledIcon.setAttribute("data-test-skedpal", "task-summary-unscheduled");
-    unscheduledIcon.innerHTML = unscheduledIconSvg;
-    unscheduledIcon.style.borderColor = themeColors.red400;
-    unscheduledIcon.style.color = themeColors.red400;
-    unscheduledIcon.style.cursor = "default";
-    summaryRow.appendChild(unscheduledIcon);
-    hasContent = true;
-  }
-  if (viewCalendarBtn) {
-    summaryRow.appendChild(viewCalendarBtn);
-  }
-  return hasContent ? summaryRow : null;
-}
-
 function buildTaskHeader(task, options) {
   const header = document.createElement("div");
   header.className = "task-title-row title-hover-group";
@@ -582,6 +485,9 @@ export function renderTaskCard(task, context) {
   if (overdueReminders.length) {
     taskCard.classList.add("task-card--reminder-alert");
     taskCard.dataset.reminderAlert = "true";
+  }
+  if (isStartFromNotToday(task.startFrom, now)) {
+    taskCard.classList.add("task-card--start-from-not-today");
   }
   const { showFutureStartIcon, showOutOfRangeIcon, showUnscheduledIcon } = buildSummaryIconFlags(
     task,

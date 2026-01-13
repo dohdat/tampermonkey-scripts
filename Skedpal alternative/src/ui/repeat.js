@@ -74,7 +74,7 @@ export function defaultRepeatState(startDate = getStartDate()) {
     unit: TASK_REPEAT_NONE,
     interval: 1,
     weeklyDays: [weekday],
-    weeklyMode: "all",
+    weeklyMode: "any",
     monthlyMode: "day",
     monthlyDay: monthDay,
     monthlyNth: nth,

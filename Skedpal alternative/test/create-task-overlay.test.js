@@ -189,6 +189,16 @@ describe("create task overlay", () => {
     assert.strictEqual(iframe.src, url);
   });
 
+  it("returns false when no url is provided", () => {
+    assert.strictEqual(openCreateTaskOverlay(""), false);
+  });
+
+  it("returns false when the document body is missing", () => {
+    documentStub.body = null;
+    const url = "chrome-extension://test/pages/index.html?newTask=1";
+    assert.strictEqual(openCreateTaskOverlay(url), false);
+  });
+
   it("updates the existing overlay instead of duplicating", () => {
     const urlA = "chrome-extension://test/pages/index.html?newTask=1&title=A";
     const urlB = "chrome-extension://test/pages/index.html?newTask=1&title=B";
@@ -203,6 +213,10 @@ describe("create task overlay", () => {
     assert.strictEqual(overlayAgain, overlay);
     assert.strictEqual(iframe.src, urlB);
     assert.strictEqual(documentStub.body.children.length, 1);
+  });
+
+  it("returns false when closing without an overlay", () => {
+    assert.strictEqual(closeCreateTaskOverlay(), false);
   });
 
   it("cleans up listeners and DOM on close", () => {
@@ -246,6 +260,17 @@ describe("create task overlay", () => {
     assert.strictEqual(windowStub._listenerCount("message"), 0);
   });
 
+  it("ignores close messages from other sources", () => {
+    const url = "chrome-extension://test/pages/index.html?newTask=1";
+    openCreateTaskOverlay(url);
+    const overlay = documentStub.getElementById("skedpal-create-task-overlay");
+    windowStub._dispatch("message", {
+      data: { type: "skedpal:create-task-close" },
+      source: {}
+    });
+    assert.strictEqual(documentStub.getElementById("skedpal-create-task-overlay"), overlay);
+  });
+
   it("closes when clicking the overlay backdrop", () => {
     const url = "chrome-extension://test/pages/index.html?newTask=1";
     openCreateTaskOverlay(url);
@@ -255,6 +280,29 @@ describe("create task overlay", () => {
     handler({ target: overlay });
 
     assert.strictEqual(documentStub.getElementById("skedpal-create-task-overlay"), null);
+  });
+
+  it("closes when clicking the close button", () => {
+    const url = "chrome-extension://test/pages/index.html?newTask=1";
+    openCreateTaskOverlay(url);
+
+    const closeButton = documentStub.getElementById("skedpal-create-task-close");
+    const handler = [...(closeButton._listeners.get("click") || [])][0];
+    handler();
+
+    assert.strictEqual(documentStub.getElementById("skedpal-create-task-overlay"), null);
+  });
+
+  it("ignores overlay clicks that are not on the backdrop", () => {
+    const url = "chrome-extension://test/pages/index.html?newTask=1";
+    openCreateTaskOverlay(url);
+
+    const overlay = documentStub.getElementById("skedpal-create-task-overlay");
+    const panel = overlay.children[0];
+    const handler = [...(overlay._listeners.get("click") || [])][0];
+    handler({ target: panel });
+
+    assert.strictEqual(documentStub.getElementById("skedpal-create-task-overlay"), overlay);
   });
 
   it("stops focus traps from seeing iframe focus", () => {
@@ -275,6 +323,21 @@ describe("create task overlay", () => {
     assert.strictEqual(stopped, true);
   });
 
+  it("ignores non-escape keydown events", () => {
+    const url = "chrome-extension://test/pages/index.html?newTask=1";
+    openCreateTaskOverlay(url);
+    const overlay = documentStub.getElementById("skedpal-create-task-overlay");
+    windowStub._dispatch("keydown", { key: "Enter" });
+    assert.strictEqual(documentStub.getElementById("skedpal-create-task-overlay"), overlay);
+  });
+
+  it("closes on escape keydown", () => {
+    const url = "chrome-extension://test/pages/index.html?newTask=1";
+    openCreateTaskOverlay(url);
+    windowStub._dispatch("keydown", { key: "Escape" });
+    assert.strictEqual(documentStub.getElementById("skedpal-create-task-overlay"), null);
+  });
+
   it("restores iframe focus after focus traps run", () => {
     global.setTimeout = (handler) => {
       handler();
@@ -292,5 +355,36 @@ describe("create task overlay", () => {
 
     windowStub._dispatch("focusin", event);
     assert.strictEqual(iframe._focused, true);
+  });
+
+  it("clears pending focus timers before scheduling another", () => {
+    let cleared = false;
+    const originalClearTimeout = global.clearTimeout;
+    global.clearTimeout = () => {
+      cleared = true;
+    };
+    global.setTimeout = () => 1;
+    const url = "chrome-extension://test/pages/index.html?newTask=1";
+    openCreateTaskOverlay(url);
+
+    const iframe = documentStub.getElementById("skedpal-create-task-iframe");
+    const event = { target: iframe };
+    windowStub._dispatch("focusin", event);
+    windowStub._dispatch("focusin", event);
+
+    assert.strictEqual(cleared, true);
+    global.clearTimeout = originalClearTimeout;
+  });
+
+  it("cleans up stale overlay state before recreating", () => {
+    let cleaned = false;
+    windowStub.__skedpalCreateTaskOverlayState__ = {
+      cleanup: () => {
+        cleaned = true;
+      }
+    };
+    const url = "chrome-extension://test/pages/index.html?newTask=1";
+    openCreateTaskOverlay(url);
+    assert.strictEqual(cleaned, true);
   });
 });

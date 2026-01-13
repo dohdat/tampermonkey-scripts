@@ -27,6 +27,11 @@ function resetUuidCounter() {
 describe("task duplication", () => {
   beforeEach(() => resetUuidCounter());
 
+  it("returns empty when no originals are provided", () => {
+    assert.deepStrictEqual(buildDuplicateTasks(null, []), []);
+    assert.deepStrictEqual(buildDuplicateTasks([], []), []);
+  });
+
   it("skips completed children and reparents to the nearest kept ancestor", () => {
     const tasks = [
       { id: "p1", title: "Parent", section: "s1", subsection: "", order: 1, completed: false },
@@ -68,5 +73,23 @@ describe("task duplication", () => {
     assert.ok(dupParent);
     assert.ok(dupGrandchild);
     assert.strictEqual(dupGrandchild.subtaskParentId, dupParent.id);
+  });
+
+  it("keeps the root parent id when duplicating a nested task", () => {
+    const tasks = [
+      { id: "parent", section: "s1", subsection: "", order: 1, completed: false },
+      {
+        id: "root",
+        title: "Root",
+        section: "s1",
+        subsection: "",
+        order: 2,
+        subtaskParentId: "parent",
+        completed: false
+      }
+    ];
+    const duplicates = buildDuplicateTasks([tasks[1]], tasks);
+    assert.strictEqual(duplicates.length, 1);
+    assert.strictEqual(duplicates[0].subtaskParentId, "parent");
   });
 });

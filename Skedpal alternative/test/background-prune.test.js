@@ -91,6 +91,14 @@ describe("background prune helpers", () => {
     assert.strictEqual(shouldRunDailyPrune(null, now), true);
   });
 
+  it("skips daily prune when the current time is invalid", () => {
+    assert.strictEqual(shouldRunDailyPrune("2026-02-15T05:00:00.000Z", "bad"), false);
+  });
+
+  it("runs daily prune when the last prune timestamp is invalid", () => {
+    assert.strictEqual(shouldRunDailyPrune("bad", now), true);
+  });
+
   it("skips daily prune within 24 hours of the last run", () => {
     const lastPrunedAt = "2026-02-15T05:00:00.000Z";
     assert.strictEqual(shouldRunDailyPrune(lastPrunedAt, now), false);
@@ -99,5 +107,35 @@ describe("background prune helpers", () => {
   it("runs daily prune after 24 hours have passed", () => {
     const lastPrunedAt = "2026-02-14T11:59:00.000Z";
     assert.strictEqual(shouldRunDailyPrune(lastPrunedAt, now), true);
+  });
+
+  it("returns empty when retention days are invalid or zero", () => {
+    const tasks = [
+      {
+        id: "old-completed",
+        completed: true,
+        completedAt: "2026-01-01T12:00:00.000Z"
+      }
+    ];
+    assert.deepStrictEqual(getPrunableCompletedTaskIds(tasks, "nope", now), []);
+    assert.deepStrictEqual(getPrunableCompletedTaskIds(tasks, 0, now), []);
+  });
+
+  it("returns empty when the current time is invalid", () => {
+    const tasks = [
+      {
+        id: "old-completed",
+        completed: true,
+        completedAt: "2026-01-01T12:00:00.000Z"
+      }
+    ];
+    assert.deepStrictEqual(getPrunableCompletedTaskIds(tasks, COMPLETED_TASK_RETENTION_DAYS, "bad"), []);
+  });
+
+  it("returns settings unchanged when prune inputs are incomplete", () => {
+    const settings = { collapsedTasks: ["keep"] };
+    assert.strictEqual(pruneSettingsCollapsedTasks(null, new Set(["keep"])), null);
+    assert.strictEqual(pruneSettingsCollapsedTasks(settings, new Set()), settings);
+    assert.strictEqual(pruneSettingsCollapsedTasks(settings, new Set(["other"])), settings);
   });
 });

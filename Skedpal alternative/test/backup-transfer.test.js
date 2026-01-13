@@ -22,6 +22,31 @@ describe("backup transfer", () => {
     assert.deepStrictEqual(snapshot.settings, { foo: "bar" });
   });
 
+  it("normalizes missing or invalid snapshot fields", () => {
+    const payload = buildBackupExportPayload(null);
+    const parsed = JSON.parse(payload);
+    assert.ok(parsed.createdAt);
+    assert.deepStrictEqual(parsed.tasks, []);
+    assert.deepStrictEqual(parsed.timeMaps, []);
+    assert.deepStrictEqual(parsed.taskTemplates, []);
+    assert.deepStrictEqual(parsed.settings, {});
+  });
+
+  it("drops invalid arrays and settings objects", () => {
+    const snapshot = parseBackupImportJson(
+      JSON.stringify({
+        tasks: "nope",
+        timeMaps: null,
+        taskTemplates: false,
+        settings: "invalid"
+      })
+    );
+    assert.deepStrictEqual(snapshot.tasks, []);
+    assert.deepStrictEqual(snapshot.timeMaps, []);
+    assert.deepStrictEqual(snapshot.taskTemplates, []);
+    assert.deepStrictEqual(snapshot.settings, {});
+  });
+
   it("rejects invalid JSON", () => {
     assert.throws(() => parseBackupImportJson("{not-json}"), /Invalid JSON backup file/);
   });

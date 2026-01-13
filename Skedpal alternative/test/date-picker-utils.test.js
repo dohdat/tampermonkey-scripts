@@ -4,6 +4,9 @@ import { describe, it } from "mocha";
 import {
   addMonths,
   buildQuickPickSections,
+  formatLongDateLabel,
+  formatShortDateLabel,
+  getMonthLabel,
   getMonthData,
   parseDateInputValue,
   toDateInputValue
@@ -21,6 +24,13 @@ describe("date picker utils", () => {
     assert.strictEqual(parsed.getMonth(), 0);
     assert.strictEqual(parsed.getDate(), 10);
     assert.strictEqual(parseDateInputValue("invalid"), null);
+  });
+
+  it("handles invalid date values defensively", () => {
+    assert.strictEqual(toDateInputValue("not-a-date"), "");
+    assert.strictEqual(toDateInputValue(new Date("invalid")), "");
+    assert.strictEqual(parseDateInputValue(""), null);
+    assert.strictEqual(parseDateInputValue("2026-02-30"), null);
   });
 
   it("clamps addMonths to the end of the month", () => {
@@ -43,5 +53,12 @@ describe("date picker utils", () => {
     assert.strictEqual(data.year, 2026);
     assert.strictEqual(data.monthIndex, 1);
     assert.strictEqual(data.daysInMonth, 28);
+  });
+
+  it("formats date labels for quick display", () => {
+    const base = new Date(2026, 4, 15);
+    assert.ok(formatShortDateLabel(base).length > 0);
+    assert.ok(formatLongDateLabel(base).length > 0);
+    assert.ok(getMonthLabel(base).length > 0);
   });
 });

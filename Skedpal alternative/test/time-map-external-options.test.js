@@ -3,6 +3,7 @@ import { describe, it, beforeEach } from "mocha";
 import { appendExternalCalendarOptions } from "../src/ui/time-map-external-options.js";
 import { state } from "../src/ui/state/page-state.js";
 import { EXTERNAL_CALENDAR_TIMEMAP_PREFIX } from "../src/constants.js";
+import { themeColors } from "../src/ui/theme.js";
 
 class FakeElement {
   constructor(tagName = "div") {
@@ -39,6 +40,15 @@ function findFirstByText(root, text) {
   if (root.textContent === text) {return root;}
   for (const child of root.children || []) {
     const found = findFirstByText(child, text);
+    if (found) {return found;}
+  }
+  return null;
+}
+
+function findFirstByAttribute(root, name, value) {
+  if (root.attributes?.[name] === value) {return root;}
+  for (const child of root.children || []) {
+    const found = findFirstByAttribute(child, name, value);
     if (found) {return found;}
   }
   return null;
@@ -81,6 +91,26 @@ describe("time map external options", () => {
     assert.ok(input);
     assert.strictEqual(input.checked, false);
     const label = findFirstByText(container, "cal-2");
+    assert.ok(label);
+  });
+
+  it("skips rendering when calendar ids are invalid", () => {
+    state.settingsCache = { ...state.settingsCache, googleCalendarIds: "nope" };
+    const container = new FakeElement("div");
+    appendExternalCalendarOptions(container, []);
+    assert.strictEqual(container.children.length, 0);
+  });
+
+  it("uses theme colors when a calendar has no color metadata", () => {
+    state.settingsCache = { ...state.settingsCache, googleCalendarIds: ["cal-3"] };
+    state.googleCalendarListCache = null;
+    const container = new FakeElement("div");
+    appendExternalCalendarOptions(container, "not-array");
+    const swatch = findFirstByAttribute(container, "data-test-skedpal", "timemap-external-option-color");
+    assert.ok(swatch);
+    assert.strictEqual(swatch.style.backgroundColor, themeColors.sky400);
+    assert.strictEqual(swatch.style.borderColor, themeColors.slate500);
+    const label = findFirstByText(container, "cal-3");
     assert.ok(label);
   });
 });

@@ -120,6 +120,29 @@ describe("task template payload helpers", () => {
     assert.strictEqual(payload.subtaskParentId, "parent-2");
   });
 
+  it("keeps falsy but defined parent ids for template subtasks", () => {
+    const values = {
+      id: "s2b",
+      title: "Child",
+      link: "",
+      durationMin: 15,
+      minBlockMin: 5,
+      priority: 1,
+      deadline: "",
+      startFrom: "",
+      timeMapIds: []
+    };
+    const payload = buildTemplateSubtaskPayload(
+      values,
+      "s2b",
+      0,
+      null,
+      SUBTASK_SCHEDULE_SEQUENTIAL
+    );
+
+    assert.strictEqual(payload.subtaskParentId, 0);
+  });
+
   it("clears parent ids when none are provided", () => {
     const values = {
       id: "s3",
@@ -142,5 +165,9 @@ describe("task template payload helpers", () => {
     const clone = cloneTemplateSubtasks(original);
     assert.deepStrictEqual(clone, original);
     assert.notStrictEqual(clone, original);
+  });
+
+  it("returns empty arrays when cloning invalid subtask lists", () => {
+    assert.deepStrictEqual(cloneTemplateSubtasks(null), []);
   });
 });

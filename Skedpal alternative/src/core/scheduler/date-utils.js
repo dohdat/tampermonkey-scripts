@@ -39,7 +39,7 @@ export function startOfWeek(date) {
 export function normalizeDeadline(value, fallback) {
   if (!value) {return endOfDay(fallback);}
   const date = new Date(value);
-  if (Number.isNaN(date)) {return endOfDay(fallback);}
+  if (Number.isNaN(date.getTime())) {return endOfDay(fallback);}
   const atMidnight = date.getHours() === 0 && date.getMinutes() === 0 && date.getSeconds() === 0;
   return atMidnight ? endOfDay(date) : date;
 }

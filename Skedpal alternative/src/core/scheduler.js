@@ -93,6 +93,26 @@ function subtractBusy(windows, busy) {
   return free.sort((a, b) => a.start - b.start);
 }
 
+function getBlockingBusyForTask(busy, task) {
+  if (!Array.isArray(busy) || busy.length === 0) {return [];}
+  const allowed = new Set(task?.externalCalendarIds || []);
+  if (allowed.size === 0) {return busy;}
+  return busy.filter((block) => !block?.calendarId || !allowed.has(block.calendarId));
+}
+
+function getAvailableSlotsForTask(slots, busy, task) {
+  const blockingBusy = getBlockingBusyForTask(busy, task);
+  if (blockingBusy.length === 0) {return slots;}
+  return subtractBusy(slots, blockingBusy);
+}
+
+function applyPlacementsToSlots(slots, placements) {
+  if (!placements.length) {return slots;}
+  return placements.reduce((nextSlots, placement) => {
+    return removeBlockFromSlots(nextSlots, placement);
+  }, slots);
+}
+
 function normalizeSubtaskScheduleMode(value) {
   return value === "sequential" || value === "sequential-single" ? value : "parallel";
 }
@@ -425,7 +445,7 @@ function buildSequentialState(current, mode, result) {
 }
 
 function handleSequentialTask(task, state) {
-  const { parentModeById, parentState, slots, now } = state;
+  const { parentModeById, parentState, slots, now, busy } = state;
   const { parentId, mode } = getParentMode(task, parentModeById);
   if (!parentId || mode === "parallel") {return null;}
   const current = parentState.get(parentId) || { failed: false, lastEnd: null, scheduledOne: false };
@@ -442,16 +462,18 @@ function handleSequentialTask(task, state) {
   }
   const startFrom = getSequentialStart(task, current);
   const candidate = { ...task, startFrom };
-  const result = placeTaskInSlots(candidate, slots, now, {
+  const availableSlots = getAvailableSlotsForTask(slots, busy, candidate);
+  const result = placeTaskInSlots(candidate, availableSlots, now, {
     requireSingleBlock: mode === "sequential-single"
   });
+  const nextSlots = result.success ? applyPlacementsToSlots(slots, result.placements) : slots;
   const nextState = buildSequentialState(current, mode, result);
   return {
     handled: true,
     success: result.success,
     blocked: false,
     placements: result.placements,
-    nextSlots: result.nextSlots,
+    nextSlots,
     parentId,
     state: nextState
   };
@@ -477,7 +499,7 @@ export function scheduleTasks({
 
   const sortedCandidates = sortCandidates(candidates, parentModeById, subtaskOrderById);
 
-  let slots = freeSlots;
+  let slots = windows;
   const scheduled = [];
   const unscheduled = new Set(immediatelyUnscheduled);
   const deferred = new Set();
@@ -488,7 +510,8 @@ export function scheduleTasks({
       parentModeById,
       parentState,
       slots,
-      now
+      now,
+      busy
     });
     if (sequentialResult?.handled) {
       if (sequentialResult.success) {
@@ -504,10 +527,11 @@ export function scheduleTasks({
       parentState.set(sequentialResult.parentId, sequentialResult.state);
       return;
     }
-    const { success, placements, nextSlots } = placeTaskInSlots(task, slots, now);
+    const availableSlots = getAvailableSlotsForTask(slots, busy, task);
+    const { success, placements } = placeTaskInSlots(task, availableSlots, now);
     if (success) {
       scheduled.push(...placements);
-      slots = nextSlots;
+      slots = applyPlacementsToSlots(slots, placements);
     } else {
       unscheduled.add(task.id);
     }

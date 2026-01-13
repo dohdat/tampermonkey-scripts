@@ -5,6 +5,8 @@ import {
   buildSubtaskFormValues,
   validateTaskForm
 } from "../src/ui/tasks/task-form-helpers.js";
+import { state } from "../src/ui/state/page-state.js";
+import { EXTERNAL_CALENDAR_TIMEMAP_PREFIX } from "../src/constants.js";
 
 describe("task form helpers", () => {
   it("builds template form values with defaults", () => {
@@ -103,6 +105,21 @@ describe("task form helpers", () => {
     });
 
     assert.strictEqual(error, "Select at least one TimeMap.");
+  });
+
+  it("requires a real TimeMap when only external calendars are selected", () => {
+    state.tasksTimeMapsCache = [{ id: "tm-1", name: "Work" }];
+    const error = validateTaskForm({
+      title: "Task",
+      durationMin: 30,
+      timeMapIds: [`${EXTERNAL_CALENDAR_TIMEMAP_PREFIX}cal-1`],
+      subsection: "sub-1",
+      startFrom: "",
+      deadline: ""
+    });
+
+    assert.strictEqual(error, "Select at least one TimeMap.");
+    state.tasksTimeMapsCache = [];
   });
 
   it("rejects start dates after deadlines", () => {

@@ -1,4 +1,5 @@
 import {
+  EXTERNAL_CALENDAR_TIMEMAP_PREFIX,
   TASK_REPEAT_NONE,
   caretDownIconSvg,
   caretRightIconSvg,
@@ -16,12 +17,13 @@ import {
   TASK_CHILD_INDENT_PX,
   unscheduledIconSvg
 } from "../constants.js";
-import { formatDateTime, formatDurationShort } from "../utils.js";
+import { formatDateTime, formatDurationShort, isExternalCalendarTimeMapId } from "../utils.js";
 import { getRepeatSummary } from "../repeat.js";
 import { themeColors } from "../theme.js";
 import { getOverdueReminders } from "./task-reminders.js";
 import { applyTaskBackgroundStyle } from "./task-card-styles.js";
 import { buildReminderDetailItem } from "./task-card-details.js";
+import { state } from "../state/page-state.js";
 
 const detailClockIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 6v4l2.5 2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
 const detailFlagIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 3v14" stroke-linecap="round"></path><path d="M4 4h9l-1.5 3L13 10H4" stroke-linejoin="round"></path></svg>`;
@@ -29,6 +31,16 @@ const detailStackIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" fill="no
 const detailGaugeIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 13a6 6 0 1 1 12 0" stroke-linecap="round"></path><path d="M10 8l3 3" stroke-linecap="round"></path><circle cx="10" cy="13" r="1"></circle></svg>`;
 const detailMapIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5l4-2 4 2 4-2v12l-4 2-4-2-4 2V5Z" stroke-linejoin="round"></path><path d="M8 3v12M12 5v12" stroke-linecap="round"></path></svg>`;
 const detailRepeatIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 8a6 6 0 0 1 10-2" stroke-linecap="round"></path><path d="M14 3v3h-3" stroke-linecap="round" stroke-linejoin="round"></path><path d="M16 12a6 6 0 0 1-10 2" stroke-linecap="round"></path><path d="M6 17v-3h3" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
+
+function resolveExternalCalendarLabel(timeMapId) {
+  const calendarId = String(timeMapId || "").slice(EXTERNAL_CALENDAR_TIMEMAP_PREFIX.length);
+  if (!calendarId) {return "External calendar";}
+  const cached = Array.isArray(state.googleCalendarListCache)
+    ? state.googleCalendarListCache
+    : [];
+  const entry = cached.find((calendar) => calendar.id === calendarId);
+  return entry?.summary || calendarId || "External calendar";
+}
 function buildTitleMarkup(task) {
   if (!task.link) {
     return task.title;
@@ -555,7 +567,13 @@ export function renderTaskCard(task, context) {
   const depth = getTaskDepthById(task.id);
   const baseDurationMin = Number(task.durationMin) || 0;
   const displayDurationMin = hasChildren ? computeTotalDuration(task) : baseDurationMin;
-  const timeMapNames = task.timeMapIds.map((id) => timeMapById.get(id)?.name || "Unknown");
+  const timeMapIds = Array.isArray(task.timeMapIds) ? task.timeMapIds : [];
+  const timeMapNames = timeMapIds.map((id) => {
+    if (isExternalCalendarTimeMapId(id)) {
+      return resolveExternalCalendarLabel(id);
+    }
+    return timeMapById.get(id)?.name || "Unknown";
+  });
   const repeatSummary = getRepeatSummary(task.repeat);
   const taskCard = buildTaskCardShell(task, { depth, timeMapById });
   const titleMarkup = buildTitleMarkup(task);

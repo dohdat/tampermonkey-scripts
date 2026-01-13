@@ -1,6 +1,7 @@
 import assert from "assert";
 import { describe, it } from "mocha";
 import { scheduleTasks } from "../src/core/scheduler.js";
+import { EXTERNAL_CALENDAR_TIMEMAP_PREFIX } from "../src/constants.js";
 
 function nextWeekday(base, weekday) {
   const date = new Date(base);
@@ -106,6 +107,50 @@ describe("scheduler", () => {
       result.scheduled.filter((slot) => slot.taskId === "weekly").length,
       2
     );
+  });
+
+  it("allows overlap with external calendar events when selected", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 1);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "11:00" }] }
+    ];
+    const busy = [
+      { calendarId: "cal-1", start: shiftDate(now, 0, 9, 0), end: shiftDate(now, 0, 10, 0) }
+    ];
+    const deadline = shiftDate(now, 0, 23, 59);
+    const tasks = [
+      {
+        id: "blocked",
+        title: "Blocked",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        deadline
+      },
+      {
+        id: "allowed",
+        title: "Allowed",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1", `${EXTERNAL_CALENDAR_TIMEMAP_PREFIX}cal-1`],
+        deadline
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy,
+      schedulingHorizonDays: 1,
+      now
+    });
+
+    const allowed = result.scheduled.find((slot) => slot.taskId === "allowed");
+    const blocked = result.scheduled.find((slot) => slot.taskId === "blocked");
+    assert.ok(allowed);
+    assert.ok(blocked);
+    assert.strictEqual(allowed.start.getHours(), 9);
+    assert.strictEqual(blocked.start.getHours(), 10);
   });
 
   it("does not schedule repeating occurrences before their day", () => {

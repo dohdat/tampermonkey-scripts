@@ -30,6 +30,7 @@ export const state = {
   calendarViewMode: "day",
   calendarAnchorDate: new Date(),
   calendarExternalEvents: [],
+  googleCalendarListCache: [],
   calendarExternalRange: null,
   calendarExternalRangeKey: "",
   calendarExternalPendingKey: "",

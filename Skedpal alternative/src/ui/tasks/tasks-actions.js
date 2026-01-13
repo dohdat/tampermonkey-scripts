@@ -50,7 +50,11 @@ import { renderBreadcrumb } from "../navigation.js";
 import { showUndoBanner } from "../notifications.js";
 import { buildDuplicateTasks } from "./task-duplicate.js";
 import { repeatStore } from "../repeat.js";
-import { resolveSavedSubtaskScheduleMode, validateTaskForm } from "./task-form-helpers.js";
+import {
+  hasValidTimeMapSelection,
+  resolveSavedSubtaskScheduleMode,
+  validateTaskForm
+} from "./task-form-helpers.js";
 import { renderReport } from "../report.js";
 import { renderTaskReminderBadge } from "./task-reminders.js";
 import { requestCreateTaskOverlayClose } from "../overlay-messaging.js";
@@ -298,7 +302,7 @@ function validateTemplateForm(values) {
   if (values.durationMin < TASK_DURATION_STEP_MIN || values.durationMin % TASK_DURATION_STEP_MIN !== 0) {
     return `Duration must be at least ${TASK_DURATION_STEP_MIN} minutes and in ${TASK_DURATION_STEP_MIN} minute steps.`;
   }
-  if (values.timeMapIds.length === 0) {
+  if (!hasValidTimeMapSelection(values.timeMapIds)) {
     return "Select at least one TimeMap.";
   }
   if (isStartAfterDeadline(values.startFrom, values.deadline)) {

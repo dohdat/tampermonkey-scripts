@@ -1,5 +1,6 @@
 import { themeColors } from "../theme.js";
 import { state } from "../state/page-state.js";
+import { isExternalCalendarTimeMapId } from "../utils.js";
 
 const PRIORITY_COLORS = {
   1: themeColors.slate400,
@@ -27,7 +28,8 @@ export function applyTaskBackgroundStyle(taskCard, task, timeMapById) {
   const backgroundMode = resolveTaskBackgroundMode();
   if (backgroundMode === "timemap") {
     const timeMapIds = Array.isArray(task.timeMapIds) ? task.timeMapIds : [];
-    const color = timeMapById.get(timeMapIds[0])?.color;
+    const primaryTimeMapId = timeMapIds.find((id) => !isExternalCalendarTimeMapId(id));
+    const color = timeMapById.get(primaryTimeMapId)?.color;
     if (color) {
       taskCard.style.backgroundColor = `${color}1a`;
     }

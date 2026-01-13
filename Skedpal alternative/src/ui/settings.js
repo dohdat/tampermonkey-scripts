@@ -18,6 +18,7 @@ import { loadTasks, updateScheduleSummary, renderTimeMapsAndTasks } from "./task
 import { initTaskTemplates, loadTaskTemplates } from "./task-templates.js";
 import { initTimeMapSectionToggle } from "./time-map-settings-toggle.js";
 import { buildBackupExportPayload, parseBackupImportJson } from "./backup-transfer.js";
+import { loadCalendarListCache, saveCalendarListCache } from "./calendar-list-cache.js";
 
 const {
   horizonInput,
@@ -300,6 +301,10 @@ function initGoogleCalendarSettings(persistSettingsSafely) {
       const selection = Array.isArray(state.settingsCache.googleCalendarIds)
         ? state.settingsCache.googleCalendarIds
         : [];
+      state.googleCalendarListCache = calendars;
+      saveCalendarListCache(calendars).catch((error) => {
+        console.warn("Failed to cache calendar list.", error);
+      });
       renderCalendarList(calendars, selection, handleCalendarSelectionChange);
       setCalendarStatus(
         calendars.length
@@ -322,6 +327,7 @@ function initGoogleCalendarSettings(persistSettingsSafely) {
     setCalendarStatus("Disconnecting...");
     try {
       await disconnectCalendar();
+      state.googleCalendarListCache = [];
       renderCalendarList([], [], handleCalendarSelectionChange);
       persistSettingsSafely(
         { googleCalendarIds: [] },
@@ -559,6 +565,12 @@ function initBackupSettings() {
 export async function initSettings(prefetchedSettings) {
   const settings = prefetchedSettings || (await getSettings());
   state.settingsCache = { ...DEFAULT_SETTINGS, ...settings };
+  try {
+    state.googleCalendarListCache = await loadCalendarListCache();
+  } catch (error) {
+    console.warn("Failed to load cached calendar list.", error);
+    state.googleCalendarListCache = [];
+  }
   applyCollapsedPreferences(state.settingsCache);
   const { persistSettings, persistSettingsSafely } = createSettingsPersistor();
   const cleanupFns = [];

@@ -91,6 +91,7 @@ export const TASK_STATUS_COMPLETED = "completed";
 export const SUBTASK_SCHEDULE_PARALLEL = "parallel";
 export const SUBTASK_SCHEDULE_SEQUENTIAL = "sequential";
 export const SUBTASK_SCHEDULE_SEQUENTIAL_SINGLE = "sequential-single";
+export const EXTERNAL_CALENDAR_TIMEMAP_PREFIX = "external-calendar:";
 
 export const GROQ_BASE_URL = "https://api.groq.com/openai/v1/chat/completions";
 export const GROQ_MODEL = "openai/gpt-oss-20b";

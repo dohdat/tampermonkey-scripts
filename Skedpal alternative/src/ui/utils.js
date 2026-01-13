@@ -1,6 +1,7 @@
 import {
   DEFAULT_TASK_REPEAT,
   ELEVEN,
+  EXTERNAL_CALENDAR_TIMEMAP_PREFIX,
   FORTY,
   FOUR,
   INDEX_NOT_FOUND,
@@ -127,6 +128,27 @@ export function normalizeTimeMap(timeMap) {
     ...timeMap,
     rules: days.map((day) => ({ day: Number(day), startTime, endTime }))
   };
+}
+
+export function isExternalCalendarTimeMapId(value) {
+  return typeof value === "string" && value.startsWith(EXTERNAL_CALENDAR_TIMEMAP_PREFIX);
+}
+
+export function splitTimeMapIds(timeMapIds) {
+  const normalized = Array.isArray(timeMapIds) ? timeMapIds : [];
+  const externalCalendarIds = [];
+  const taskTimeMapIds = [];
+  normalized.forEach((id) => {
+    if (isExternalCalendarTimeMapId(id)) {
+      const calendarId = id.slice(EXTERNAL_CALENDAR_TIMEMAP_PREFIX.length);
+      if (calendarId) {
+        externalCalendarIds.push(calendarId);
+      }
+      return;
+    }
+    taskTimeMapIds.push(id);
+  });
+  return { timeMapIds: taskTimeMapIds, externalCalendarIds };
 }
 
 export function formatDateTime(value) {
@@ -521,7 +543,10 @@ function dedupeIds(list) {
 }
 
 function filterExistingTimeMapIds(ids, remainingIds, deletedId = "") {
-  return (ids || []).filter((id) => id !== deletedId && remainingIds.has(id));
+  return (ids || []).filter((id) => {
+    if (isExternalCalendarTimeMapId(id)) {return true;}
+    return id !== deletedId && remainingIds.has(id);
+  });
 }
 
 function getTemplateTimeMapIds(task, settings) {

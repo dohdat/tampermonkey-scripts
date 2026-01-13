@@ -6,7 +6,23 @@ import {
   TASK_DURATION_STEP_MIN,
   TASK_TITLE_MAX_LENGTH
 } from "../constants.js";
-import { isStartAfterDeadline, normalizeSubtaskScheduleMode } from "../utils.js";
+import { isStartAfterDeadline, isExternalCalendarTimeMapId, normalizeSubtaskScheduleMode } from "../utils.js";
+import { state } from "../state/page-state.js";
+
+function hasNonExternalTimeMapSelection(timeMapIds) {
+  const ids = Array.isArray(timeMapIds) ? timeMapIds : [];
+  if (!ids.length) {return false;}
+  const hasKnownTimeMaps =
+    Array.isArray(state.tasksTimeMapsCache) && state.tasksTimeMapsCache.length > 0;
+  if (!hasKnownTimeMaps) {
+    return true;
+  }
+  return ids.some((id) => !isExternalCalendarTimeMapId(id));
+}
+
+export function hasValidTimeMapSelection(timeMapIds) {
+  return hasNonExternalTimeMapSelection(timeMapIds);
+}
 
 export function buildTemplateFormValues(template) {
   return {
@@ -74,7 +90,7 @@ export function validateTaskForm(values) {
   if (values.durationMin < TASK_DURATION_STEP_MIN || values.durationMin % TASK_DURATION_STEP_MIN !== 0) {
     return `Duration must be at least ${TASK_DURATION_STEP_MIN} minutes and in ${TASK_DURATION_STEP_MIN} minute steps.`;
   }
-  if (values.timeMapIds.length === 0) {
+  if (!hasValidTimeMapSelection(values.timeMapIds)) {
     return "Select at least one TimeMap.";
   }
   if (isStartAfterDeadline(values.startFrom, values.deadline)) {

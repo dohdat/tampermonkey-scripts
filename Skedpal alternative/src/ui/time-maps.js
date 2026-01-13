@@ -7,10 +7,11 @@ import {
   deleteTimeMap
 } from "../data/db.js";
 import { dayOptions, domRefs } from "./constants.js";
-import { normalizeTimeMap, resolveTimeMapIdsAfterDelete, uuid } from "./utils.js";
+import { isExternalCalendarTimeMapId, normalizeTimeMap, resolveTimeMapIdsAfterDelete, uuid } from "./utils.js";
 import { state } from "./state/page-state.js";
 import { themeColors } from "./theme.js";
 import { pickTimeMapColor } from "./time-map-colors.js";
+import { appendExternalCalendarOptions } from "./time-map-external-options.js";
 
 const getTimeMapList = () => domRefs.timeMapList;
 const getTimeMapDayRows = () => domRefs.timeMapDayRows;
@@ -286,6 +287,7 @@ export function getTimeMapUsageCounts(tasks) {
     if (task?.subtaskParentId) {return;}
     const ids = Array.isArray(task.timeMapIds) ? task.timeMapIds : [];
     ids.forEach((id) => {
+      if (isExternalCalendarTimeMapId(id)) {return;}
       usageCounts.set(id, (usageCounts.get(id) || 0) + 1);
     });
   });
@@ -321,6 +323,8 @@ export function renderTaskTimeMapOptions(
     taskTimeMapOptions.innerHTML = `<span class="text-xs text-slate-400">Create TimeMaps first.</span>`;
     return;
   }
+  const selectedIds = new Set(Array.isArray(selected) ? selected : []);
+  const hasExplicitSelection = Array.isArray(selected) && selected.length > 0;
   timeMaps.forEach((tmRaw) => {
     const tm = normalizeTimeMap(tmRaw);
     const id = `task-tm-${tm.id}`;
@@ -332,8 +336,7 @@ export function renderTaskTimeMapOptions(
     input.type = "checkbox";
     input.value = tm.id;
     input.id = id;
-    const hasExplicitSelection = Array.isArray(selected) && selected.length > 0;
-    input.checked = hasExplicitSelection ? selected.includes(tm.id) : tm.id === defaultTimeMapId;
+    input.checked = hasExplicitSelection ? selectedIds.has(tm.id) : tm.id === defaultTimeMapId;
     input.className = "h-4 w-4 rounded border-slate-600 bg-slate-900 text-lime-400";
     const text = document.createElement("span");
     text.textContent = tm.name;
@@ -349,6 +352,7 @@ export function renderTaskTimeMapOptions(
     label.appendChild(text);
     taskTimeMapOptions.appendChild(label);
   });
+  appendExternalCalendarOptions(taskTimeMapOptions, selected);
 }
 
 export function renderTimeMapOptions(
@@ -359,6 +363,7 @@ export function renderTimeMapOptions(
   if (!container) {return;}
   container.innerHTML = "";
   const normalized = timeMaps.map(normalizeTimeMap);
+  const selection = new Set(Array.isArray(selectedIds) ? selectedIds : []);
   normalized.forEach((tm) => {
     const label = document.createElement("label");
     label.className =
@@ -367,7 +372,7 @@ export function renderTimeMapOptions(
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.value = tm.id;
-    checkbox.checked = selectedIds.includes(tm.id);
+    checkbox.checked = selection.has(tm.id);
     checkbox.className = "h-4 w-4 rounded border-slate-700 bg-slate-900 text-lime-400";
     checkbox.setAttribute("data-test-skedpal", "timemap-option-checkbox");
     const colorDot = document.createElement("span");
@@ -382,6 +387,7 @@ export function renderTimeMapOptions(
     label.appendChild(name);
     container.appendChild(label);
   });
+  appendExternalCalendarOptions(container, selectedIds);
 }
 
 export function collectSelectedValues(container) {

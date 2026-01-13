@@ -819,8 +819,8 @@
   </div>
 </div>
 <div id="repeat-complete-modal" class="task-modal hidden" data-test-skedpal="repeat-complete-modal">
-  <div class="task-modal__panel">
-    <div class="task-modal__header">
+  <div class="task-modal__panel repeat-complete-panel" data-test-skedpal="repeat-complete-panel">
+    <div class="task-modal__header repeat-complete-header" data-test-skedpal="repeat-complete-header">
       <div>
         <p class="task-modal__eyebrow">Complete occurrence</p>
         <h3 class="task-modal__title">Select an occurrence</h3>
@@ -851,12 +851,23 @@
         <span class="sr-only" data-test-skedpal="modal-close-label">Close modal</span>
       </button>
     </div>
-    <div class="task-modal__form">
-      <div class="space-y-2" id="repeat-complete-list" data-test-skedpal="repeat-complete-list"></div>
+    <div class="task-modal__form repeat-complete-form" data-test-skedpal="repeat-complete-form">
+      <div class="repeat-complete-section" data-test-skedpal="repeat-complete-section">
+        <span class="repeat-complete-section-title" data-test-skedpal="repeat-complete-section-title">
+          Available
+        </span>
+        <div class="repeat-complete-list-wrap" data-test-skedpal="repeat-complete-list-wrap">
+          <div
+            class="space-y-2 repeat-complete-list"
+            id="repeat-complete-list"
+            data-test-skedpal="repeat-complete-list"
+          ></div>
+        </div>
+      </div>
       <p class="text-sm text-slate-400 hidden" id="repeat-complete-empty" data-test-skedpal="repeat-complete-empty">
         No upcoming occurrences available.
       </p>
-      <div class="task-modal__actions">
+      <div class="task-modal__actions repeat-complete-actions" data-test-skedpal="repeat-complete-actions">
         <button type="button" class="btn muted" data-repeat-complete-close>Cancel</button>
       </div>
     </div>

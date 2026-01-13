@@ -246,7 +246,27 @@ async function handleTaskListTabIndent(event) {
 }
 
 async function handleRepeatCompleteListClick(event) {
-  const btn = event.target.closest("[data-repeat-complete-date]");
+  const target = event.target instanceof Element ? event.target : event.target.parentElement;
+  if (!target) {return;}
+  const separator = target.closest("[data-repeat-complete-separator]");
+  if (separator) {
+    const targetId = separator.getAttribute("aria-controls");
+    if (!targetId) {return;}
+    const target = document.getElementById(targetId);
+    if (!target) {return;}
+    const isHidden = target.classList.contains("hidden");
+    if (isHidden) {
+      target.classList.remove("hidden");
+      separator.classList.add("repeat-complete-separator--open");
+      separator.setAttribute("aria-expanded", "true");
+    } else {
+      target.classList.add("hidden");
+      separator.classList.remove("repeat-complete-separator--open");
+      separator.setAttribute("aria-expanded", "false");
+    }
+    return;
+  }
+  const btn = target.closest("[data-repeat-complete-date]");
   if (!btn) {return;}
   await handleRepeatOccurrenceComplete(
     btn.dataset.repeatCompleteTask || "",

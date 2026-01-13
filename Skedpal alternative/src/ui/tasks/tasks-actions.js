@@ -2,19 +2,11 @@ import {
   getAllTasks,
   getAllTimeMaps,
   saveTask,
-  saveTaskTemplate,
-  DEFAULT_SCHEDULING_HORIZON_DAYS
+  saveTaskTemplate
 } from "../../data/db.js";
-import { getUpcomingOccurrences } from "../../core/scheduler.js";
 import {
-  DAYS_PER_YEAR,
   DEFAULT_TASK_MIN_BLOCK_MIN,
   DEFAULT_TASK_REPEAT,
-  END_OF_DAY_HOUR,
-  END_OF_DAY_MINUTE,
-  END_OF_DAY_MS,
-  END_OF_DAY_SECOND,
-  TEN,
   TASK_DURATION_STEP_MIN,
   TASK_STATUS_IGNORED,
   TASK_STATUS_SCHEDULED,
@@ -28,7 +20,6 @@ import {
   getTaskAndDescendants,
   formatDate,
   getInheritedSubtaskFields,
-  getLocalDateKey,
   isStartAfterDeadline,
   normalizeTimeMap,
   uuid,
@@ -87,6 +78,7 @@ import {
   openTemplateEditor,
   openTemplateSubtaskEditor
 } from "./task-form-ui.js";
+import { closeRepeatCompleteModal } from "./repeat-complete.js";
 
 const {
   taskTimeMapOptions,
@@ -101,9 +93,6 @@ const {
   taskSubtaskScheduleWrap,
   taskRepeatSelect,
   taskTemplateSelect,
-  repeatCompleteModal,
-  repeatCompleteList,
-  repeatCompleteEmpty,
   scheduleStatus,
   rescheduleButtons,
   scheduleSummary
@@ -121,75 +110,7 @@ export {
   openTemplateSubtaskEditor
 };
 export { viewTaskOnCalendar } from "./task-calendar-actions.js";
-export function closeRepeatCompleteModal() {
-  if (repeatCompleteModal) {repeatCompleteModal.classList.add("hidden");}
-  document.body.classList.remove("modal-open");
-}
-
-export function openRepeatCompleteModal(task) {
-  if (!repeatCompleteModal || !repeatCompleteList) {return;}
-  repeatCompleteList.innerHTML = "";
-  const horizonDays =
-    Number(state.settingsCache?.schedulingHorizonDays) || DEFAULT_SCHEDULING_HORIZON_DAYS;
-  const now = new Date();
-  const horizonEnd = new Date(now.getTime());
-  horizonEnd.setDate(horizonEnd.getDate() + horizonDays);
-  horizonEnd.setHours(END_OF_DAY_HOUR, END_OF_DAY_MINUTE, END_OF_DAY_SECOND, END_OF_DAY_MS);
-  const occurrences = getUpcomingOccurrences(task, now, TEN, DAYS_PER_YEAR);
-  if (!occurrences.length) {
-    repeatCompleteEmpty?.classList.remove("hidden");
-  } else {
-    repeatCompleteEmpty?.classList.add("hidden");
-    occurrences.forEach(({ date, occurrenceId }) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "repeat-complete-option";
-      btn.dataset.repeatCompleteTask = task.id;
-      btn.dataset.repeatCompleteDate = date.toISOString();
-      btn.setAttribute("data-test-skedpal", "repeat-complete-option");
-      const label = document.createElement("span");
-      label.className = "repeat-complete-label";
-      label.textContent = formatDate(date) || date.toLocaleDateString();
-      label.setAttribute("data-test-skedpal", "repeat-complete-label");
-      const meta = document.createElement("span");
-      meta.className = "repeat-complete-meta";
-      meta.textContent = date.toLocaleDateString(undefined, { weekday: "short" });
-      meta.setAttribute("data-test-skedpal", "repeat-complete-meta");
-      const time = document.createElement("span");
-      time.className = "repeat-complete-time";
-      time.setAttribute("data-test-skedpal", "repeat-complete-time");
-      if (date > horizonEnd) {
-        time.textContent = "Out of range";
-      } else {
-        const instances = task.scheduledInstances || [];
-        let matches = instances.filter((instance) => instance.occurrenceId === occurrenceId);
-        if (!matches.length) {
-          const targetKey = getLocalDateKey(date);
-          matches = instances.filter(
-            (instance) => getLocalDateKey(instance.start) === targetKey
-          );
-        }
-        if (matches.length) {
-          const starts = matches.map((m) => new Date(m.start));
-          const ends = matches.map((m) => new Date(m.end));
-          const minStart = new Date(Math.min(...starts.map((d) => d.getTime())));
-          const maxEnd = new Date(Math.max(...ends.map((d) => d.getTime())));
-          const startLabel = minStart.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-          const endLabel = maxEnd.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-          time.textContent = `${startLabel} - ${endLabel}`;
-        } else {
-          time.textContent = "Unscheduled";
-        }
-      }
-      btn.appendChild(label);
-      btn.appendChild(meta);
-      btn.appendChild(time);
-      repeatCompleteList.appendChild(btn);
-    });
-  }
-  repeatCompleteModal.classList.remove("hidden");
-  document.body.classList.add("modal-open");
-}
+export { openRepeatCompleteModal, closeRepeatCompleteModal } from "./repeat-complete.js";
 
 export async function handleRepeatOccurrenceComplete(taskId, occurrenceIso) {
   if (!taskId || !occurrenceIso) {return;}

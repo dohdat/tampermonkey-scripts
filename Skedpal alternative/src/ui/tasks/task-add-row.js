@@ -19,7 +19,11 @@ import {
   parseLocalDateInput,
   uuid
 } from "../utils.js";
-import { buildTitleConversionPreviewHtml, parseTitleDates } from "../title-date-utils.js";
+import {
+  buildTitleConversionPreviewHtml,
+  parseTitleDates,
+  resolveMergedDateRange
+} from "../title-date-utils.js";
 
 const ADD_TASK_ROW_TEST_ID = "task-add-row";
 const ADD_TASK_BUTTON_TEST_ID = "task-add-button";
@@ -217,6 +221,12 @@ function buildQuickAddPayload({
     template
   );
   const defaults = resolveQuickAddDefaults(resolvedTemplate, settings);
+  const dateRange = resolveMergedDateRange({
+    startFrom: parsedStartFrom ?? defaults.startFrom,
+    deadline: parsedDeadline ?? defaults.deadline,
+    startFromSource: parsedStartFrom ? "parsed" : "existing",
+    deadlineSource: parsedDeadline ? "parsed" : "existing"
+  });
   const order = resolveQuickAddOrder(parentTask, inheritedSection, inheritedSubsection, tasks);
   const basePayload = {
     id,
@@ -224,8 +234,8 @@ function buildQuickAddPayload({
     durationMin: defaults.durationMin,
     minBlockMin: defaults.minBlockMin,
     priority: defaults.priority,
-    deadline: parsedDeadline ?? defaults.deadline,
-    startFrom: parsedStartFrom ?? defaults.startFrom,
+    deadline: dateRange.deadline,
+    startFrom: dateRange.startFrom,
     link: defaults.link,
     timeMapIds: defaults.timeMapIds,
     section: inheritedSection || "",

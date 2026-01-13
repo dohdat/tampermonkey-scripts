@@ -1,6 +1,10 @@
 import { saveTask } from "../../data/db.js";
 import { INDEX_NOT_FOUND, TASK_TITLE_MAX_LENGTH } from "../constants.js";
-import { buildTitleConversionPreviewHtml, parseTitleDates } from "../title-date-utils.js";
+import {
+  buildTitleConversionPreviewHtml,
+  parseTitleDates,
+  resolveMergedDateRange
+} from "../title-date-utils.js";
 import { state } from "../state/page-state.js";
 import { loadTasks } from "./tasks-actions.js";
 
@@ -134,14 +138,24 @@ function createInlineTitleConversionPreview(titleEl, input) {
   };
 }
 
+function resolveInlineTitleDates(task, parsed) {
+  return resolveMergedDateRange({
+    startFrom: parsed.startFrom ?? task.startFrom,
+    deadline: parsed.deadline ?? task.deadline,
+    startFromSource: parsed.startFrom ? "parsed" : "existing",
+    deadlineSource: parsed.deadline ? "parsed" : "existing"
+  });
+}
+
 function resolveInlineTitleUpdate(task, inputValue, originalTitle) {
   const parsed = parseTitleDates(inputValue);
   const nextTitle = (parsed.title || "").trim().slice(0, TASK_TITLE_MAX_LENGTH);
   if (!nextTitle) {
     return { shouldSave: false, nextTitle: originalTitle };
   }
-  const nextDeadline = parsed.deadline ?? task.deadline;
-  const nextStartFrom = parsed.startFrom ?? task.startFrom;
+  const resolvedDates = resolveInlineTitleDates(task, parsed);
+  const nextDeadline = resolvedDates.deadline;
+  const nextStartFrom = resolvedDates.startFrom;
   const nextRepeat = parsed.repeat ?? task.repeat;
   const shouldSave =
     nextTitle !== originalTitle ||

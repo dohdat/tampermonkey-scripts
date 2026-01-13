@@ -378,6 +378,48 @@ function buildParsedIsoDates(result) {
   return { startIso, endIso };
 }
 
+function normalizeParsedDateRange(startFrom, deadline) {
+  if (!startFrom || !deadline) {
+    return { startFrom, deadline };
+  }
+  const startDate = new Date(startFrom);
+  const deadlineDate = new Date(deadline);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(deadlineDate.getTime())) {
+    return { startFrom, deadline };
+  }
+  /* c8 ignore next 3 */
+  if (startDate > deadlineDate) {
+    return { startFrom: null, deadline };
+  }
+  return { startFrom, deadline };
+}
+
+export function resolveMergedDateRange({
+  startFrom = null,
+  deadline = null,
+  startFromSource = "existing",
+  deadlineSource = "existing"
+} = {}) {
+  if (!startFrom || !deadline) {
+    return { startFrom, deadline };
+  }
+  const startDate = new Date(startFrom);
+  const deadlineDate = new Date(deadline);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(deadlineDate.getTime())) {
+    return { startFrom, deadline };
+  }
+  if (startDate <= deadlineDate) {
+    return { startFrom, deadline };
+  }
+  if (startFromSource === "parsed" && deadlineSource !== "parsed") {
+    return { startFrom, deadline: null };
+  }
+  if (deadlineSource === "parsed" && startFromSource !== "parsed") {
+    return { startFrom: null, deadline };
+  }
+  return { startFrom: null, deadline };
+}
+
 export function parseTitleDates(rawTitle, options = {}) {
   const baseTitle = typeof rawTitle === "string" ? rawTitle.trim() : "";
   const referenceDate = resolveReferenceDate(options);
@@ -419,10 +461,11 @@ export function parseTitleDates(rawTitle, options = {}) {
       deadline = startIso;
     }
   }
+  const normalized = normalizeParsedDateRange(startFrom, deadline);
   return {
     title: cleanedTitle,
-    startFrom,
-    deadline,
+    startFrom: normalized.startFrom,
+    deadline: normalized.deadline,
     hasDate: Boolean(startIso || endIso),
     repeat: repeatParsed.repeat,
     hasRepeat: repeatParsed.hasRepeat

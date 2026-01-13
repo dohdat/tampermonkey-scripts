@@ -34,7 +34,8 @@ const {
 const {
   buildTitleConversionPreviewHtml,
   formatLocalDateInputValue,
-  parseTitleDates
+  parseTitleDates,
+  resolveMergedDateRange
 } = await import(
   "../src/ui/title-date-utils.js"
 );
@@ -122,6 +123,55 @@ describe("utils date parsing", () => {
     assert.strictEqual(parsed.startFrom, parseLocalDateInput("2026-01-10"));
     assert.strictEqual(parsed.deadline, parseLocalDateInput("2026-01-12"));
     assert.strictEqual(parsed.hasDate, true);
+  });
+
+  it("drops start-from when it is after the deadline in merged ranges", () => {
+    const startFrom = parseLocalDateInput("2026-01-10");
+    const deadline = parseLocalDateInput("2026-01-05");
+    const resolved = resolveMergedDateRange({
+      startFrom,
+      deadline,
+      startFromSource: "parsed",
+      deadlineSource: "existing"
+    });
+    assert.strictEqual(resolved.startFrom, startFrom);
+    assert.strictEqual(resolved.deadline, null);
+  });
+
+  it("drops existing start-from when a parsed deadline is earlier", () => {
+    const startFrom = parseLocalDateInput("2026-01-10");
+    const deadline = parseLocalDateInput("2026-01-05");
+    const resolved = resolveMergedDateRange({
+      startFrom,
+      deadline,
+      startFromSource: "existing",
+      deadlineSource: "parsed"
+    });
+    assert.strictEqual(resolved.startFrom, null);
+    assert.strictEqual(resolved.deadline, deadline);
+  });
+
+  it("returns merged range when start is before deadline", () => {
+    const startFrom = parseLocalDateInput("2026-01-03");
+    const deadline = parseLocalDateInput("2026-01-05");
+    const resolved = resolveMergedDateRange({ startFrom, deadline });
+    assert.strictEqual(resolved.startFrom, startFrom);
+    assert.strictEqual(resolved.deadline, deadline);
+  });
+
+  it("returns inputs when a merged range is incomplete", () => {
+    const resolved = resolveMergedDateRange({ startFrom: null, deadline: null });
+    assert.strictEqual(resolved.startFrom, null);
+    assert.strictEqual(resolved.deadline, null);
+  });
+
+  it("returns inputs when merged dates are invalid", () => {
+    const resolved = resolveMergedDateRange({
+      startFrom: "not-a-date",
+      deadline: "also-bad"
+    });
+    assert.strictEqual(resolved.startFrom, "not-a-date");
+    assert.strictEqual(resolved.deadline, "also-bad");
   });
 
   it("keeps the title when only a date is provided", () => {

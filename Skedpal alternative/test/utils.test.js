@@ -126,6 +126,67 @@ describe("utils date parsing", () => {
     assert.strictEqual(parsed.title, "tomorrow");
     assert.strictEqual(parsed.deadline, parseLocalDateInput("2026-01-06"));
   });
+
+  it("extracts weekly repeats with intervals", () => {
+    const parsed = parseTitleDates("Clean room every 2 weeks");
+    assert.strictEqual(parsed.title, "Clean room");
+    assert.strictEqual(parsed.repeat.unit, "week");
+    assert.strictEqual(parsed.repeat.interval, 2);
+    assert.strictEqual(parsed.hasRepeat, true);
+  });
+
+  it("extracts daily repeats", () => {
+    const parsed = parseTitleDates("Water plants daily");
+    assert.strictEqual(parsed.title, "Water plants");
+    assert.strictEqual(parsed.repeat.unit, "day");
+    assert.strictEqual(parsed.repeat.interval, 1);
+  });
+
+  it("extracts weekday repeat lists", () => {
+    const parsed = parseTitleDates("Standup every mon, wed and fri");
+    assert.strictEqual(parsed.title, "Standup");
+    assert.deepStrictEqual(parsed.repeat.weeklyDays.sort(), [1, 3, 5]);
+  });
+
+  it("extracts weekday/weekend repeats", () => {
+    const weekdayParsed = parseTitleDates("Journal every weekday");
+    assert.deepStrictEqual(weekdayParsed.repeat.weeklyDays, [1, 2, 3, 4, 5]);
+    const weekendParsed = parseTitleDates("Bike every weekend");
+    assert.deepStrictEqual(weekendParsed.repeat.weeklyDays, [0, 6]);
+  });
+
+  it("extracts weekday repeats with intervals", () => {
+    const parsed = parseTitleDates("Check email every 3 weekdays");
+    assert.deepStrictEqual(parsed.repeat.weeklyDays, [1, 2, 3, 4, 5]);
+    assert.strictEqual(parsed.repeat.interval, 3);
+    assert.strictEqual(parsed.repeat.unit, "week");
+  });
+
+  it("handles every other week repeats", () => {
+    const parsed = parseTitleDates("Review goals every other week");
+    assert.strictEqual(parsed.repeat.interval, 2);
+    assert.strictEqual(parsed.repeat.unit, "week");
+  });
+
+  it("handles repeats without explicit intervals", () => {
+    const parsed = parseTitleDates("Weekly sync every week");
+    assert.strictEqual(parsed.title, "Weekly sync");
+    assert.strictEqual(parsed.repeat.unit, "week");
+    assert.strictEqual(parsed.repeat.interval, 1);
+  });
+
+  it("handles monthly interval repeats", () => {
+    const parsed = parseTitleDates("Budget every 3 months");
+    assert.strictEqual(parsed.title, "Budget");
+    assert.strictEqual(parsed.repeat.unit, "month");
+    assert.strictEqual(parsed.repeat.interval, 3);
+  });
+
+  it("keeps the title when repeat phrase is the only text", () => {
+    const parsed = parseTitleDates("weekly");
+    assert.strictEqual(parsed.title, "weekly");
+    assert.strictEqual(parsed.repeat.unit, "week");
+  });
 });
 
 describe("utils url helpers", () => {

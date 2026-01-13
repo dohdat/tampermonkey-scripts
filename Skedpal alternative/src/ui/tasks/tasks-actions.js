@@ -50,7 +50,7 @@ import { ensureTaskIds, migrateSectionsAndTasks } from "./tasks.js";
 import { renderBreadcrumb } from "../navigation.js";
 import { showUndoBanner } from "../notifications.js";
 import { buildDuplicateTasks } from "./task-duplicate.js";
-import { repeatStore } from "../repeat.js";
+import { repeatStore, setRepeatFromSelection, syncRepeatSelectLabel } from "../repeat.js";
 import {
   hasValidTimeMapSelection,
   resolveSavedSubtaskScheduleMode,
@@ -502,6 +502,10 @@ export async function handleTaskSubmit(event) {
   }
   if (parsed.startFrom) {
     values.startFrom = formatLocalDateInputValue(new Date(parsed.startFrom));
+  }
+  if (parsed.repeat) {
+    setRepeatFromSelection(parsed.repeat, "task");
+    syncRepeatSelectLabel();
   }
   const { parentTask, existingTask, isParentTask } = getTaskFormContext(values);
   const error = validateTaskForm(values);

@@ -91,6 +91,29 @@ function applyInlineTitleEditingStyles(titleEl) {
   titleEl.style.webkitBoxOrient = "unset";
 }
 
+function resolveInlineTitleUpdate(task, inputValue, originalTitle) {
+  const parsed = parseTitleDates(inputValue);
+  const nextTitle = (parsed.title || "").trim().slice(0, TASK_TITLE_MAX_LENGTH);
+  if (!nextTitle) {
+    return { shouldSave: false, nextTitle: originalTitle };
+  }
+  const nextDeadline = parsed.deadline ?? task.deadline;
+  const nextStartFrom = parsed.startFrom ?? task.startFrom;
+  const nextRepeat = parsed.repeat ?? task.repeat;
+  const shouldSave =
+    nextTitle !== originalTitle ||
+    nextDeadline !== task.deadline ||
+    nextStartFrom !== task.startFrom ||
+    nextRepeat !== task.repeat;
+  return {
+    shouldSave,
+    nextTitle,
+    nextDeadline,
+    nextStartFrom,
+    nextRepeat
+  };
+}
+
 function startInlineTitleEdit(titleEl, task, options = {}) {
   if (!titleEl || !task) {return;}
   cleanupInlineTitleEdit();
@@ -121,27 +144,17 @@ function startInlineTitleEdit(titleEl, task, options = {}) {
       restoreInlineTitle(titleEl, originalTitle);
       return;
     }
-    const parsed = parseTitleDates(input.value);
-    const nextTitle = (parsed.title || "").trim().slice(0, TASK_TITLE_MAX_LENGTH);
-    if (!nextTitle) {
-      restoreInlineTitle(titleEl, originalTitle);
-      return;
-    }
-    const nextDeadline = parsed.deadline ?? task.deadline;
-    const nextStartFrom = parsed.startFrom ?? task.startFrom;
-    if (
-      nextTitle === originalTitle &&
-      nextDeadline === task.deadline &&
-      nextStartFrom === task.startFrom
-    ) {
+    const update = resolveInlineTitleUpdate(task, input.value, originalTitle);
+    if (!update.shouldSave) {
       restoreInlineTitle(titleEl, originalTitle);
       return;
     }
     await saveTask({
       ...task,
-      title: nextTitle,
-      deadline: nextDeadline,
-      startFrom: nextStartFrom
+      title: update.nextTitle,
+      deadline: update.nextDeadline,
+      startFrom: update.nextStartFrom,
+      repeat: update.nextRepeat
     });
     await loadTasks();
   }

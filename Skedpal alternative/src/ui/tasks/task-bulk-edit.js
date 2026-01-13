@@ -45,7 +45,10 @@ function resolveBulkEditTargetIds() {
 
 function setTimeMapOptionsEnabled(container, enabled) {
   if (!container) {return;}
-  container.classList.toggle("opacity-60", !enabled);
+  const wrap = container.closest?.('[data-test-skedpal="task-bulk-edit-timemap-wrap"]');
+  if (wrap) {
+    wrap.classList.toggle("hidden", !enabled);
+  }
   const inputs = container.querySelectorAll("input[type='checkbox']");
   inputs.forEach((input) => {
     input.disabled = !enabled;

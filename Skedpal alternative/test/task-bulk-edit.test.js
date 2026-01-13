@@ -45,6 +45,7 @@ class FakeElement {
     this.value = "";
     this.textContent = "";
     this.innerHTML = "";
+    this.closestResult = {};
   }
 
   addEventListener(type, handler) {
@@ -71,6 +72,10 @@ class FakeElement {
 
   querySelectorAll() {
     return [];
+  }
+
+  closest(selector) {
+    return this.closestResult?.[selector] || null;
   }
 }
 
@@ -351,5 +356,34 @@ describe("task bulk edit", () => {
     assert.strictEqual(elements["task-bulk-edit-banner"].classList.contains("hidden"), false);
     elements["task-bulk-edit-cancel"].click();
     assert.strictEqual(elements["task-bulk-edit-banner"].classList.contains("hidden"), true);
+  });
+
+  it("toggles timemap wrap visibility based on mode", () => {
+    const selectedCard = new FakeElement();
+    selectedCard.dataset.taskId = "task-9";
+    elements["task-list"].selectedCards = [selectedCard];
+    const wrap = new FakeElement();
+    elements["task-bulk-edit-timemap-options"].closestResult = {
+      '[data-test-skedpal="task-bulk-edit-timemap-wrap"]': wrap
+    };
+    wrap.classList.remove("hidden");
+    elements["task-bulk-edit-timemap-mode"].value = "keep";
+    openBulkEditBanner("task-9");
+    assert.strictEqual(wrap.classList.contains("hidden"), true);
+    elements["task-bulk-edit-timemap-mode"].value = "replace";
+    elements["task-bulk-edit-timemap-mode"].trigger("change");
+    assert.strictEqual(wrap.classList.contains("hidden"), false);
+    elements["task-bulk-edit-cancel"].click();
+  });
+
+  it("handles timemap mode change without a wrap element", () => {
+    const selectedCard = new FakeElement();
+    selectedCard.dataset.taskId = "task-10";
+    elements["task-list"].selectedCards = [selectedCard];
+    elements["task-bulk-edit-timemap-options"].closestResult = {};
+    elements["task-bulk-edit-timemap-mode"].value = "replace";
+    openBulkEditBanner("task-10");
+    elements["task-bulk-edit-timemap-mode"].trigger("change");
+    elements["task-bulk-edit-cancel"].click();
   });
 });

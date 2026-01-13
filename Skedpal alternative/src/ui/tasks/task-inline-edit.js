@@ -1,6 +1,6 @@
 import { saveTask } from "../../data/db.js";
 import { INDEX_NOT_FOUND, TASK_TITLE_MAX_LENGTH } from "../constants.js";
-import { parseTitleDates } from "../title-date-utils.js";
+import { buildTitleConversionPreviewHtml, parseTitleDates } from "../title-date-utils.js";
 import { state } from "../state/page-state.js";
 import { loadTasks } from "./tasks-actions.js";
 
@@ -91,6 +91,40 @@ function applyInlineTitleEditingStyles(titleEl) {
   titleEl.style.webkitBoxOrient = "unset";
 }
 
+function updateInlineTitleConversionPreview(input, preview) {
+  if (!input || !preview) {return;}
+  const value = input.value || "";
+  const result = buildTitleConversionPreviewHtml(value);
+  if (!result.hasRanges) {
+    preview.textContent = "";
+    preview.classList.add("hidden");
+    return;
+  }
+  const prefix =
+    '<span class="text-slate-500" data-test-skedpal="task-title-inline-conversion-prefix">Will convert: </span>';
+  preview.innerHTML = `${prefix}${result.html}`;
+  preview.classList.remove("hidden");
+}
+
+function createInlineTitleConversionPreview(titleEl, input) {
+  const preview = document.createElement("div");
+  preview.className = "mt-1 text-[10px] text-slate-400";
+  preview.setAttribute("data-test-skedpal", "task-title-inline-conversion-preview");
+  titleEl.appendChild(preview);
+
+  function handleInlineTitleInput() {
+    updateInlineTitleConversionPreview(input, preview);
+  }
+
+  input.addEventListener("input", handleInlineTitleInput);
+  updateInlineTitleConversionPreview(input, preview);
+
+  return () => {
+    input.removeEventListener("input", handleInlineTitleInput);
+    preview.remove();
+  };
+}
+
 function resolveInlineTitleUpdate(task, inputValue, originalTitle) {
   const parsed = parseTitleDates(inputValue);
   const nextTitle = (parsed.title || "").trim().slice(0, TASK_TITLE_MAX_LENGTH);
@@ -130,6 +164,7 @@ function startInlineTitleEdit(titleEl, task, options = {}) {
   titleEl.dataset.inlineEditingTaskId = task.id;
   titleEl.textContent = "";
   titleEl.appendChild(input);
+  const cleanupPreview = createInlineTitleConversionPreview(titleEl, input);
 
   let isDone = false;
 
@@ -140,6 +175,7 @@ function startInlineTitleEdit(titleEl, task, options = {}) {
     input.removeEventListener("blur", handleInlineTitleBlur);
     input.removeEventListener("pointerdown", handleInlineTitlePointerDown);
     cleanupInlineTitleEdit();
+    cleanupPreview();
     if (!shouldSave) {
       restoreInlineTitle(titleEl, originalTitle);
       return;

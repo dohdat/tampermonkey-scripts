@@ -83,6 +83,9 @@ export const domRefs = {
   taskTitleHelper: document.querySelector
     ? document.querySelector("[data-test-skedpal='task-title-helper']")
     : null,
+  taskTitleConversionPreview: document.querySelector
+    ? document.querySelector("[data-test-skedpal='task-title-conversion-preview']")
+    : null,
   taskDurationInput: document.getElementById("task-duration"),
   taskDurationHelper: document.getElementById("task-duration-helper"),
   taskDeadlineInput: document.getElementById("task-deadline"),

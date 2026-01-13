@@ -250,6 +250,118 @@ function getChronoMatch(title, referenceDate) {
   return { result, matchText, matchIndex };
 }
 
+function findKeywordPrefixRange(title, matchIndex) {
+  if (!title || !Number.isFinite(matchIndex) || matchIndex <= 0) {return null;}
+  const before = title.slice(0, matchIndex);
+  const regex =
+    /(?:^|\s)(from|starting|start|beginning|begin|after|by|due|until|before|deadline)\s*$/gi;
+  let match = regex.exec(before);
+  let lastMatch = null;
+  while (match) {
+    lastMatch = match;
+    match = regex.exec(before);
+  }
+  if (!lastMatch) {return null;}
+  const matchText = lastMatch[0] || "";
+  if (!matchText.trim()) {return null;}
+  const start = before.length - matchText.length;
+  return { start, end: matchIndex };
+}
+
+function collectRegexRanges(text, regex) {
+  if (!text) {return [];}
+  const matcher = new RegExp(regex.source, "gi");
+  const ranges = [];
+  let match = matcher.exec(text);
+  while (match) {
+    const matchText = match[0] || "";
+    if (matchText) {
+      ranges.push({ start: match.index, end: match.index + matchText.length });
+    }
+    match = matcher.exec(text);
+  }
+  return ranges;
+}
+
+function mergeRanges(ranges) {
+  if (!ranges.length) {return [];}
+  const sorted = [...ranges].sort((a, b) => a.start - b.start);
+  const merged = [sorted[0]];
+  for (let i = ONE; i < sorted.length; i += 1) {
+    const current = sorted[i];
+    const last = merged[merged.length - ONE];
+    if (current.start <= last.end) {
+      last.end = Math.max(last.end, current.end);
+    } else {
+      merged.push({ ...current });
+    }
+  }
+  return merged;
+}
+
+export function getTitleConversionRanges(rawTitle, options = {}) {
+  const title = typeof rawTitle === "string" ? rawTitle : "";
+  if (!title) {return [];}
+  const referenceDate = resolveReferenceDate(options);
+  const ranges = [];
+  [
+    REPEAT_DAYLIST_REGEX,
+    REPEAT_WEEKDAY_REGEX,
+    REPEAT_INTERVAL_REGEX,
+    REPEAT_INTERVAL_WEEK_REGEX,
+    REPEAT_DAYLIST_ON_REGEX,
+    REPEAT_ALL_DAYS_REGEX,
+    REPEAT_SIMPLE_REGEX
+  ].forEach((pattern) => {
+    ranges.push(...collectRegexRanges(title, pattern));
+  });
+  const chronoMatch = getChronoMatch(title, referenceDate);
+  if (chronoMatch?.matchText) {
+    const index = chronoMatch.matchIndex;
+    if (Number.isFinite(index) && index >= 0) {
+      ranges.push({ start: index, end: index + chronoMatch.matchText.length });
+      const prefixRange = findKeywordPrefixRange(title, index);
+      if (prefixRange) {
+        ranges.push(prefixRange);
+      }
+    }
+  }
+  return mergeRanges(ranges);
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+export function buildTitleConversionPreviewHtml(rawTitle, options = {}) {
+  const title = typeof rawTitle === "string" ? rawTitle : "";
+  const ranges = getTitleConversionRanges(title, options);
+  if (!ranges.length) {
+    return { html: "", hasRanges: false };
+  }
+  const parts = [];
+  let cursor = 0;
+  ranges.forEach((range) => {
+    if (cursor < range.start) {
+      parts.push(escapeHtml(title.slice(cursor, range.start)));
+    }
+    const matchText = escapeHtml(title.slice(range.start, range.end));
+    parts.push(
+      `<span class="rounded bg-lime-400/10 px-1 text-lime-300" data-test-skedpal="task-title-conversion-highlight">${matchText}</span>`
+    );
+    cursor = range.end;
+  });
+  if (cursor < title.length) {
+    parts.push(escapeHtml(title.slice(cursor)));
+  }
+  return { html: parts.join(""), hasRanges: true };
+}
+
 function buildCleanedTitle(title, matchText, matchIndex) {
   /* c8 ignore next */
   if (!matchText || matchIndex < 0) {return title;}

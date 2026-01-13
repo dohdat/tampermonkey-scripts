@@ -15,6 +15,7 @@ import {
   toggleClearButtonVisibility,
   uuid
 } from "../utils.js";
+import { buildTitleConversionPreviewHtml } from "../title-date-utils.js";
 import { state } from "../state/page-state.js";
 import {
   renderTaskSectionOptions,
@@ -55,7 +56,8 @@ const {
   taskModalSubtitle,
   taskModalSubmit,
   taskTemplateSelect,
-  taskTitleHelper
+  taskTitleHelper,
+  taskTitleConversionPreview
 } = domRefs;
 
 const TASK_FORM_COPY = {
@@ -82,6 +84,7 @@ function setTaskTitleValue(value) {
   taskTitleInput.maxLength = TASK_TITLE_MAX_LENGTH;
   taskTitleInput.value = value;
   updateTaskTitleHelper();
+  updateTaskTitleConversionPreview();
 }
 
 export function updateTaskTitleHelper() {
@@ -89,6 +92,21 @@ export function updateTaskTitleHelper() {
   const length = taskTitleInput.value?.length || 0;
   taskTitleHelper.textContent = `${length}/${TASK_TITLE_MAX_LENGTH}`;
   taskTitleHelper.classList.toggle("text-orange-300", length >= TASK_TITLE_MAX_LENGTH);
+}
+
+export function updateTaskTitleConversionPreview() {
+  if (!taskTitleInput || !taskTitleConversionPreview) {return;}
+  const value = taskTitleInput.value || "";
+  const preview = buildTitleConversionPreviewHtml(value);
+  if (!preview.hasRanges) {
+    taskTitleConversionPreview.textContent = "";
+    taskTitleConversionPreview.classList.add("hidden");
+    return;
+  }
+  const prefix =
+    '<span class="text-slate-500" data-test-skedpal="task-title-conversion-prefix">Will convert: </span>';
+  taskTitleConversionPreview.innerHTML = `${prefix}${preview.html}`;
+  taskTitleConversionPreview.classList.remove("hidden");
 }
 
 function setTaskFormCopy(copy) {

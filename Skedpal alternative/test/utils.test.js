@@ -31,7 +31,11 @@ const {
   normalizeSubtaskScheduleMode,
   resolveTimeMapIdsAfterDelete
 } = await import("../src/ui/utils.js");
-const { formatLocalDateInputValue, parseTitleDates } = await import(
+const {
+  buildTitleConversionPreviewHtml,
+  formatLocalDateInputValue,
+  parseTitleDates
+} = await import(
   "../src/ui/title-date-utils.js"
 );
 
@@ -175,6 +179,24 @@ describe("utils date parsing", () => {
     assert.strictEqual(parsed.title, "Backups");
     assert.deepStrictEqual(parsed.repeat.weeklyDays.sort(), [0, 1, 2, 3, 4, 5, 6]);
     assert.strictEqual(parsed.repeat.interval, 4);
+  });
+
+  it("builds conversion preview html when matches are present", () => {
+    const preview = buildTitleConversionPreviewHtml("Test every 2 weeks anyday");
+    assert.strictEqual(preview.hasRanges, true);
+    assert.ok(preview.html.includes("task-title-conversion-highlight"));
+  });
+
+  it("highlights date prefixes along with dates", () => {
+    const preview = buildTitleConversionPreviewHtml("Test task from next 3 days");
+    assert.strictEqual(preview.hasRanges, true);
+    assert.ok(preview.html.includes("from next 3 days"));
+  });
+
+  it("returns empty conversion preview html when no matches exist", () => {
+    const preview = buildTitleConversionPreviewHtml("Plain title");
+    assert.strictEqual(preview.hasRanges, false);
+    assert.strictEqual(preview.html, "");
   });
 
   it("extracts weekday/weekend repeats", () => {

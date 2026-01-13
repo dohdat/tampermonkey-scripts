@@ -1,10 +1,14 @@
 import { domRefs } from "./constants.js";
-import { updateTaskTitleHelper } from "./tasks/task-form-ui.js";
+import {
+  updateTaskTitleConversionPreview,
+  updateTaskTitleHelper
+} from "./tasks/task-form-ui.js";
 import {
   handleTaskContainerDoubleClick,
   handleTaskListClick,
   handleTaskTitleDoubleClick
 } from "./tasks/task-list-actions.js";
+import { handleAddTaskInputConversion } from "./tasks/task-add-row.js";
 import { initTaskTemplateSelect } from "./tasks/task-template-select.js";
 import { initTaskListAssistant } from "./tasks/task-ai.js";
 import {
@@ -151,9 +155,13 @@ function setupTaskDuration(cleanupFns) {
 
 function setupTaskTitle(cleanupFns) {
   if (!domRefs.taskTitleInput) {return;}
-  const handleTitleInput = () => updateTaskTitleHelper();
+  const handleTitleInput = () => {
+    updateTaskTitleHelper();
+    updateTaskTitleConversionPreview();
+  };
   domRefs.taskTitleInput.addEventListener("input", handleTitleInput);
   updateTaskTitleHelper();
+  updateTaskTitleConversionPreview();
   cleanupFns.push(() => domRefs.taskTitleInput?.removeEventListener("input", handleTitleInput));
 }
 
@@ -175,10 +183,12 @@ function setupTaskLists(cleanupFns) {
   if (taskList) {
     taskList.addEventListener("click", handleTaskListClickEvent);
     taskList.addEventListener("dblclick", handleTaskListDoubleClickEvent);
+    taskList.addEventListener("input", handleAddTaskInputConversion);
     cleanupFns.push(() => taskList.removeEventListener("click", handleTaskListClickEvent));
     cleanupFns.push(() =>
       taskList.removeEventListener("dblclick", handleTaskListDoubleClickEvent)
     );
+    cleanupFns.push(() => taskList.removeEventListener("input", handleAddTaskInputConversion));
   }
   if (todayList) {
     todayList.addEventListener("click", handleTodayListClickEvent);

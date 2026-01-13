@@ -19,7 +19,7 @@ import {
   parseLocalDateInput,
   uuid
 } from "../utils.js";
-import { parseTitleDates } from "../title-date-utils.js";
+import { buildTitleConversionPreviewHtml, parseTitleDates } from "../title-date-utils.js";
 
 const ADD_TASK_ROW_TEST_ID = "task-add-row";
 const ADD_TASK_BUTTON_TEST_ID = "task-add-button";
@@ -38,10 +38,15 @@ function getRowParts(row) {
 function collapseAddTaskRow(row, options = {}) {
   const { clear = true } = options;
   const { button, input } = getRowParts(row);
+  const preview = row?.querySelector?.('[data-test-skedpal="task-add-conversion-preview"]');
   row?.removeAttribute("data-add-task-active");
   if (input) {
     input.classList.add("hidden");
     if (clear) {input.value = "";}
+  }
+  if (preview) {
+    preview.textContent = "";
+    preview.classList.add("hidden");
   }
   button?.classList.remove("hidden");
 }
@@ -164,6 +169,24 @@ function normalizeClipboardTaskTitle(value) {
   const trimmed = (value || "").trim();
   if (!trimmed) {return "";}
   return trimmed.replace(CLIPBOARD_BULLET_REGEX, "").trim();
+}
+
+function updateAddTaskConversionPreview(input) {
+  if (!input) {return;}
+  const row = input.closest?.("[data-add-task-row]");
+  const preview = row?.querySelector?.('[data-test-skedpal="task-add-conversion-preview"]');
+  if (!preview) {return;}
+  const value = input.value || "";
+  const result = buildTitleConversionPreviewHtml(value);
+  if (!result.hasRanges) {
+    preview.textContent = "";
+    preview.classList.add("hidden");
+    return;
+  }
+  const prefix =
+    '<span class="text-slate-500" data-test-skedpal="task-add-conversion-prefix">Will convert: </span>';
+  preview.innerHTML = `${prefix}${result.html}`;
+  preview.classList.remove("hidden");
 }
 
 export function parseClipboardTaskTitles(text) {
@@ -318,6 +341,13 @@ export async function handleAddTaskInputSubmit(input) {
   return true;
 }
 
+export function handleAddTaskInputConversion(event) {
+  const input = event.target;
+  if (!(input instanceof HTMLElement)) {return;}
+  if (!input.matches("[data-add-task-input]")) {return;}
+  updateAddTaskConversionPreview(input);
+}
+
 export function buildAddTaskRow({
   sectionId = "",
   subsectionId = "",
@@ -364,5 +394,9 @@ export function buildAddTaskRow({
 
   row.appendChild(button);
   row.appendChild(input);
+  const preview = document.createElement("div");
+  preview.className = "mt-1 hidden text-[10px] text-slate-400";
+  preview.setAttribute("data-test-skedpal", "task-add-conversion-preview");
+  row.appendChild(preview);
   return row;
 }

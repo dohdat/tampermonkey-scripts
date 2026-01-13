@@ -78,13 +78,15 @@ function buildWeeklyAnyOccurrences({
   horizonEnd,
   weeklyDays
 }) {
+  const anyDays =
+    weeklyDays.length === DAYS_PER_WEEK ? [anchor.getDay()] : weeklyDays;
   const occurrences = [];
   let weekStart = startOfWeek(anchor);
   let emitted = 0;
   while (weekStart <= limitDate && emitted < maxCount) {
     const candidate = buildWeeklyAnyCandidate(
       weekStart,
-      weeklyDays,
+      anyDays,
       anchor,
       nowStart,
       limitDate,

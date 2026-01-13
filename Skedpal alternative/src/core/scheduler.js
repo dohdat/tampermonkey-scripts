@@ -1,4 +1,4 @@
-import { addDays, endOfDay, parseTime, startOfDay } from "./scheduler/date-utils.js";
+import { addDays, endOfDay, parseTime, startOfDay, startOfWeek } from "./scheduler/date-utils.js";
 import { buildOccurrenceDates, getUpcomingOccurrences } from "./scheduler/occurrences.js";
 import { normalizeTask } from "./scheduler/task-utils.js";
 import { INDEX_NOT_FOUND, THREE } from "../constants.js";
@@ -200,6 +200,51 @@ function resolveOccurrenceStart(repeat, deadline) {
   return startOfDay(deadline);
 }
 
+function getWeeklyAnyDays(repeat, occurrenceDate) {
+  if (Array.isArray(repeat?.weeklyDays) && repeat.weeklyDays.length) {
+    const days = repeat.weeklyDays
+      .map((day) => Number(day))
+      .filter((day) => Number.isFinite(day));
+    return days.length ? days : [occurrenceDate.getDay()];
+  }
+  return [occurrenceDate.getDay()];
+}
+
+function clampDeadlineToRepeatEnd(deadline, repeat) {
+  if (repeat?.end?.type !== "on" || !repeat?.end?.date) {
+    return deadline;
+  }
+  const endDate = new Date(repeat.end.date);
+  if (Number.isNaN(endDate.getTime())) {
+    return deadline;
+  }
+  const limit = endOfDay(endDate);
+  return limit < deadline ? limit : deadline;
+}
+
+function clampDeadlineToHorizon(deadline, horizonEnd) {
+  if (!horizonEnd || deadline <= horizonEnd) {
+    return deadline;
+  }
+  return horizonEnd;
+}
+
+function resolveWeeklyAnyDeadline(repeat, occurrenceDate, horizonEnd) {
+  if (!repeat || repeat.unit !== "week" || repeat.weeklyMode !== "any") {
+    return occurrenceDate;
+  }
+  const days = getWeeklyAnyDays(repeat, occurrenceDate);
+  const maxDay = Math.max(...days);
+  const weekStart = startOfWeek(occurrenceDate);
+  const candidate = addDays(weekStart, maxDay);
+  let deadline = endOfDay(candidate);
+  deadline = clampDeadlineToRepeatEnd(deadline, repeat);
+  deadline = clampDeadlineToHorizon(deadline, horizonEnd);
+  if (deadline < occurrenceDate) {
+    return occurrenceDate;
+  }
+  return deadline;
+}
 
 function buildScheduleCandidates(tasks, now, horizonEnd) {
   const ignored = new Set();
@@ -234,10 +279,16 @@ function buildScheduleCandidates(tasks, now, horizonEnd) {
       }
       const isRepeating = normalized.repeat && normalized.repeat.type !== "none";
       occurrenceDates.forEach((deadline, index) => {
-        if (completedOccurrences.has(deadline.toISOString())) {
+        const occurrenceDate = deadline;
+        if (completedOccurrences.has(occurrenceDate.toISOString())) {
           return;
         }
-        const occurrenceStart = isRepeating ? resolveOccurrenceStart(normalized.repeat, deadline) : null;
+        const occurrenceStart = isRepeating
+          ? resolveOccurrenceStart(normalized.repeat, occurrenceDate)
+          : null;
+        const schedulingDeadline = isRepeating
+          ? resolveWeeklyAnyDeadline(normalized.repeat, occurrenceDate, horizonEnd)
+          : occurrenceDate;
         const earliestStart = new Date(
           Math.max(
             now.getTime(),
@@ -248,7 +299,7 @@ function buildScheduleCandidates(tasks, now, horizonEnd) {
         candidates.push({
           ...normalized,
           occurrenceId: `${normalized.id || normalized.taskId || task.id}-occ-${index}`,
-          deadline,
+          deadline: schedulingDeadline,
           startFrom: earliestStart
         });
       });

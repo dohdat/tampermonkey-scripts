@@ -56,6 +56,24 @@ describe("scheduler occurrences", () => {
     assert.ok(dates.length > 0);
   });
 
+  it("anchors weekly any repeats to the start day when all weekdays are selected", () => {
+    const startFrom = new Date("2026-01-01T00:00:00Z");
+    const task = {
+      id: "t6b",
+      startFrom,
+      repeat: {
+        type: "custom",
+        unit: "week",
+        interval: 1,
+        weeklyMode: "any",
+        weeklyDays: [0, 1, 2, 3, 4, 5, 6]
+      }
+    };
+    const dates = buildOccurrenceDates(task, now, horizonEnd);
+    assert.ok(dates.length > 0);
+    assert.strictEqual(dates[0].getDay(), startFrom.getDay());
+  });
+
   it("uses the monthly range end day for range repeats", () => {
     const task = {
       id: "t7",

@@ -327,6 +327,136 @@ describe("scheduler", () => {
     assert.ok(result.scheduled.every((slot) => slot.start.getDay() === 2));
   });
 
+  it("schedules weekly any-mode repeats later in the week when the first day is blocked", () => {
+    const now = new Date(2026, 0, 5, 8, 0, 0, 0); // Monday
+    const tuesday = new Date(2026, 0, 6, 9, 0, 0, 0);
+    const timeMaps = [
+      {
+        id: "tm-week-any",
+        rules: [
+          { day: 2, startTime: "09:00", endTime: "11:00" },
+          { day: 4, startTime: "09:00", endTime: "11:00" }
+        ]
+      }
+    ];
+    const busy = [
+      { start: new Date(tuesday), end: new Date(2026, 0, 6, 11, 0, 0, 0) }
+    ];
+    const tasks = [
+      {
+        id: "weekly-any",
+        title: "Weekly any",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-week-any"],
+        repeat: {
+          type: "custom",
+          unit: "week",
+          interval: 1,
+          weeklyDays: [2, 4],
+          weeklyMode: "any"
+        }
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy,
+      schedulingHorizonDays: 7,
+      now
+    });
+
+    assert.strictEqual(result.scheduled.length, 1);
+    assert.strictEqual(result.scheduled[0].start.getDay(), 4);
+  });
+
+  it("honors weekly any end dates when picking a scheduling window", () => {
+    const now = new Date(2026, 0, 5, 8, 0, 0, 0); // Monday
+    const tuesday = new Date(2026, 0, 6, 9, 0, 0, 0);
+    const timeMaps = [
+      {
+        id: "tm-week-any",
+        rules: [
+          { day: 2, startTime: "09:00", endTime: "11:00" },
+          { day: 4, startTime: "09:00", endTime: "11:00" }
+        ]
+      }
+    ];
+    const busy = [
+      { start: new Date(tuesday), end: new Date(2026, 0, 6, 11, 0, 0, 0) }
+    ];
+    const endDate = shiftDate(now, 1, 12, 0);
+    const tasks = [
+      {
+        id: "weekly-any",
+        title: "Weekly any",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-week-any"],
+        repeat: {
+          type: "custom",
+          unit: "week",
+          interval: 1,
+          weeklyDays: [2, 4],
+          weeklyMode: "any",
+          end: { type: "on", date: endDate.toISOString() }
+        }
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy,
+      schedulingHorizonDays: 7,
+      now
+    });
+
+    assert.strictEqual(result.scheduled.length, 0);
+    assert.ok(result.unscheduled.includes("weekly-any"));
+  });
+
+  it("clamps weekly any scheduling to the horizon", () => {
+    const now = new Date(2026, 0, 5, 8, 0, 0, 0); // Monday
+    const timeMaps = [
+      {
+        id: "tm-week-any",
+        rules: [
+          { day: 2, startTime: "09:00", endTime: "11:00" },
+          { day: 4, startTime: "09:00", endTime: "11:00" }
+        ]
+      }
+    ];
+    const tasks = [
+      {
+        id: "weekly-any",
+        title: "Weekly any",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-week-any"],
+        repeat: {
+          type: "custom",
+          unit: "week",
+          interval: 1,
+          weeklyDays: [2, 4],
+          weeklyMode: "any"
+        }
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 1,
+      now
+    });
+
+    assert.strictEqual(result.scheduled.length, 1);
+    assert.strictEqual(result.scheduled[0].start.getDay(), 2);
+  });
+
   it("schedules yearly range repeats within the window", () => {
     const now = new Date(2026, 0, 1, 8, 0, 0, 0);
     const rangeStart = 5;

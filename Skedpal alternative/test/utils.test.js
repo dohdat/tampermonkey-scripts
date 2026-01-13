@@ -148,6 +148,35 @@ describe("utils date parsing", () => {
     assert.deepStrictEqual(parsed.repeat.weeklyDays.sort(), [1, 3, 5]);
   });
 
+  it("extracts day lists with week intervals", () => {
+    const parsed = parseTitleDates("All hands every mon, tue every 3 weeks");
+    assert.strictEqual(parsed.title, "All hands");
+    assert.deepStrictEqual(parsed.repeat.weeklyDays.sort(), [1, 2]);
+    assert.strictEqual(parsed.repeat.interval, 3);
+    assert.strictEqual(parsed.repeat.unit, "week");
+  });
+
+  it("extracts intervals before day lists", () => {
+    const parsed = parseTitleDates("Ops every 3 weeks on mon, tue, wed");
+    assert.strictEqual(parsed.title, "Ops");
+    assert.deepStrictEqual(parsed.repeat.weeklyDays.sort(), [1, 2, 3]);
+    assert.strictEqual(parsed.repeat.interval, 3);
+  });
+
+  it("extracts full-week day lists with intervals", () => {
+    const parsed = parseTitleDates("Coverage every mon, tue, wed, thu, fri, sat, sun every 2 weeks");
+    assert.strictEqual(parsed.title, "Coverage");
+    assert.deepStrictEqual(parsed.repeat.weeklyDays.sort(), [0, 1, 2, 3, 4, 5, 6]);
+    assert.strictEqual(parsed.repeat.interval, 2);
+  });
+
+  it("extracts anyday repeats with week intervals", () => {
+    const parsed = parseTitleDates("Backups every 4 weeks anyday");
+    assert.strictEqual(parsed.title, "Backups");
+    assert.deepStrictEqual(parsed.repeat.weeklyDays.sort(), [0, 1, 2, 3, 4, 5, 6]);
+    assert.strictEqual(parsed.repeat.interval, 4);
+  });
+
   it("extracts weekday/weekend repeats", () => {
     const weekdayParsed = parseTitleDates("Journal every weekday");
     assert.deepStrictEqual(weekdayParsed.repeat.weeklyDays, [1, 2, 3, 4, 5]);

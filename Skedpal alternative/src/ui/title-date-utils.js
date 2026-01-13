@@ -14,6 +14,10 @@ const REPEAT_DAYLIST_REGEX =
   /\bevery\s+((?:mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)(?:\s*(?:,|and)\s*(?:mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?))*)\b/i;
 const REPEAT_WEEKDAY_REGEX = /\bevery\s+(\d+)?\s*(weekday|weekend)s?\b/i;
 const REPEAT_INTERVAL_REGEX = /\bevery\s+(\d+|other)?\s*(day|week|month|year)s?\b/i;
+const REPEAT_INTERVAL_WEEK_REGEX = /\bevery\s+(\d+|other)\s*weeks?\b/i;
+const REPEAT_DAYLIST_ON_REGEX =
+  /\bon\s+((?:mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)(?:\s*(?:,|and)\s*(?:mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?))*)\b/i;
+const REPEAT_ALL_DAYS_REGEX = /\b(any\s*day|every\s*day|everyday|all\s*days)\b/i;
 const REPEAT_SIMPLE_REGEX = /\b(daily|weekly|monthly|yearly)\b/i;
 const REPEAT_LIST_SPLIT_REGEX = /\s*(?:,|and)\s*/i;
 const WEEKDAY_ALIASES = new Map([
@@ -116,6 +120,17 @@ function removeMatchedPhrase(title, match) {
   return `${title.slice(0, matchIndex)} ${title.slice(matchIndex + matchText.length)}`;
 }
 
+function resolveIntervalToken(value) {
+  const raw = (value || "").toLowerCase();
+  if (raw === "other") {return TWO;}
+  return Number(raw) || ONE;
+}
+
+function findWeekIntervalMatch(title) {
+  if (!title) {return null;}
+  return title.match(REPEAT_INTERVAL_WEEK_REGEX);
+}
+
 function buildRepeatFromUnit(unit, interval, referenceDate) {
   const base = buildRepeatBase(referenceDate);
   return {
@@ -126,13 +141,19 @@ function buildRepeatFromUnit(unit, interval, referenceDate) {
 }
 
 function parseRepeatFromDayList(title, referenceDate) {
-  const match = title.match(REPEAT_DAYLIST_REGEX);
-  if (!match) {return null;}
-  const days = parseWeekdayList(match[1]);
+  const listMatch = title.match(REPEAT_DAYLIST_REGEX);
+  if (!listMatch) {return null;}
+  const days = parseWeekdayList(listMatch[1]);
   if (!days.length) {return null;}
+  let cleanedTitle = removeMatchedPhrase(title, listMatch);
+  const intervalMatch = findWeekIntervalMatch(cleanedTitle);
+  const interval = intervalMatch ? resolveIntervalToken(intervalMatch[1]) : ONE;
+  if (intervalMatch) {
+    cleanedTitle = removeMatchedPhrase(cleanedTitle, intervalMatch);
+  }
   return {
-    repeat: { ...buildRepeatFromUnit("week", ONE, referenceDate), weeklyDays: days },
-    title: removeMatchedPhrase(title, match)
+    repeat: { ...buildRepeatFromUnit("week", interval, referenceDate), weeklyDays: days },
+    title: cleanedTitle
   };
 }
 
@@ -153,10 +174,31 @@ function parseRepeatFromInterval(title, referenceDate) {
   if (!match) {return null;}
   const rawInterval = (match[1] || "").toLowerCase();
   const unit = match[2]?.toLowerCase() || "week";
-  const interval = rawInterval === "other" ? TWO : Number(rawInterval) || ONE;
+  const interval = resolveIntervalToken(rawInterval);
+  let cleanedTitle = removeMatchedPhrase(title, match);
+  let weeklyDays = null;
+  if (unit === "week") {
+    const allDaysMatch = cleanedTitle.match(REPEAT_ALL_DAYS_REGEX);
+    if (allDaysMatch) {
+      weeklyDays = [ZERO, ONE, TWO, THREE, FOUR, FIVE, SIX];
+      cleanedTitle = removeMatchedPhrase(cleanedTitle, allDaysMatch);
+    }
+    const onMatch = cleanedTitle.match(REPEAT_DAYLIST_ON_REGEX);
+    if (onMatch) {
+      const days = parseWeekdayList(onMatch[1]);
+      if (days.length) {
+        weeklyDays = days;
+        cleanedTitle = removeMatchedPhrase(cleanedTitle, onMatch);
+      }
+    }
+  }
+  const repeat = buildRepeatFromUnit(unit, interval, referenceDate);
+  if (weeklyDays) {
+    repeat.weeklyDays = weeklyDays;
+  }
   return {
-    repeat: buildRepeatFromUnit(unit, interval, referenceDate),
-    title: removeMatchedPhrase(title, match)
+    repeat,
+    title: cleanedTitle
   };
 }
 

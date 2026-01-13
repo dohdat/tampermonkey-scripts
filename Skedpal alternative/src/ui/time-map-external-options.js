@@ -36,11 +36,13 @@ function buildExternalCalendarOption(calendar, selectedIds) {
   swatch.style.backgroundColor = calendar.color || themeColors.sky400;
   swatch.style.borderColor = calendar.color || themeColors.slate500;
   swatch.setAttribute("data-test-skedpal", "timemap-external-option-color");
+  const icon = buildExternalCalendarIcon();
   const text = document.createElement("span");
   text.textContent = calendar.name || calendar.id || "External calendar";
   text.setAttribute("data-test-skedpal", "timemap-external-option-label");
   label.appendChild(input);
   label.appendChild(swatch);
+  label.appendChild(icon);
   label.appendChild(text);
   return label;
 }
@@ -50,11 +52,33 @@ export function appendExternalCalendarOptions(container, selected = []) {
   if (!calendars.length) {return;}
   const selectedIds = new Set(Array.isArray(selected) ? selected : []);
   const header = document.createElement("div");
-  header.className = "mt-2 text-xs font-semibold uppercase tracking-wide text-slate-400";
-  header.textContent = "Allow overlaps with calendars";
+  header.className = "mt-2";
   header.setAttribute("data-test-skedpal", "timemap-external-heading");
+  const headingLabel = document.createElement("span");
+  headingLabel.className = "sr-only";
+  headingLabel.textContent = "Allow overlaps with calendars";
+  headingLabel.setAttribute("data-test-skedpal", "timemap-external-heading-label");
+  header.appendChild(headingLabel);
   container.appendChild(header);
   calendars.forEach((calendar) => {
     container.appendChild(buildExternalCalendarOption(calendar, selectedIds));
   });
+}
+
+function buildExternalCalendarIcon() {
+  const icon = document.createElement("span");
+  icon.className = "calendar-event-icon";
+  icon.setAttribute("data-test-skedpal", "calendar-event-external-icon");
+  icon.innerHTML = `<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+    <path fill="#4285F4" d="M6 2h40a6 6 0 0 1 6 6v40H6a6 6 0 0 1-6-6V8a6 6 0 0 1 6-6z"></path>
+    <path fill="#1967D2" d="M46 2h12a6 6 0 0 1 6 6v16H52V8a6 6 0 0 0-6-6z"></path>
+    <path fill="#FFFFFF" d="M14 18h36v30H14z"></path>
+    <path fill="#FBBC04" d="M50 24h14v24a6 6 0 0 1-6 6H50z"></path>
+    <path fill="#34A853" d="M14 48h36v10a6 6 0 0 1-6 6H14z"></path>
+    <path fill="#188038" d="M0 48h14v10a6 6 0 0 1-6 6H6a6 6 0 0 1-6-6z"></path>
+    <path fill="#EA4335" d="M64 48v10a6 6 0 0 1-6 6H50z"></path>
+    <path fill="#1A73E8" d="M28 42V24h6v18z"></path>
+    <path fill="#1A73E8" d="M28 42v-6h12v6z"></path>
+  </svg>`;
+  return icon;
 }

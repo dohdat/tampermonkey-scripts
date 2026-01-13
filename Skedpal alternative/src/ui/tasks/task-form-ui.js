@@ -100,13 +100,13 @@ export function updateTaskTitleConversionPreview() {
   const preview = buildTitleConversionPreviewHtml(value);
   if (!preview.hasRanges) {
     taskTitleConversionPreview.textContent = "";
-    taskTitleConversionPreview.classList.add("hidden");
+    taskTitleConversionPreview.classList.add("opacity-0", "pointer-events-none");
     return;
   }
   const prefix =
     '<span class="text-slate-500" data-test-skedpal="task-title-conversion-prefix">Will convert: </span>';
   taskTitleConversionPreview.innerHTML = `${prefix}${preview.html}`;
-  taskTitleConversionPreview.classList.remove("hidden");
+  taskTitleConversionPreview.classList.remove("opacity-0", "pointer-events-none");
 }
 
 function setTaskFormCopy(copy) {

@@ -12,6 +12,7 @@ function cleanupInlineTitleEdit() {
 
 function restoreInlineTitle(titleEl, originalTitle) {
   if (!titleEl) {return;}
+  setInlineTitleRowEditing(titleEl, false);
   const prevDisplay = titleEl.dataset.inlineEditingDisplay;
   const prevOverflow = titleEl.dataset.inlineEditingOverflow;
   const prevMaxHeight = titleEl.dataset.inlineEditingMaxHeight;
@@ -79,6 +80,7 @@ function applyInlineTitleCaret(input, clientX) {
 
 function applyInlineTitleEditingStyles(titleEl) {
   if (!titleEl) {return;}
+  setInlineTitleRowEditing(titleEl, true);
   titleEl.dataset.inlineEditingDisplay = titleEl.style.display || "";
   titleEl.dataset.inlineEditingOverflow = titleEl.style.overflow || "";
   titleEl.dataset.inlineEditingMaxHeight = titleEl.style.maxHeight || "";
@@ -91,24 +93,31 @@ function applyInlineTitleEditingStyles(titleEl) {
   titleEl.style.webkitBoxOrient = "unset";
 }
 
+function setInlineTitleRowEditing(titleEl, isEditing) {
+  const row = titleEl?.closest?.(".task-title-row");
+  if (!row) {return;}
+  row.classList.toggle("task-title-row--editing", Boolean(isEditing));
+}
+
 function updateInlineTitleConversionPreview(input, preview) {
   if (!input || !preview) {return;}
   const value = input.value || "";
   const result = buildTitleConversionPreviewHtml(value);
   if (!result.hasRanges) {
     preview.textContent = "";
-    preview.classList.add("hidden");
+    preview.classList.add("opacity-0", "pointer-events-none");
     return;
   }
   const prefix =
     '<span class="text-slate-500" data-test-skedpal="task-title-inline-conversion-prefix">Will convert: </span>';
   preview.innerHTML = `${prefix}${result.html}`;
-  preview.classList.remove("hidden");
+  preview.classList.remove("opacity-0", "pointer-events-none");
 }
 
 function createInlineTitleConversionPreview(titleEl, input) {
   const preview = document.createElement("div");
-  preview.className = "mt-1 text-[10px] text-slate-400";
+  preview.className =
+    "mt-1 h-3 truncate text-left text-[10px] text-slate-400 opacity-0 pointer-events-none pl-2";
   preview.setAttribute("data-test-skedpal", "task-title-inline-conversion-preview");
   titleEl.appendChild(preview);
 
@@ -176,6 +185,7 @@ function startInlineTitleEdit(titleEl, task, options = {}) {
     input.removeEventListener("pointerdown", handleInlineTitlePointerDown);
     cleanupInlineTitleEdit();
     cleanupPreview();
+    setInlineTitleRowEditing(titleEl, false);
     if (!shouldSave) {
       restoreInlineTitle(titleEl, originalTitle);
       return;

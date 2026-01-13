@@ -11,14 +11,14 @@ const TITLE_KEYWORD_CLEANUP =
 const TITLE_KEYWORD_TRAIL_CLEANUP =
   /\s*\b(from|starting|start|beginning|begin|by|due|until|before|deadline)\b$/i;
 const REPEAT_DAYLIST_REGEX =
-  /\bevery\s+((?:mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)(?:\s*(?:,|and)\s*(?:mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?))*)\b/i;
-const REPEAT_WEEKDAY_REGEX = /\bevery\s+(\d+)?\s*(weekday|weekend)s?\b/i;
-const REPEAT_INTERVAL_REGEX = /\bevery\s+(\d+|other)?\s*(day|week|month|year)s?\b/i;
-const REPEAT_INTERVAL_WEEK_REGEX = /\bevery\s+(\d+|other)\s*weeks?\b/i;
+  /\b(?:repeat\s+)?every\s+((?:mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)(?:\s*(?:,|and)\s*(?:mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?))*)\b/i;
+const REPEAT_WEEKDAY_REGEX = /\b(?:repeat\s+)?every\s+(\d+)?\s*(weekday|weekend)s?\b/i;
+const REPEAT_INTERVAL_REGEX = /\b(?:repeat\s+)?every\s+(\d+|other)?\s*(day|week|month|year)s?\b/i;
+const REPEAT_INTERVAL_WEEK_REGEX = /\b(?:repeat\s+)?every\s+(\d+|other)\s*weeks?\b/i;
 const REPEAT_DAYLIST_ON_REGEX =
   /\bon\s+((?:mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)(?:\s*(?:,|and)\s*(?:mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?))*)\b/i;
 const REPEAT_ALL_DAYS_REGEX = /\b(any\s*day|every\s*day|everyday|all\s*days)\b/i;
-const REPEAT_SIMPLE_REGEX = /\b(daily|weekly|monthly|yearly)\b/i;
+const REPEAT_SIMPLE_REGEX = /\b(?:repeat\s+)?(daily|weekly|monthly|yearly)\b/i;
 const REPEAT_LIST_SPLIT_REGEX = /\s*(?:,|and)\s*/i;
 const WEEKDAY_ALIASES = new Map([
   ["sun", ZERO],

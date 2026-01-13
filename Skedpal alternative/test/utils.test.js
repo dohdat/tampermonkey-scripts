@@ -181,6 +181,13 @@ describe("utils date parsing", () => {
     assert.strictEqual(parsed.repeat.interval, 4);
   });
 
+  it("extracts repeats with repeat prefix", () => {
+    const parsed = parseTitleDates("Clean room repeat every 2 weeks");
+    assert.strictEqual(parsed.title, "Clean room");
+    assert.strictEqual(parsed.repeat.unit, "week");
+    assert.strictEqual(parsed.repeat.interval, 2);
+  });
+
   it("builds conversion preview html when matches are present", () => {
     const preview = buildTitleConversionPreviewHtml("Test every 2 weeks anyday");
     assert.strictEqual(preview.hasRanges, true);

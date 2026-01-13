@@ -46,7 +46,7 @@ function collapseAddTaskRow(row, options = {}) {
   }
   if (preview) {
     preview.textContent = "";
-    preview.classList.add("hidden");
+    preview.classList.add("opacity-0", "pointer-events-none");
   }
   button?.classList.remove("hidden");
 }
@@ -180,13 +180,13 @@ function updateAddTaskConversionPreview(input) {
   const result = buildTitleConversionPreviewHtml(value);
   if (!result.hasRanges) {
     preview.textContent = "";
-    preview.classList.add("hidden");
+    preview.classList.add("opacity-0", "pointer-events-none");
     return;
   }
   const prefix =
     '<span class="text-slate-500" data-test-skedpal="task-add-conversion-prefix">Will convert: </span>';
   preview.innerHTML = `${prefix}${result.html}`;
-  preview.classList.remove("hidden");
+  preview.classList.remove("opacity-0", "pointer-events-none");
 }
 
 export function parseClipboardTaskTitles(text) {
@@ -395,7 +395,8 @@ export function buildAddTaskRow({
   row.appendChild(button);
   row.appendChild(input);
   const preview = document.createElement("div");
-  preview.className = "mt-1 hidden text-[10px] text-slate-400";
+  preview.className =
+    "mt-1 h-3 truncate text-left text-[10px] text-slate-400 opacity-0 pointer-events-none pl-3";
   preview.setAttribute("data-test-skedpal", "task-add-conversion-preview");
   row.appendChild(preview);
   return row;

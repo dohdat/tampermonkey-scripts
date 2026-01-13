@@ -224,6 +224,7 @@ body.modal-open{overflow:hidden}
 .task-collapse-btn{border-color:rgba(var(--color-slate-600-rgb),.65);color:var(--color-slate-400);box-shadow:none;opacity:.55}
 .task-collapse-btn:hover{border-color:rgba(var(--color-lime-400-rgb),.6);color:var(--color-lime-300);opacity:.9}
 .task-title-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:var(--space-0-3)}
+.task-title-row--editing{align-items:flex-start}
 .task-title-main{display:flex;align-items:center;gap:var(--space-0-4);flex:0 1 auto;min-width:0}
 .task-title-text{min-width:0;word-break:break-word;line-height:var(--line-height-title);font-size:var(--font-size-base);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-height:calc(1.35em * 2)}
 .task-title-text--subtask{font-size:var(--font-size-sm)}

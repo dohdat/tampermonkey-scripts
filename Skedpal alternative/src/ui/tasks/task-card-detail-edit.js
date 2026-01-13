@@ -91,3 +91,91 @@ export function buildStartFromDetailItem({
     }
   };
 }
+
+export function buildDeadlineDetailItem({
+  task,
+  buildDetailItemElement,
+  iconSvg,
+  formatDateTime,
+  onClear
+}) {
+  if (!task.deadline) {return { item: null, cleanup: () => {} };}
+  const { item, valueEl } = buildDetailItemElement({
+    key: "deadline",
+    label: "Deadline",
+    iconSvg,
+    valueTestId: "task-deadline"
+  });
+  valueEl.textContent = "";
+  const valueWrap = document.createElement("span");
+  valueWrap.className = "task-detail-value-wrap";
+  valueWrap.setAttribute("data-test-skedpal", "task-deadline-value");
+  valueWrap.textContent = formatDateTime(task.deadline);
+  const clearBtn = document.createElement("button");
+  clearBtn.type = "button";
+  clearBtn.className = "task-detail-clear-btn";
+  clearBtn.setAttribute("aria-label", "Clear deadline");
+  clearBtn.setAttribute("data-test-skedpal", "task-deadline-clear");
+  clearBtn.textContent = "x";
+  valueEl.appendChild(valueWrap);
+  valueEl.appendChild(clearBtn);
+
+  function handleClearClick(event) {
+    event.preventDefault();
+    onClear();
+  }
+
+  clearBtn.addEventListener("click", handleClearClick);
+
+  return {
+    item,
+    cleanup: () => {
+      clearBtn.removeEventListener("click", handleClearClick);
+    }
+  };
+}
+
+export function buildRepeatDetailItem({
+  buildDetailItemElement,
+  iconSvg,
+  repeatSummary,
+  isRepeating,
+  onClear
+}) {
+  const { item, valueEl } = buildDetailItemElement({
+    key: "repeat",
+    label: "Repeat",
+    iconSvg,
+    valueTestId: "task-repeat"
+  });
+  valueEl.textContent = "";
+  const valueWrap = document.createElement("span");
+  valueWrap.className = "task-detail-value-wrap";
+  valueWrap.setAttribute("data-test-skedpal", "task-repeat-value");
+  valueWrap.textContent = repeatSummary;
+  valueEl.appendChild(valueWrap);
+  if (!isRepeating) {
+    return { item, cleanup: () => {} };
+  }
+  const clearBtn = document.createElement("button");
+  clearBtn.type = "button";
+  clearBtn.className = "task-detail-clear-btn";
+  clearBtn.setAttribute("aria-label", "Clear repeat");
+  clearBtn.setAttribute("data-test-skedpal", "task-repeat-clear");
+  clearBtn.textContent = "x";
+  valueEl.appendChild(clearBtn);
+
+  function handleClearClick(event) {
+    event.preventDefault();
+    onClear();
+  }
+
+  clearBtn.addEventListener("click", handleClearClick);
+
+  return {
+    item,
+    cleanup: () => {
+      clearBtn.removeEventListener("click", handleClearClick);
+    }
+  };
+}

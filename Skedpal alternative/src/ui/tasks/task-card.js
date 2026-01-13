@@ -1,5 +1,6 @@
 import {
   EXTERNAL_CALENDAR_TIMEMAP_PREFIX,
+  DEFAULT_TASK_REPEAT,
   TASK_REPEAT_NONE,
   TASK_STATUS_UNSCHEDULED,
   caretDownIconSvg,
@@ -30,7 +31,12 @@ import { getOverdueReminders } from "./task-reminders.js";
 import { applyTaskBackgroundStyle } from "./task-card-styles.js";
 import { buildReminderDetailItem } from "./task-card-details.js";
 import { buildSummaryIconFlags, buildTaskSummaryRow } from "./task-card-summary.js";
-import { buildPriorityDetailItem, buildStartFromDetailItem } from "./task-card-detail-edit.js";
+import {
+  buildDeadlineDetailItem,
+  buildPriorityDetailItem,
+  buildRepeatDetailItem,
+  buildStartFromDetailItem
+} from "./task-card-detail-edit.js";
 import { state } from "../state/page-state.js";
 
 const detailClockIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 6v4l2.5 2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
@@ -299,6 +305,97 @@ function buildDetailItemElement({ key, label, iconSvg, extraClass = "", valueTes
   return { item, valueEl };
 }
 
+function appendReminderDetailItem(meta, task) {
+  const reminderItem = buildReminderDetailItem({
+    task,
+    buildDetailItemElement,
+    formatDateTime,
+    reminderIconSvg
+  });
+  if (reminderItem) {
+    meta.appendChild(reminderItem);
+  }
+}
+
+function appendDeadlineDetailItem(meta, task, cleanupFns) {
+  if (!task.deadline) {return;}
+  const deadlineDetail = buildDeadlineDetailItem({
+    task,
+    buildDetailItemElement,
+    iconSvg: detailFlagIconSvg,
+    formatDateTime,
+    onClear: () => updateTaskDetailField(task, { deadline: null })
+  });
+  if (deadlineDetail.item) {
+    meta.appendChild(deadlineDetail.item);
+    cleanupFns.push(deadlineDetail.cleanup);
+  }
+}
+
+function appendStartFromDetailItem(meta, task, cleanupFns) {
+  if (!task.startFrom) {return;}
+  const startFromDetail = buildStartFromDetailItem({
+    task,
+    buildDetailItemElement,
+    iconSvg: detailClockIconSvg,
+    formatDateTime,
+    onClear: () => updateTaskDetailField(task, { startFrom: null })
+  });
+  if (startFromDetail.item) {
+    meta.appendChild(startFromDetail.item);
+    cleanupFns.push(startFromDetail.cleanup);
+  }
+}
+
+function appendMinBlockDetailItem(meta, task) {
+  if (!task.minBlockMin) {return;}
+  const { item, valueEl } = buildDetailItemElement({
+    key: "min-block",
+    label: "Min block",
+    iconSvg: detailStackIconSvg,
+    valueTestId: "task-min-block"
+  });
+  valueEl.textContent = `${task.minBlockMin}m`;
+  meta.appendChild(item);
+}
+
+function appendPriorityDetailItem(meta, task, cleanupFns) {
+  const priorityDetail = buildPriorityDetailItem({
+    task,
+    buildDetailItemElement,
+    iconSvg: detailGaugeIconSvg,
+    applyPrioritySelectColor,
+    onUpdate: (updates) => updateTaskDetailField(task, updates)
+  });
+  meta.appendChild(priorityDetail.item);
+  cleanupFns.push(priorityDetail.cleanup);
+}
+
+function appendTimeMapsDetailItem(meta, timeMapNames) {
+  const timeMapsLabel = timeMapNames.length ? timeMapNames.join(", ") : "None";
+  const { item: timeMapsItem, valueEl: timeMapsValueEl } = buildDetailItemElement({
+    key: "timemaps",
+    label: "TimeMaps",
+    iconSvg: detailMapIconSvg,
+    valueTestId: "task-timemaps"
+  });
+  timeMapsValueEl.textContent = timeMapsLabel;
+  meta.appendChild(timeMapsItem);
+}
+
+function appendRepeatDetailItem(meta, task, repeatSummary, cleanupFns) {
+  const isRepeating = task.repeat && task.repeat.type !== TASK_REPEAT_NONE;
+  const repeatDetail = buildRepeatDetailItem({
+    buildDetailItemElement,
+    iconSvg: detailRepeatIconSvg,
+    repeatSummary,
+    isRepeating,
+    onClear: () => updateTaskDetailField(task, { repeat: { ...DEFAULT_TASK_REPEAT } })
+  });
+  meta.appendChild(repeatDetail.item);
+  cleanupFns.push(repeatDetail.cleanup);
+}
+
 function buildTaskHeader(task, options) {
   const header = document.createElement("div");
   header.className = "task-title-row title-hover-group";
@@ -333,75 +430,13 @@ function buildTaskMeta(task, timeMapNames, repeatSummary) {
   meta.className = "task-details__grid";
   meta.setAttribute("data-test-skedpal", "task-meta");
   const cleanupFns = [];
-  const reminderItem = buildReminderDetailItem({
-    task,
-    buildDetailItemElement,
-    formatDateTime,
-    reminderIconSvg
-  });
-  if (reminderItem) {
-    meta.appendChild(reminderItem);
-  }
-  if (task.deadline) {
-    const { item, valueEl } = buildDetailItemElement({
-      key: "deadline",
-      label: "Deadline",
-      iconSvg: detailFlagIconSvg,
-      valueTestId: "task-deadline"
-    });
-    valueEl.textContent = formatDateTime(task.deadline);
-    meta.appendChild(item);
-  }
-  if (task.startFrom) {
-    const startFromDetail = buildStartFromDetailItem({
-      task,
-      buildDetailItemElement,
-      iconSvg: detailClockIconSvg,
-      formatDateTime,
-      onClear: () => updateTaskDetailField(task, { startFrom: null })
-    });
-    if (startFromDetail.item) {
-      meta.appendChild(startFromDetail.item);
-      cleanupFns.push(startFromDetail.cleanup);
-    }
-  }
-  if (task.minBlockMin) {
-    const { item, valueEl } = buildDetailItemElement({
-      key: "min-block",
-      label: "Min block",
-      iconSvg: detailStackIconSvg,
-      valueTestId: "task-min-block"
-    });
-    valueEl.textContent = `${task.minBlockMin}m`;
-    meta.appendChild(item);
-  }
-  const priorityDetail = buildPriorityDetailItem({
-    task,
-    buildDetailItemElement,
-    iconSvg: detailGaugeIconSvg,
-    applyPrioritySelectColor,
-    onUpdate: (updates) => updateTaskDetailField(task, updates)
-  });
-  meta.appendChild(priorityDetail.item);
-  cleanupFns.push(priorityDetail.cleanup);
-  const timeMapsLabel = timeMapNames.length ? timeMapNames.join(", ") : "None";
-  const { item: timeMapsItem, valueEl: timeMapsValueEl } = buildDetailItemElement({
-    key: "timemaps",
-    label: "TimeMaps",
-    iconSvg: detailMapIconSvg,
-    valueTestId: "task-timemaps"
-  });
-  timeMapsValueEl.textContent = timeMapsLabel;
-  meta.appendChild(timeMapsItem);
-
-  const { item: repeatItem, valueEl: repeatValueEl } = buildDetailItemElement({
-    key: "repeat",
-    label: "Repeat",
-    iconSvg: detailRepeatIconSvg,
-    valueTestId: "task-repeat"
-  });
-  repeatValueEl.textContent = repeatSummary;
-  meta.appendChild(repeatItem);
+  appendReminderDetailItem(meta, task);
+  appendDeadlineDetailItem(meta, task, cleanupFns);
+  appendStartFromDetailItem(meta, task, cleanupFns);
+  appendMinBlockDetailItem(meta, task);
+  appendPriorityDetailItem(meta, task, cleanupFns);
+  appendTimeMapsDetailItem(meta, timeMapNames);
+  appendRepeatDetailItem(meta, task, repeatSummary, cleanupFns);
   return {
     meta,
     cleanup: () => {

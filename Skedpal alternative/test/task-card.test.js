@@ -230,7 +230,7 @@ describe("task card", () => {
     assert.strictEqual(duration.textContent, "1.5h");
   });
 
-  it("renders priority select and start-from clear button in details", () => {
+  it("renders priority select and clear buttons in details", () => {
     const task = {
       id: "t-detail-edit",
       title: "Details edit",
@@ -240,8 +240,10 @@ describe("task card", () => {
       completed: false,
       scheduledStart: new Date(2026, 0, 1, 9, 0).toISOString(),
       scheduledEnd: new Date(2026, 0, 1, 10, 0).toISOString(),
+      deadline: new Date(2026, 0, 2, 12, 0).toISOString(),
       startFrom: new Date(2026, 0, 1, 0, 0).toISOString(),
-      priority: 3
+      priority: 3,
+      repeat: { type: "custom", unit: "week", interval: 1, weeklyDays: [1, 3] }
     };
     const context = {
       tasks: [task],
@@ -257,6 +259,8 @@ describe("task card", () => {
     const card = renderTaskCard(task, context);
     assert.ok(findByTestAttr(card, "task-detail-priority-select"));
     assert.ok(findByTestAttr(card, "task-start-from-clear"));
+    assert.ok(findByTestAttr(card, "task-deadline-clear"));
+    assert.ok(findByTestAttr(card, "task-repeat-clear"));
   });
 
   it("renders expanded details and styles subtasks", () => {
@@ -378,7 +382,7 @@ describe("task card", () => {
     const card = renderTaskCard(task, context);
     const title = findByTestAttr(card, "task-title");
     assert.ok(title.innerHTML.includes('href="https://example.com"'));
-    const repeat = findByTestAttr(card, "task-repeat");
+    const repeat = findByTestAttr(card, "task-repeat-value");
     const timeMaps = findByTestAttr(card, "task-timemaps");
     assert.ok(repeat);
     assert.ok(timeMaps);

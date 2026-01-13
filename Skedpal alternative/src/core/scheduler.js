@@ -425,6 +425,11 @@ function compareNumeric(aValue, bValue) {
   return 0;
 }
 
+function resolveOrderValue(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : Number.MAX_SAFE_INTEGER;
+}
+
 function compareCandidateOrder(a, b) {
   const comparisons = [
     () => compareNumeric(a.deadline, b.deadline),
@@ -432,7 +437,7 @@ function compareCandidateOrder(a, b) {
     () => compareNumeric(a.startFrom, b.startFrom),
     () => (a.section || "").localeCompare(b.section || ""),
     () => (a.subsection || "").localeCompare(b.subsection || ""),
-    () => compareNumeric(Number(a.order) || 0, Number(b.order) || 0),
+    () => compareNumeric(resolveOrderValue(a.order), resolveOrderValue(b.order)),
     () => (a.title || "").localeCompare(b.title || "")
   ];
   for (const compare of comparisons) {

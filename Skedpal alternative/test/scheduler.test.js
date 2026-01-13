@@ -710,6 +710,51 @@ describe("scheduler", () => {
     assert.ok(result.unscheduled.includes("c"));
   });
 
+  it("pushes tasks without order after ordered tasks", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 3);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "10:00" }] }
+    ];
+    const deadline = shiftDate(now, 0, 23, 59);
+    const tasks = [
+      {
+        id: "ordered",
+        title: "Ordered",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        priority: 2,
+        deadline,
+        section: "s1",
+        subsection: "sub1",
+        order: 1
+      },
+      {
+        id: "missing",
+        title: "Missing order",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        priority: 2,
+        deadline,
+        section: "s1",
+        subsection: "sub1"
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 1,
+      now
+    });
+
+    assert.strictEqual(result.scheduled.length, 1);
+    assert.strictEqual(result.scheduled[0].taskId, "ordered");
+    assert.ok(result.unscheduled.includes("missing"));
+  });
+
   it("avoids overlapping tasks across TimeMaps", () => {
     const now = nextWeekday(new Date(2026, 0, 1), 3);
     const timeMaps = [

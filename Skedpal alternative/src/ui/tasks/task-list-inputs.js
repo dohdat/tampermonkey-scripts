@@ -1,8 +1,12 @@
 import { handleAddSubsection } from "../sections.js";
 import {
   handleAddTaskInputSubmit,
-  collapseAddTaskRowForInput
+  collapseAddTaskRowForInput,
+  parseClipboardTaskTitles,
+  buildQuickAddTaskPayloadsFromTitles
 } from "./task-add-row.js";
+import { saveTask } from "../../data/db.js";
+import { state } from "../state/page-state.js";
 
 async function handleSubsectionInputSubmit(input) {
   const sectionId = input.dataset.subsectionInput || "";
@@ -24,6 +28,23 @@ async function handleChildSubsectionInputSubmit(input) {
   input.value = "";
   const wrap = input.closest(`[data-child-subsection-form="${parentSubId}"]`);
   wrap?.classList.add("hidden");
+}
+
+function buildPastedTaskTitles(inputValue, clipboardTitles) {
+  const existing = (inputValue || "").trim();
+  if (!existing) {return clipboardTitles;}
+  if (clipboardTitles[0] === existing) {return clipboardTitles;}
+  return [existing, ...clipboardTitles];
+}
+
+function getAddTaskInputContext(input) {
+  const sectionId = input.dataset.addTaskSection || "";
+  const subsectionId = input.dataset.addTaskSubsection || "";
+  const parentId = input.dataset.addTaskParent || "";
+  const parentTask = parentId
+    ? state.tasksCache.find((task) => task.id === parentId)
+    : null;
+  return { sectionId, subsectionId, parentTask };
 }
 
 export async function handleTaskListInputKeydown(event) {
@@ -49,4 +70,27 @@ export async function handleTaskListInputKeydown(event) {
     event.preventDefault();
     await handleChildSubsectionInputSubmit(input);
   }
+}
+
+export async function handleTaskListInputPaste(event) {
+  const input = event.target;
+  if (!(input instanceof HTMLElement)) {return;}
+  if (!input.matches("[data-add-task-input]")) {return;}
+  const text = event.clipboardData?.getData("text") || "";
+  const titles = parseClipboardTaskTitles(text);
+  if (titles.length <= 1) {return;}
+  const normalizedTitles = buildPastedTaskTitles(input.value, titles);
+  const { sectionId, subsectionId, parentTask } = getAddTaskInputContext(input);
+  const payloads = buildQuickAddTaskPayloadsFromTitles({
+    titles: normalizedTitles,
+    sectionId,
+    subsectionId,
+    tasks: state.tasksCache,
+    parentTask
+  });
+  if (!payloads.length) {return;}
+  event.preventDefault();
+  await Promise.all(payloads.map((payload) => saveTask(payload)));
+  collapseAddTaskRowForInput(input);
+  window.dispatchEvent(new Event("skedpal:tasks-updated"));
 }

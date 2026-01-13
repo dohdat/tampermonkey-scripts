@@ -6,7 +6,11 @@ import {
   DEFAULT_TASK_PRIORITY,
   SUBTASK_SCHEDULE_SEQUENTIAL
 } from "../src/ui/constants.js";
-import { buildQuickAddTaskPayload } from "../src/ui/tasks/task-add-row.js";
+import {
+  buildQuickAddTaskPayload,
+  buildQuickAddTaskPayloadsFromTitles,
+  parseClipboardTaskTitles
+} from "../src/ui/tasks/task-add-row.js";
 import { parseLocalDateInput } from "../src/ui/utils.js";
 
 describe("task add row helpers", () => {
@@ -64,5 +68,23 @@ describe("task add row helpers", () => {
     assert.strictEqual(payload.subtaskScheduleMode, SUBTASK_SCHEDULE_SEQUENTIAL);
     assert.strictEqual(payload.deadline, parseLocalDateInput(template.deadline));
     assert.strictEqual(payload.startFrom, parseLocalDateInput(template.startFrom));
+  });
+
+  it("parses clipboard text into task titles", () => {
+    const titles = parseClipboardTaskTitles(" - Alpha \n2) Beta\n\nGamma");
+    assert.deepStrictEqual(titles, ["Alpha", "Beta", "Gamma"]);
+  });
+
+  it("builds sequential quick-add payloads for multiple titles", () => {
+    const payloads = buildQuickAddTaskPayloadsFromTitles({
+      titles: ["First", "Second"],
+      sectionId: "section-a",
+      subsectionId: "",
+      tasks: [{ id: "task-1", section: "section-a", subsection: "", order: 2 }]
+    });
+
+    assert.strictEqual(payloads.length, 2);
+    assert.strictEqual(payloads[0].order, 3);
+    assert.strictEqual(payloads[1].order, 4);
   });
 });

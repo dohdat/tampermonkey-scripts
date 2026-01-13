@@ -23,6 +23,8 @@ import {
 const ADD_TASK_ROW_TEST_ID = "task-add-row";
 const ADD_TASK_BUTTON_TEST_ID = "task-add-button";
 const ADD_TASK_INPUT_TEST_ID = "task-add-input";
+const CLIPBOARD_LINE_REGEX = /\r?\n/;
+const CLIPBOARD_BULLET_REGEX = /^(?:[-*]|\d+[).])\s+/;
 
 function getRowParts(row) {
   if (!row) {return { button: null, input: null };}
@@ -113,6 +115,20 @@ function resolveQuickAddOrder(parentTask, sectionId, subsectionId, tasks) {
     return getNextSubtaskOrder(parentTask, sectionId, subsectionId, tasks);
   }
   return getNextOrder(sectionId, subsectionId, tasks);
+}
+
+function normalizeClipboardTaskTitle(value) {
+  const trimmed = (value || "").trim();
+  if (!trimmed) {return "";}
+  return trimmed.replace(CLIPBOARD_BULLET_REGEX, "").trim();
+}
+
+export function parseClipboardTaskTitles(text) {
+  if (!text) {return [];}
+  return text
+    .split(CLIPBOARD_LINE_REGEX)
+    .map(normalizeClipboardTaskTitle)
+    .filter(Boolean);
 }
 
 function buildQuickAddBasePayload({
@@ -265,6 +281,33 @@ export function buildQuickAddTaskPayload({
     template,
     settings
   });
+}
+
+export function buildQuickAddTaskPayloadsFromTitles({
+  titles = [],
+  sectionId = "",
+  subsectionId = "",
+  tasks = [],
+  parentTask = null,
+  template = null,
+  settings = state.settingsCache
+} = {}) {
+  const payloads = [];
+  let taskSnapshot = Array.isArray(tasks) ? [...tasks] : [];
+  titles.filter(Boolean).forEach((title) => {
+    const payload = buildQuickAddTaskPayload({
+      title,
+      sectionId,
+      subsectionId,
+      tasks: taskSnapshot,
+      parentTask,
+      template,
+      settings
+    });
+    payloads.push(payload);
+    taskSnapshot = [...taskSnapshot, payload];
+  });
+  return payloads;
 }
 
 export async function handleAddTaskInputSubmit(input) {

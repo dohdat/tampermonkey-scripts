@@ -14,7 +14,10 @@ import {
   closeRepeatCompleteModal,
   openTaskEditById
 } from "./tasks/tasks-actions.js";
-import { handleTaskListInputKeydown } from "./tasks/task-list-inputs.js";
+import {
+  handleTaskListInputKeydown,
+  handleTaskListInputPaste
+} from "./tasks/task-list-inputs.js";
 import { initTaskReminderModal, cleanupTaskReminderModal } from "./tasks/task-reminders.js";
 import { registerTaskFormHandlers } from "./page-task-listeners.js";
 import {
@@ -443,6 +446,8 @@ function registerListHandlers() {
   if (taskList) {
     taskList.addEventListener("keydown", handleTaskListInputKeydown);
     cleanupFns.push(() => taskList.removeEventListener("keydown", handleTaskListInputKeydown));
+    taskList.addEventListener("paste", handleTaskListInputPaste);
+    cleanupFns.push(() => taskList.removeEventListener("paste", handleTaskListInputPaste));
   }
   return () => {
     cleanupFns.forEach((cleanup) => cleanup());

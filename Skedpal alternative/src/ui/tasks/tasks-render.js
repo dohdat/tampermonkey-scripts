@@ -6,7 +6,6 @@ import {
   favoriteIconSvg,
   sortIconSvg,
   zoomInIconSvg,
-  plusIconSvg,
   subtaskIconSvg,
   removeIconSvg,
   domRefs
@@ -312,10 +311,8 @@ function buildSubsectionHeader(sub, section, isNoSection) {
   collapseSubBtn.innerHTML = subCollapsed ? caretRightIconSvg : caretDownIconSvg;
   const {
     editSubBtn,
-    zoomSubBtn,
     favoriteSubBtn,
     removeSubBtn,
-    addSubTaskBtn,
     addChildSubBtn,
     sortSubBtn
   } = buildSubsectionActionButtons({
@@ -325,19 +322,15 @@ function buildSubsectionHeader(sub, section, isNoSection) {
     themeColors,
     icons: {
       editIconSvg,
-      zoomInIconSvg,
       favoriteIconSvg,
       removeIconSvg,
-      plusIconSvg,
       subtaskIconSvg,
       sortIconSvg
     }
   });
   subTitle.appendChild(collapseSubBtn);
   subTitleActions.appendChild(favoriteSubBtn);
-  subTitleActions.appendChild(zoomSubBtn);
   subTitleActions.appendChild(addChildSubBtn);
-  subTitleActions.appendChild(addSubTaskBtn);
   subTitleActions.appendChild(sortSubBtn);
   subTitleActions.appendChild(editSubBtn);
   subTitleActions.appendChild(removeSubBtn);

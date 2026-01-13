@@ -182,7 +182,6 @@ function createTaskMenuHandlers(taskId, options = {}) {
 
   function getMenuActionButton(menu, key) {
     const keyMap = {
-      z: "task-menu-zoom",
       e: "task-menu-edit",
       b: "task-menu-bulk-edit",
       d: "task-menu-duplicate",

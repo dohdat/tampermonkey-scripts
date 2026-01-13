@@ -171,15 +171,6 @@ export function buildSubsectionActionButtons({
   editSubBtn.style.color = themeColors.green500;
   editSubBtn.setAttribute("data-test-skedpal", "subsection-edit-btn");
 
-  const zoomSubBtn = document.createElement("button");
-  zoomSubBtn.type = "button";
-  zoomSubBtn.dataset.zoomSubsection = sub.id;
-  zoomSubBtn.dataset.zoomSection = sectionId;
-  zoomSubBtn.className = "title-icon-btn";
-  zoomSubBtn.title = "Zoom into subsection";
-  zoomSubBtn.innerHTML = icons.zoomInIconSvg;
-  zoomSubBtn.setAttribute("data-test-skedpal", "subsection-zoom-btn");
-
   const favoriteSubBtn = document.createElement("button");
   favoriteSubBtn.type = "button";
   favoriteSubBtn.dataset.favoriteSubsection = sub.id;
@@ -200,17 +191,6 @@ export function buildSubsectionActionButtons({
   removeSubBtn.style.color = themeColors.orange500;
   removeSubBtn.setAttribute("data-test-skedpal", "subsection-remove-btn");
 
-  const addSubTaskBtn = document.createElement("button");
-  addSubTaskBtn.type = "button";
-  addSubTaskBtn.dataset.addSection = isNoSection ? "" : sectionId;
-  addSubTaskBtn.dataset.addSubsectionTarget = sub.id;
-  addSubTaskBtn.className = "title-icon-btn";
-  addSubTaskBtn.title = "Add task";
-  addSubTaskBtn.innerHTML = icons.plusIconSvg;
-  addSubTaskBtn.style.borderColor = themeColors.lime400;
-  addSubTaskBtn.style.color = themeColors.lime400;
-  addSubTaskBtn.setAttribute("data-test-skedpal", "subsection-add-task");
-
   const addChildSubBtn = document.createElement("button");
   addChildSubBtn.type = "button";
   addChildSubBtn.dataset.addChildSubsection = sub.id;
@@ -225,10 +205,8 @@ export function buildSubsectionActionButtons({
   return {
     sortSubBtn,
     editSubBtn,
-    zoomSubBtn,
     favoriteSubBtn,
     removeSubBtn,
-    addSubTaskBtn,
     addChildSubBtn
   };
 }

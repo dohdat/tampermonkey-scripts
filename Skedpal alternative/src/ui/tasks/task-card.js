@@ -12,8 +12,7 @@ import {
   reminderIconSvg,
   removeIconSvg,
   TASK_CHILD_INDENT_PX,
-  unscheduledIconSvg,
-  zoomInIconSvg
+  unscheduledIconSvg
 } from "../constants.js";
 import { formatDateTime, formatDurationShort } from "../utils.js";
 import { getRepeatSummary } from "../repeat.js";
@@ -155,17 +154,6 @@ function buildTaskActionsMenu(task) {
   menu.dataset.taskMenu = task.id;
   menu.setAttribute("data-test-skedpal", "task-actions-menu");
   const menuItems = [
-    buildTaskActionButton({
-      taskId: task.id,
-      label: "Zoom (Z)",
-      dataset: {
-        zoomTask: task.id,
-        zoomSection: task.section || "",
-        zoomSubsection: task.subsection || ""
-      },
-      iconSvg: zoomInIconSvg,
-      testAttr: "task-menu-zoom"
-    }),
     buildTaskActionButton({
       taskId: task.id,
       label: "Add subtask (A)",

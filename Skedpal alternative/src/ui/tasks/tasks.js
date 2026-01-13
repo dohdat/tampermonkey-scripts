@@ -5,7 +5,13 @@ import {
   DEFAULT_TASK_REPEAT,
   TASK_STATUS_UNSCHEDULED
 } from "../constants.js";
-import { getContainerKey, getTaskAndDescendants, sortTasksByOrder, uuid } from "../utils.js";
+import {
+  getContainerKey,
+  getLocalDateKey,
+  getTaskAndDescendants,
+  sortTasksByOrder,
+  uuid
+} from "../utils.js";
 
 function buildMovedBlock(movedSubtree, targetSection, targetSubsection) {
   return sortTasksByOrder(movedSubtree).map((task) => ({
@@ -220,6 +226,12 @@ function getOrderValue(value) {
   return Number.isFinite(value) ? value : Number.MAX_SAFE_INTEGER;
 }
 
+function getStartFromBucket(task, todayKey) {
+  const startKey = getLocalDateKey(task?.startFrom);
+  if (!startKey) {return 0;}
+  return startKey === todayKey ? 0 : 1;
+}
+
 export function computeSubsectionPrioritySortUpdates(tasks, sectionId, subsectionId) {
   const key = getContainerKey(sectionId, subsectionId);
   const inContainer = (tasks || []).filter(
@@ -231,7 +243,10 @@ export function computeSubsectionPrioritySortUpdates(tasks, sectionId, subsectio
     (task) => !task.subtaskParentId || !idsInContainer.has(task.subtaskParentId)
   );
   if (roots.length <= 1) {return { updates: [], changed: false };}
+  const todayKey = getLocalDateKey(new Date());
   const sortedRoots = [...roots].sort((a, b) => {
+    const startFromDiff = getStartFromBucket(a, todayKey) - getStartFromBucket(b, todayKey);
+    if (startFromDiff) {return startFromDiff;}
     const priorityDiff = getPriorityValue(b.priority) - getPriorityValue(a.priority);
     if (priorityDiff) {return priorityDiff;}
     const orderDiff = getOrderValue(a.order) - getOrderValue(b.order);

@@ -1,6 +1,7 @@
 import "fake-indexeddb/auto.js";
 import assert from "assert";
 import { describe, it, beforeEach } from "mocha";
+import { parseLocalDateInput } from "../src/ui/utils.js";
 
 global.crypto = {
   randomUUID: (() => {
@@ -109,6 +110,44 @@ describe("subsection priority sort", () => {
     assert.strictEqual(byId.get("p1").order, 2);
     assert.strictEqual(byId.get("t2").order, 3);
     assert.strictEqual(byId.has("c1"), false);
+  });
+
+  it("pushes tasks with startFrom not today to the bottom", () => {
+    const formatLocalInput = (date) =>
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+        date.getDate()
+      ).padStart(2, "0")}`;
+    const today = new Date();
+    const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    const todayIso = parseLocalDateInput(formatLocalInput(today));
+    const tomorrowIso = parseLocalDateInput(formatLocalInput(tomorrow));
+    const tasks = [
+      { id: "t1", title: "High", section: "s1", subsection: "sub1", order: 3, priority: 5 },
+      {
+        id: "t2",
+        title: "Future",
+        section: "s1",
+        subsection: "sub1",
+        order: 2,
+        priority: 9,
+        startFrom: tomorrowIso
+      },
+      {
+        id: "t3",
+        title: "Today",
+        section: "s1",
+        subsection: "sub1",
+        order: 1,
+        priority: 1,
+        startFrom: todayIso
+      }
+    ];
+
+    const result = computeSubsectionPrioritySortUpdates(tasks, "s1", "sub1");
+    const byId = new Map(result.updates.map((task) => [task.id, task]));
+    assert.strictEqual(byId.get("t1").order, 1);
+    assert.strictEqual(byId.get("t3").order, 2);
+    assert.strictEqual(byId.get("t2").order, 3);
   });
 });
 

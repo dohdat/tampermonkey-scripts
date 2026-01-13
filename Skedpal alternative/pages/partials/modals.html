@@ -975,6 +975,49 @@
         ></p>
       </div>
       <div class="calendar-event-modal__actions" data-test-skedpal="calendar-event-modal-actions">
+        <div
+          id="calendar-event-modal-toolbar"
+          class="calendar-event-modal__toolbar"
+          data-test-skedpal="calendar-event-modal-toolbar"
+        >
+          <button
+            type="button"
+            class="calendar-event-modal__icon-btn"
+            data-calendar-event-action="complete"
+            data-test-skedpal="calendar-event-modal-complete-btn"
+          ></button>
+          <button
+            type="button"
+            class="calendar-event-modal__icon-btn"
+            data-calendar-event-action="zoom"
+            data-test-skedpal="calendar-event-modal-zoom"
+          ></button>
+          <button
+            type="button"
+            class="calendar-event-modal__icon-btn"
+            data-calendar-event-action="defer"
+            data-test-skedpal="calendar-event-modal-defer"
+          ></button>
+          <button
+            type="button"
+            class="calendar-event-modal__icon-btn"
+            data-calendar-event-action="edit"
+            data-test-skedpal="calendar-event-modal-edit"
+          ></button>
+          <button
+            type="button"
+            class="calendar-event-modal__icon-btn"
+            data-calendar-event-action="delete"
+            data-test-skedpal="calendar-event-modal-delete"
+          ></button>
+          <input
+            id="calendar-event-modal-defer-date"
+            type="text"
+            class="calendar-event-modal__defer-input"
+            data-date-picker="true"
+            data-test-skedpal="calendar-event-modal-defer-date"
+          />
+        </div>
         <button
           type="button"
           class="modal-close-btn"
@@ -1007,49 +1050,6 @@
         class="calendar-event-modal__details"
         data-test-skedpal="calendar-event-modal-details"
       ></div>
-      <div
-        id="calendar-event-modal-toolbar"
-        class="calendar-event-modal__toolbar"
-        data-test-skedpal="calendar-event-modal-toolbar"
-      >
-        <button
-          type="button"
-          class="calendar-event-modal__icon-btn"
-          data-calendar-event-action="complete"
-          data-test-skedpal="calendar-event-modal-complete-btn"
-        ></button>
-        <button
-          type="button"
-          class="calendar-event-modal__icon-btn"
-          data-calendar-event-action="zoom"
-          data-test-skedpal="calendar-event-modal-zoom"
-        ></button>
-        <button
-          type="button"
-          class="calendar-event-modal__icon-btn"
-          data-calendar-event-action="defer"
-          data-test-skedpal="calendar-event-modal-defer"
-        ></button>
-        <button
-          type="button"
-          class="calendar-event-modal__icon-btn"
-          data-calendar-event-action="edit"
-          data-test-skedpal="calendar-event-modal-edit"
-        ></button>
-        <button
-          type="button"
-          class="calendar-event-modal__icon-btn"
-          data-calendar-event-action="delete"
-          data-test-skedpal="calendar-event-modal-delete"
-        ></button>
-        <input
-          id="calendar-event-modal-defer-date"
-          type="text"
-          class="calendar-event-modal__defer-input"
-          data-date-picker="true"
-          data-test-skedpal="calendar-event-modal-defer-date"
-        />
-      </div>
     </div>
   </div>
 </div>

@@ -232,12 +232,13 @@ function startInlineTitleEdit(titleEl, task, options = {}) {
     cleanupInlineTitleEdit();
     cleanupPreview();
     setInlineTitleRowEditing(titleEl, false);
-    clearInlineTitleParsingState(input);
     if (!shouldSave) {
+      clearInlineTitleParsingState(input);
       restoreInlineTitle(titleEl, originalTitle);
       return;
     }
     const update = resolveInlineTitleUpdate(task, input, originalTitle);
+    clearInlineTitleParsingState(input);
     if (!update.shouldSave) {
       restoreInlineTitle(titleEl, originalTitle);
       return;

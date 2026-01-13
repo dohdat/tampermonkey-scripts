@@ -98,6 +98,24 @@ async function zoomFromModal(sectionId, subsectionId, type) {
   closeCalendarEventModal();
 }
 
+async function zoomTaskFromModal(task) {
+  if (!task) {return;}
+  const payload = {
+    type: "task",
+    taskId: task.id,
+    sectionId: task.section || "",
+    subsectionId: task.subsection || ""
+  };
+  if (typeof window !== "undefined" && typeof window.__skedpalZoomFromModal === "function") {
+    window.__skedpalZoomFromModal(payload);
+    closeCalendarEventModal();
+    return;
+  }
+  const { setZoomFilter } = await import("./navigation.js");
+  setZoomFilter(payload);
+  closeCalendarEventModal();
+}
+
 function setActionButtonIcons() {
   const calendarEventModalActionButtons = domRefs.calendarEventModalActionButtons || [];
   if (!calendarEventModalActionButtons.length) {return;}
@@ -123,7 +141,9 @@ function setActionButtonIcons() {
 }
 
 function triggerTaskButton(selector) {
-  const btn = document.querySelector(selector);
+  const btn = typeof document?.querySelector === "function"
+    ? document.querySelector(selector)
+    : null;
   if (!btn || typeof btn.click !== "function") {return false;}
   btn.click();
   return true;
@@ -401,7 +421,15 @@ function handleCompleteAction() {
 
 function handleZoomAction() {
   if (!activeTask) {return;}
-  triggerTaskButton(`[data-zoom-task="${activeTask.id}"]`);
+  const parentId = activeTask.subtaskParentId || "";
+  const targetTask = parentId
+    ? state.tasksCache.find((task) => task.id === parentId) || activeTask
+    : activeTask;
+  const handled = triggerTaskButton(`[data-zoom-task="${targetTask.id}"]`);
+  if (!handled) {
+    zoomTaskFromModal(targetTask);
+    return;
+  }
   closeCalendarEventModal();
 }
 

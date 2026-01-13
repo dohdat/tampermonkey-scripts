@@ -192,8 +192,8 @@ describe("calendar event modal", () => {
     domRefs.calendarEventModalCloseButtons = [refs.close];
     domRefs.calendarEventModalActionButtons = refs.actions;
     domRefs.taskList = new FakeElement("div");
-    window.__skedpalZoomFromModal = ({ type, sectionId, subsectionId }) => {
-      state.zoomFilter = { type, sectionId, subsectionId };
+    window.__skedpalZoomFromModal = ({ type, sectionId, subsectionId, taskId }) => {
+      state.zoomFilter = { type, sectionId, subsectionId, taskId };
     };
     refs.documentListeners = documentListeners;
 
@@ -347,6 +347,142 @@ describe("calendar event modal", () => {
     refs.actions[0].listeners.click({ currentTarget: refs.actions[0] });
 
     assert.strictEqual(clicked, true);
+  });
+
+  it("falls back to modal zoom when task button is missing", () => {
+    document.querySelector = () => null;
+    state.tasksCache = [
+      {
+        id: "task-0",
+        title: "Parent task",
+        section: "section-work",
+        subsection: "subsection-1",
+        completed: false
+      },
+      {
+        id: "task-1",
+        title: "Prep for interview",
+        durationMin: 90,
+        priority: 3,
+        deadline: new Date(2026, 0, 10).toISOString(),
+        startFrom: new Date(2026, 0, 6).toISOString(),
+        link: "https://example.com",
+        section: "section-work",
+        subsection: "subsection-1",
+        subtaskParentId: "task-0",
+        timeMapIds: ["tm-1"],
+        completed: false
+      }
+    ];
+    const eventMeta = {
+      taskId: "task-1",
+      timeMapId: "tm-1",
+      start: new Date(2026, 0, 6, 9, 0, 0),
+      end: new Date(2026, 0, 6, 10, 30, 0)
+    };
+
+    initCalendarEventModal();
+    openCalendarEventModal(eventMeta);
+    refs.actions[1].listeners.click({ currentTarget: refs.actions[1] });
+
+    assert.strictEqual(state.zoomFilter?.type, "task");
+    assert.strictEqual(state.zoomFilter?.taskId, "task-0");
+    assert.strictEqual(state.zoomFilter?.sectionId, "section-work");
+    assert.strictEqual(state.zoomFilter?.subsectionId, "subsection-1");
+    assert.strictEqual(refs.modal.classList.contains("hidden"), true);
+  });
+
+  it("uses task zoom button when available", () => {
+    let clicked = false;
+    document.querySelector = (selector) => {
+      if (selector === '[data-zoom-task="task-0"]') {
+        return { click: () => { clicked = true; } };
+      }
+      return null;
+    };
+    state.tasksCache = [
+      {
+        id: "task-0",
+        title: "Parent task",
+        section: "section-work",
+        subsection: "subsection-1",
+        completed: false
+      },
+      {
+        id: "task-1",
+        title: "Prep for interview",
+        durationMin: 90,
+        priority: 3,
+        deadline: new Date(2026, 0, 10).toISOString(),
+        startFrom: new Date(2026, 0, 6).toISOString(),
+        link: "https://example.com",
+        section: "section-work",
+        subsection: "subsection-1",
+        subtaskParentId: "task-0",
+        timeMapIds: ["tm-1"],
+        completed: false
+      }
+    ];
+    const eventMeta = {
+      taskId: "task-1",
+      timeMapId: "tm-1",
+      start: new Date(2026, 0, 6, 9, 0, 0),
+      end: new Date(2026, 0, 6, 10, 30, 0)
+    };
+
+    initCalendarEventModal();
+    openCalendarEventModal(eventMeta);
+    refs.actions[1].listeners.click({ currentTarget: refs.actions[1] });
+
+    assert.strictEqual(clicked, true);
+    assert.strictEqual(refs.modal.classList.contains("hidden"), true);
+  });
+
+  it("rebuilds modal button refs when missing", () => {
+    const actionBtn = new FakeElement("button");
+    actionBtn.dataset.calendarEventAction = "zoom";
+    const closeBtn = new FakeElement("button");
+    closeBtn.dataset.calendarEventClose = "true";
+    refs.modal.querySelectorAll = (selector) => {
+      if (selector === "[data-calendar-event-action]") {return [actionBtn];}
+      if (selector === "[data-calendar-event-close]") {return [closeBtn];}
+      return [];
+    };
+    domRefs.calendarEventModalActionButtons = [];
+    domRefs.calendarEventModalCloseButtons = [];
+
+    initCalendarEventModal();
+
+    assert.strictEqual(domRefs.calendarEventModalActionButtons[0], actionBtn);
+    assert.strictEqual(domRefs.calendarEventModalCloseButtons[0], closeBtn);
+  });
+
+  it("closes when zoom fallback lacks section info", () => {
+    document.querySelector = () => null;
+    state.tasksCache = [
+      {
+        id: "task-2",
+        title: "Loose task",
+        durationMin: 30,
+        section: "",
+        subsection: "",
+        completed: false
+      }
+    ];
+    const eventMeta = {
+      taskId: "task-2",
+      timeMapId: "",
+      start: new Date(2026, 0, 6, 9, 0, 0),
+      end: new Date(2026, 0, 6, 10, 30, 0)
+    };
+
+    initCalendarEventModal();
+    openCalendarEventModal(eventMeta);
+    refs.actions[1].listeners.click({ currentTarget: refs.actions[1] });
+
+    assert.strictEqual(state.zoomFilter?.type, "task");
+    assert.strictEqual(state.zoomFilter?.taskId, "task-2");
+    assert.strictEqual(refs.modal.classList.contains("hidden"), true);
   });
 
   it("dispatches repeat occurrence completion from the calendar modal", () => {

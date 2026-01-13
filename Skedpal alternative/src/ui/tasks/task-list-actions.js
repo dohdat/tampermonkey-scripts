@@ -37,9 +37,7 @@ export { handleTaskTitleDoubleClick } from "./task-inline-edit.js";
 function runTaskDetailCleanup(taskId) {
   if (!taskId) {return;}
   const cleanup = state.taskDetailCleanup.get(taskId);
-  if (typeof cleanup === "function") {
-    cleanup();
-  }
+  if (typeof cleanup === "function") {cleanup();}
   state.taskDetailCleanup.delete(taskId);
 }
 
@@ -186,6 +184,7 @@ function createTaskMenuHandlers(taskId, options = {}) {
     const keyMap = {
       z: "task-menu-zoom",
       e: "task-menu-edit",
+      b: "task-menu-bulk-edit",
       d: "task-menu-duplicate",
       r: "task-menu-remind",
       a: "task-menu-add-subtask",
@@ -615,7 +614,8 @@ async function handleTaskActionsWithClose(action, options = {}) {
   return handled;
 }
 export async function handleTaskListClick(event, options = {}) {
-  const btn = event.target.closest("button"); if (!btn) {return;}
+  const btn = event.target.closest("button");
+  if (!btn) {return;}
   const action = parseTaskListClick(btn);
   const handlers = [
     () => handleAddTaskRowClick(btn),

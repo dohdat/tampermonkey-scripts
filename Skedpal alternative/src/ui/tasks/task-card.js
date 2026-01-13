@@ -199,7 +199,7 @@ function buildTaskActionsMenu(task) {
     }),
     buildTaskActionButton({
       taskId: task.id,
-      label: "Bulk Edit",
+      label: "Bulk Edit (B)",
       dataset: { bulkEdit: task.id },
       iconSvg: editIconSvg,
       testAttr: "task-menu-bulk-edit",

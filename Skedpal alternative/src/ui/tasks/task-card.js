@@ -33,9 +33,11 @@ import { buildReminderDetailItem } from "./task-card-details.js";
 import { buildSummaryIconFlags, buildTaskSummaryRow } from "./task-card-summary.js";
 import {
   buildDeadlineDetailItem,
+  buildDurationDetailItem,
   buildPriorityDetailItem,
   buildRepeatDetailItem,
-  buildStartFromDetailItem
+  buildStartFromDetailItem,
+  buildTimeMapDetailItem
 } from "./task-card-detail-edit.js";
 import { state } from "../state/page-state.js";
 
@@ -359,6 +361,17 @@ function appendMinBlockDetailItem(meta, task) {
   meta.appendChild(item);
 }
 
+function appendDurationDetailItem(meta, task, cleanupFns) {
+  const durationDetail = buildDurationDetailItem({
+    task,
+    buildDetailItemElement,
+    iconSvg: detailClockIconSvg,
+    onUpdate: (updates) => updateTaskDetailField(task, updates)
+  });
+  meta.appendChild(durationDetail.item);
+  cleanupFns.push(durationDetail.cleanup);
+}
+
 function appendPriorityDetailItem(meta, task, cleanupFns) {
   const priorityDetail = buildPriorityDetailItem({
     task,
@@ -371,16 +384,16 @@ function appendPriorityDetailItem(meta, task, cleanupFns) {
   cleanupFns.push(priorityDetail.cleanup);
 }
 
-function appendTimeMapsDetailItem(meta, timeMapNames) {
-  const timeMapsLabel = timeMapNames.length ? timeMapNames.join(", ") : "None";
-  const { item: timeMapsItem, valueEl: timeMapsValueEl } = buildDetailItemElement({
-    key: "timemaps",
-    label: "TimeMaps",
+function appendTimeMapsDetailItem(meta, task, timeMapOptions, cleanupFns) {
+  const timeMapsDetail = buildTimeMapDetailItem({
+    task,
+    buildDetailItemElement,
     iconSvg: detailMapIconSvg,
-    valueTestId: "task-timemaps"
+    timeMapOptions,
+    onUpdate: (updates) => updateTaskDetailField(task, updates)
   });
-  timeMapsValueEl.textContent = timeMapsLabel;
-  meta.appendChild(timeMapsItem);
+  meta.appendChild(timeMapsDetail.item);
+  cleanupFns.push(timeMapsDetail.cleanup);
 }
 
 function appendRepeatDetailItem(meta, task, repeatSummary, cleanupFns) {
@@ -425,7 +438,7 @@ function buildTaskHeader(task, options) {
   return header;
 }
 
-function buildTaskMeta(task, timeMapNames, repeatSummary) {
+function buildTaskMeta(task, timeMapOptions, repeatSummary) {
   const meta = document.createElement("div");
   meta.className = "task-details__grid";
   meta.setAttribute("data-test-skedpal", "task-meta");
@@ -434,8 +447,9 @@ function buildTaskMeta(task, timeMapNames, repeatSummary) {
   appendDeadlineDetailItem(meta, task, cleanupFns);
   appendStartFromDetailItem(meta, task, cleanupFns);
   appendMinBlockDetailItem(meta, task);
+  appendDurationDetailItem(meta, task, cleanupFns);
   appendPriorityDetailItem(meta, task, cleanupFns);
-  appendTimeMapsDetailItem(meta, timeMapNames);
+  appendTimeMapsDetailItem(meta, task, timeMapOptions, cleanupFns);
   appendRepeatDetailItem(meta, task, repeatSummary, cleanupFns);
   return {
     meta,
@@ -494,14 +508,29 @@ export function buildTaskCardShell(task, options = {}) {
   return taskCard;
 }
 
-function buildTimeMapNames(task, timeMapById) {
-  const timeMapIds = Array.isArray(task.timeMapIds) ? task.timeMapIds : [];
-  return timeMapIds.map((id) => {
-    if (isExternalCalendarTimeMapId(id)) {
-      return resolveExternalCalendarLabel(id);
-    }
-    return timeMapById.get(id)?.name || "Unknown";
+function buildTimeMapOptions(task, timeMapById) {
+  const options = [];
+  const seen = new Set();
+  const entries = Array.from(timeMapById.entries()).map(([id, timeMap]) => ({
+    id,
+    label: timeMap?.name || "Untitled"
+  }));
+  entries.sort((a, b) => a.label.localeCompare(b.label));
+  entries.forEach((entry) => {
+    if (seen.has(entry.id)) {return;}
+    seen.add(entry.id);
+    options.push(entry);
   });
+  const taskIds = Array.isArray(task.timeMapIds) ? task.timeMapIds : [];
+  taskIds.forEach((id) => {
+    if (seen.has(id)) {return;}
+    const label = isExternalCalendarTimeMapId(id)
+      ? resolveExternalCalendarLabel(id)
+      : timeMapById.get(id)?.name || "Unknown";
+    seen.add(id);
+    options.push({ id, label });
+  });
+  return options;
 }
 
 function applyTaskCardIndicators(taskCard, task, now) {
@@ -515,12 +544,12 @@ function applyTaskCardIndicators(taskCard, task, now) {
   }
 }
 
-function maybeAppendTaskDetails(taskCard, task, timeMapNames, repeatSummary, detailsOpen) {
+function maybeAppendTaskDetails(taskCard, task, timeMapOptions, repeatSummary, detailsOpen) {
   if (!detailsOpen) {return;}
   const detailsWrap = document.createElement("div");
   detailsWrap.className = "task-details";
   detailsWrap.setAttribute("data-test-skedpal", "task-details");
-  const { meta, cleanup } = buildTaskMeta(task, timeMapNames, repeatSummary);
+  const { meta, cleanup } = buildTaskMeta(task, timeMapOptions, repeatSummary);
   detailsWrap.appendChild(meta);
   const isRepeating = task.repeat && task.repeat.type !== TASK_REPEAT_NONE;
   if (!isRepeating) {
@@ -556,7 +585,7 @@ export function renderTaskCard(task, context) {
   const depth = getTaskDepthById(task.id);
   const baseDurationMin = Number(task.durationMin) || 0;
   const displayDurationMin = hasChildren ? computeTotalDuration(task) : baseDurationMin;
-  const timeMapNames = buildTimeMapNames(task, timeMapById);
+  const timeMapOptions = buildTimeMapOptions(task, timeMapById);
   const repeatSummary = getRepeatSummary(task.repeat);
   const taskCard = buildTaskCardShell(task, { depth, timeMapById });
   const titleMarkup = buildTitleMarkup(task);
@@ -583,7 +612,7 @@ export function renderTaskCard(task, context) {
     showUnscheduledIcon
   });
   taskCard.appendChild(header);
-  maybeAppendTaskDetails(taskCard, task, timeMapNames, repeatSummary, detailsOpen);
+  maybeAppendTaskDetails(taskCard, task, timeMapOptions, repeatSummary, detailsOpen);
   return taskCard;
 }
 

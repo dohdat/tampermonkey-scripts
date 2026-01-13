@@ -78,7 +78,7 @@ function installDomStubs() {
 installDomStubs();
 
 const { renderTaskCard } = await import("../src/ui/tasks/task-card.js");
-const { caretRightIconSvg } = await import("../src/ui/constants.js");
+const { caretRightIconSvg, EXTERNAL_CALENDAR_TIMEMAP_PREFIX } = await import("../src/ui/constants.js");
 const { themeColors } = await import("../src/ui/theme.js");
 const { parseLocalDateInput } = await import("../src/ui/utils.js");
 const { state } = await import("../src/ui/state/page-state.js");
@@ -258,6 +258,8 @@ describe("task card", () => {
 
     const card = renderTaskCard(task, context);
     assert.ok(findByTestAttr(card, "task-detail-priority-select"));
+    assert.ok(findByTestAttr(card, "task-detail-duration-select"));
+    assert.ok(findByTestAttr(card, "task-detail-timemap-select"));
     assert.ok(findByTestAttr(card, "task-start-from-clear"));
     assert.ok(findByTestAttr(card, "task-deadline-clear"));
     assert.ok(findByTestAttr(card, "task-repeat-clear"));
@@ -384,10 +386,92 @@ describe("task card", () => {
     assert.ok(title.innerHTML.includes('href="https://example.com"'));
     const repeat = findByTestAttr(card, "task-repeat-value");
     const timeMaps = findByTestAttr(card, "task-timemaps");
+    const unknownOption = findByTestAttr(card, "task-detail-timemap-option-missing");
     assert.ok(repeat);
     assert.ok(timeMaps);
+    assert.ok(unknownOption);
     assert.ok(repeat.textContent.includes("Every 2 weeks"));
-    assert.ok(timeMaps.textContent.includes("Unknown"));
+    assert.ok(unknownOption.textContent.includes("Unknown"));
+  });
+
+  it("renders custom duration options and multi-timemap indicator", () => {
+    const task = {
+      id: "t-multi",
+      title: "Multiple timemaps",
+      durationMin: 95,
+      timeMapIds: ["tm-1", "tm-2"],
+      completed: false,
+      repeat: { type: "custom", unit: "week", interval: 1 }
+    };
+    const context = {
+      tasks: [task],
+      timeMapById: new Map([
+        ["tm-1", { id: "tm-1", name: "Focus" }],
+        ["tm-2", { id: "tm-2", name: "Admin" }]
+      ]),
+      collapsedTasks: new Set(),
+      expandedTaskDetails: new Set(["t-multi"]),
+      computeTotalDuration: () => 0,
+      getTaskDepthById: () => 0,
+      getSectionName: () => "",
+      getSubsectionName: () => ""
+    };
+
+    const card = renderTaskCard(task, context);
+    assert.ok(findByTestAttr(card, "task-detail-duration-option-95"));
+    assert.ok(findByTestAttr(card, "task-detail-timemap-option-multiple"));
+  });
+
+  it("formats custom duration labels for edge cases", () => {
+    const baseContext = {
+      timeMapById: new Map(),
+      collapsedTasks: new Set(),
+      expandedTaskDetails: new Set(),
+      computeTotalDuration: () => 0,
+      getTaskDepthById: () => 0,
+      getSectionName: () => "",
+      getSubsectionName: () => ""
+    };
+    const tasks = [
+      { id: "t-zero", title: "Zero", durationMin: 0, timeMapIds: [], completed: false },
+      { id: "t-short", title: "Short", durationMin: 50, timeMapIds: [], completed: false },
+      { id: "t-hours", title: "Hours", durationMin: 240, timeMapIds: [], completed: false }
+    ];
+    tasks.forEach((task) => {
+      const context = {
+        ...baseContext,
+        tasks: [task],
+        expandedTaskDetails: new Set([task.id])
+      };
+      const card = renderTaskCard(task, context);
+      assert.ok(findByTestAttr(card, `task-detail-duration-option-${task.durationMin}`));
+    });
+  });
+
+  it("shows external timemap labels in the selector", () => {
+    const externalId = `${EXTERNAL_CALENDAR_TIMEMAP_PREFIX}demo`;
+    const task = {
+      id: "t-external",
+      title: "External timemap",
+      durationMin: 30,
+      timeMapIds: [externalId],
+      completed: false
+    };
+    const context = {
+      tasks: [task],
+      timeMapById: new Map(),
+      collapsedTasks: new Set(),
+      expandedTaskDetails: new Set([task.id]),
+      computeTotalDuration: () => 0,
+      getTaskDepthById: () => 0,
+      getSectionName: () => "",
+      getSubsectionName: () => ""
+    };
+
+    const card = renderTaskCard(task, context);
+    const option = findByTestAttr(card, "task-detail-timemap-option-external-calendar-demo");
+    assert.ok(option);
+    assert.ok(option.textContent.includes("demo"));
   });
 
   it("shows scheduled summary row and collapsed caret when configured", () => {

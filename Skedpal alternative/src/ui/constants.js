@@ -87,6 +87,17 @@ export const domRefs = {
   taskStartFromInput: document.getElementById("task-start-from"),
   taskLinkInput: document.getElementById("task-link"),
   taskPriorityInput: document.getElementById("task-priority"),
+  taskBulkEditBanner: document.getElementById("task-bulk-edit-banner"),
+  taskBulkEditCount: document.getElementById("task-bulk-edit-count"),
+  taskBulkEditApplyBtn: document.getElementById("task-bulk-edit-apply"),
+  taskBulkEditCancelBtn: document.getElementById("task-bulk-edit-cancel"),
+  taskBulkEditPriorityInput: document.getElementById("task-bulk-edit-priority"),
+  taskBulkEditDeadlineInput: document.getElementById("task-bulk-edit-deadline"),
+  taskBulkEditStartFromInput: document.getElementById("task-bulk-edit-start-from"),
+  taskBulkEditDurationInput: document.getElementById("task-bulk-edit-duration"),
+  taskBulkEditMinBlockInput: document.getElementById("task-bulk-edit-min-block"),
+  taskBulkEditTimeMapMode: document.getElementById("task-bulk-edit-timemap-mode"),
+  taskBulkEditTimeMapOptions: document.getElementById("task-bulk-edit-timemap-options"),
   taskLinkClearBtn: document.querySelector
     ? document.querySelector("[data-test-skedpal='task-link-clear']")
     : null,

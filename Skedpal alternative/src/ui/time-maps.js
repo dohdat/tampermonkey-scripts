@@ -363,16 +363,20 @@ export function renderTimeMapOptions(
     const label = document.createElement("label");
     label.className =
       "flex items-center gap-2 rounded-lg border-slate-800 bg-slate-950/80 px-3 py-2 text-xs text-slate-200";
+    label.setAttribute("data-test-skedpal", "timemap-option");
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.value = tm.id;
     checkbox.checked = selectedIds.includes(tm.id);
     checkbox.className = "h-4 w-4 rounded border-slate-700 bg-slate-900 text-lime-400";
+    checkbox.setAttribute("data-test-skedpal", "timemap-option-checkbox");
     const colorDot = document.createElement("span");
     colorDot.className = "h-3 w-3 rounded-full";
+    colorDot.setAttribute("data-test-skedpal", "timemap-option-color");
     colorDot.style.backgroundColor = tm.color || themeColors.green500;
     const name = document.createElement("span");
     name.textContent = tm.name || "Unnamed TimeMap";
+    name.setAttribute("data-test-skedpal", "timemap-option-label");
     label.appendChild(checkbox);
     label.appendChild(colorDot);
     label.appendChild(name);

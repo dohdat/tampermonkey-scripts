@@ -199,6 +199,14 @@ function buildTaskActionsMenu(task) {
     }),
     buildTaskActionButton({
       taskId: task.id,
+      label: "Bulk Edit",
+      dataset: { bulkEdit: task.id },
+      iconSvg: editIconSvg,
+      testAttr: "task-menu-bulk-edit",
+      color: themeColors.lime400
+    }),
+    buildTaskActionButton({
+      taskId: task.id,
       label: "Delete (X)",
       dataset: { delete: task.id },
       iconSvg: removeIconSvg,

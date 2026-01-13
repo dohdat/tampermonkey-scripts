@@ -31,6 +31,7 @@ import {
 import { openTaskReminderModal, dismissOverdueTaskReminders } from "./task-reminders.js";
 import { handleAddTaskRowClick } from "./task-add-row.js";
 import { computeSingleExpandedCollapsedSet } from "./task-collapse-utils.js";
+import { openBulkEditBanner } from "./task-bulk-edit.js";
 export { handleTaskTitleDoubleClick } from "./task-inline-edit.js";
 
 function runTaskDetailCleanup(taskId) {
@@ -140,6 +141,7 @@ function parseTaskListClick(btn) {
     parentSectionId: btn.dataset.parentSection,
     sortSubsectionPriorityId: btn.dataset.sortSubsectionPriority,
     editId: btn.dataset.edit,
+    bulkEditId: btn.dataset.bulkEdit,
     deleteId: btn.dataset.delete,
     duplicateTaskId: btn.dataset.duplicateTask,
     remindTaskId: btn.dataset.remindTask,
@@ -291,7 +293,6 @@ async function handleTaskComplete(completeTaskId) {
     }
   );
 }
-
 function handleZoomAction(action) {
   const handlers = [
     {
@@ -457,7 +458,6 @@ function handleCollapseActions(btn, action) {
   renderTimeMapsAndTasks(state.tasksTimeMapsCache);
   return true;
 }
-
 async function handleTaskActions(action, options = {}) {
   const handlers = [
     {
@@ -471,6 +471,10 @@ async function handleTaskActions(action, options = {}) {
     {
       when: Boolean(action.editId),
       run: () => openTaskEditById(action.editId, { switchView: options.switchView !== false })
+    },
+    {
+      when: Boolean(action.bulkEditId),
+      run: () => openBulkEditBanner(action.bulkEditId)
     },
     {
       when: Boolean(action.viewCalendarTaskId),
@@ -549,11 +553,9 @@ export async function deleteTasksWithUndo(taskIds = []) {
 }
 
 function handleMenuToggleAction(action) {
-  if (action.taskMenuToggleId === undefined) {return false;}
-  toggleTaskActionMenu(action.taskMenuToggleId);
+  if (action.taskMenuToggleId === undefined) {return false;} toggleTaskActionMenu(action.taskMenuToggleId);
   return true;
 }
-
 function handleTaskMenuToggle(action, btn) {
   if (action.taskMenuToggleId === undefined) {return false;}
   if (handleMenuToggleActionForButton(btn)) {return true;}
@@ -572,7 +574,6 @@ function handleMenuToggleActionForButton(btn) {
   toggleTaskActionMenu(taskId);
   return true;
 }
-
 async function handleCompleteAction(action) {
   if (action.completeTaskId === undefined) {return false;}
   await handleTaskComplete(action.completeTaskId);
@@ -600,7 +601,6 @@ async function handleChildSubsectionActions(action, btn) {
   }
   return false;
 }
-
 async function handleSectionSubsectionActions(action) {
   if (await handleSectionActions(action)) {return true;}
   if (await handleSubsectionActions(action)) {return true;}
@@ -614,10 +614,8 @@ async function handleTaskActionsWithClose(action, options = {}) {
   }
   return handled;
 }
-
 export async function handleTaskListClick(event, options = {}) {
-  const btn = event.target.closest("button");
-  if (!btn) {return;}
+  const btn = event.target.closest("button"); if (!btn) {return;}
   const action = parseTaskListClick(btn);
   const handlers = [
     () => handleAddTaskRowClick(btn),

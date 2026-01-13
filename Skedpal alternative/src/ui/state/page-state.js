@@ -33,5 +33,8 @@ export const state = {
   calendarExternalRange: null,
   calendarExternalRangeKey: "",
   calendarExternalPendingKey: "",
-  calendarExternalAllowFetch: false
+  calendarExternalAllowFetch: false,
+  bulkEditActive: false,
+  bulkEditCleanup: null,
+  bulkEditSelectionIds: []
 };

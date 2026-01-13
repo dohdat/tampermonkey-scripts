@@ -33,6 +33,17 @@ export function destroyTaskSortables() {
   state.sortableInstances = [];
 }
 
+export function setTaskSortablesEnabled(enabled) {
+  state.sortableInstances.forEach((instance) => {
+    if (!instance) {return;}
+    if (typeof instance.option === "function") {
+      instance.option("disabled", !enabled);
+      return;
+    }
+    instance.disabled = !enabled;
+  });
+}
+
 export function ensureSortableStyles() {
   if (document.getElementById(TASK_SORTABLE_STYLE_ID)) {return;}
   const style = document.createElement("style");
@@ -346,6 +357,9 @@ export function setupTaskSortables() {
     });
     state.sortableInstances.push(sortable);
   });
+  if (state.bulkEditActive) {
+    setTaskSortablesEnabled(false);
+  }
 }
 
 export async function indentTaskUnderPrevious(card) {

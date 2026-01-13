@@ -15,7 +15,12 @@ import {
   toggleClearButtonVisibility,
   uuid
 } from "../utils.js";
-import { buildTitleConversionPreviewHtml } from "../title-date-utils.js";
+import {
+  buildTitleConversionPreviewHtml,
+  parseTitleLiteralList,
+  pruneTitleLiteralList,
+  serializeTitleLiteralList
+} from "../title-date-utils.js";
 import { state } from "../state/page-state.js";
 import {
   renderTaskSectionOptions,
@@ -83,8 +88,30 @@ function setTaskTitleValue(value) {
   if (!taskTitleInput) {return;}
   taskTitleInput.maxLength = TASK_TITLE_MAX_LENGTH;
   taskTitleInput.value = value;
+  delete taskTitleInput.dataset.titleLiterals;
   updateTaskTitleHelper();
   updateTaskTitleConversionPreview();
+}
+
+function readTitleLiterals(input, value) {
+  if (!input) {return [];}
+  const stored = parseTitleLiteralList(input.dataset.titleLiterals);
+  const pruned = pruneTitleLiteralList(value, stored);
+  if (pruned.length) {
+    input.dataset.titleLiterals = serializeTitleLiteralList(pruned);
+  } else {
+    delete input.dataset.titleLiterals;
+  }
+  return pruned;
+}
+
+function addTitleLiteral(input, value, literal) {
+  if (!input || !literal) {return false;}
+  const existing = readTitleLiterals(input, value);
+  if (existing.includes(literal)) {return false;}
+  const next = [...existing, literal];
+  input.dataset.titleLiterals = serializeTitleLiteralList(next);
+  return true;
 }
 
 export function updateTaskTitleHelper() {
@@ -97,7 +124,8 @@ export function updateTaskTitleHelper() {
 export function updateTaskTitleConversionPreview() {
   if (!taskTitleInput || !taskTitleConversionPreview) {return;}
   const value = taskTitleInput.value || "";
-  const preview = buildTitleConversionPreviewHtml(value);
+  const literals = readTitleLiterals(taskTitleInput, value);
+  const preview = buildTitleConversionPreviewHtml(value, { literals });
   if (!preview.hasRanges) {
     taskTitleConversionPreview.textContent = "";
     taskTitleConversionPreview.classList.add("opacity-0", "pointer-events-none");
@@ -107,6 +135,20 @@ export function updateTaskTitleConversionPreview() {
     '<span class="text-slate-500" data-test-skedpal="task-title-conversion-prefix">Will convert: </span>';
   taskTitleConversionPreview.innerHTML = `${prefix}${preview.html}`;
   taskTitleConversionPreview.classList.remove("opacity-0", "pointer-events-none");
+}
+
+export function handleTaskTitleConversionPreviewClick(event) {
+  if (!taskTitleInput) {return;}
+  const target = event.target;
+  const chip = target?.closest?.("[data-title-literal]");
+  if (!chip) {return;}
+  const literal = chip.dataset?.titleLiteral || "";
+  if (!literal) {return;}
+  const value = taskTitleInput.value || "";
+  if (!addTitleLiteral(taskTitleInput, value, literal)) {return;}
+  updateTaskTitleConversionPreview();
+  event.preventDefault();
+  event.stopPropagation();
 }
 
 function setTaskFormCopy(copy) {

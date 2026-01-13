@@ -22,7 +22,10 @@ import {
 import {
   buildTitleConversionPreviewHtml,
   parseTitleDates,
-  resolveMergedDateRange
+  parseTitleLiteralList,
+  pruneTitleLiteralList,
+  resolveMergedDateRange,
+  serializeTitleLiteralList
 } from "../title-date-utils.js";
 
 const ADD_TASK_ROW_TEST_ID = "task-add-row";
@@ -46,7 +49,10 @@ function collapseAddTaskRow(row, options = {}) {
   row?.removeAttribute("data-add-task-active");
   if (input) {
     input.classList.add("hidden");
-    if (clear) {input.value = "";}
+    if (clear) {
+      input.value = "";
+      delete input.dataset.titleLiterals;
+    }
   }
   if (preview) {
     preview.textContent = "";
@@ -175,13 +181,35 @@ function normalizeClipboardTaskTitle(value) {
   return trimmed.replace(CLIPBOARD_BULLET_REGEX, "").trim();
 }
 
+function readTitleLiterals(input, value) {
+  if (!input) {return [];}
+  const stored = parseTitleLiteralList(input.dataset.titleLiterals);
+  const pruned = pruneTitleLiteralList(value, stored);
+  if (pruned.length) {
+    input.dataset.titleLiterals = serializeTitleLiteralList(pruned);
+  } else {
+    delete input.dataset.titleLiterals;
+  }
+  return pruned;
+}
+
+function addTitleLiteral(input, value, literal) {
+  if (!input || !literal) {return false;}
+  const existing = readTitleLiterals(input, value);
+  if (existing.includes(literal)) {return false;}
+  const next = [...existing, literal];
+  input.dataset.titleLiterals = serializeTitleLiteralList(next);
+  return true;
+}
+
 function updateAddTaskConversionPreview(input) {
   if (!input) {return;}
   const row = input.closest?.("[data-add-task-row]");
   const preview = row?.querySelector?.('[data-test-skedpal="task-add-conversion-preview"]');
   if (!preview) {return;}
   const value = input.value || "";
-  const result = buildTitleConversionPreviewHtml(value);
+  const literals = readTitleLiterals(input, value);
+  const result = buildTitleConversionPreviewHtml(value, { literals });
   if (!result.hasRanges) {
     preview.textContent = "";
     preview.classList.add("opacity-0", "pointer-events-none");
@@ -266,9 +294,10 @@ export function buildQuickAddTaskPayload({
   id = uuid(),
   parentTask = null,
   template = null,
-  settings = state.settingsCache
+  settings = state.settingsCache,
+  titleLiterals = []
 } = {}) {
-  const parsed = parseTitleDates(title);
+  const parsed = parseTitleDates(title, { literals: titleLiterals });
   const trimmedTitle = (parsed.title || "").trim().slice(0, TASK_TITLE_MAX_LENGTH);
   if (parentTask) {
     return buildQuickAddPayload({
@@ -338,12 +367,14 @@ export async function handleAddTaskInputSubmit(input) {
   const parentTask = parentId
     ? state.tasksCache.find((task) => task.id === parentId)
     : null;
+  const literals = readTitleLiterals(input, rawTitle);
   const payload = buildQuickAddTaskPayload({
     title: rawTitle,
     sectionId,
     subsectionId,
     tasks: state.tasksCache,
-    parentTask
+    parentTask,
+    titleLiterals: literals
   });
   await saveTask(payload);
   collapseAddTaskRowForInput(input);
@@ -356,6 +387,23 @@ export function handleAddTaskInputConversion(event) {
   if (!(input instanceof HTMLElement)) {return;}
   if (!input.matches("[data-add-task-input]")) {return;}
   updateAddTaskConversionPreview(input);
+}
+
+export function handleAddTaskLiteralClick(event) {
+  const target = event.target;
+  const chip = target?.closest?.("[data-title-literal]");
+  if (!chip) {return false;}
+  const row = chip.closest?.("[data-add-task-row]");
+  const input = row?.querySelector?.("[data-add-task-input]");
+  if (!input) {return false;}
+  const literal = chip.dataset?.titleLiteral || "";
+  if (!literal) {return false;}
+  const value = input.value || "";
+  if (!addTitleLiteral(input, value, literal)) {return false;}
+  updateAddTaskConversionPreview(input);
+  event.preventDefault();
+  event.stopPropagation();
+  return true;
 }
 
 export function buildAddTaskRow({

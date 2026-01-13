@@ -34,7 +34,12 @@ import {
   uuid,
   parseLocalDateInput
 } from "../utils.js";
-import { formatLocalDateInputValue, parseTitleDates } from "../title-date-utils.js";
+import {
+  formatLocalDateInputValue,
+  parseTitleDates,
+  parseTitleLiteralList,
+  pruneTitleLiteralList
+} from "../title-date-utils.js";
 import { state } from "../state/page-state.js";
 import {
   ensureDefaultSectionsPresent,
@@ -493,7 +498,9 @@ export async function handleTaskSubmit(event) {
   const values = getTaskFormValues();
   const selectedTemplateId = values.templateId;
   if (await maybeHandleTemplateSubmit(values)) {return;}
-  const parsed = parseTitleDates(values.title);
+  const storedLiterals = parseTitleLiteralList(domRefs.taskTitleInput?.dataset?.titleLiterals);
+  const literals = pruneTitleLiteralList(values.title, storedLiterals);
+  const parsed = parseTitleDates(values.title, { literals });
   if (parsed.title !== values.title) {
     values.title = parsed.title;
   }

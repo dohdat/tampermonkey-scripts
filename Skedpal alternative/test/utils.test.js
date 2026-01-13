@@ -33,8 +33,11 @@ const {
 } = await import("../src/ui/utils.js");
 const {
   buildTitleConversionPreviewHtml,
+  buildTitleUpdateFromInput,
   formatLocalDateInputValue,
   parseTitleDates,
+  parseTitleLiteralList,
+  pruneTitleLiteralList,
   resolveMergedDateRange
 } = await import(
   "../src/ui/title-date-utils.js"
@@ -254,6 +257,73 @@ describe("utils date parsing", () => {
     const preview = buildTitleConversionPreviewHtml("Plain title");
     assert.strictEqual(preview.hasRanges, false);
     assert.strictEqual(preview.html, "");
+  });
+
+  it("skips repeat parsing for literal terms", () => {
+    const parsed = parseTitleDates("Budget weekly", { literals: ["weekly"] });
+    assert.strictEqual(parsed.title, "Budget weekly");
+    assert.strictEqual(parsed.hasRepeat, false);
+  });
+
+  it("skips highlight for literal terms", () => {
+    const preview = buildTitleConversionPreviewHtml("Budget weekly", {
+      literals: ["weekly"]
+    });
+    assert.strictEqual(preview.hasRanges, false);
+  });
+
+  it("parses literal lists from dataset values", () => {
+    assert.deepStrictEqual(parseTitleLiteralList('["weekly","monthly"]'), [
+      "weekly",
+      "monthly"
+    ]);
+  });
+
+  it("prunes literals that are no longer present", () => {
+    const pruned = pruneTitleLiteralList("Hello world", ["weekly", "world"]);
+    assert.deepStrictEqual(pruned, ["world"]);
+  });
+
+  it("skips saving when parsed input is empty", () => {
+    const task = { deadline: null, startFrom: null, repeat: { type: "none" } };
+    const update = buildTitleUpdateFromInput({
+      task,
+      inputValue: "   ",
+      originalTitle: "Existing",
+      parsingActive: true,
+      literals: [],
+      maxLength: 200
+    });
+    assert.strictEqual(update.shouldSave, false);
+    assert.strictEqual(update.nextTitle, "Existing");
+  });
+
+  it("keeps dates when parsing is inactive", () => {
+    const task = { deadline: "2026-01-05", startFrom: "2026-01-04", repeat: { type: "none" } };
+    const update = buildTitleUpdateFromInput({
+      task,
+      inputValue: "Setup weekly",
+      originalTitle: "Setup weekly",
+      parsingActive: false,
+      literals: []
+    });
+    assert.strictEqual(update.nextTitle, "Setup weekly");
+    assert.strictEqual(update.nextDeadline, task.deadline);
+    assert.strictEqual(update.nextStartFrom, task.startFrom);
+  });
+
+  it("falls back to input title when parsed title is empty", () => {
+    const task = { deadline: null, startFrom: null, repeat: { type: "none" } };
+    const update = buildTitleUpdateFromInput({
+      task,
+      inputValue: "from tomorrow",
+      originalTitle: "from tomorrow",
+      parsingActive: true,
+      literals: [],
+      maxLength: 200
+    });
+    assert.strictEqual(update.nextTitle, "from tomorrow");
+    assert.strictEqual(update.shouldSave, true);
   });
 
   it("extracts weekday/weekend repeats", () => {

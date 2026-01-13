@@ -299,10 +299,33 @@ function mergeRanges(ranges) {
   return merged;
 }
 
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function findLiteralRanges(title, literals) {
+  if (!title || !Array.isArray(literals) || !literals.length) {return [];}
+  const ranges = [];
+  literals.forEach((literal) => {
+    if (!literal) {return;}
+    let index = title.indexOf(literal);
+    while (index >= 0) {
+      ranges.push({ start: index, end: index + literal.length });
+      index = title.indexOf(literal, index + literal.length);
+    }
+  });
+  return mergeRanges(ranges);
+}
+
+function doesRangeOverlap(range, ranges) {
+  return ranges.some((entry) => range.start < entry.end && range.end > entry.start);
+}
+
 export function getTitleConversionRanges(rawTitle, options = {}) {
   const title = typeof rawTitle === "string" ? rawTitle : "";
   if (!title) {return [];}
   const referenceDate = resolveReferenceDate(options);
+  const literalRanges = findLiteralRanges(title, options.literals);
   const ranges = [];
   [
     REPEAT_DAYLIST_REGEX,
@@ -326,7 +349,9 @@ export function getTitleConversionRanges(rawTitle, options = {}) {
       }
     }
   }
-  return mergeRanges(ranges);
+  const merged = mergeRanges(ranges);
+  if (!literalRanges.length) {return merged;}
+  return merged.filter((range) => !doesRangeOverlap(range, literalRanges));
 }
 
 function escapeHtml(value) {
@@ -350,9 +375,11 @@ export function buildTitleConversionPreviewHtml(rawTitle, options = {}) {
     if (cursor < range.start) {
       parts.push(escapeHtml(title.slice(cursor, range.start)));
     }
-    const matchText = escapeHtml(title.slice(range.start, range.end));
+    const rawMatchText = title.slice(range.start, range.end);
+    const matchText = escapeHtml(rawMatchText);
+    const attrText = escapeHtml(rawMatchText);
     parts.push(
-      `<span class="rounded bg-lime-400/10 px-1 text-lime-300" data-test-skedpal="task-title-conversion-highlight">${matchText}</span>`
+      `<span class="rounded bg-lime-400/10 px-1 text-lime-300" data-test-skedpal="task-title-conversion-highlight" data-title-literal="${attrText}">${matchText}</span>`
     );
     cursor = range.end;
   });
@@ -376,6 +403,34 @@ function buildParsedIsoDates(result) {
   const startIso = parseLocalDateInput(formatLocalDateInputValue(startDate));
   const endIso = parseLocalDateInput(formatLocalDateInputValue(endDate));
   return { startIso, endIso };
+}
+
+function applyLiteralTokens(title, literals) {
+  if (!title || !Array.isArray(literals) || !literals.length) {
+    return { tokenizedTitle: title, tokenMap: [] };
+  }
+  let tokenizedTitle = title;
+  const tokenMap = [];
+  literals.forEach((literal, index) => {
+    if (!literal) {return;}
+    const token = `__literal_${index}__`;
+    const regex = new RegExp(escapeRegex(literal), "g");
+    if (!regex.test(tokenizedTitle)) {return;}
+    tokenizedTitle = tokenizedTitle.replace(regex, token);
+    tokenMap.push({ token, literal });
+  });
+  return { tokenizedTitle, tokenMap };
+}
+
+function restoreLiteralTokens(title, tokenMap) {
+  if (!title || !Array.isArray(tokenMap) || !tokenMap.length) {return title;}
+  let restored = title;
+  tokenMap.forEach(({ token, literal }) => {
+    if (!token || !literal) {return;}
+    const regex = new RegExp(escapeRegex(token), "g");
+    restored = restored.replace(regex, literal);
+  });
+  return restored;
 }
 
 function normalizeParsedDateRange(startFrom, deadline) {
@@ -420,33 +475,112 @@ export function resolveMergedDateRange({
   return { startFrom: null, deadline };
 }
 
-export function parseTitleDates(rawTitle, options = {}) {
-  const baseTitle = typeof rawTitle === "string" ? rawTitle.trim() : "";
-  const referenceDate = resolveReferenceDate(options);
-  const repeatParsed = parseTitleRepeat(baseTitle, referenceDate);
-  const title = repeatParsed.title || "";
-  if (!title) {
-    return {
-      title: "",
-      startFrom: null,
-      deadline: null,
-      hasDate: false,
-      repeat: repeatParsed.repeat,
-      hasRepeat: repeatParsed.hasRepeat
-    };
+function clampTitleLength(value, maxLength) {
+  const lengthLimit = Number.isFinite(maxLength) ? maxLength : Infinity;
+  return (value || "").trim().slice(0, lengthLimit);
+}
+
+function buildTitleUpdateWithoutParsing(task, nextTitle, originalTitle) {
+  const shouldSave = nextTitle !== originalTitle;
+  return {
+    shouldSave,
+    nextTitle,
+    nextDeadline: task.deadline,
+    nextStartFrom: task.startFrom,
+    nextRepeat: task.repeat
+  };
+}
+
+function buildTitleUpdateWithParsing({
+  task,
+  inputValue,
+  originalTitle,
+  literals,
+  maxLength,
+  fallbackTitle
+}) {
+  const parsed = parseTitleDates(inputValue, { literals });
+  const parsedTitle = clampTitleLength(parsed.title, maxLength);
+  const safeTitle = parsedTitle || fallbackTitle;
+  const resolvedDates = resolveMergedDateRange({
+    startFrom: parsed.startFrom ?? task.startFrom,
+    deadline: parsed.deadline ?? task.deadline,
+    startFromSource: parsed.startFrom ? "parsed" : "existing",
+    deadlineSource: parsed.deadline ? "parsed" : "existing"
+  });
+  const nextDeadline = resolvedDates.deadline;
+  const nextStartFrom = resolvedDates.startFrom;
+  const nextRepeat = parsed.repeat ?? task.repeat;
+  const shouldSave =
+    safeTitle !== originalTitle ||
+    nextDeadline !== task.deadline ||
+    nextStartFrom !== task.startFrom ||
+    nextRepeat !== task.repeat;
+  return {
+    shouldSave,
+    nextTitle: safeTitle,
+    nextDeadline,
+    nextStartFrom,
+    nextRepeat
+  };
+}
+
+export function buildTitleUpdateFromInput({
+  task,
+  inputValue,
+  originalTitle,
+  parsingActive,
+  literals,
+  maxLength
+}) {
+  const nextTitle = clampTitleLength(inputValue, maxLength);
+  if (!nextTitle) {
+    return { shouldSave: false, nextTitle: originalTitle };
   }
-  const match = getChronoMatch(title, referenceDate);
-  if (!match) {
-    return {
-      title,
-      startFrom: null,
-      deadline: null,
-      hasDate: false,
-      repeat: repeatParsed.repeat,
-      hasRepeat: repeatParsed.hasRepeat
-    };
+  if (!parsingActive) {
+    return buildTitleUpdateWithoutParsing(task, nextTitle, originalTitle);
   }
-  const cleanedTitle = buildCleanedTitle(title, match.matchText, match.matchIndex);
+  return buildTitleUpdateWithParsing({
+    task,
+    inputValue,
+    originalTitle,
+    literals,
+    maxLength,
+    fallbackTitle: nextTitle
+  });
+}
+
+export function parseTitleLiteralList(value) {
+  if (!value) {return [];}
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function serializeTitleLiteralList(list) {
+  return JSON.stringify(Array.isArray(list) ? list.filter(Boolean) : []);
+}
+
+export function pruneTitleLiteralList(title, list) {
+  if (!title || !Array.isArray(list)) {return [];}
+  return list.filter((literal) => literal && title.includes(literal));
+}
+
+function buildTitleParseResult({ title, tokenMap, repeatParsed, startFrom, deadline, hasDate }) {
+  return {
+    title: restoreLiteralTokens(title, tokenMap),
+    startFrom: startFrom ?? null,
+    deadline: deadline ?? null,
+    hasDate: Boolean(hasDate),
+    repeat: repeatParsed.repeat,
+    hasRepeat: repeatParsed.hasRepeat
+  };
+}
+
+function resolveChronoMatchDates(title, match) {
   const { startIso, endIso } = buildParsedIsoDates(match.result);
   let startFrom = null;
   let deadline = null;
@@ -463,11 +597,48 @@ export function parseTitleDates(rawTitle, options = {}) {
   }
   const normalized = normalizeParsedDateRange(startFrom, deadline);
   return {
-    title: cleanedTitle,
     startFrom: normalized.startFrom,
     deadline: normalized.deadline,
-    hasDate: Boolean(startIso || endIso),
-    repeat: repeatParsed.repeat,
-    hasRepeat: repeatParsed.hasRepeat
+    hasDate: Boolean(startIso || endIso)
   };
+}
+
+export function parseTitleDates(rawTitle, options = {}) {
+  const baseTitle = typeof rawTitle === "string" ? rawTitle.trim() : "";
+  const literals = Array.isArray(options.literals) ? options.literals : [];
+  const referenceDate = resolveReferenceDate(options);
+  const { tokenizedTitle, tokenMap } = applyLiteralTokens(baseTitle, literals);
+  const repeatParsed = parseTitleRepeat(tokenizedTitle, referenceDate);
+  const title = repeatParsed.title || "";
+  if (!title) {
+    return buildTitleParseResult({
+      title: "",
+      tokenMap,
+      repeatParsed,
+      startFrom: null,
+      deadline: null,
+      hasDate: false
+    });
+  }
+  const match = getChronoMatch(title, referenceDate);
+  if (!match) {
+    return buildTitleParseResult({
+      title,
+      tokenMap,
+      repeatParsed,
+      startFrom: null,
+      deadline: null,
+      hasDate: false
+    });
+  }
+  const cleanedTitle = buildCleanedTitle(title, match.matchText, match.matchIndex);
+  const resolved = resolveChronoMatchDates(title, match);
+  return buildTitleParseResult({
+    title: cleanedTitle,
+    tokenMap,
+    repeatParsed,
+    startFrom: resolved.startFrom,
+    deadline: resolved.deadline,
+    hasDate: resolved.hasDate
+  });
 }

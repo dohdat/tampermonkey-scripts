@@ -1,5 +1,6 @@
 import { domRefs } from "./constants.js";
 import {
+  handleTaskTitleConversionPreviewClick,
   updateTaskTitleConversionPreview,
   updateTaskTitleHelper
 } from "./tasks/task-form-ui.js";
@@ -8,7 +9,10 @@ import {
   handleTaskListClick,
   handleTaskTitleDoubleClick
 } from "./tasks/task-list-actions.js";
-import { handleAddTaskInputConversion } from "./tasks/task-add-row.js";
+import {
+  handleAddTaskInputConversion,
+  handleAddTaskLiteralClick
+} from "./tasks/task-add-row.js";
 import { initTaskTemplateSelect } from "./tasks/task-template-select.js";
 import { initTaskListAssistant } from "./tasks/task-ai.js";
 import {
@@ -61,6 +65,7 @@ function handleTaskToggleClick() {
 }
 
 async function handleTaskListClickEvent(event) {
+  if (handleAddTaskLiteralClick(event)) {return;}
   await handleTaskListClick(event);
 }
 
@@ -163,6 +168,18 @@ function setupTaskTitle(cleanupFns) {
   updateTaskTitleHelper();
   updateTaskTitleConversionPreview();
   cleanupFns.push(() => domRefs.taskTitleInput?.removeEventListener("input", handleTitleInput));
+  if (domRefs.taskTitleConversionPreview) {
+    domRefs.taskTitleConversionPreview.addEventListener(
+      "click",
+      handleTaskTitleConversionPreviewClick
+    );
+    cleanupFns.push(() =>
+      domRefs.taskTitleConversionPreview?.removeEventListener(
+        "click",
+        handleTaskTitleConversionPreviewClick
+      )
+    );
+  }
 }
 
 function setupTaskPriority(cleanupFns) {

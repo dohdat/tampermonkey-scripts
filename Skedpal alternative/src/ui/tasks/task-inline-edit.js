@@ -2,8 +2,10 @@ import { saveTask } from "../../data/db.js";
 import { INDEX_NOT_FOUND, TASK_TITLE_MAX_LENGTH } from "../constants.js";
 import {
   buildTitleConversionPreviewHtml,
-  parseTitleDates,
-  resolveMergedDateRange
+  buildTitleUpdateFromInput,
+  parseTitleLiteralList,
+  pruneTitleLiteralList,
+  serializeTitleLiteralList
 } from "../title-date-utils.js";
 import { state } from "../state/page-state.js";
 import { loadTasks } from "./tasks-actions.js";
@@ -106,7 +108,14 @@ function setInlineTitleRowEditing(titleEl, isEditing) {
 function updateInlineTitleConversionPreview(input, preview) {
   if (!input || !preview) {return;}
   const value = input.value || "";
-  const result = buildTitleConversionPreviewHtml(value);
+  const stored = parseTitleLiteralList(input.dataset.titleLiterals);
+  const literals = pruneTitleLiteralList(value, stored);
+  if (literals.length) {
+    input.dataset.titleLiterals = serializeTitleLiteralList(literals);
+  } else {
+    delete input.dataset.titleLiterals;
+  }
+  const result = buildTitleConversionPreviewHtml(value, { literals });
   if (!result.hasRanges) {
     preview.textContent = "";
     preview.classList.add("opacity-0", "pointer-events-none");
@@ -126,49 +135,71 @@ function createInlineTitleConversionPreview(titleEl, input) {
   titleEl.appendChild(preview);
 
   function handleInlineTitleInput() {
+    ensureInlineTitleParsingState(input, true);
     updateInlineTitleConversionPreview(input, preview);
   }
 
+  function handleInlineTitleLiteralClick(event) {
+    const chip = event.target?.closest?.("[data-title-literal]");
+    if (!chip) {return;}
+    const literal = chip.dataset?.titleLiteral || "";
+    if (!literal) {return;}
+    const value = input.value || "";
+    const stored = parseTitleLiteralList(input.dataset.titleLiterals);
+    const literals = pruneTitleLiteralList(value, stored);
+    if (!literals.includes(literal)) {
+      input.dataset.titleLiterals = serializeTitleLiteralList([...literals, literal]);
+      updateInlineTitleConversionPreview(input, preview);
+    }
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function handleInlineTitlePreviewPointerDown(event) {
+    event.preventDefault();
+    input.focus();
+  }
+
   input.addEventListener("input", handleInlineTitleInput);
+  preview.addEventListener("click", handleInlineTitleLiteralClick);
+  preview.addEventListener("pointerdown", handleInlineTitlePreviewPointerDown);
   updateInlineTitleConversionPreview(input, preview);
 
   return () => {
     input.removeEventListener("input", handleInlineTitleInput);
+    preview.removeEventListener("click", handleInlineTitleLiteralClick);
+    preview.removeEventListener("pointerdown", handleInlineTitlePreviewPointerDown);
     preview.remove();
   };
 }
 
-function resolveInlineTitleDates(task, parsed) {
-  return resolveMergedDateRange({
-    startFrom: parsed.startFrom ?? task.startFrom,
-    deadline: parsed.deadline ?? task.deadline,
-    startFromSource: parsed.startFrom ? "parsed" : "existing",
-    deadlineSource: parsed.deadline ? "parsed" : "existing"
+function resolveInlineLiteralList(inputValue, input) {
+  const stored = parseTitleLiteralList(input?.dataset?.titleLiterals);
+  return pruneTitleLiteralList(inputValue, stored);
+}
+
+function resolveInlineTitleUpdate(task, input, originalTitle) {
+  const inputValue = input?.value || "";
+  const parsingActive = input?.dataset?.titleParsingActive === "true";
+  const literals = resolveInlineLiteralList(inputValue, input);
+  return buildTitleUpdateFromInput({
+    task,
+    inputValue,
+    originalTitle,
+    parsingActive,
+    literals,
+    maxLength: TASK_TITLE_MAX_LENGTH
   });
 }
 
-function resolveInlineTitleUpdate(task, inputValue, originalTitle) {
-  const parsed = parseTitleDates(inputValue);
-  const nextTitle = (parsed.title || "").trim().slice(0, TASK_TITLE_MAX_LENGTH);
-  if (!nextTitle) {
-    return { shouldSave: false, nextTitle: originalTitle };
-  }
-  const resolvedDates = resolveInlineTitleDates(task, parsed);
-  const nextDeadline = resolvedDates.deadline;
-  const nextStartFrom = resolvedDates.startFrom;
-  const nextRepeat = parsed.repeat ?? task.repeat;
-  const shouldSave =
-    nextTitle !== originalTitle ||
-    nextDeadline !== task.deadline ||
-    nextStartFrom !== task.startFrom ||
-    nextRepeat !== task.repeat;
-  return {
-    shouldSave,
-    nextTitle,
-    nextDeadline,
-    nextStartFrom,
-    nextRepeat
-  };
+function ensureInlineTitleParsingState(input, isActive) {
+  if (!input) {return;}
+  input.dataset.titleParsingActive = isActive ? "true" : "false";
+}
+
+function clearInlineTitleParsingState(input) {
+  if (!input) {return;}
+  delete input.dataset.titleParsingActive;
 }
 
 function startInlineTitleEdit(titleEl, task, options = {}) {
@@ -182,6 +213,7 @@ function startInlineTitleEdit(titleEl, task, options = {}) {
   input.className =
     "w-full rounded-md border border-slate-700 bg-slate-900/70 px-2 py-1 text-sm text-slate-100 focus:border-lime-400 focus:outline-none";
   input.maxLength = TASK_TITLE_MAX_LENGTH;
+  ensureInlineTitleParsingState(input, false);
   input.setAttribute("data-test-skedpal", "task-title-inline-input");
   titleEl.dataset.inlineEditing = "true";
   titleEl.dataset.inlineEditingTaskId = task.id;
@@ -200,11 +232,12 @@ function startInlineTitleEdit(titleEl, task, options = {}) {
     cleanupInlineTitleEdit();
     cleanupPreview();
     setInlineTitleRowEditing(titleEl, false);
+    clearInlineTitleParsingState(input);
     if (!shouldSave) {
       restoreInlineTitle(titleEl, originalTitle);
       return;
     }
-    const update = resolveInlineTitleUpdate(task, input.value, originalTitle);
+    const update = resolveInlineTitleUpdate(task, input, originalTitle);
     if (!update.shouldSave) {
       restoreInlineTitle(titleEl, originalTitle);
       return;

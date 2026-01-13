@@ -383,6 +383,54 @@
               </div>
             </label>
             </div>
+            <div
+              class="task-modal__section-grid task-modal__section-grid--two"
+              data-test-skedpal="task-modal-section-organization-grid"
+            >
+              <label class="field" data-test-skedpal="task-section-field">
+                <span class="field-label">Section</span>
+                <select id="task-section" class="field-input"></select>
+              </label>
+              <label class="field" data-test-skedpal="task-subsection-field">
+                <span class="field-label">Subsection</span>
+                <select id="task-subsection" class="field-input"></select>
+              </label>
+              <label
+                class="field hidden"
+                id="task-subtask-schedule-wrap"
+                data-test-skedpal="task-subtask-schedule-wrap"
+              >
+                <span class="field-label">Subtask scheduling</span>
+                <select
+                  id="task-subtask-schedule"
+                  class="field-input"
+                  data-test-skedpal="task-subtask-schedule"
+                >
+                  <option value="parallel">Parallel</option>
+                  <option value="sequential">Sequential</option>
+                  <option value="sequential-single">Sequential (One at a time)</option>
+                </select>
+              </label>
+              <label class="field" data-test-skedpal="task-template-field">
+                <span class="field-label" data-test-skedpal="task-template-label">
+                  Template (optional)
+                </span>
+                <select
+                  id="task-template-select"
+                  class="field-input"
+                  data-test-skedpal="task-template-select"
+                >
+                  <option
+                    value=""
+                    selected
+                    disabled
+                    data-test-skedpal="task-template-select-placeholder"
+                  >
+                    Choose a template...
+                  </option>
+                </select>
+              </label>
+            </div>
           </div>
         </div>
         <div
@@ -518,109 +566,6 @@
                   <option value="none" selected>Does not repeat</option>
                   <option value="custom">Saved pattern</option>
                   <option value="custom-new">Custom...</option>
-                </select>
-              </label>
-            </div>
-          </div>
-        </div>
-        <div
-          class="task-modal__section"
-          data-test-skedpal="task-modal-section-organization"
-          data-collapsible="true"
-          data-collapsed="true"
-        >
-          <div class="task-modal__section-header" data-test-skedpal="task-modal-section-organization-header">
-            <div class="task-modal__section-icon" data-test-skedpal="task-modal-section-organization-icon">
-              <svg viewBox="0 0 24 24" aria-hidden="true" data-test-skedpal="task-modal-section-organization-icon-svg">
-                <path
-                  d="M4 6h7v5H4zM13 6h7v5h-7zM4 13h7v5H4zM13 13h7v5h-7z"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.4"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                ></path>
-              </svg>
-            </div>
-            <div class="task-modal__section-text" data-test-skedpal="task-modal-section-organization-text">
-              <p class="task-modal__section-title" data-test-skedpal="task-modal-section-organization-title">
-                Organization
-              </p>
-            </div>
-            <button
-              type="button"
-              class="task-modal__section-toggle"
-              data-test-skedpal="task-modal-section-organization-toggle"
-              aria-expanded="false"
-              aria-controls="task-modal-section-organization-content"
-            >
-              <svg
-                viewBox="0 0 20 20"
-                aria-hidden="true"
-                class="task-modal__section-toggle-icon"
-                data-test-skedpal="task-modal-section-organization-toggle-icon"
-              >
-                <path
-                  d="m5 7 5 5 5-5"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.6"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                ></path>
-              </svg>
-            </button>
-          </div>
-          <div
-            class="task-modal__section-content"
-            id="task-modal-section-organization-content"
-            data-test-skedpal="task-modal-section-organization-content"
-          >
-            <div
-              class="task-modal__section-grid task-modal__section-grid--two"
-              data-test-skedpal="task-modal-section-organization-grid"
-            >
-              <label class="field" data-test-skedpal="task-section-field">
-                <span class="field-label">Section</span>
-                <select id="task-section" class="field-input"></select>
-              </label>
-              <label class="field" data-test-skedpal="task-subsection-field">
-                <span class="field-label">Subsection</span>
-                <select id="task-subsection" class="field-input"></select>
-              </label>
-              <label
-                class="field hidden"
-                id="task-subtask-schedule-wrap"
-                data-test-skedpal="task-subtask-schedule-wrap"
-              >
-                <span class="field-label">Subtask scheduling</span>
-                <select
-                  id="task-subtask-schedule"
-                  class="field-input"
-                  data-test-skedpal="task-subtask-schedule"
-                >
-                  <option value="parallel">Parallel</option>
-                  <option value="sequential">Sequential</option>
-                  <option value="sequential-single">Sequential (One at a time)</option>
-                </select>
-              </label>
-              <label class="field" data-test-skedpal="task-template-field">
-                <span class="field-label" data-test-skedpal="task-template-label">
-                  Template (optional)
-                </span>
-                <select
-                  id="task-template-select"
-                  class="field-input"
-                  data-test-skedpal="task-template-select"
-                >
-                  <option
-                    value=""
-                    selected
-                    disabled
-                    data-test-skedpal="task-template-select-placeholder"
-                  >
-                    Choose a template...
-                  </option>
                 </select>
               </label>
             </div>

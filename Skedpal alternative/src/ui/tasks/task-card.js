@@ -7,6 +7,8 @@ import {
   calendarIconSvg,
   duplicateIconSvg,
   editIconSvg,
+  eyeIconSvg,
+  eyeOffIconSvg,
   outOfRangeIconSvg,
   plusIconSvg,
   reminderIconSvg,
@@ -214,7 +216,7 @@ function buildDetailsToggleButton(taskId, detailsOpen) {
   detailsToggleBtn.title = detailsOpen ? "Hide details" : "Show details";
   detailsToggleBtn.setAttribute("aria-label", detailsOpen ? "Hide details" : "Show details");
   detailsToggleBtn.setAttribute("data-test-skedpal", "task-details-toggle");
-  detailsToggleBtn.innerHTML = detailsOpen ? caretDownIconSvg : caretRightIconSvg;
+  detailsToggleBtn.innerHTML = detailsOpen ? eyeOffIconSvg : eyeIconSvg;
   return detailsToggleBtn;
 }
 

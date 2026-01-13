@@ -1,5 +1,6 @@
 import { saveTask } from "../../data/db.js";
 import { INDEX_NOT_FOUND, TASK_TITLE_MAX_LENGTH } from "../constants.js";
+import { parseTitleDates } from "../title-date-utils.js";
 import { state } from "../state/page-state.js";
 import { loadTasks } from "./tasks-actions.js";
 
@@ -120,12 +121,28 @@ function startInlineTitleEdit(titleEl, task, options = {}) {
       restoreInlineTitle(titleEl, originalTitle);
       return;
     }
-    const nextTitle = input.value.trim().slice(0, TASK_TITLE_MAX_LENGTH);
-    if (!nextTitle || nextTitle === originalTitle) {
+    const parsed = parseTitleDates(input.value);
+    const nextTitle = (parsed.title || "").trim().slice(0, TASK_TITLE_MAX_LENGTH);
+    if (!nextTitle) {
       restoreInlineTitle(titleEl, originalTitle);
       return;
     }
-    await saveTask({ ...task, title: nextTitle });
+    const nextDeadline = parsed.deadline ?? task.deadline;
+    const nextStartFrom = parsed.startFrom ?? task.startFrom;
+    if (
+      nextTitle === originalTitle &&
+      nextDeadline === task.deadline &&
+      nextStartFrom === task.startFrom
+    ) {
+      restoreInlineTitle(titleEl, originalTitle);
+      return;
+    }
+    await saveTask({
+      ...task,
+      title: nextTitle,
+      deadline: nextDeadline,
+      startFrom: nextStartFrom
+    });
     await loadTasks();
   }
 

@@ -31,6 +31,9 @@ const {
   normalizeSubtaskScheduleMode,
   resolveTimeMapIdsAfterDelete
 } = await import("../src/ui/utils.js");
+const { formatLocalDateInputValue, parseTitleDates } = await import(
+  "../src/ui/title-date-utils.js"
+);
 
 describe("utils date parsing", () => {
   it("parses date input as local midnight ISO", () => {
@@ -52,6 +55,76 @@ describe("utils date parsing", () => {
     assert.strictEqual(isStartAfterDeadline("2026-01-08", "2026-01-07"), true);
     assert.strictEqual(isStartAfterDeadline("2026-01-07", "2026-01-07"), false);
     assert.strictEqual(isStartAfterDeadline("", "2026-01-07"), false);
+  });
+
+  it("formats local date input values", () => {
+    const date = new Date(2026, 0, 9, 13, 45, 0);
+    assert.strictEqual(formatLocalDateInputValue(date), "2026-01-09");
+  });
+
+  it("returns empty for invalid local date input values", () => {
+    const badDate = new Date("bad");
+    assert.strictEqual(formatLocalDateInputValue(badDate), "");
+  });
+
+  it("extracts deadlines from titles", () => {
+    const referenceDate = new Date(2026, 0, 5, 9, 0, 0);
+    const parsed = parseTitleDates("Pay rent tomorrow", { referenceDate });
+    assert.strictEqual(parsed.title, "Pay rent");
+    assert.strictEqual(parsed.deadline, parseLocalDateInput("2026-01-06"));
+    assert.strictEqual(parsed.startFrom, null);
+    assert.strictEqual(parsed.hasDate, true);
+  });
+
+  it("extracts start dates from titles with start keywords", () => {
+    const referenceDate = new Date(2026, 0, 5, 9, 0, 0);
+    const parsed = parseTitleDates("From next Monday Roadmap", { referenceDate });
+    assert.strictEqual(parsed.title, "Roadmap");
+    assert.strictEqual(parsed.startFrom, parseLocalDateInput("2026-01-12"));
+    assert.strictEqual(parsed.deadline, null);
+    assert.strictEqual(parsed.hasDate, true);
+  });
+
+  it("handles titles without dates", () => {
+    const parsed = parseTitleDates("Plain title");
+    assert.strictEqual(parsed.title, "Plain title");
+    assert.strictEqual(parsed.startFrom, null);
+    assert.strictEqual(parsed.deadline, null);
+    assert.strictEqual(parsed.hasDate, false);
+  });
+
+  it("keeps empty titles empty when parsing", () => {
+    const parsed = parseTitleDates("   ");
+    assert.strictEqual(parsed.title, "");
+    assert.strictEqual(parsed.hasDate, false);
+  });
+
+  it("handles non-string titles when parsing", () => {
+    const parsed = parseTitleDates(null);
+    assert.strictEqual(parsed.title, "");
+    assert.strictEqual(parsed.hasDate, false);
+  });
+
+  it("extracts deadline when deadline keywords are used", () => {
+    const referenceDate = new Date(2026, 0, 5, 9, 0, 0);
+    const parsed = parseTitleDates("Due tomorrow Report", { referenceDate });
+    assert.strictEqual(parsed.title, "Report");
+    assert.strictEqual(parsed.deadline, parseLocalDateInput("2026-01-06"));
+  });
+
+  it("extracts ranges when both start and end are present", () => {
+    const parsed = parseTitleDates("Vacation Jan 10 2026 to Jan 12 2026");
+    assert.strictEqual(parsed.title, "Vacation");
+    assert.strictEqual(parsed.startFrom, parseLocalDateInput("2026-01-10"));
+    assert.strictEqual(parsed.deadline, parseLocalDateInput("2026-01-12"));
+    assert.strictEqual(parsed.hasDate, true);
+  });
+
+  it("keeps the title when only a date is provided", () => {
+    const referenceDate = new Date(2026, 0, 5, 9, 0, 0);
+    const parsed = parseTitleDates("tomorrow", { referenceDate });
+    assert.strictEqual(parsed.title, "tomorrow");
+    assert.strictEqual(parsed.deadline, parseLocalDateInput("2026-01-06"));
   });
 });
 

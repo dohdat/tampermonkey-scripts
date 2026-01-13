@@ -25,5 +25,8 @@
       "test/**",
       "vendor/**"
     ]
+  },
+  "dependencies": {
+    "chrono-node": "^2.9.0"
   }
 }

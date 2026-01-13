@@ -19,6 +19,7 @@ import {
   parseLocalDateInput,
   uuid
 } from "../utils.js";
+import { parseTitleDates } from "../title-date-utils.js";
 
 const ADD_TASK_ROW_TEST_ID = "task-add-row";
 const ADD_TASK_BUTTON_TEST_ID = "task-add-button";
@@ -117,6 +118,48 @@ function resolveQuickAddOrder(parentTask, sectionId, subsectionId, tasks) {
   return getNextOrder(sectionId, subsectionId, tasks);
 }
 
+function resolveTemplateRepeat(template) {
+  return template?.repeat ? { ...template.repeat } : { ...DEFAULT_TASK_REPEAT };
+}
+
+function resolveTemplateScheduleMode(template) {
+  return normalizeSubtaskScheduleMode(
+    template?.subtaskScheduleMode || SUBTASK_SCHEDULE_PARALLEL
+  );
+}
+
+function resolveTemplateDeadline(template) {
+  return parseLocalDateInput(template?.deadline || "");
+}
+
+function resolveTemplateStartFrom(template) {
+  return parseLocalDateInput(template?.startFrom || "");
+}
+
+function resolveTemplateLink(template) {
+  return template?.link || "";
+}
+
+function resolveQuickAddDefaults(resolvedTemplate, settings) {
+  return {
+    durationMin: resolveNumber(
+      resolvedTemplate?.durationMin,
+      DEFAULT_TASK_DURATION_MIN
+    ),
+    minBlockMin: resolveNumber(
+      resolvedTemplate?.minBlockMin,
+      DEFAULT_TASK_MIN_BLOCK_MIN
+    ),
+    priority: resolveNumber(resolvedTemplate?.priority, DEFAULT_TASK_PRIORITY),
+    timeMapIds: resolveTimeMapIds(resolvedTemplate, settings),
+    repeat: resolveTemplateRepeat(resolvedTemplate),
+    subtaskScheduleMode: resolveTemplateScheduleMode(resolvedTemplate),
+    deadline: resolveTemplateDeadline(resolvedTemplate),
+    startFrom: resolveTemplateStartFrom(resolvedTemplate),
+    link: resolveTemplateLink(resolvedTemplate)
+  };
+}
+
 function normalizeClipboardTaskTitle(value) {
   const trimmed = (value || "").trim();
   if (!trimmed) {return "";}
@@ -131,11 +174,14 @@ export function parseClipboardTaskTitles(text) {
     .filter(Boolean);
 }
 
-function buildQuickAddBasePayload({
+function buildQuickAddPayload({
   id,
   title,
+  parsedDeadline,
+  parsedStartFrom,
   sectionId,
   subsectionId,
+  parentTask,
   tasks,
   template,
   settings
@@ -143,101 +189,27 @@ function buildQuickAddBasePayload({
   const { inheritedSection, inheritedSubsection, resolvedTemplate } = resolveQuickAddContext(
     sectionId,
     subsectionId,
-    null,
-    template
-  );
-  const durationMin = resolveNumber(
-    resolvedTemplate?.durationMin,
-    DEFAULT_TASK_DURATION_MIN
-  );
-  const minBlockMin = resolveNumber(
-    resolvedTemplate?.minBlockMin,
-    DEFAULT_TASK_MIN_BLOCK_MIN
-  );
-  const priority = resolveNumber(resolvedTemplate?.priority, DEFAULT_TASK_PRIORITY);
-  const timeMapIds = resolveTimeMapIds(resolvedTemplate, settings);
-  const repeat = resolvedTemplate?.repeat ? { ...resolvedTemplate.repeat } : { ...DEFAULT_TASK_REPEAT };
-  const subtaskScheduleMode = normalizeSubtaskScheduleMode(
-    resolvedTemplate?.subtaskScheduleMode || SUBTASK_SCHEDULE_PARALLEL
-  );
-  const deadline = parseLocalDateInput(resolvedTemplate?.deadline || "");
-  const startFrom = parseLocalDateInput(resolvedTemplate?.startFrom || "");
-  const order = resolveQuickAddOrder(null, inheritedSection, inheritedSubsection, tasks);
-  return {
-    id,
-    title,
-    durationMin,
-    minBlockMin,
-    priority,
-    deadline,
-    startFrom,
-    link: resolvedTemplate?.link || "",
-    timeMapIds,
-    section: inheritedSection || "",
-    subsection: inheritedSubsection || "",
-    order,
-    subtaskParentId: null,
-    subtaskScheduleMode,
-    repeat,
-    reminders: [],
-    completed: false,
-    completedAt: null,
-    completedOccurrences: [],
-    scheduleStatus: TASK_STATUS_UNSCHEDULED,
-    scheduledStart: null,
-    scheduledEnd: null,
-    scheduledTimeMapId: null,
-    scheduledInstances: []
-  };
-}
-
-function buildQuickAddParentPayload({
-  id,
-  title,
-  parentTask,
-  tasks,
-  template,
-  settings
-}) {
-  const { inheritedSection, inheritedSubsection, resolvedTemplate } = resolveQuickAddContext(
-    "",
-    "",
     parentTask,
     template
   );
-  const durationMin = resolveNumber(
-    resolvedTemplate?.durationMin,
-    DEFAULT_TASK_DURATION_MIN
-  );
-  const minBlockMin = resolveNumber(
-    resolvedTemplate?.minBlockMin,
-    DEFAULT_TASK_MIN_BLOCK_MIN
-  );
-  const priority = resolveNumber(resolvedTemplate?.priority, DEFAULT_TASK_PRIORITY);
-  const timeMapIds = resolveTimeMapIds(resolvedTemplate, settings);
-  const repeat = resolvedTemplate?.repeat ? { ...resolvedTemplate.repeat } : { ...DEFAULT_TASK_REPEAT };
-  const subtaskScheduleMode = normalizeSubtaskScheduleMode(
-    resolvedTemplate?.subtaskScheduleMode || SUBTASK_SCHEDULE_PARALLEL
-  );
-  const deadline = parseLocalDateInput(resolvedTemplate?.deadline || "");
-  const startFrom = parseLocalDateInput(resolvedTemplate?.startFrom || "");
+  const defaults = resolveQuickAddDefaults(resolvedTemplate, settings);
   const order = resolveQuickAddOrder(parentTask, inheritedSection, inheritedSubsection, tasks);
   const basePayload = {
     id,
     title,
-    durationMin,
-    minBlockMin,
-    priority,
-    deadline,
-    startFrom,
-    link: resolvedTemplate?.link || "",
-    timeMapIds,
+    durationMin: defaults.durationMin,
+    minBlockMin: defaults.minBlockMin,
+    priority: defaults.priority,
+    deadline: parsedDeadline ?? defaults.deadline,
+    startFrom: parsedStartFrom ?? defaults.startFrom,
+    link: defaults.link,
+    timeMapIds: defaults.timeMapIds,
     section: inheritedSection || "",
     subsection: inheritedSubsection || "",
     order,
     subtaskParentId: null,
-    subtaskScheduleMode,
-    repeat,
+    subtaskScheduleMode: defaults.subtaskScheduleMode,
+    repeat: defaults.repeat,
     reminders: [],
     completed: false,
     completedAt: null,
@@ -248,6 +220,7 @@ function buildQuickAddParentPayload({
     scheduledTimeMapId: null,
     scheduledInstances: []
   };
+  if (!parentTask) {return basePayload;}
   return buildInheritedSubtaskUpdate(basePayload, parentTask) || basePayload;
 }
 
@@ -261,22 +234,28 @@ export function buildQuickAddTaskPayload({
   template = null,
   settings = state.settingsCache
 } = {}) {
-  const trimmedTitle = (title || "").trim().slice(0, TASK_TITLE_MAX_LENGTH);
+  const parsed = parseTitleDates(title);
+  const trimmedTitle = (parsed.title || "").trim().slice(0, TASK_TITLE_MAX_LENGTH);
   if (parentTask) {
-    return buildQuickAddParentPayload({
+    return buildQuickAddPayload({
       id,
       title: trimmedTitle,
+      parsedDeadline: parsed.deadline,
+      parsedStartFrom: parsed.startFrom,
       parentTask,
       tasks,
       template,
       settings
     });
   }
-  return buildQuickAddBasePayload({
+  return buildQuickAddPayload({
     id,
     title: trimmedTitle,
+    parsedDeadline: parsed.deadline,
+    parsedStartFrom: parsed.startFrom,
     sectionId,
     subsectionId,
+    parentTask,
     tasks,
     template,
     settings

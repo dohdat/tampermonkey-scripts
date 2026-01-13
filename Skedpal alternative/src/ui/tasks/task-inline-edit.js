@@ -8,7 +8,6 @@ import {
   serializeTitleLiteralList
 } from "../title-date-utils.js";
 import { state } from "../state/page-state.js";
-import { loadTasks } from "./tasks-actions.js";
 
 function cleanupInlineTitleEdit() {
   if (typeof state.taskTitleEditCleanup !== "function") {return;}
@@ -16,7 +15,28 @@ function cleanupInlineTitleEdit() {
   state.taskTitleEditCleanup = null;
 }
 
-function restoreInlineTitle(titleEl, originalTitle) {
+function renderInlineTitleDisplay(titleEl, task, titleText) {
+  if (!titleEl) {return;}
+  titleEl.textContent = "";
+  if (!task?.link) {
+    titleEl.textContent = titleText;
+    return;
+  }
+  const anchor = document.createElement("a");
+  anchor.href = task.link;
+  anchor.target = "_blank";
+  anchor.rel = "noopener noreferrer";
+  anchor.className =
+    "inline-flex items-center gap-2 text-lime-300 hover:text-lime-200 underline decoration-lime-400";
+  anchor.setAttribute("data-test-skedpal", "task-title-link");
+  const textSpan = document.createElement("span");
+  textSpan.textContent = titleText;
+  textSpan.setAttribute("data-test-skedpal", "task-title-link-text");
+  anchor.appendChild(textSpan);
+  titleEl.appendChild(anchor);
+}
+
+function restoreInlineTitle(titleEl, task, originalTitle) {
   if (!titleEl) {return;}
   setInlineTitleRowEditing(titleEl, false);
   const prevDisplay = titleEl.dataset.inlineEditingDisplay;
@@ -34,7 +54,7 @@ function restoreInlineTitle(titleEl, originalTitle) {
   delete titleEl.dataset.inlineEditingMaxHeight;
   delete titleEl.dataset.inlineEditingLineClamp;
   delete titleEl.dataset.inlineEditingBoxOrient;
-  titleEl.textContent = originalTitle;
+  renderInlineTitleDisplay(titleEl, task, originalTitle);
   delete titleEl.dataset.inlineEditing;
   delete titleEl.dataset.inlineEditingTaskId;
 }
@@ -234,13 +254,13 @@ function startInlineTitleEdit(titleEl, task, options = {}) {
     setInlineTitleRowEditing(titleEl, false);
     if (!shouldSave) {
       clearInlineTitleParsingState(input);
-      restoreInlineTitle(titleEl, originalTitle);
+      restoreInlineTitle(titleEl, task, originalTitle);
       return;
     }
     const update = resolveInlineTitleUpdate(task, input, originalTitle);
     clearInlineTitleParsingState(input);
     if (!update.shouldSave) {
-      restoreInlineTitle(titleEl, originalTitle);
+      restoreInlineTitle(titleEl, task, originalTitle);
       return;
     }
     await saveTask({
@@ -250,6 +270,7 @@ function startInlineTitleEdit(titleEl, task, options = {}) {
       startFrom: update.nextStartFrom,
       repeat: update.nextRepeat
     });
+    const { loadTasks } = await import("./tasks-actions.js");
     await loadTasks();
   }
 
@@ -289,12 +310,26 @@ function startInlineTitleEdit(titleEl, task, options = {}) {
 export function handleTaskTitleDoubleClick(event) {
   const titleEl = event.target.closest?.('[data-test-skedpal="task-title"]');
   if (!titleEl) {return;}
-  if (event.target.closest?.("a")) {return;}
+  if (event.target.closest?.("a")) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
   const card = titleEl.closest?.("[data-task-id]");
   const taskId = card?.dataset?.taskId || "";
   if (!taskId) {return;}
   const task = state.tasksCache.find((entry) => entry.id === taskId);
-  if (!task || task.link) {return;}
+  if (!task) {return;}
   if (titleEl.dataset.inlineEditing === "true") {return;}
   startInlineTitleEdit(titleEl, task, { clientX: event.clientX });
+}
+
+export function handleTaskTitleClick(event) {
+  const anchor = event.target?.closest?.("a");
+  if (!anchor) {return false;}
+  const titleEl = anchor.closest?.('[data-test-skedpal="task-title"]');
+  if (!titleEl) {return false;}
+  if (event.metaKey || event.ctrlKey) {return false;}
+  event.preventDefault();
+  event.stopPropagation();
+  return true;
 }

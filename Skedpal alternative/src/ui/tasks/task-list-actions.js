@@ -32,7 +32,7 @@ import { openTaskReminderModal, dismissOverdueTaskReminders } from "./task-remin
 import { handleAddTaskRowClick } from "./task-add-row.js";
 import { computeSingleExpandedCollapsedSet } from "./task-collapse-utils.js";
 import { openBulkEditBanner } from "./task-bulk-edit.js";
-export { handleTaskTitleDoubleClick } from "./task-inline-edit.js";
+export { handleTaskTitleClick, handleTaskTitleDoubleClick } from "./task-inline-edit.js";
 
 function runTaskDetailCleanup(taskId) {
   if (!taskId) {return;}

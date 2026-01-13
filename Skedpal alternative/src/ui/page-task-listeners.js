@@ -7,6 +7,7 @@ import {
 import {
   handleTaskContainerDoubleClick,
   handleTaskListClick,
+  handleTaskTitleClick,
   handleTaskTitleDoubleClick
 } from "./tasks/task-list-actions.js";
 import {
@@ -65,6 +66,7 @@ function handleTaskToggleClick() {
 }
 
 async function handleTaskListClickEvent(event) {
+  if (handleTaskTitleClick(event)) {return;}
   if (handleAddTaskLiteralClick(event)) {return;}
   await handleTaskListClick(event);
 }
@@ -75,6 +77,7 @@ function handleTaskListDoubleClickEvent(event) {
 }
 
 async function handleTodayListClickEvent(event) {
+  if (handleTaskTitleClick(event)) {return;}
   await handleTaskListClick(event);
 }
 
@@ -84,6 +87,7 @@ function handleTodayListDoubleClickEvent(event) {
 }
 
 async function handleReportListClickEvent(event) {
+  if (handleTaskTitleClick(event)) {return;}
   await handleTaskListClick(event, { switchView: false });
 }
 

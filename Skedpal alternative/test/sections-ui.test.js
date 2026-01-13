@@ -62,6 +62,10 @@ class FakeElement {
   focus() {
     this._focused = true;
   }
+
+  select() {
+    this._selected = true;
+  }
 }
 
 function findByTestAttr(root, value) {
@@ -126,6 +130,8 @@ function resetElements() {
     el.disabled = false;
     el.checked = false;
     el._classSet = new Set();
+    el._focused = false;
+    el._selected = false;
   }
 }
 
@@ -477,15 +483,20 @@ describe("sections ui", () => {
     state.settingsCache.subsections = {
       s1: [{ id: "sub1", name: "Deep", template: { title: "T1" } }]
     };
+    const previousRaf = global.requestAnimationFrame;
+    global.requestAnimationFrame = (cb) => cb();
     sectionsModule.openSubsectionModal("s1", "", "sub1");
     assert.strictEqual(domRefs.subsectionFormWrap.classList.contains("hidden"), false);
     assert.strictEqual(sectionsModule.getEditingSubsectionId(), "sub1");
     assert.strictEqual(sectionsModule.getEditingSectionId(), "s1");
+    assert.strictEqual(domRefs.subsectionNameInput._focused, true);
+    assert.strictEqual(domRefs.subsectionNameInput._selected, true);
 
     repeatStore.subsectionRepeatSelection = { type: "custom" };
     sectionsModule.closeSubsectionModal();
     assert.strictEqual(domRefs.subsectionFormWrap.classList.contains("hidden"), true);
     assert.strictEqual(repeatStore.subsectionRepeatSelection.type, "none");
+    global.requestAnimationFrame = previousRaf;
   });
 
   it("inherits parent subsection template when adding a child", () => {
@@ -522,6 +533,28 @@ describe("sections ui", () => {
     assert.strictEqual(domRefs.subsectionTaskDeadlineInput.value, "2026-01-05");
     assert.strictEqual(domRefs.subsectionTaskStartFromInput.value, "2026-01-01");
     assert.strictEqual(domRefs.subsectionTaskSubtaskScheduleSelect.value, "sequential");
+  });
+
+  it("skips focusing when modal closes before animation frame completes", () => {
+    state.settingsCache.sections = [{ id: "s1", name: "Work" }];
+    state.settingsCache.subsections = { s1: [{ id: "sub1", name: "Deep" }] };
+    const previousRaf = global.requestAnimationFrame;
+    const rafQueue = [];
+    global.requestAnimationFrame = (cb) => {
+      rafQueue.push(cb);
+    };
+
+    sectionsModule.openSubsectionModal("s1", "", "sub1");
+    assert.strictEqual(domRefs.subsectionNameInput._focused, false);
+    assert.strictEqual(rafQueue.length, 1);
+
+    rafQueue.shift()();
+    sectionsModule.closeSubsectionModal();
+    assert.strictEqual(rafQueue.length, 1);
+    rafQueue.shift()();
+    assert.strictEqual(domRefs.subsectionNameInput._focused, false);
+
+    global.requestAnimationFrame = previousRaf;
   });
 
   it("keeps renamed default section names", async () => {

@@ -269,6 +269,17 @@ function isValidRename(name, currentName, list, subsectionId, parentId) {
   return !isDuplicateSubsectionName(list, parentId || "", name, subsectionId);
 }
 
+function focusSubsectionNameInput() {
+  if (!subsectionNameInput) {return;}
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (subsectionFormWrap?.classList.contains("hidden")) {return;}
+      subsectionNameInput.focus();
+      subsectionNameInput.select();
+    });
+  });
+}
+
 export function openSubsectionModal(sectionId, parentId = "", existingSubsectionId = "") {
   const { subsectionFormWrap } = domRefs;
   if (!subsectionFormWrap) {return;}
@@ -284,6 +295,7 @@ export function openSubsectionModal(sectionId, parentId = "", existingSubsection
   const template = resolveSubsectionTemplate(existing || parent);
   applySubsectionTemplate(template);
   subsectionFormWrap.classList.remove("hidden");
+  focusSubsectionNameInput();
 }
 
 export async function handleAddSection() {

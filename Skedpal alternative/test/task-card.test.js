@@ -12,6 +12,7 @@ class FakeElement {
     this.innerHTML = "";
     this.style = {};
     this._classSet = new Set();
+    this.listeners = {};
     this.classList = {
       add: (...names) => names.forEach((n) => this._classSet.add(n)),
       remove: (...names) => names.forEach((n) => this._classSet.delete(n)),
@@ -35,6 +36,24 @@ class FakeElement {
 
   setAttribute(name, value) {
     this.attributes[name] = value;
+  }
+
+  addEventListener(type, handler) {
+    this.listeners[type] = handler;
+  }
+
+  removeEventListener(type, handler) {
+    if (this.listeners[type] === handler) {
+      delete this.listeners[type];
+    }
+  }
+
+  dispatchEvent(event) {
+    const handler = this.listeners[event.type];
+    if (handler) {
+      handler(event);
+    }
+    return true;
   }
 }
 
@@ -209,6 +228,35 @@ describe("task card", () => {
     assert.ok(findByTestAttr(card, "task-collapse-btn"));
     const duration = findByTestAttr(card, "task-duration");
     assert.strictEqual(duration.textContent, "1.5h");
+  });
+
+  it("renders priority select and start-from clear button in details", () => {
+    const task = {
+      id: "t-detail-edit",
+      title: "Details edit",
+      durationMin: 30,
+      minBlockMin: 15,
+      timeMapIds: ["tm-1"],
+      completed: false,
+      scheduledStart: new Date(2026, 0, 1, 9, 0).toISOString(),
+      scheduledEnd: new Date(2026, 0, 1, 10, 0).toISOString(),
+      startFrom: new Date(2026, 0, 1, 0, 0).toISOString(),
+      priority: 3
+    };
+    const context = {
+      tasks: [task],
+      timeMapById: new Map([["tm-1", { id: "tm-1", name: "Focus", color: "#22c55e" }]]),
+      collapsedTasks: new Set(),
+      expandedTaskDetails: new Set(["t-detail-edit"]),
+      computeTotalDuration: () => 0,
+      getTaskDepthById: () => 0,
+      getSectionName: () => "",
+      getSubsectionName: () => ""
+    };
+
+    const card = renderTaskCard(task, context);
+    assert.ok(findByTestAttr(card, "task-detail-priority-select"));
+    assert.ok(findByTestAttr(card, "task-start-from-clear"));
   });
 
   it("renders expanded details and styles subtasks", () => {

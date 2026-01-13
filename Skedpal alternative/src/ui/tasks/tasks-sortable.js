@@ -321,6 +321,7 @@ export function setupTaskSortables() {
       ghostClass: "sortable-ghost",
       chosenClass: "sortable-chosen",
       dragClass: "sortable-drag",
+      preventOnFilter: false,
       swapThreshold: 0.65,
       fallbackOnBody: true,
       onStart: (event) => {

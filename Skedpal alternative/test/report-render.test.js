@@ -12,6 +12,7 @@ class FakeElement {
     this.innerHTML = "";
     this.style = {};
     this._classSet = new Set();
+    this.listeners = {};
     this.classList = {
       add: (...names) => names.forEach((n) => this._classSet.add(n)),
       remove: (...names) => names.forEach((n) => this._classSet.delete(n)),
@@ -35,6 +36,24 @@ class FakeElement {
 
   setAttribute(name, value) {
     this.attributes[name] = value;
+  }
+
+  addEventListener(type, handler) {
+    this.listeners[type] = handler;
+  }
+
+  removeEventListener(type, handler) {
+    if (this.listeners[type] === handler) {
+      delete this.listeners[type];
+    }
+  }
+
+  dispatchEvent(event) {
+    const handler = this.listeners[event.type];
+    if (handler) {
+      handler(event);
+    }
+    return true;
   }
 
   querySelector(selector) {

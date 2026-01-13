@@ -1,6 +1,7 @@
 import {
   EXTERNAL_CALENDAR_TIMEMAP_PREFIX,
   TASK_REPEAT_NONE,
+  TASK_STATUS_UNSCHEDULED,
   caretDownIconSvg,
   caretRightIconSvg,
   checkboxCheckedIconSvg,
@@ -16,6 +17,7 @@ import {
   TASK_CHILD_INDENT_PX
 } from "../constants.js";
 import {
+  applyPrioritySelectColor,
   formatDateTime,
   formatDurationShort,
   isExternalCalendarTimeMapId,
@@ -23,10 +25,12 @@ import {
 } from "../utils.js";
 import { getRepeatSummary } from "../repeat.js";
 import { themeColors } from "../theme.js";
+import { saveTask } from "../../data/db.js";
 import { getOverdueReminders } from "./task-reminders.js";
 import { applyTaskBackgroundStyle } from "./task-card-styles.js";
 import { buildReminderDetailItem } from "./task-card-details.js";
 import { buildSummaryIconFlags, buildTaskSummaryRow } from "./task-card-summary.js";
+import { buildPriorityDetailItem, buildStartFromDetailItem } from "./task-card-detail-edit.js";
 import { state } from "../state/page-state.js";
 
 const detailClockIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 6v4l2.5 2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
@@ -328,6 +332,7 @@ function buildTaskMeta(task, timeMapNames, repeatSummary) {
   const meta = document.createElement("div");
   meta.className = "task-details__grid";
   meta.setAttribute("data-test-skedpal", "task-meta");
+  const cleanupFns = [];
   const reminderItem = buildReminderDetailItem({
     task,
     buildDetailItemElement,
@@ -348,14 +353,17 @@ function buildTaskMeta(task, timeMapNames, repeatSummary) {
     meta.appendChild(item);
   }
   if (task.startFrom) {
-    const { item, valueEl } = buildDetailItemElement({
-      key: "start-from",
-      label: "Start from",
+    const startFromDetail = buildStartFromDetailItem({
+      task,
+      buildDetailItemElement,
       iconSvg: detailClockIconSvg,
-      valueTestId: "task-start-from"
+      formatDateTime,
+      onClear: () => updateTaskDetailField(task, { startFrom: null })
     });
-    valueEl.textContent = formatDateTime(task.startFrom);
-    meta.appendChild(item);
+    if (startFromDetail.item) {
+      meta.appendChild(startFromDetail.item);
+      cleanupFns.push(startFromDetail.cleanup);
+    }
   }
   if (task.minBlockMin) {
     const { item, valueEl } = buildDetailItemElement({
@@ -367,22 +375,15 @@ function buildTaskMeta(task, timeMapNames, repeatSummary) {
     valueEl.textContent = `${task.minBlockMin}m`;
     meta.appendChild(item);
   }
-  const priorityValue = Number(task.priority) || 0;
-  const { item: priorityItem, valueEl: priorityValueEl } = buildDetailItemElement({
-    key: "priority",
-    label: "Priority",
+  const priorityDetail = buildPriorityDetailItem({
+    task,
+    buildDetailItemElement,
     iconSvg: detailGaugeIconSvg,
-    valueTestId: "task-priority"
+    applyPrioritySelectColor,
+    onUpdate: (updates) => updateTaskDetailField(task, updates)
   });
-  const priorityValueSpan = document.createElement("span");
-  priorityValueSpan.setAttribute("data-test-skedpal", "task-priority-value");
-  priorityValueSpan.textContent = String(priorityValue);
-  if (priorityValue) {
-    priorityValueSpan.className = "priority-text";
-    priorityValueSpan.dataset.priority = String(priorityValue);
-  }
-  priorityValueEl.appendChild(priorityValueSpan);
-  meta.appendChild(priorityItem);
+  meta.appendChild(priorityDetail.item);
+  cleanupFns.push(priorityDetail.cleanup);
   const timeMapsLabel = timeMapNames.length ? timeMapNames.join(", ") : "None";
   const { item: timeMapsItem, valueEl: timeMapsValueEl } = buildDetailItemElement({
     key: "timemaps",
@@ -401,7 +402,12 @@ function buildTaskMeta(task, timeMapNames, repeatSummary) {
   });
   repeatValueEl.textContent = repeatSummary;
   meta.appendChild(repeatItem);
-  return meta;
+  return {
+    meta,
+    cleanup: () => {
+      cleanupFns.forEach((fn) => fn());
+    }
+  };
 }
 
 function buildTaskScheduleDetails(task) {
@@ -453,6 +459,51 @@ export function buildTaskCardShell(task, options = {}) {
   return taskCard;
 }
 
+function buildTimeMapNames(task, timeMapById) {
+  const timeMapIds = Array.isArray(task.timeMapIds) ? task.timeMapIds : [];
+  return timeMapIds.map((id) => {
+    if (isExternalCalendarTimeMapId(id)) {
+      return resolveExternalCalendarLabel(id);
+    }
+    return timeMapById.get(id)?.name || "Unknown";
+  });
+}
+
+function applyTaskCardIndicators(taskCard, task, now) {
+  const overdueReminders = getOverdueReminders(task);
+  if (overdueReminders.length) {
+    taskCard.classList.add("task-card--reminder-alert");
+    taskCard.dataset.reminderAlert = "true";
+  }
+  if (isStartFromNotToday(task.startFrom, now)) {
+    taskCard.classList.add("task-card--start-from-not-today");
+  }
+}
+
+function maybeAppendTaskDetails(taskCard, task, timeMapNames, repeatSummary, detailsOpen) {
+  if (!detailsOpen) {return;}
+  const detailsWrap = document.createElement("div");
+  detailsWrap.className = "task-details";
+  detailsWrap.setAttribute("data-test-skedpal", "task-details");
+  const { meta, cleanup } = buildTaskMeta(task, timeMapNames, repeatSummary);
+  detailsWrap.appendChild(meta);
+  const isRepeating = task.repeat && task.repeat.type !== TASK_REPEAT_NONE;
+  if (!isRepeating) {
+    const statusRow = buildTaskScheduleDetails(task);
+    if (statusRow) {
+      detailsWrap.appendChild(statusRow);
+    }
+  }
+  taskCard.appendChild(detailsWrap);
+  if (typeof cleanup === "function") {
+    const existingCleanup = state.taskDetailCleanup.get(task.id);
+    if (typeof existingCleanup === "function") {
+      existingCleanup();
+    }
+    state.taskDetailCleanup.set(task.id, cleanup);
+  }
+}
+
 export function renderTaskCard(task, context) {
   const {
     tasks,
@@ -470,25 +521,12 @@ export function renderTaskCard(task, context) {
   const depth = getTaskDepthById(task.id);
   const baseDurationMin = Number(task.durationMin) || 0;
   const displayDurationMin = hasChildren ? computeTotalDuration(task) : baseDurationMin;
-  const timeMapIds = Array.isArray(task.timeMapIds) ? task.timeMapIds : [];
-  const timeMapNames = timeMapIds.map((id) => {
-    if (isExternalCalendarTimeMapId(id)) {
-      return resolveExternalCalendarLabel(id);
-    }
-    return timeMapById.get(id)?.name || "Unknown";
-  });
+  const timeMapNames = buildTimeMapNames(task, timeMapById);
   const repeatSummary = getRepeatSummary(task.repeat);
   const taskCard = buildTaskCardShell(task, { depth, timeMapById });
   const titleMarkup = buildTitleMarkup(task);
   const detailsOpen = expandedTaskDetails.has(task.id);
-  const overdueReminders = getOverdueReminders(task);
-  if (overdueReminders.length) {
-    taskCard.classList.add("task-card--reminder-alert");
-    taskCard.dataset.reminderAlert = "true";
-  }
-  if (isStartFromNotToday(task.startFrom, now)) {
-    taskCard.classList.add("task-card--start-from-not-today");
-  }
+  applyTaskCardIndicators(taskCard, task, now);
   const { showFutureStartIcon, showOutOfRangeIcon, showUnscheduledIcon } = buildSummaryIconFlags(
     task,
     {
@@ -510,20 +548,22 @@ export function renderTaskCard(task, context) {
     showUnscheduledIcon
   });
   taskCard.appendChild(header);
-  if (detailsOpen) {
-    const detailsWrap = document.createElement("div");
-    detailsWrap.className = "task-details";
-    detailsWrap.setAttribute("data-test-skedpal", "task-details");
-    const meta = buildTaskMeta(task, timeMapNames, repeatSummary);
-    detailsWrap.appendChild(meta);
-    const isRepeating = task.repeat && task.repeat.type !== TASK_REPEAT_NONE;
-    if (!isRepeating) {
-      const statusRow = buildTaskScheduleDetails(task);
-      if (statusRow) {
-        detailsWrap.appendChild(statusRow);
-      }
-    }
-    taskCard.appendChild(detailsWrap);
-  }
+  maybeAppendTaskDetails(taskCard, task, timeMapNames, repeatSummary, detailsOpen);
   return taskCard;
+}
+
+async function updateTaskDetailField(task, updates) {
+  if (!task) {return;}
+  await saveTask({
+    ...task,
+    ...updates,
+    scheduleStatus: TASK_STATUS_UNSCHEDULED,
+    scheduledStart: null,
+    scheduledEnd: null,
+    scheduledTimeMapId: null,
+    scheduledInstances: []
+  });
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("skedpal:tasks-updated"));
+  }
 }

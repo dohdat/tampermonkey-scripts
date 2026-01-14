@@ -283,6 +283,24 @@ describe("utils date parsing", () => {
     assert.strictEqual(parsed.hasDate, false);
   });
 
+  it("extracts monthly ranges between day numbers", () => {
+    const referenceDate = new Date(2026, 0, 5, 9, 0, 0);
+    const parsed = parseTitleDates("Review every 2 months between 01 - 07", {
+      referenceDate
+    });
+    assert.strictEqual(parsed.title, "Review");
+    assert.strictEqual(parsed.repeat.unit, "month");
+    assert.strictEqual(parsed.repeat.interval, 2);
+    assert.strictEqual(parsed.repeat.monthlyMode, "range");
+    assert.strictEqual(parsed.repeat.monthlyRangeStart, 1);
+    assert.strictEqual(parsed.repeat.monthlyRangeEnd, 7);
+    assert.strictEqual(parsed.repeat.monthlyRangeStartDate, "2026-01-01");
+    assert.strictEqual(parsed.repeat.monthlyRangeEndDate, "2026-01-07");
+    assert.strictEqual(parsed.startFrom, null);
+    assert.strictEqual(parsed.deadline, null);
+    assert.strictEqual(parsed.hasDate, false);
+  });
+
   it("builds conversion preview html when matches are present", () => {
     const preview = buildTitleConversionPreviewHtml("Test every 2 weeks anyday");
     assert.strictEqual(preview.hasRanges, true);

@@ -1,5 +1,5 @@
 import { parse as chronoParse } from "../../vendor/chrono-node/locales/en/index.js";
-import { FIVE, FOUR, ONE, SIX, THREE, TWO, ZERO } from "./constants.js";
+import { FIVE, FOUR, ONE, SIX, THREE, THIRTY_ONE, TWO, ZERO } from "./constants.js";
 const TITLE_KEYWORD_CLEANUP =
   /^(from|starting|start|beginning|begin|by|due|until|before|deadline)\b\s*/i;
 const TITLE_KEYWORD_TRAIL_CLEANUP =
@@ -9,6 +9,8 @@ const REPEAT_DAYLIST_REGEX =
 const REPEAT_WEEKDAY_REGEX = /\b(?:repeat\s+)?every\s+(\d+)?\s*(weekday|weekend)s?\b/i;
 export const REPEAT_YEARLY_RANGE_REGEX =
   /\b(?:repeat\s+)?(?:every\s+(\d+|other)?\s*years?|yearly)\s+between\s+/i;
+export const REPEAT_MONTHLY_RANGE_REGEX =
+  /\b(?:repeat\s+)?(?:every\s+(\d+|other)?\s*months?|monthly)\s+between\s+/i;
 export const BETWEEN_RANGE_REGEX =
   /\bbetween\s+[^]+?\s+(?:and|to)\s+[^]+?(?=$|[,.])/i;
 const REPEAT_INTERVAL_REGEX = /\b(?:repeat\s+)?every\s+(\d+|other)?\s*(day|week|month|year)s?\b/i;
@@ -42,6 +44,7 @@ const WEEKDAY_ALIASES = new Map([
 export const TITLE_REPEAT_PATTERNS = [
   REPEAT_DAYLIST_REGEX,
   REPEAT_WEEKDAY_REGEX,
+  REPEAT_MONTHLY_RANGE_REGEX,
   REPEAT_YEARLY_RANGE_REGEX,
   REPEAT_INTERVAL_REGEX,
   REPEAT_INTERVAL_WEEK_REGEX,
@@ -121,6 +124,32 @@ function resolveIntervalToken(value) {
   const raw = (value || "").toLowerCase();
   if (raw === "other") {return TWO;}
   return Number(raw) || ONE;
+}
+
+function clampMonthlyDay(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {return ONE;}
+  return Math.min(THIRTY_ONE, Math.max(ONE, parsed));
+}
+
+function buildMonthlyRangeDate(referenceDate, day) {
+  const baseDate = referenceDate instanceof Date ? referenceDate : new Date();
+  const year = baseDate.getFullYear();
+  const monthIndex = baseDate.getMonth();
+  const lastDay = new Date(year, monthIndex + ONE, ZERO).getDate();
+  const safeDay = Math.min(lastDay, Math.max(ONE, day));
+  return formatLocalDateInputValue(new Date(year, monthIndex, safeDay));
+}
+
+function parseMonthlyDayRange(text) {
+  if (!text) {return null;}
+  const match =
+    /\bbetween\s+(\d{1,2})(?:st|nd|rd|th)?\s*(?:-|to|and)\s*(\d{1,2})(?:st|nd|rd|th)?\b/i
+      .exec(text);
+  if (!match) {return null;}
+  const start = clampMonthlyDay(match[1]);
+  const end = clampMonthlyDay(match[2]);
+  return { start, end: Math.max(start, end) };
 }
 
 function findWeekIntervalMatch(title) {
@@ -237,6 +266,37 @@ function parseRepeatFromYearlyRange(title, referenceDate) {
   };
 }
 
+function parseRepeatFromMonthlyRange(title, referenceDate) {
+  const match = title.match(REPEAT_MONTHLY_RANGE_REGEX);
+  if (!match) {return null;}
+  const matchText = match[0] || "";
+  /* c8 ignore next */
+  const matchIndex = match.index ?? title.indexOf(matchText);
+  /* c8 ignore next */
+  if (!matchText || matchIndex < 0) {return null;}
+  const interval = resolveIntervalToken(match[1]);
+  const tail = title.slice(matchIndex);
+  const betweenClause = findBetweenClause(tail);
+  const rangeSource = betweenClause ? betweenClause.text : tail;
+  const rangeParts = parseMonthlyDayRange(rangeSource);
+  /* c8 ignore next */
+  if (!rangeParts) {return null;}
+  const cleanedTitle = betweenClause
+    ? `${title.slice(0, matchIndex)} ${title.slice(matchIndex + betweenClause.index + betweenClause.text.length)}`
+    : removeChronoRange(title, matchIndex, { resultIndex: ZERO, resultText: rangeSource });
+  return {
+    repeat: {
+      ...buildRepeatFromUnit("month", interval, referenceDate),
+      monthlyMode: "range",
+      monthlyRangeStart: rangeParts.start,
+      monthlyRangeEnd: rangeParts.end,
+      monthlyRangeStartDate: buildMonthlyRangeDate(referenceDate, rangeParts.start),
+      monthlyRangeEndDate: buildMonthlyRangeDate(referenceDate, rangeParts.end)
+    },
+    title: cleanedTitle
+  };
+}
+
 function parseRepeatFromDayList(title, referenceDate) {
   const listMatch = title.match(REPEAT_DAYLIST_REGEX);
   if (!listMatch) {return null;}
@@ -322,6 +382,7 @@ export function parseTitleRepeat(rawTitle, referenceDate) {
   }
   const handlers = [
     parseRepeatFromYearlyRange,
+    parseRepeatFromMonthlyRange,
     parseRepeatFromDayList,
     parseRepeatFromWeekGroup,
     parseRepeatFromInterval,

@@ -3,6 +3,7 @@ import { ONE } from "./constants.js";
 import { parseLocalDateInput } from "./utils.js";
 import {
   BETWEEN_RANGE_REGEX,
+  REPEAT_MONTHLY_RANGE_REGEX,
   REPEAT_YEARLY_RANGE_REGEX,
   TITLE_REPEAT_PATTERNS,
   cleanupParsedTitle,
@@ -109,8 +110,8 @@ function doesRangeOverlap(range, ranges) {
   return ranges.some((entry) => range.start < entry.end && range.end > entry.start);
 }
 
-function appendYearlyBetweenRanges(title, ranges) {
-  if (!REPEAT_YEARLY_RANGE_REGEX.test(title)) {return;}
+function appendBetweenRanges(title, ranges) {
+  if (!REPEAT_YEARLY_RANGE_REGEX.test(title) && !REPEAT_MONTHLY_RANGE_REGEX.test(title)) {return;}
   const match = title.match(BETWEEN_RANGE_REGEX);
   if (!match?.[0]) {return;}
   const matchIndex = match.index ?? title.indexOf(match[0]);
@@ -127,7 +128,7 @@ export function getTitleConversionRanges(rawTitle, options = {}) {
   TITLE_REPEAT_PATTERNS.forEach((pattern) => {
     ranges.push(...collectRegexRanges(title, pattern));
   });
-  appendYearlyBetweenRanges(title, ranges);
+  appendBetweenRanges(title, ranges);
   const chronoMatch = getChronoMatch(title, referenceDate);
   if (chronoMatch?.matchText) {
     const index = chronoMatch.matchIndex;

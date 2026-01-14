@@ -3,7 +3,8 @@ import { describe, it } from "mocha";
 import {
   toggleTemplateSubtaskList,
   getExpandedTemplateIds,
-  getNextTemplateOrder
+  getNextTemplateOrder,
+  getTemplateCardFromNode
 } from "../src/ui/task-templates-utils.js";
 
 class FakeElement {
@@ -30,6 +31,23 @@ class FakeElement {
 
   setAttribute(name, value) {
     this.attributes[name] = value;
+  }
+}
+
+class FakeNode {
+  constructor({ dataset = {}, parent = null } = {}) {
+    this.dataset = dataset;
+    this.parent = parent;
+  }
+
+  closest(selector) {
+    if (selector !== "[data-template-card]") {return null;}
+    let current = this;
+    while (current) {
+      if (current.dataset?.templateCard === "true") {return current;}
+      current = current.parent;
+    }
+    return null;
   }
 }
 
@@ -91,5 +109,14 @@ describe("task template ui", () => {
 
   it("defaults to order 1 for empty template lists", () => {
     assert.strictEqual(getNextTemplateOrder([]), 1);
+  });
+
+  it("finds the template card from a subtask container", () => {
+    const card = new FakeNode({ dataset: { templateCard: "true", templateId: "t1" } });
+    const container = new FakeNode({
+      dataset: { templateId: "t1" },
+      parent: card
+    });
+    assert.strictEqual(getTemplateCardFromNode(container), card);
   });
 });

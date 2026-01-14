@@ -7,7 +7,11 @@ import Sortable from "../../vendor/sortable.esm.js";
 import { SORT_AFTER, TEMPLATE_SORTABLE_STYLE_ID, domRefs } from "./constants.js";
 import { state } from "./state/page-state.js";
 import { openTemplateEditor, openTemplateSubtaskEditor } from "./tasks/tasks-actions.js";
-import { toggleTemplateSubtaskList, getExpandedTemplateIds } from "./task-templates-utils.js";
+import {
+  toggleTemplateSubtaskList,
+  getExpandedTemplateIds,
+  getTemplateCardFromNode
+} from "./task-templates-utils.js";
 
 const SORT_BEFORE = -1;
 let templateSortableInstances = [];
@@ -394,7 +398,7 @@ async function handleTemplateSubtaskSortEnd(event) {
   if (!event?.to) {return;}
   if (event.from === event.to && event.oldIndex === event.newIndex) {return;}
   const container = event.to;
-  const card = container.closest?.("[data-template-id]");
+  const card = getTemplateCardFromNode(container);
   const templateId = card?.dataset?.templateId || "";
   if (!templateId || !card) {return;}
   const template = findTemplateById(templateId);

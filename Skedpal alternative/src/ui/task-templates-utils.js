@@ -31,3 +31,8 @@ export function getExpandedTemplateIds(list) {
   });
   return expanded;
 }
+
+export function getTemplateCardFromNode(node) {
+  if (!node?.closest) {return null;}
+  return node.closest("[data-template-card]");
+}

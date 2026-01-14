@@ -9,6 +9,7 @@ import {
   TEN,
   TWO,
   SUBTASK_SCHEDULE_SEQUENTIAL_SINGLE,
+  TASK_REPEAT_NONE,
   TASK_STATUS_IGNORED,
   TASK_STATUS_UNSCHEDULED,
   domRefs
@@ -129,11 +130,19 @@ function shouldIncludeMissedByStatus(task) {
   return missedCount > 0;
 }
 
+function isRepeatOutsideHorizon(task) {
+  const repeat = task?.repeat;
+  if (!repeat || repeat.type === TASK_REPEAT_NONE) {return false;}
+  const expectedCount = Number(task.expectedCount) || 0;
+  return expectedCount === 0;
+}
+
 function shouldIncludeMissedTask(task, parentIds, nextChildByParent, now) {
   if (task.completed) {return false;}
   if (isStartFromInFuture(task, now)) {return false;}
   if (parentIds.has(task.id)) {return false;}
   if (isSequentialSingleBlocked(task, nextChildByParent)) {return false;}
+  if (isRepeatOutsideHorizon(task)) {return false;}
   return shouldIncludeMissedByStatus(task);
 }
 

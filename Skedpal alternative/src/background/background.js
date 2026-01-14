@@ -7,7 +7,8 @@ import {
   deleteTask,
   DEFAULT_SCHEDULING_HORIZON_DAYS
 } from "../data/db.js";
-import { scheduleTasks, getUpcomingOccurrences } from "../core/scheduler.js";
+import { scheduleTasks } from "../core/scheduler.js";
+import { getExpectedOccurrenceCount } from "./schedule-helpers.js";
 import { shouldIncrementMissedCount } from "./schedule-metrics.js";
 import {
   CREATE_TASK_MENU_ID,
@@ -16,9 +17,6 @@ import {
   END_OF_DAY_MINUTE,
   END_OF_DAY_MS,
   END_OF_DAY_SECOND,
-  FIFTY,
-  THREE,
-  TASK_REPEAT_NONE,
   TASK_STATUS_IGNORED,
   TASK_STATUS_SCHEDULED,
   TASK_STATUS_UNSCHEDULED
@@ -78,12 +76,6 @@ function getScheduledOccurrenceCount(taskPlacements) {
     return new Set(occurrenceIds).size;
   }
   return 1;
-}
-
-function getExpectedOccurrenceCount(task, now, horizonDays) {
-  if (!task?.repeat || task.repeat.type === TASK_REPEAT_NONE) {return 0;}
-  const cap = Math.max(FIFTY, horizonDays * THREE);
-  return getUpcomingOccurrences(task, now, cap, horizonDays).length;
 }
 
 async function persistSchedule(tasks, placements, unscheduled, ignored, deferred, now, horizonDays) {
@@ -248,7 +240,7 @@ async function runReschedule() {
     ignored,
     deferred,
     now,
-    settings.schedulingHorizonDays
+    horizonDays
   );
 
   const scheduledTaskCount = new Set(scheduled.map((p) => p.taskId)).size;

@@ -243,6 +243,32 @@ describe("report", () => {
     assert.strictEqual(rows.length, 0);
   });
 
+  it("excludes repeat tasks with no expected occurrences", () => {
+    const rows = getMissedTaskRows(
+      [
+        {
+          id: "repeat-out",
+          title: "Repeat out of range",
+          scheduleStatus: "unscheduled",
+          expectedCount: 0,
+          missedCount: 10,
+          repeat: { type: "custom", unit: "year", interval: 1 }
+        },
+        {
+          id: "non-repeat",
+          title: "Non repeat",
+          scheduleStatus: "unscheduled",
+          expectedCount: 0,
+          missedCount: 10
+        }
+      ],
+      {}
+    );
+    const ids = rows.map((row) => row.id);
+    assert.ok(!ids.includes("repeat-out"));
+    assert.ok(ids.includes("non-repeat"));
+  });
+
   it("shows only the next sequential-single subtask in missed rows", () => {
     const tasks = [
       {

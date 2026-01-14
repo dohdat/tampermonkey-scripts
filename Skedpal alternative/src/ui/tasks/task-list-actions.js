@@ -28,10 +28,15 @@ import {
   duplicateTaskWithChildren,
   viewTaskOnCalendar
 } from "./tasks-actions.js";
-import { openTaskReminderModal, dismissOverdueTaskReminders } from "./task-reminders.js";
+import {
+  openTaskReminderModal,
+  dismissOverdueTaskReminders,
+  clearTaskReminders
+} from "./task-reminders.js";
 import { handleAddTaskRowClick } from "./task-add-row.js";
 import { computeSingleExpandedCollapsedSet } from "./task-collapse-utils.js";
 import { openBulkEditBanner } from "./task-bulk-edit.js";
+import { closeTaskActionMenus, handleTaskMenuToggle } from "./task-list-menu.js";
 export { handleTaskTitleClick, handleTaskTitleDoubleClick } from "./task-inline-edit.js";
 
 function runTaskDetailCleanup(taskId) {
@@ -40,13 +45,11 @@ function runTaskDetailCleanup(taskId) {
   if (typeof cleanup === "function") {cleanup();}
   state.taskDetailCleanup.delete(taskId);
 }
-
 function isInteractiveTarget(target) {
   if (!(target instanceof HTMLElement)) {return false;}
   if (target.isContentEditable) {return true;}
   return Boolean(target.closest("button, a, input, textarea, select"));
 }
-
 function getZoomFilterForTaskCard(card) {
   const taskId = card?.dataset?.taskId || "";
   if (!taskId) {return null;}
@@ -57,13 +60,11 @@ function getZoomFilterForTaskCard(card) {
     subsectionId: card.dataset.subsectionId || ""
   };
 }
-
 function shouldIgnoreContainerZoom(target) {
   if (!(target instanceof HTMLElement)) {return true;}
   if (target.closest?.('[data-test-skedpal="task-title"]')) {return true;}
   return isInteractiveTarget(target);
 }
-
 function tryZoomTaskContainer(target) {
   const taskCard = target.closest?.('[data-test-skedpal="task-card"]');
   if (!taskCard) {return false;}
@@ -71,7 +72,6 @@ function tryZoomTaskContainer(target) {
   if (filter) {setZoomFilter(filter);}
   return true;
 }
-
 function tryZoomSubsectionContainer(target) {
   const subsectionCard = target.closest?.("[data-subsection-card]");
   if (!subsectionCard) {return false;}
@@ -82,7 +82,6 @@ function tryZoomSubsectionContainer(target) {
   setZoomFilter({ type: "subsection", sectionId, subsectionId });
   return true;
 }
-
 function tryZoomSectionContainer(target) {
   const sectionCard = target.closest?.("[data-section-card]");
   if (!sectionCard) {return false;}
@@ -98,7 +97,6 @@ export function handleTaskContainerDoubleClick(event) {
   if (tryZoomSubsectionContainer(target)) {return;}
   tryZoomSectionContainer(target);
 }
-
 function collapseTaskDetails(taskId) {
   if (!taskId) {return;}
   if (!state.expandedTaskDetails.has(taskId)) {return;}
@@ -144,114 +142,12 @@ function parseTaskListClick(btn) {
     duplicateTaskId: btn.dataset.duplicateTask,
     remindTaskId: btn.dataset.remindTask,
     dismissReminderTaskId: btn.dataset.dismissReminder,
+    clearRemindersTaskId: btn.dataset.clearReminders,
     addSubtaskId: btn.dataset.addSubtask,
     toggleTaskDetailsId: btn.dataset.toggleTaskDetails,
     toggleTaskCollapseId: btn.dataset.toggleTaskCollapse,
     addTaskRow: btn.dataset.addTaskRow
   };
-}
-
-function closeTaskActionMenus(exceptTaskId = "") {
-  const menus = document.querySelectorAll?.("[data-task-menu]") || [];
-  menus.forEach((menu) => {
-    if (exceptTaskId && menu.dataset.taskMenu === exceptTaskId) {return;}
-    menu.classList.add("hidden");
-    menu.closest?.(".task-actions-wrap")?.classList.remove("task-actions-menu-open");
-  });
-  if (!exceptTaskId || state.taskMenuOpenId !== exceptTaskId) {
-    cleanupTaskMenuListeners();
-  }
-}
-
-function cleanupTaskMenuListeners() {
-  if (typeof state.taskMenuCleanup !== "function") {return;}
-  state.taskMenuCleanup();
-  state.taskMenuCleanup = null;
-  state.taskMenuOpenId = "";
-}
-
-function createTaskMenuHandlers(taskId, options = {}) {
-  const scopedMenu = options.menu || null;
-  const scopedToggle = options.toggleBtn || null;
-  function isEditableTarget(target) {
-    if (!(target instanceof HTMLElement)) {return false;}
-    if (target.isContentEditable) {return true;}
-    const tag = target.tagName?.toLowerCase?.();
-    return tag === "input" || tag === "textarea" || tag === "select";
-  }
-
-  function getMenuActionButton(menu, key) {
-    const keyMap = {
-      e: "task-menu-edit",
-      b: "task-menu-bulk-edit",
-      d: "task-menu-duplicate",
-      r: "task-menu-remind",
-      a: "task-menu-add-subtask",
-      x: "task-menu-delete"
-    };
-    const testAttr = keyMap[key];
-    if (!testAttr) {return null;}
-    return menu.querySelector?.(`[data-test-skedpal="${testAttr}"]`) || null;
-  }
-
-  function onTaskMenuPointerDown(event) {
-    const menu = scopedMenu || document.querySelector?.(`[data-task-menu="${taskId}"]`);
-    const toggleBtn =
-      scopedToggle || document.querySelector?.(`[data-task-menu-toggle="${taskId}"]`);
-    const target = event.target;
-    if (!menu || !toggleBtn) {
-      closeTaskActionMenus();
-      return;
-    }
-    if (menu.contains(target) || toggleBtn.contains(target)) {return;}
-    closeTaskActionMenus();
-  }
-
-  function onTaskMenuKeyDown(event) {
-    if (isEditableTarget(event.target)) {return;}
-    const key = event.key.toLowerCase();
-    const menu = scopedMenu || document.querySelector?.(`[data-task-menu="${taskId}"]`);
-    if (!menu || menu.classList.contains("hidden")) {return;}
-    if (key === "escape") {
-      closeTaskActionMenus();
-      return;
-    }
-    const actionButton = getMenuActionButton(menu, key);
-    if (!actionButton) {return;}
-    event.preventDefault();
-    actionButton.click();
-  }
-
-  return { onTaskMenuPointerDown, onTaskMenuKeyDown };
-}
-
-function setupTaskMenuListeners(taskId, options = {}) {
-  if (!taskId) {return;}
-  cleanupTaskMenuListeners();
-  const { onTaskMenuPointerDown, onTaskMenuKeyDown } = createTaskMenuHandlers(taskId, options);
-  document.addEventListener("pointerdown", onTaskMenuPointerDown, true);
-  document.addEventListener("keydown", onTaskMenuKeyDown);
-  state.taskMenuCleanup = () => {
-    document.removeEventListener("pointerdown", onTaskMenuPointerDown, true);
-    document.removeEventListener("keydown", onTaskMenuKeyDown);
-  };
-  state.taskMenuOpenId = taskId;
-}
-
-function toggleTaskActionMenu(taskId, options = {}) {
-  if (!taskId) {return;}
-  const menu = options.menu || document.querySelector?.(`[data-task-menu="${taskId}"]`);
-  if (!menu) {return;}
-  const actionsWrap = menu.closest?.(".task-actions-wrap");
-  const willShow = menu.classList.contains("hidden");
-  closeTaskActionMenus(taskId);
-  menu.classList.toggle("hidden", !willShow);
-  actionsWrap?.classList.toggle("task-actions-menu-open", willShow);
-  if (willShow) {
-    setupTaskMenuListeners(taskId, options);
-  } else {
-    cleanupTaskMenuListeners();
-  }
 }
 
 async function handleTaskComplete(completeTaskId) {
@@ -491,6 +387,10 @@ async function handleTaskActions(action, options = {}) {
       run: () => dismissOverdueTaskReminders(action.dismissReminderTaskId)
     },
     {
+      when: Boolean(action.clearRemindersTaskId),
+      run: () => clearTaskReminders(action.clearRemindersTaskId)
+    },
+    {
       when: action.addSubtaskId !== undefined,
       run: () => handleAddSubtaskAction(action.addSubtaskId, options)
     },
@@ -504,6 +404,7 @@ async function handleTaskActions(action, options = {}) {
   await match.run();
   return true;
 }
+
 
 function handleAddSubtaskAction(taskId, options = {}) {
   const parentTask = state.tasksCache.find((t) => t.id === taskId);
@@ -550,28 +451,6 @@ export async function deleteTasksWithUndo(taskIds = []) {
   return true;
 }
 
-function handleMenuToggleAction(action) {
-  if (action.taskMenuToggleId === undefined) {return false;} toggleTaskActionMenu(action.taskMenuToggleId);
-  return true;
-}
-function handleTaskMenuToggle(action, btn) {
-  if (action.taskMenuToggleId === undefined) {return false;}
-  if (handleMenuToggleActionForButton(btn)) {return true;}
-  return handleMenuToggleAction(action);
-}
-
-function handleMenuToggleActionForButton(btn) {
-  const taskId = btn?.dataset?.taskMenuToggle || "";
-  if (!taskId) {return false;}
-  const card = btn.closest?.('[data-test-skedpal="task-card"]');
-  const scopedMenu = card?.querySelector?.(`[data-task-menu="${taskId}"]`) || null;
-  if (scopedMenu) {
-    toggleTaskActionMenu(taskId, { menu: scopedMenu, toggleBtn: btn });
-    return true;
-  }
-  toggleTaskActionMenu(taskId);
-  return true;
-}
 async function handleCompleteAction(action) {
   if (action.completeTaskId === undefined) {return false;}
   await handleTaskComplete(action.completeTaskId);

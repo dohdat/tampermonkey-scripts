@@ -17,7 +17,7 @@ import {
 } from "../constants.js";
 import { state } from "../state/page-state.js";
 import { uuid } from "../utils.js";
-import { showNotificationBanner, hideNotificationBanner } from "../notifications.js";
+import { showNotificationBanner, hideNotificationBanner, showUndoBanner } from "../notifications.js";
 import { removeReminderEntry } from "./task-reminders-helpers.js";
 
 const DAY_MS = MS_PER_DAY;
@@ -597,4 +597,20 @@ export function cleanupTaskReminderModal() {
   if (!reminderModalCleanup) {return;}
   reminderModalCleanup();
   reminderModalCleanup = null;
+}
+
+export async function clearTaskReminders(taskId) {
+  const task = state.tasksCache.find((entry) => entry.id === taskId);
+  if (!task) {return false;}
+  const reminders = Array.isArray(task.reminders) ? task.reminders : [];
+  if (!reminders.length) {return false;}
+  const snapshot = JSON.parse(JSON.stringify(task));
+  await saveTask({ ...task, reminders: [] });
+  await reloadTasks();
+  const name = task.title || "Untitled task";
+  showUndoBanner(`Cleared reminders for "${name}".`, async () => {
+    await saveTask(snapshot);
+    await reloadTasks();
+  });
+  return true;
 }

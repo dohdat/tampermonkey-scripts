@@ -801,7 +801,11 @@ describe("task card", () => {
 
     const card = renderTaskCard(task, context);
     const reminders = findByTestAttr(card, "task-reminders");
+    const clearBtn = findByTestAttr(card, "task-reminder-clear");
+    const reminderLabel = findByTestAttr(card, "task-reminders-label");
     assert.ok(reminders);
-    assert.ok(reminders.textContent.includes("1 reminder"));
+    assert.ok(clearBtn);
+    assert.ok(reminderLabel);
+    assert.ok(reminderLabel.textContent.includes("1 reminder"));
   });
 });

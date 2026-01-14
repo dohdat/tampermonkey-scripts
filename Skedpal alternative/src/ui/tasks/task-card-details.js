@@ -18,6 +18,19 @@ export function buildReminderDetailItem({ task, buildDetailItemElement, formatDa
     valueTestId: "task-reminders"
   });
   const countLabel = `${activeReminders.length} reminder${activeReminders.length === 1 ? "" : "s"}`;
-  valueEl.textContent = `${countLabel} - next ${nextLabel}`;
+  valueEl.textContent = "";
+  valueEl.classList.add("task-reminder-value");
+  const label = document.createElement("span");
+  label.textContent = `${countLabel} - next ${nextLabel}`;
+  label.setAttribute("data-test-skedpal", "task-reminders-label");
+  const clearBtn = document.createElement("button");
+  clearBtn.type = "button";
+  clearBtn.className = "task-reminder-clear-btn";
+  clearBtn.dataset.clearReminders = task.id;
+  clearBtn.textContent = "x";
+  clearBtn.setAttribute("aria-label", "Clear reminders");
+  clearBtn.setAttribute("data-test-skedpal", "task-reminder-clear");
+  valueEl.appendChild(label);
+  valueEl.appendChild(clearBtn);
   return item;
 }

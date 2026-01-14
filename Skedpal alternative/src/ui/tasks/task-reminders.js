@@ -2,26 +2,33 @@ import { saveTask } from "../../data/db.js";
 import {
   HALF,
   MS_PER_DAY,
+  MS_PER_SECOND,
+  MINUTES_PER_HOUR,
   REMINDER_DAY_OPTIONS,
   REMINDER_PANEL_ANCHOR_OFFSET_PX,
   REMINDER_PANEL_FALLBACK_HEIGHT_PX,
   REMINDER_PANEL_FALLBACK_WIDTH_PX,
   REMINDER_PANEL_FOCUS_DELAY_MS,
   REMINDER_PANEL_PADDING_PX,
+  SECONDS_PER_MINUTE,
   SORT_AFTER,
   SORT_BEFORE,
   domRefs
 } from "../constants.js";
 import { state } from "../state/page-state.js";
 import { uuid } from "../utils.js";
+import { showNotificationBanner, hideNotificationBanner } from "../notifications.js";
 import { removeReminderEntry } from "./task-reminders-helpers.js";
 
 const DAY_MS = MS_PER_DAY;
+const SECONDS_PER_DAY = DAY_MS / MS_PER_SECOND;
 const reminderDayButtons = new Map();
 const selectedDays = new Set();
 let reminderTargetId = "";
 let reminderModalCleanup = null;
 let reminderAnchor = null;
+let reminderZoomCleanup = null;
+let reminderZoomTarget = null;
 
 async function reloadTasks() {
   const { loadTasks } = await import("./tasks-actions.js");
@@ -56,17 +63,141 @@ export function getOverdueReminders(task, now = new Date()) {
 
 export function renderTaskReminderBadge(tasks = state.tasksCache) {
   const { taskReminderBadge } = domRefs;
-  if (!taskReminderBadge) {return;}
   const overdueCount = (tasks || []).reduce(
     (total, task) => total + getOverdueReminders(task).length,
     0
   );
-  if (overdueCount > 0) {
-    taskReminderBadge.textContent = String(overdueCount);
-  } else {
+  if (taskReminderBadge) {
     taskReminderBadge.textContent = "";
+    taskReminderBadge.classList.add("hidden");
   }
-  taskReminderBadge.classList.toggle("hidden", overdueCount === 0);
+  const zoomTarget = overdueCount > 0 ? findOverdueReminderTarget(tasks) : null;
+  renderReminderBanner(overdueCount, zoomTarget);
+}
+
+function findOverdueReminderTarget(tasks = []) {
+  let bestTime = null;
+  let bestTask = null;
+  (tasks || []).forEach((task) => {
+    const overdue = getOverdueReminders(task);
+    overdue.forEach((entry) => {
+      const time = Date.parse(entry.remindAt);
+      if (!Number.isFinite(time)) {return;}
+      if (bestTime === null || time < bestTime) {
+        bestTime = time;
+        bestTask = task;
+      }
+    });
+  });
+  if (!bestTask) {return null;}
+  return {
+    taskId: bestTask.id || "",
+    sectionId: bestTask.section || "",
+    subsectionId: bestTask.subsection || ""
+  };
+}
+
+function getReminderBannerNodes() {
+  return {
+    banner: domRefs.notificationBanner,
+    message: domRefs.notificationMessage,
+    zoomButton: domRefs.notificationZoomButton,
+    undoButton: domRefs.notificationUndoButton,
+    closeButton: domRefs.notificationCloseButton
+  };
+}
+
+function resetReminderBannerState() {
+  state.reminderBannerActive = false;
+  state.reminderBannerCount = 0;
+  state.reminderBannerDismissedCount = 0;
+}
+
+function clearReminderZoomAction() {
+  if (typeof reminderZoomCleanup === "function") {
+    reminderZoomCleanup();
+  }
+  reminderZoomCleanup = null;
+  reminderZoomTarget = null;
+  const { notificationZoomButton } = domRefs;
+  if (!notificationZoomButton) {return;}
+  notificationZoomButton.classList.add("hidden");
+}
+
+function hideReminderBanner() {
+  if (!state.reminderBannerActive) {return;}
+  resetReminderBannerState();
+  clearReminderZoomAction();
+  hideNotificationBanner();
+}
+
+function shouldShowReminderBanner(overdueCount, bannerVisible) {
+  if (overdueCount <= 0) {return false;}
+  if (bannerVisible && !state.reminderBannerActive) {return false;}
+  if (state.reminderBannerDismissedCount === overdueCount && !state.reminderBannerActive) {
+    return false;
+  }
+  return true;
+}
+
+function dismissReminderBanner(overdueCount) {
+  state.reminderBannerDismissedCount = overdueCount;
+  state.reminderBannerActive = false;
+  clearReminderZoomAction();
+  hideNotificationBanner();
+}
+
+function showReminderBanner(overdueCount, nodes, zoomTarget) {
+  const suffix = overdueCount === 1 ? "" : "s";
+  showNotificationBanner(`You have ${overdueCount} overdue reminder${suffix}.`);
+  state.reminderBannerActive = true;
+  state.reminderBannerCount = overdueCount;
+  if (nodes.undoButton) {
+    nodes.undoButton.classList.add("hidden");
+  }
+  if (nodes.closeButton) {
+    nodes.closeButton.onclick = () => {
+      dismissReminderBanner(overdueCount);
+    };
+  }
+  setReminderZoomAction(nodes.zoomButton, zoomTarget);
+}
+
+function renderReminderBanner(overdueCount, zoomTarget) {
+  const nodes = getReminderBannerNodes();
+  if (!nodes.banner || !nodes.message) {return;}
+  if (overdueCount <= 0) {
+    hideReminderBanner();
+    return;
+  }
+  const bannerVisible = !nodes.banner.classList.contains("hidden");
+  if (!shouldShowReminderBanner(overdueCount, bannerVisible)) {
+    clearReminderZoomAction();
+    return;
+  }
+  showReminderBanner(overdueCount, nodes, zoomTarget);
+}
+
+function setReminderZoomAction(button, target) {
+  clearReminderZoomAction();
+  if (!button || !target?.taskId) {return;}
+  reminderZoomTarget = target;
+  button.classList.remove("hidden");
+  button.addEventListener("click", handleReminderZoomClick);
+  reminderZoomCleanup = () => {
+    button.removeEventListener("click", handleReminderZoomClick);
+  };
+}
+
+async function handleReminderZoomClick() {
+  if (!reminderZoomTarget?.taskId) {return;}
+  const { setZoomFilter } = await import("../navigation.js");
+  setZoomFilter({
+    type: "task",
+    taskId: reminderZoomTarget.taskId,
+    sectionId: reminderZoomTarget.sectionId || "",
+    subsectionId: reminderZoomTarget.subsectionId || ""
+  });
 }
 
 function buildReminderEntry(days, now = new Date()) {
@@ -81,6 +212,29 @@ function buildReminderEntry(days, now = new Date()) {
   };
 }
 
+function getSecondsAsDays(seconds) {
+  const value = Number(seconds);
+  if (!Number.isFinite(value) || value <= 0) {return null;}
+  return value / SECONDS_PER_DAY;
+}
+
+function formatReminderOffsetLabel(days) {
+  if (!Number.isFinite(days) || days <= 0) {return "Soon";}
+  if (days < 1) {
+    const totalSeconds = Math.max(1, Math.round(days * SECONDS_PER_DAY));
+    if (totalSeconds < SECONDS_PER_MINUTE) {
+      return `In ${totalSeconds} second${totalSeconds === 1 ? "" : "s"}`;
+    }
+    const totalMinutes = Math.max(1, Math.round(totalSeconds / SECONDS_PER_MINUTE));
+    if (totalMinutes < MINUTES_PER_HOUR) {
+      return `In ${totalMinutes} minute${totalMinutes === 1 ? "" : "s"}`;
+    }
+    const totalHours = Math.max(1, Math.round(totalMinutes / MINUTES_PER_HOUR));
+    return `In ${totalHours} hour${totalHours === 1 ? "" : "s"}`;
+  }
+  return `In ${days} day${days === 1 ? "" : "s"}`;
+}
+
 function buildReminderLabel(entry) {
   const date = new Date(entry.remindAt);
   const isValid = !Number.isNaN(date.getTime());
@@ -88,7 +242,7 @@ function buildReminderLabel(entry) {
   const timeLabel = isValid
     ? date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
     : "Unknown time";
-  return `In ${entry.days} day${entry.days === 1 ? "" : "s"} at ${dateLabel} ${timeLabel}`;
+  return `${formatReminderOffsetLabel(entry.days)} at ${dateLabel} ${timeLabel}`;
 }
 
 function ensureReminderButtons() {
@@ -308,9 +462,10 @@ function handleReminderKeydown(event) {
 }
 
 function handleReminderDayClick(event) {
-  const btn = event.target.closest("[data-reminder-day]");
+  const btn = event.target.closest("[data-reminder-day], [data-reminder-seconds]");
   if (!btn) {return;}
-  const day = Number(btn.dataset.reminderDay);
+  const seconds = btn.dataset.reminderSeconds;
+  const day = seconds ? getSecondsAsDays(seconds) : Number(btn.dataset.reminderDay);
   if (!Number.isFinite(day) || day <= 0) {return;}
   if (selectedDays.has(day)) {
     selectedDays.delete(day);

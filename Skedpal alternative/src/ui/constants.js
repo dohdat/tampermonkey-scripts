@@ -204,6 +204,7 @@ export const domRefs = {
   horizonInput: document.getElementById("horizon"),
   notificationBanner: document.getElementById("notification-banner"),
   notificationMessage: document.getElementById("notification-message"),
+  notificationZoomButton: document.getElementById("notification-zoom"),
   notificationUndoButton: document.getElementById("notification-undo"),
   notificationCloseButton: document.getElementById("notification-close"),
   floatingActions: document.querySelector

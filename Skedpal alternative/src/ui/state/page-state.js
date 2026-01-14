@@ -37,5 +37,8 @@ export const state = {
   calendarExternalAllowFetch: false,
   bulkEditActive: false,
   bulkEditCleanup: null,
-  bulkEditSelectionIds: []
+  bulkEditSelectionIds: [],
+  reminderBannerActive: false,
+  reminderBannerCount: 0,
+  reminderBannerDismissedCount: 0
 };

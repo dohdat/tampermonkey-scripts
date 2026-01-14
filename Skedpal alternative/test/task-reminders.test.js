@@ -6,7 +6,7 @@ import { state } from "../src/ui/state/page-state.js";
 import { domRefs } from "../src/ui/constants.js";
 
 describe("task reminders", () => {
-  it("toggles the sidebar reminder badge when overdue reminders exist", async () => {
+  it("shows a notification banner when overdue reminders exist", async () => {
     const originalDocument = global.document;
     global.document = {
       querySelectorAll: () => [],
@@ -16,7 +16,7 @@ describe("task reminders", () => {
     const { renderTaskReminderBadge } = await import("../src/ui/tasks/task-reminders.js");
     global.document = originalDocument;
 
-    class BadgeElement {
+    class FakeElement {
       constructor() {
         this._classSet = new Set(["hidden"]);
         this.classList = {
@@ -33,25 +33,265 @@ describe("task reminders", () => {
           },
           contains: (name) => this._classSet.has(name)
         };
+        this.textContent = "";
+        this.onclick = null;
+        this._listeners = new Map();
+      }
+
+      addEventListener(type, handler) {
+        if (!this._listeners.has(type)) {
+          this._listeners.set(type, new Set());
+        }
+        this._listeners.get(type).add(handler);
+      }
+
+      removeEventListener(type, handler) {
+        this._listeners.get(type)?.delete(handler);
       }
     }
 
-    const badge = new BadgeElement();
+    const badge = new FakeElement();
+    const banner = new FakeElement();
+    const message = new FakeElement();
+    const zoomButton = new FakeElement();
+    const undoButton = new FakeElement();
+    const closeButton = new FakeElement();
     domRefs.taskReminderBadge = badge;
+    domRefs.notificationBanner = banner;
+    domRefs.notificationMessage = message;
+    domRefs.notificationZoomButton = zoomButton;
+    domRefs.notificationUndoButton = undoButton;
+    domRefs.notificationCloseButton = closeButton;
     const past = new Date(Date.now() - 86400000).toISOString();
-    renderTaskReminderBadge([{ reminders: [{ id: "r1", days: 1, remindAt: past, dismissedAt: "" }] }]);
-    assert.strictEqual(badge.classList.contains("hidden"), false);
-    assert.strictEqual(badge.textContent, "1");
-
-    renderTaskReminderBadge([{ reminders: [{ id: "r1", days: 1, remindAt: past, dismissedAt: past }] }]);
-    assert.strictEqual(badge.classList.contains("hidden"), true);
-    assert.strictEqual(badge.textContent, "");
-
+    state.reminderBannerActive = false;
+    state.reminderBannerDismissedCount = 0;
     renderTaskReminderBadge([
-      { completed: true, reminders: [{ id: "r1", days: 1, remindAt: past, dismissedAt: "" }] }
+      {
+        id: "task-zoom",
+        section: "section-1",
+        subsection: "sub-1",
+        reminders: [{ id: "r1", days: 1, remindAt: past, dismissedAt: "" }]
+      }
     ]);
     assert.strictEqual(badge.classList.contains("hidden"), true);
     assert.strictEqual(badge.textContent, "");
+    assert.strictEqual(banner.classList.contains("hidden"), false);
+    assert.strictEqual(message.textContent, "You have 1 overdue reminder.");
+    assert.strictEqual(zoomButton.classList.contains("hidden"), false);
+    assert.strictEqual(zoomButton._listeners.get("click")?.size, 1);
+
+    renderTaskReminderBadge([
+      {
+        id: "task-zoom",
+        section: "section-1",
+        subsection: "sub-1",
+        reminders: [{ id: "r1", days: 1, remindAt: past, dismissedAt: past }]
+      }
+    ]);
+    assert.strictEqual(banner.classList.contains("hidden"), true);
+    assert.strictEqual(message.textContent, "You have 1 overdue reminder.");
+    assert.strictEqual(zoomButton.classList.contains("hidden"), true);
+    assert.strictEqual(zoomButton._listeners.get("click")?.size || 0, 0);
+
+    renderTaskReminderBadge([
+      {
+        id: "task-zoom",
+        completed: true,
+        reminders: [{ id: "r1", days: 1, remindAt: past, dismissedAt: "" }]
+      }
+    ]);
+    assert.strictEqual(banner.classList.contains("hidden"), true);
+    assert.strictEqual(message.textContent, "You have 1 overdue reminder.");
+    assert.strictEqual(zoomButton.classList.contains("hidden"), true);
+  });
+
+  it("respects existing notification banners and dismissal state", async () => {
+    const originalDocument = global.document;
+    global.document = {
+      querySelectorAll: () => [],
+      querySelector: () => null,
+      getElementById: () => null
+    };
+    const { renderTaskReminderBadge } = await import("../src/ui/tasks/task-reminders.js");
+    global.document = originalDocument;
+
+    class FakeElement {
+      constructor() {
+        this._classSet = new Set(["hidden"]);
+        this.classList = {
+          add: (...names) => names.forEach((n) => this._classSet.add(n)),
+          remove: (...names) => names.forEach((n) => this._classSet.delete(n)),
+          toggle: (name, force) => {
+            if (force === undefined) {
+              if (this._classSet.has(name)) {this._classSet.delete(name);}
+              else {this._classSet.add(name);}
+              return;
+            }
+            if (force) {this._classSet.add(name);}
+            else {this._classSet.delete(name);}
+          },
+          contains: (name) => this._classSet.has(name)
+        };
+        this.textContent = "";
+        this.onclick = null;
+      }
+    }
+
+    const banner = new FakeElement();
+    const message = new FakeElement();
+    const undoButton = new FakeElement();
+    const closeButton = new FakeElement();
+    domRefs.notificationBanner = banner;
+    domRefs.notificationMessage = message;
+    domRefs.notificationUndoButton = undoButton;
+    domRefs.notificationCloseButton = closeButton;
+
+    const past = new Date(Date.now() - 86400000).toISOString();
+    state.reminderBannerActive = false;
+    state.reminderBannerDismissedCount = 0;
+    banner.classList.remove("hidden");
+    message.textContent = "Existing notice";
+
+    renderTaskReminderBadge([{ reminders: [{ id: "r1", days: 1, remindAt: past, dismissedAt: "" }] }]);
+    assert.strictEqual(message.textContent, "Existing notice");
+
+    banner.classList.add("hidden");
+    state.reminderBannerDismissedCount = 1;
+    renderTaskReminderBadge([{ reminders: [{ id: "r1", days: 1, remindAt: past, dismissedAt: "" }] }]);
+    assert.strictEqual(banner.classList.contains("hidden"), true);
+
+    state.reminderBannerDismissedCount = 0;
+    renderTaskReminderBadge([{ reminders: [{ id: "r1", days: 1, remindAt: past, dismissedAt: "" }] }]);
+    assert.strictEqual(banner.classList.contains("hidden"), false);
+    assert.strictEqual(message.textContent, "You have 1 overdue reminder.");
+
+    closeButton.onclick?.();
+    assert.strictEqual(state.reminderBannerDismissedCount, 1);
+    assert.strictEqual(banner.classList.contains("hidden"), true);
+
+    state.reminderBannerActive = true;
+    banner.classList.remove("hidden");
+    renderTaskReminderBadge([]);
+    assert.strictEqual(banner.classList.contains("hidden"), true);
+    assert.strictEqual(state.reminderBannerDismissedCount, 0);
+  });
+
+  it("keeps the zoom button hidden when no task id is available", async () => {
+    const originalDocument = global.document;
+    global.document = {
+      querySelectorAll: () => [],
+      querySelector: () => null,
+      getElementById: () => null
+    };
+    const { renderTaskReminderBadge } = await import("../src/ui/tasks/task-reminders.js");
+    global.document = originalDocument;
+
+    class FakeElement {
+      constructor() {
+        this._classSet = new Set(["hidden"]);
+        this.classList = {
+          add: (...names) => names.forEach((n) => this._classSet.add(n)),
+          remove: (...names) => names.forEach((n) => this._classSet.delete(n)),
+          toggle: (name, force) => {
+            if (force === undefined) {
+              if (this._classSet.has(name)) {this._classSet.delete(name);}
+              else {this._classSet.add(name);}
+              return;
+            }
+            if (force) {this._classSet.add(name);}
+            else {this._classSet.delete(name);}
+          },
+          contains: (name) => this._classSet.has(name)
+        };
+        this.textContent = "";
+        this._listeners = new Map();
+      }
+
+      addEventListener(type, handler) {
+        if (!this._listeners.has(type)) {
+          this._listeners.set(type, new Set());
+        }
+        this._listeners.get(type).add(handler);
+      }
+
+      removeEventListener(type, handler) {
+        this._listeners.get(type)?.delete(handler);
+      }
+    }
+
+    const banner = new FakeElement();
+    const message = new FakeElement();
+    const zoomButton = new FakeElement();
+    const undoButton = new FakeElement();
+    const closeButton = new FakeElement();
+    domRefs.notificationBanner = banner;
+    domRefs.notificationMessage = message;
+    domRefs.notificationZoomButton = zoomButton;
+    domRefs.notificationUndoButton = undoButton;
+    domRefs.notificationCloseButton = closeButton;
+
+    const past = new Date(Date.now() - 86400000).toISOString();
+    state.reminderBannerActive = false;
+    state.reminderBannerDismissedCount = 0;
+    renderTaskReminderBadge([
+      { reminders: [{ id: "r1", days: 1, remindAt: past, dismissedAt: "" }] }
+    ]);
+
+    assert.strictEqual(banner.classList.contains("hidden"), false);
+    assert.strictEqual(zoomButton.classList.contains("hidden"), true);
+    assert.strictEqual(zoomButton._listeners.get("click")?.size || 0, 0);
+  });
+
+  it("shows reminder banners even when the zoom button is missing", async () => {
+    const originalDocument = global.document;
+    global.document = {
+      querySelectorAll: () => [],
+      querySelector: () => null,
+      getElementById: () => null
+    };
+    const { renderTaskReminderBadge } = await import("../src/ui/tasks/task-reminders.js");
+    global.document = originalDocument;
+
+    class FakeElement {
+      constructor() {
+        this._classSet = new Set(["hidden"]);
+        this.classList = {
+          add: (...names) => names.forEach((n) => this._classSet.add(n)),
+          remove: (...names) => names.forEach((n) => this._classSet.delete(n)),
+          toggle: (name, force) => {
+            if (force === undefined) {
+              if (this._classSet.has(name)) {this._classSet.delete(name);}
+              else {this._classSet.add(name);}
+              return;
+            }
+            if (force) {this._classSet.add(name);}
+            else {this._classSet.delete(name);}
+          },
+          contains: (name) => this._classSet.has(name)
+        };
+        this.textContent = "";
+      }
+    }
+
+    const banner = new FakeElement();
+    const message = new FakeElement();
+    const undoButton = new FakeElement();
+    const closeButton = new FakeElement();
+    domRefs.notificationBanner = banner;
+    domRefs.notificationMessage = message;
+    domRefs.notificationZoomButton = null;
+    domRefs.notificationUndoButton = undoButton;
+    domRefs.notificationCloseButton = closeButton;
+
+    const past = new Date(Date.now() - 86400000).toISOString();
+    state.reminderBannerActive = false;
+    state.reminderBannerDismissedCount = 0;
+    renderTaskReminderBadge([
+      { id: "task-zoom", reminders: [{ id: "r1", days: 1, remindAt: past, dismissedAt: "" }] }
+    ]);
+
+    assert.strictEqual(banner.classList.contains("hidden"), false);
+    assert.strictEqual(message.textContent, "You have 1 overdue reminder.");
   });
 
   it("hides the existing reminder list when empty", async () => {
@@ -244,6 +484,8 @@ describe("task reminders", () => {
       return null;
     }
 
+    const fiveMinutesDays = (5 * 60) / 86400;
+    const ninetyMinutesDays = (90 * 60) / 86400;
     state.tasksCache = [
       {
         id: "task-1",
@@ -251,7 +493,9 @@ describe("task reminders", () => {
           { id: "r1", days: 2, remindAt: "2026-01-11T10:00:00.000Z", dismissedAt: "" },
           { id: "r2", days: 1, remindAt: "2026-01-10T10:00:00.000Z", dismissedAt: "" },
           { id: "r3", days: 4, remindAt: "2026-01-12T10:00:00.000Z", dismissedAt: "2026-01-09T10:00:00.000Z" },
-          { id: "r4", days: 6, remindAt: "invalid-date", dismissedAt: "" }
+          { id: "r4", days: 6, remindAt: "invalid-date", dismissedAt: "" },
+          { id: "r5", days: fiveMinutesDays, remindAt: "2026-01-10T10:05:00.000Z", dismissedAt: "" },
+          { id: "r6", days: ninetyMinutesDays, remindAt: "2026-01-10T11:30:00.000Z", dismissedAt: "" }
         ]
       }
     ];
@@ -261,9 +505,19 @@ describe("task reminders", () => {
     module.openTaskReminderModal("task-1");
 
     assert.strictEqual(taskReminderModal.classList.contains("hidden"), false);
-    assert.strictEqual(taskReminderExistingList.children.length, 4);
+    assert.strictEqual(taskReminderExistingList.children.length, 6);
     assert.ok(
       (taskReminderExistingList.children[0].children[0].textContent || "").includes("In 1 day")
+    );
+    assert.ok(
+      [...taskReminderExistingList.children].some((row) =>
+        (row.children[0]?.textContent || "").includes("minutes")
+      )
+    );
+    assert.ok(
+      [...taskReminderExistingList.children].some((row) =>
+        (row.children[0]?.textContent || "").includes("hours")
+      )
     );
     assert.ok(findByTestAttr(taskReminderExistingList, "task-reminder-existing-dismissed"));
 

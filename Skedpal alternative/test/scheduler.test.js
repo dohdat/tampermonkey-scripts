@@ -928,6 +928,72 @@ describe("scheduler", () => {
     assert.strictEqual(placements[1].start.getHours(), 10);
   });
 
+  it("orders nested subtasks under sequential parents by subtree order", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 4);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "12:00" }] }
+    ];
+    const tasks = [
+      {
+        id: "parent",
+        title: "Parent",
+        completed: true,
+        subtaskScheduleMode: "sequential"
+      },
+      {
+        id: "child-1",
+        title: "Unit test",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59),
+        subtaskParentId: "parent",
+        order: 1
+      },
+      {
+        id: "child-2",
+        title: "MR task",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59),
+        subtaskParentId: "parent",
+        order: 2
+      },
+      {
+        id: "child-3",
+        title: "WDIO test",
+        completed: true,
+        subtaskParentId: "parent",
+        order: 3
+      },
+      {
+        id: "grandchild-1",
+        title: "Verification tasks",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59),
+        subtaskParentId: "child-3",
+        order: 1
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 1,
+      now
+    });
+
+    const placements = [...result.scheduled].sort((a, b) => a.start - b.start);
+    assert.strictEqual(placements.length, 3);
+    assert.strictEqual(placements[0].taskId, "child-1");
+    assert.strictEqual(placements[1].taskId, "child-2");
+    assert.strictEqual(placements[2].taskId, "grandchild-1");
+  });
+
   it("requires single blocks for sequential one-at-a-time subtasks", () => {
     const now = nextWeekday(new Date(2026, 0, 1), 5);
     const timeMaps = [

@@ -235,6 +235,7 @@ export const domRefs = {
   backupImportBtn: document.getElementById("backup-import"),
   backupImportInput: document.getElementById("backup-import-input"),
   backupRestoreBtn: document.getElementById("backup-restore"),
+  backupTrimBtn: document.getElementById("backup-trim"),
   backupStatus: document.getElementById("backup-status"),
   taskTemplateNewBtn: document.getElementById("task-template-new"),
   taskTemplateToggleBtn: document.getElementById("task-template-toggle"),

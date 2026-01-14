@@ -84,6 +84,32 @@ async function deleteItem(storeName, key) {
   });
 }
 
+function isTaskDeleted(task) {
+  return Boolean(task?.deleted || task?.isDeleted || task?.deletedAt || task?.deletedOn);
+}
+
+function getProtectedTaskIds(tasks) {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const protectedIds = new Set();
+  for (const task of tasks) {
+    if (task?.completed || !task?.subtaskParentId) {continue;}
+    let parentId = task.subtaskParentId;
+    while (parentId && !protectedIds.has(parentId)) {
+      protectedIds.add(parentId);
+      parentId = byId.get(parentId)?.subtaskParentId || null;
+    }
+  }
+  return protectedIds;
+}
+
+function pruneCollapsedTasks(settings, removedIds) {
+  if (!settings || !Array.isArray(settings.collapsedTasks)) {return settings;}
+  if (!removedIds || removedIds.size === 0) {return settings;}
+  const next = settings.collapsedTasks.filter((id) => !removedIds.has(id));
+  if (next.length === settings.collapsedTasks.length) {return settings;}
+  return { ...settings, collapsedTasks: next };
+}
+
 export async function getAllTasks() {
   return getAll("tasks");
 }
@@ -94,6 +120,51 @@ export async function saveTask(task) {
 
 export async function deleteTask(id) {
   return deleteItem("tasks", id);
+}
+
+export async function trimTaskCollection() {
+  const db = await openDb();
+  const tx = db.transaction(["tasks", "settings"], "readwrite");
+  const tasksStore = tx.objectStore("tasks");
+  const settingsStore = tx.objectStore("settings");
+  const tasks = await new Promise((resolve, reject) => {
+    const req = tasksStore.getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+  const settingsEntry = await new Promise((resolve, reject) => {
+    const req = settingsStore.get("settings");
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+  const settings = { ...DEFAULT_SETTINGS, ...(settingsEntry?.value || {}) };
+  const protectedIds = getProtectedTaskIds(tasks);
+  const removedIds = new Set();
+  for (const task of tasks) {
+    if (!task?.id) {continue;}
+    if (protectedIds.has(task.id)) {continue;}
+    if (task.completed || isTaskDeleted(task)) {
+      removedIds.add(task.id);
+    }
+  }
+  removedIds.forEach((id) => {
+    tasksStore.delete(id);
+  });
+  const nextSettings = pruneCollapsedTasks(settings, removedIds);
+  if (nextSettings !== settings) {
+    settingsStore.put({ id: "settings", value: nextSettings });
+  }
+  await new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error("Trim aborted"));
+  });
+  db.close();
+  return {
+    removedCount: removedIds.size,
+    totalCount: tasks.length,
+    settings: nextSettings
+  };
 }
 
 export async function getAllTaskTemplates() {

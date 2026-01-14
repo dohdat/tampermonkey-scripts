@@ -13,7 +13,8 @@ import {
   saveBackup,
   saveSettings,
   saveTask,
-  saveTimeMap
+  saveTimeMap,
+  trimTaskCollection
 } from "../src/data/db.js";
 
 const DB_NAME = "personal-skedpal";
@@ -131,5 +132,33 @@ describe("db", () => {
     assert.strictEqual(settings.schedulingHorizonDays, 30);
     assert.strictEqual(settings.defaultTimeMapId, "tm-new");
     assert.deepStrictEqual(settings.googleCalendarIds, ["cal-1"]);
+  });
+
+  it("trimTaskCollection removes completed and deleted tasks while preserving active parents", async () => {
+    await saveTask({ id: "done-1", title: "Done", completed: true });
+    await saveTask({ id: "deleted-1", title: "Deleted", deleted: true });
+    await saveTask({ id: "parent-1", title: "Parent", completed: true });
+    await saveTask({
+      id: "child-1",
+      title: "Child",
+      completed: false,
+      subtaskParentId: "parent-1"
+    });
+    await saveTask({ id: "active-1", title: "Active", completed: false });
+    await saveSettings({
+      collapsedTasks: ["done-1", "deleted-1", "active-1"]
+    });
+
+    const result = await trimTaskCollection();
+    assert.strictEqual(result.removedCount, 2);
+    const tasks = await getAllTasks();
+    const ids = new Set(tasks.map((task) => task.id));
+    assert.ok(ids.has("parent-1"));
+    assert.ok(ids.has("child-1"));
+    assert.ok(ids.has("active-1"));
+    assert.ok(!ids.has("done-1"));
+    assert.ok(!ids.has("deleted-1"));
+    const settings = await getSettings();
+    assert.deepStrictEqual(settings.collapsedTasks, ["active-1"]);
   });
 });

@@ -7,6 +7,7 @@ import {
   getLatestBackup,
   restoreBackup,
   saveSettings,
+  trimTaskCollection,
   DEFAULT_SETTINGS,
   DEFAULT_SCHEDULING_HORIZON_DAYS
 } from "../data/db.js";
@@ -32,6 +33,7 @@ const {
   backupImportBtn,
   backupImportInput,
   backupRestoreBtn,
+  backupTrimBtn,
   backupStatus,
   taskBackgroundModeSelect
 } = domRefs;
@@ -79,6 +81,10 @@ function setBackupButtonsState(disabled) {
   if (backupRestoreBtn) {
     backupRestoreBtn.disabled = Boolean(disabled);
     backupRestoreBtn.classList.toggle("opacity-60", Boolean(disabled));
+  }
+  if (backupTrimBtn) {
+    backupTrimBtn.disabled = Boolean(disabled);
+    backupTrimBtn.classList.toggle("opacity-60", Boolean(disabled));
   }
 }
 
@@ -413,6 +419,11 @@ function confirmBackupImport() {
   return window.confirm("Import this backup file? This will replace current data.");
 }
 
+function confirmBackupTrim() {
+  if (typeof window === "undefined") {return true;}
+  return window.confirm("Trim completed or deleted tasks? This cannot be undone.");
+}
+
 function formatBackupFilename(value) {
   const date = new Date(value || Date.now());
   if (Number.isNaN(date.getTime())) {
@@ -534,6 +545,35 @@ async function handleRestoreLatestClick() {
   }
 }
 
+async function handleBackupTrimClick() {
+  setBackupButtonsState(true);
+  setBackupStatus("Trimming completed tasks...");
+  try {
+    if (!confirmBackupTrim()) {
+      setBackupStatus("Trim canceled.");
+      return;
+    }
+    const result = await trimTaskCollection();
+    state.settingsCache = { ...DEFAULT_SETTINGS, ...(result.settings || {}) };
+    applyCollapsedPreferences(state.settingsCache);
+    await loadTasks();
+    await updateScheduleSummary();
+    const removed = result.removedCount || 0;
+    if (removed === 0) {
+      setBackupStatus("No completed or deleted tasks to trim.");
+      return;
+    }
+    const total = result.totalCount || removed;
+    const suffix = removed === 1 ? "" : "s";
+    setBackupStatus(`Trimmed ${removed} task${suffix} from ${total}.`);
+  } catch (error) {
+    console.warn("Failed to trim task collection.", error);
+    setBackupStatus("Failed to trim tasks.");
+  } finally {
+    setBackupButtonsState(false);
+  }
+}
+
 function initBackupSettings() {
   const cleanupFns = [];
   if (backupNowBtn) {
@@ -555,6 +595,10 @@ function initBackupSettings() {
   if (backupRestoreBtn) {
     backupRestoreBtn.addEventListener("click", handleRestoreLatestClick);
     cleanupFns.push(() => backupRestoreBtn.removeEventListener("click", handleRestoreLatestClick));
+  }
+  if (backupTrimBtn) {
+    backupTrimBtn.addEventListener("click", handleBackupTrimClick);
+    cleanupFns.push(() => backupTrimBtn.removeEventListener("click", handleBackupTrimClick));
   }
   void refreshBackupStatus();
   return () => {

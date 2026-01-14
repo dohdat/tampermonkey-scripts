@@ -498,7 +498,7 @@ describe("scheduler", () => {
   });
 
   it("schedules yearly ranges that wrap across years", () => {
-    const now = new Date(2026, 11, 16, 8, 0, 0, 0);
+    const now = new Date(2026, 11, 20, 8, 0, 0, 0);
     const timeMaps = [
       {
         id: "tm-all",
@@ -534,6 +534,8 @@ describe("scheduler", () => {
 
     assert.strictEqual(result.scheduled.length, 1);
     assert.ok(result.scheduled[0].start >= now);
+    assert.ok(result.scheduled[0].start >= new Date("2026-11-30T00:00:00Z"));
+    assert.ok(result.scheduled[0].end <= new Date("2027-01-06T23:59:59Z"));
   });
 
   it("marks unscheduled and ignored tasks", () => {

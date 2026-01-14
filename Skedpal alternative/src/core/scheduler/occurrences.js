@@ -284,7 +284,7 @@ export function getUpcomingOccurrences(
   const completedOccurrences = new Set(
     (task.completedOccurrences || []).map((value) => {
       const date = new Date(value);
-      return Number.isNaN(date) ? String(value) : date.toISOString();
+      return Number.isNaN(date.getTime()) ? String(value) : date.toISOString();
     })
   );
   return occurrences

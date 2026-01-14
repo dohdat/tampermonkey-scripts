@@ -96,7 +96,7 @@ describe("scheduler occurrences", () => {
     assert.strictEqual(dates[0].getDate(), 8);
   });
 
-  it("parses yearly range dates from non-string inputs", () => {
+  it("parses yearly range end dates from non-string inputs", () => {
     const localNow = new Date(2026, 0, 1);
     const localHorizon = new Date(2027, 11, 31, 23, 59, 59);
     const task = {
@@ -113,6 +113,46 @@ describe("scheduler occurrences", () => {
     assert.ok(dates.length > 0);
     assert.strictEqual(dates[0].getMonth(), 5);
     assert.strictEqual(dates[0].getDate(), 20);
+  });
+
+  it("uses yearly month/day when range start is missing", () => {
+    const localNow = new Date(2026, 0, 1);
+    const localHorizon = new Date(2026, 11, 31, 23, 59, 59);
+    const task = {
+      id: "t8b",
+      startFrom: localNow,
+      repeat: {
+        type: "custom",
+        unit: "year",
+        interval: 1,
+        yearlyMonth: 3,
+        yearlyDay: 15
+      }
+    };
+    const dates = buildOccurrenceDates(task, localNow, localHorizon);
+    assert.ok(dates.length > 0);
+    assert.strictEqual(dates[0].getMonth(), 2);
+    assert.strictEqual(dates[0].getDate(), 15);
+  });
+
+  it("rolls yearly occurrences into the next year when date has passed", () => {
+    const localNow = new Date(2026, 6, 10);
+    const localHorizon = new Date(2027, 11, 31, 23, 59, 59);
+    const task = {
+      id: "t8c",
+      startFrom: localNow,
+      repeat: {
+        type: "custom",
+        unit: "year",
+        interval: 1,
+        yearlyMonth: 3,
+        yearlyDay: 15
+      }
+    };
+    const dates = buildOccurrenceDates(task, localNow, localHorizon);
+    assert.ok(dates.length > 0);
+    assert.strictEqual(dates[0].getFullYear(), 2027);
+    assert.strictEqual(dates[0].getMonth(), 2);
   });
 
   it("filters completed occurrences from upcoming results", () => {
@@ -136,6 +176,21 @@ describe("scheduler occurrences", () => {
       14
     );
     assert.deepStrictEqual(second, []);
+  });
+
+  it("keeps occurrences when completed dates are invalid", () => {
+    const task = {
+      id: "t5b",
+      deadline: "2026-01-05T12:00:00Z",
+      durationMin: 30,
+      minBlockMin: 15,
+      priority: 1,
+      timeMapIds: [],
+      repeat: { type: "none" },
+      completedOccurrences: ["bad-date"]
+    };
+    const results = getUpcomingOccurrences(task, now, 3, 14);
+    assert.strictEqual(results.length, 1);
   });
 
   it("returns an empty list when no task is provided", () => {

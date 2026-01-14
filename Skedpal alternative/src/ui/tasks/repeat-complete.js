@@ -10,6 +10,7 @@ import {
   domRefs
 } from "../constants.js";
 import { formatDate, getLocalDateKey } from "../utils.js";
+import { getDateParts } from "../repeat-yearly.js";
 import { state } from "../state/page-state.js";
 
 const { repeatCompleteModal, repeatCompleteList, repeatCompleteEmpty } = domRefs;
@@ -27,6 +28,30 @@ function formatMonthRange(start, end) {
     return `${startMonth}-${endMonth} ${startYear}`;
   }
   return `${startMonth} ${startYear}-${endMonth} ${endYear}`;
+}
+
+function isMonthDayAfter(start, end) {
+  if (start.month !== end.month) {
+    return start.month > end.month;
+  }
+  return start.day > end.day;
+}
+
+function buildYearlyRangeLabel(task, date) {
+  const repeat = task?.repeat;
+  if (!repeat || repeat.unit !== "year") {return "";}
+  if (!repeat.yearlyRangeStartDate || !repeat.yearlyRangeEndDate) {return "";}
+  const startParts = getDateParts(repeat.yearlyRangeStartDate);
+  const endParts = getDateParts(repeat.yearlyRangeEndDate);
+  if (!startParts || !endParts) {return "";}
+  const endYear = date.getFullYear();
+  const startYear = isMonthDayAfter(startParts, endParts) ? endYear - 1 : endYear;
+  const startDate = new Date(startYear, startParts.month - 1, startParts.day);
+  const endDate = new Date(endYear, endParts.month - 1, endParts.day);
+  const startLabel = formatDate(startDate);
+  const endLabel = formatDate(endDate);
+  if (!startLabel || !endLabel) {return "";}
+  return `${startLabel} - ${endLabel}`;
 }
 
 function buildOccurrenceButton({
@@ -57,7 +82,8 @@ function buildOccurrenceButton({
   radio.setAttribute("data-test-skedpal", "repeat-complete-radio");
   const label = document.createElement("span");
   label.className = "repeat-complete-label";
-  label.textContent = formatDate(date) || date.toLocaleDateString();
+  label.textContent =
+    buildYearlyRangeLabel(task, date) || formatDate(date) || date.toLocaleDateString();
   label.setAttribute("data-test-skedpal", "repeat-complete-label");
   const time = document.createElement("span");
   time.className = "repeat-complete-time";

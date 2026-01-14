@@ -1,9 +1,11 @@
 import { addDays, endOfDay, parseTime, startOfDay, startOfWeek } from "./scheduler/date-utils.js";
 import { buildOccurrenceDates, getUpcomingOccurrences } from "./scheduler/occurrences.js";
 import { normalizeTask } from "./scheduler/task-utils.js";
-import { INDEX_NOT_FOUND, THREE } from "../constants.js";
+import { INDEX_NOT_FOUND, MS_PER_DAY, THREE } from "../constants.js";
 
 export { getUpcomingOccurrences };
+
+const FLEXIBLE_REPEAT_WINDOW_DAYS = 3;
 
 function normalizeTimeMap(timeMap) {
   if (Array.isArray(timeMap.rules) && timeMap.rules.length > 0) {
@@ -246,6 +248,25 @@ function resolveWeeklyAnyDeadline(repeat, occurrenceDate, horizonEnd) {
   return deadline;
 }
 
+function computeRepeatWindowDays(start, end) {
+  if (!start || !end) {return 0;}
+  const diff = end.getTime() - start.getTime();
+  if (!Number.isFinite(diff) || diff <= 0) {return 0;}
+  return Math.ceil(diff / MS_PER_DAY);
+}
+
+function isFlexibleRepeat(candidate) {
+  return candidate.isRepeating && candidate.repeatWindowDays >= FLEXIBLE_REPEAT_WINDOW_DAYS;
+}
+
+function shouldPreferPriorityOrder(a, b) {
+  if (a.hasExplicitDeadline || b.hasExplicitDeadline) {return false;}
+  if (!a.isRepeating && !b.isRepeating) {return true;}
+  if (isFlexibleRepeat(a) && !b.isRepeating) {return true;}
+  if (isFlexibleRepeat(b) && !a.isRepeating) {return true;}
+  return false;
+}
+
 function buildScheduleCandidates(tasks, now, horizonEnd) {
   const ignored = new Set();
   const immediatelyUnscheduled = new Set();
@@ -278,6 +299,7 @@ function buildScheduleCandidates(tasks, now, horizonEnd) {
         return;
       }
       const isRepeating = normalized.repeat && normalized.repeat.type !== "none";
+      const hasExplicitDeadline = Boolean(task.deadline);
       occurrenceDates.forEach((deadline, index) => {
         const occurrenceDate = deadline;
         if (completedOccurrences.has(occurrenceDate.toISOString())) {
@@ -296,8 +318,14 @@ function buildScheduleCandidates(tasks, now, horizonEnd) {
             occurrenceStart ? occurrenceStart.getTime() : 0
           )
         );
+        const repeatWindowDays = isRepeating
+          ? computeRepeatWindowDays(occurrenceStart || earliestStart, schedulingDeadline)
+          : 0;
         candidates.push({
           ...normalized,
+          hasExplicitDeadline,
+          isRepeating,
+          repeatWindowDays,
           occurrenceId: `${normalized.id || normalized.taskId || task.id}-occ-${index}`,
           deadline: schedulingDeadline,
           startFrom: earliestStart
@@ -431,15 +459,25 @@ function resolveOrderValue(value) {
 }
 
 function compareCandidateOrder(a, b) {
-  const comparisons = [
-    () => compareNumeric(a.deadline, b.deadline),
-    () => compareNumeric(b.priority, a.priority),
-    () => compareNumeric(a.startFrom, b.startFrom),
-    () => (a.section || "").localeCompare(b.section || ""),
-    () => (a.subsection || "").localeCompare(b.subsection || ""),
-    () => compareNumeric(resolveOrderValue(a.order), resolveOrderValue(b.order)),
-    () => (a.title || "").localeCompare(b.title || "")
-  ];
+  const comparisons = shouldPreferPriorityOrder(a, b)
+    ? [
+        () => compareNumeric(b.priority, a.priority),
+        () => compareNumeric(a.deadline, b.deadline),
+        () => compareNumeric(a.startFrom, b.startFrom),
+        () => (a.section || "").localeCompare(b.section || ""),
+        () => (a.subsection || "").localeCompare(b.subsection || ""),
+        () => compareNumeric(resolveOrderValue(a.order), resolveOrderValue(b.order)),
+        () => (a.title || "").localeCompare(b.title || "")
+      ]
+    : [
+        () => compareNumeric(a.deadline, b.deadline),
+        () => compareNumeric(b.priority, a.priority),
+        () => compareNumeric(a.startFrom, b.startFrom),
+        () => (a.section || "").localeCompare(b.section || ""),
+        () => (a.subsection || "").localeCompare(b.subsection || ""),
+        () => compareNumeric(resolveOrderValue(a.order), resolveOrderValue(b.order)),
+        () => (a.title || "").localeCompare(b.title || "")
+      ];
   for (const compare of comparisons) {
     const result = compare();
     if (result !== 0) {return result;}

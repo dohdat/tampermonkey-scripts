@@ -653,6 +653,88 @@ describe("scheduler", () => {
     assert.ok(result.unscheduled.includes("low"));
   });
 
+  it("prioritizes by priority when deadlines are implicit and repeat is flexible", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 1);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "10:00" }] }
+    ];
+    const tasks = [
+      {
+        id: "repeat-low",
+        title: "Repeat low",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        priority: 1,
+        repeat: {
+          type: "custom",
+          unit: "week",
+          interval: 1,
+          weeklyMode: "any",
+          weeklyDays: [1, 2, 3, 4, 5]
+        }
+      },
+      {
+        id: "single-high",
+        title: "Single high",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        priority: 5
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 1,
+      now
+    });
+
+    assert.strictEqual(result.scheduled.length, 1);
+    assert.strictEqual(result.scheduled[0].taskId, "single-high");
+    assert.ok(result.unscheduled.includes("repeat-low"));
+  });
+
+  it("keeps tighter repeat windows ahead of implicit one-offs", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 1);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "10:00" }] }
+    ];
+    const tasks = [
+      {
+        id: "repeat-tight",
+        title: "Repeat tight",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        priority: 1,
+        repeat: { type: "custom", unit: "day", interval: 1 }
+      },
+      {
+        id: "single-high",
+        title: "Single high",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        priority: 5
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 1,
+      now
+    });
+
+    assert.strictEqual(result.scheduled.length, 1);
+    assert.strictEqual(result.scheduled[0].taskId, "repeat-tight");
+    assert.ok(result.unscheduled.includes("single-high"));
+  });
+
   it("orders by section, subsection, and order when priorities match", () => {
     const now = nextWeekday(new Date(2026, 0, 1), 3);
     const timeMaps = [

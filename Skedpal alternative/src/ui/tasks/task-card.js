@@ -2,7 +2,6 @@ import {
   EXTERNAL_CALENDAR_TIMEMAP_PREFIX,
   DEFAULT_TASK_REPEAT,
   TASK_REPEAT_NONE,
-  TASK_STATUS_UNSCHEDULED,
   caretDownIconSvg,
   caretRightIconSvg,
   checkboxCheckedIconSvg,
@@ -26,7 +25,7 @@ import {
 } from "../utils.js";
 import { getRepeatSummary } from "../repeat.js";
 import { themeColors } from "../theme.js";
-import { saveTask } from "../../data/db.js";
+import { updateTaskDetailField } from "./task-detail-updates.js";
 import { getOverdueReminders } from "./task-reminders.js";
 import { applyTaskBackgroundStyle } from "./task-card-styles.js";
 import { buildReminderDetailItem } from "./task-card-details.js";
@@ -616,18 +615,3 @@ export function renderTaskCard(task, context) {
   return taskCard;
 }
 
-async function updateTaskDetailField(task, updates) {
-  if (!task) {return;}
-  await saveTask({
-    ...task,
-    ...updates,
-    scheduleStatus: TASK_STATUS_UNSCHEDULED,
-    scheduledStart: null,
-    scheduledEnd: null,
-    scheduledTimeMapId: null,
-    scheduledInstances: []
-  });
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event("skedpal:tasks-updated"));
-  }
-}

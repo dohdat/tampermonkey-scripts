@@ -1,3 +1,4 @@
+import "fake-indexeddb/auto.js";
 import assert from "assert";
 import { describe, it, beforeEach } from "mocha";
 
@@ -73,14 +74,19 @@ function installDomStubs() {
     querySelectorAll: () => [],
     getElementById: () => null
   };
+  global.window = {
+    dispatchEvent: () => {}
+  };
 }
 
 installDomStubs();
 
 const { renderTaskCard } = await import("../src/ui/tasks/task-card.js");
+const { updateTaskDetailField } = await import("../src/ui/tasks/task-detail-updates.js");
 const { caretRightIconSvg, EXTERNAL_CALENDAR_TIMEMAP_PREFIX } = await import("../src/ui/constants.js");
 const { themeColors } = await import("../src/ui/theme.js");
 const { parseLocalDateInput } = await import("../src/ui/utils.js");
+const { saveTask, getAllTasks } = await import("../src/data/db.js");
 const { state } = await import("../src/ui/state/page-state.js");
 
 describe("task card", () => {
@@ -263,6 +269,37 @@ describe("task card", () => {
     assert.ok(findByTestAttr(card, "task-start-from-clear"));
     assert.ok(findByTestAttr(card, "task-deadline-clear"));
     assert.ok(findByTestAttr(card, "task-repeat-clear"));
+  });
+
+  it("clears inherited start-from values for child tasks", async () => {
+    const parent = {
+      id: "t-clear-parent",
+      title: "Parent",
+      durationMin: 30,
+      minBlockMin: 15,
+      timeMapIds: [],
+      completed: false,
+      startFrom: parseLocalDateInput("2026-01-15")
+    };
+    const child = {
+      id: "t-clear-child",
+      title: "Child",
+      durationMin: 15,
+      minBlockMin: 10,
+      timeMapIds: [],
+      completed: false,
+      subtaskParentId: parent.id,
+      startFrom: parent.startFrom
+    };
+    state.tasksCache = [parent, child];
+    await saveTask(parent);
+    await saveTask(child);
+
+    await updateTaskDetailField(parent, { startFrom: null });
+
+    const tasks = await getAllTasks();
+    const updatedChild = tasks.find((task) => task.id === child.id);
+    assert.strictEqual(updatedChild?.startFrom, null);
   });
 
   it("renders expanded details and styles subtasks", () => {

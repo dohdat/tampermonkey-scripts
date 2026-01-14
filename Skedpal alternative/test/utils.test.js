@@ -361,6 +361,26 @@ describe("utils date parsing", () => {
     assert.strictEqual(update.nextStartFrom, task.startFrom);
   });
 
+  it("clears dates when parsing is active and dates are removed from the title", () => {
+    const task = {
+      deadline: null,
+      startFrom: parseLocalDateInput("2026-01-10"),
+      repeat: { type: "none" }
+    };
+    const update = buildTitleUpdateFromInput({
+      task,
+      inputValue: "Kickoff",
+      originalTitle: "Kickoff from Jan 10 2026",
+      parsingActive: true,
+      literals: [],
+      maxLength: 200
+    });
+    assert.strictEqual(update.nextTitle, "Kickoff");
+    assert.strictEqual(update.nextStartFrom, null);
+    assert.strictEqual(update.nextDeadline, null);
+    assert.strictEqual(update.shouldSave, true);
+  });
+
   it("falls back to input title when parsed title is empty", () => {
     const task = { deadline: null, startFrom: null, repeat: { type: "none" } };
     const update = buildTitleUpdateFromInput({

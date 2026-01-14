@@ -296,6 +296,19 @@ function buildTitleUpdateWithoutParsing(task, nextTitle, originalTitle) {
   };
 }
 
+function resolveParsedDateUpdate(task, parsed, originalTitle, literals) {
+  const originalParsed = parseTitleDates(originalTitle, { literals });
+  if (originalParsed.hasDate && !parsed.hasDate) {
+    return { startFrom: null, deadline: null };
+  }
+  return resolveMergedDateRange({
+    startFrom: parsed.startFrom ?? task.startFrom,
+    deadline: parsed.deadline ?? task.deadline,
+    startFromSource: parsed.startFrom ? "parsed" : "existing",
+    deadlineSource: parsed.deadline ? "parsed" : "existing"
+  });
+}
+
 function buildTitleUpdateWithParsing({
   task,
   inputValue,
@@ -307,12 +320,7 @@ function buildTitleUpdateWithParsing({
   const parsed = parseTitleDates(inputValue, { literals });
   const parsedTitle = clampTitleLength(parsed.title, maxLength);
   const safeTitle = parsedTitle || fallbackTitle;
-  const resolvedDates = resolveMergedDateRange({
-    startFrom: parsed.startFrom ?? task.startFrom,
-    deadline: parsed.deadline ?? task.deadline,
-    startFromSource: parsed.startFrom ? "parsed" : "existing",
-    deadlineSource: parsed.deadline ? "parsed" : "existing"
-  });
+  const resolvedDates = resolveParsedDateUpdate(task, parsed, originalTitle, literals);
   const nextDeadline = resolvedDates.deadline;
   const nextStartFrom = resolvedDates.startFrom;
   const nextRepeat = parsed.repeat ?? task.repeat;

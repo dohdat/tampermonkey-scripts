@@ -86,6 +86,8 @@ initRef("taskRepeatMonthlyMode", "select");
 initRef("taskRepeatMonthlyDay", "input");
 initRef("taskRepeatMonthlyNth", "select");
 initRef("taskRepeatMonthlyWeekday", "select");
+initRef("taskRepeatMonthlyRangeStart", "input");
+initRef("taskRepeatMonthlyRangeEnd", "input");
 initRef("taskRepeatWeeklySection", "div");
 initRef("taskRepeatMonthlySection", "div");
 initRef("taskRepeatYearlySection", "div");
@@ -94,6 +96,7 @@ initRef("taskRepeatYearlyRangeEnd", "input");
 initRef("taskRepeatYearlyRangeWrap", "div");
 initRef("taskRepeatMonthlyDayWrap", "div");
 initRef("taskRepeatMonthlyNthWrap", "div");
+initRef("taskRepeatMonthlyRangeWrap", "div");
 initRef("taskRepeatEndNever", "input");
 initRef("taskRepeatEndOn", "input");
 initRef("taskRepeatEndAfter", "input");
@@ -168,6 +171,8 @@ describe("repeat utils", () => {
       "taskRepeatMonthlyDay",
       "taskRepeatMonthlyNth",
       "taskRepeatMonthlyWeekday",
+      "taskRepeatMonthlyRangeStart",
+      "taskRepeatMonthlyRangeEnd",
       "taskRepeatWeeklySection",
       "taskRepeatMonthlySection",
       "taskRepeatYearlySection",
@@ -176,6 +181,7 @@ describe("repeat utils", () => {
       "taskRepeatYearlyRangeWrap",
       "taskRepeatMonthlyDayWrap",
       "taskRepeatMonthlyNthWrap",
+      "taskRepeatMonthlyRangeWrap",
       "taskRepeatEndNever",
       "taskRepeatEndOn",
       "taskRepeatEndAfter",
@@ -204,7 +210,8 @@ describe("repeat utils", () => {
     ]);
     selectSetup(domRefs.taskRepeatMonthlyMode, [
       { value: "day", label: "" },
-      { value: "nth", label: "" }
+      { value: "nth", label: "" },
+      { value: "range", label: "" }
     ]);
     selectSetup(domRefs.taskRepeatMonthlyNth, [
       { value: "1", label: "" },
@@ -380,6 +387,24 @@ describe("repeat utils", () => {
     assert.strictEqual(domRefs.taskRepeatMonthlySection.classList.contains("hidden"), true);
   });
 
+  it("renders range fields for monthly mode", () => {
+    repeatStore.repeatState = {
+      unit: "month",
+      interval: 1,
+      monthlyMode: "range",
+      monthlyRangeStart: 2,
+      monthlyRangeEnd: 6,
+      monthlyRangeStartDate: "2026-01-02",
+      monthlyRangeEndDate: "2026-01-06",
+      end: { type: "never", date: "", count: 1 }
+    };
+    renderRepeatUI("task");
+    assert.strictEqual(domRefs.taskRepeatMonthlySection.classList.contains("hidden"), false);
+    assert.strictEqual(domRefs.taskRepeatMonthlyRangeWrap.classList.contains("hidden"), false);
+    assert.strictEqual(domRefs.taskRepeatMonthlyDayWrap.classList.contains("hidden"), true);
+    assert.strictEqual(domRefs.taskRepeatMonthlyNthWrap.classList.contains("hidden"), true);
+  });
+
   it("sets repeat from selection for subsection target", () => {
     setRepeatFromSelection(
       {
@@ -446,6 +471,19 @@ describe("repeat utils", () => {
     assert.strictEqual(repeatStore.repeatTarget, "task");
   });
 
+  it("handles task repeat modal actions", () => {
+    registerRepeatEventHandlers();
+    repeatStore.repeatTarget = "task";
+    repeatStore.repeatSelectionBeforeModal = { type: "custom" };
+    domRefs.taskRepeatSelect.value = "custom";
+    domRefs.repeatModalCloseBtns[0]._handlers.click();
+    assert.strictEqual(repeatStore.repeatTarget, "task");
+
+    repeatStore.repeatTarget = "task";
+    domRefs.repeatModalSaveBtn._handlers.click();
+    assert.strictEqual(repeatStore.repeatTarget, "task");
+  });
+
   it("updates repeat state from unit and weekday changes", () => {
     domRefs.taskDeadlineInput.value = "2026-01-07";
     registerRepeatEventHandlers();
@@ -461,5 +499,129 @@ describe("repeat utils", () => {
       }
     });
     assert.ok(repeatStore.repeatState.weeklyDays.length > 0);
+  });
+
+  it("falls back when removing the last weekly day", () => {
+    domRefs.taskDeadlineInput.value = "2026-01-07";
+    registerRepeatEventHandlers();
+    repeatStore.repeatState.weeklyDays = [1];
+
+    domRefs.taskRepeatWeekdays._handlers.click({
+      target: {
+        closest: () => ({ dataset: { dayValue: "1" } })
+      }
+    });
+
+    assert.strictEqual(repeatStore.repeatState.weeklyDays.length, 1);
+    assert.notStrictEqual(repeatStore.repeatState.weeklyDays[0], 1);
+  });
+
+  it("respects weekly mode toggles", () => {
+    registerRepeatEventHandlers();
+    repeatStore.repeatState.weeklyMode = "all";
+
+    domRefs.taskRepeatWeeklyModeAny.checked = false;
+    domRefs.taskRepeatWeeklyModeAny._handlers.change();
+    assert.strictEqual(repeatStore.repeatState.weeklyMode, "all");
+
+    domRefs.taskRepeatWeeklyModeAny.checked = true;
+    domRefs.taskRepeatWeeklyModeAny._handlers.change();
+    assert.strictEqual(repeatStore.repeatState.weeklyMode, "any");
+
+    domRefs.taskRepeatWeeklyModeAll.checked = false;
+    domRefs.taskRepeatWeeklyModeAll._handlers.change();
+    assert.strictEqual(repeatStore.repeatState.weeklyMode, "any");
+
+    domRefs.taskRepeatWeeklyModeAll.checked = true;
+    domRefs.taskRepeatWeeklyModeAll._handlers.change();
+    assert.strictEqual(repeatStore.repeatState.weeklyMode, "all");
+  });
+
+  it("updates yearly range fields and keeps invalid values", () => {
+    domRefs.taskDeadlineInput.value = "2026-01-07";
+    registerRepeatEventHandlers();
+
+    repeatStore.repeatState.yearlyMonth = 5;
+    repeatStore.repeatState.yearlyDay = 20;
+
+    domRefs.taskRepeatYearlyRangeEnd.value = "2026-02-14";
+    domRefs.taskRepeatYearlyRangeEnd._handlers.input();
+    assert.strictEqual(repeatStore.repeatState.yearlyMonth, 2);
+    assert.strictEqual(repeatStore.repeatState.yearlyDay, 14);
+
+    domRefs.taskRepeatYearlyRangeEnd.value = "bad";
+    domRefs.taskRepeatYearlyRangeEnd._handlers.input();
+    assert.strictEqual(repeatStore.repeatState.yearlyMonth, 2);
+    assert.strictEqual(repeatStore.repeatState.yearlyDay, 14);
+  });
+
+  it("updates monthly range values from inputs", () => {
+    domRefs.taskDeadlineInput.value = "2026-01-10";
+    registerRepeatEventHandlers();
+    repeatStore.repeatState.monthlyRangeStart = 1;
+    repeatStore.repeatState.monthlyRangeEnd = 1;
+
+    domRefs.taskRepeatMonthlyRangeStart.value = "2026-01-03";
+    domRefs.taskRepeatMonthlyRangeEnd.value = "2026-01-05";
+    domRefs.taskRepeatMonthlyRangeStart._handlers.input();
+
+    assert.strictEqual(repeatStore.repeatState.monthlyRangeStart, 3);
+    assert.strictEqual(repeatStore.repeatState.monthlyRangeEnd, 5);
+    assert.strictEqual(repeatStore.repeatState.monthlyRangeStartDate, "2026-01-03");
+    assert.strictEqual(repeatStore.repeatState.monthlyRangeEndDate, "2026-01-05");
+  });
+
+  it("handles numeric monthly range values with fallbacks", () => {
+    domRefs.taskDeadlineInput.value = "2026-01-10";
+    registerRepeatEventHandlers();
+    repeatStore.repeatState.monthlyRangeStart = 4;
+    repeatStore.repeatState.monthlyRangeEnd = 6;
+    repeatStore.repeatState.monthlyRangeStartDate = "";
+    repeatStore.repeatState.monthlyRangeEndDate = "";
+
+    domRefs.taskRepeatMonthlyRangeStart.value = "";
+    domRefs.taskRepeatMonthlyRangeEnd.value = "8";
+    domRefs.taskRepeatMonthlyRangeEnd._handlers.input();
+
+    assert.strictEqual(repeatStore.repeatState.monthlyRangeStart, 4);
+    assert.strictEqual(repeatStore.repeatState.monthlyRangeEnd, 8);
+    assert.strictEqual(repeatStore.repeatState.monthlyRangeStartDate, "2026-01-04");
+    assert.strictEqual(repeatStore.repeatState.monthlyRangeEndDate, "2026-01-08");
+  });
+
+  it("accepts date objects in monthly range inputs", () => {
+    domRefs.taskDeadlineInput.value = "2026-01-10";
+    registerRepeatEventHandlers();
+    repeatStore.repeatState.monthlyRangeStart = 1;
+    repeatStore.repeatState.monthlyRangeEnd = 1;
+    repeatStore.repeatState.monthlyRangeStartDate = "";
+    repeatStore.repeatState.monthlyRangeEndDate = "";
+
+    domRefs.taskRepeatMonthlyRangeStart.value = new Date(2026, 0, 2);
+    domRefs.taskRepeatMonthlyRangeEnd.value = new Date(2026, 0, 4);
+    domRefs.taskRepeatMonthlyRangeStart._handlers.input();
+
+    assert.strictEqual(repeatStore.repeatState.monthlyRangeStart, 2);
+    assert.strictEqual(repeatStore.repeatState.monthlyRangeEnd, 4);
+    assert.strictEqual(repeatStore.repeatState.monthlyRangeStartDate, "2026-01-02");
+    assert.strictEqual(repeatStore.repeatState.monthlyRangeEndDate, "2026-01-04");
+  });
+
+  it("falls back on invalid monthly range inputs", () => {
+    domRefs.taskDeadlineInput.value = "2026-01-10";
+    registerRepeatEventHandlers();
+    repeatStore.repeatState.monthlyRangeStart = 5;
+    repeatStore.repeatState.monthlyRangeEnd = 7;
+    repeatStore.repeatState.monthlyRangeStartDate = "";
+    repeatStore.repeatState.monthlyRangeEndDate = "";
+
+    domRefs.taskRepeatMonthlyRangeStart.value = "bad";
+    domRefs.taskRepeatMonthlyRangeEnd.value = "";
+    domRefs.taskRepeatMonthlyRangeStart._handlers.input();
+
+    assert.strictEqual(repeatStore.repeatState.monthlyRangeStart, 5);
+    assert.strictEqual(repeatStore.repeatState.monthlyRangeEnd, 7);
+    assert.strictEqual(repeatStore.repeatState.monthlyRangeStartDate, "2026-01-05");
+    assert.strictEqual(repeatStore.repeatState.monthlyRangeEndDate, "2026-01-07");
   });
 });

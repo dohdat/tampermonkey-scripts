@@ -1459,6 +1459,7 @@
           <select id="task-repeat-monthly-mode" class="field-input" data-test-skedpal="task-repeat-monthly-mode">
             <option value="day">Monthly on day</option>
             <option value="nth">Monthly on the</option>
+            <option value="range">Monthly between</option>
           </select>
         </label>
         <div class="grid md:grid-cols-2 gap-3 mt-2">
@@ -1490,6 +1491,32 @@
               </select>
             </label>
           </div>
+        </div>
+        <div
+          class="grid md:grid-cols-2 gap-3 mt-2 hidden"
+          id="task-repeat-monthly-range-wrap"
+          data-test-skedpal="task-repeat-monthly-range-wrap"
+        >
+          <label class="field" data-test-skedpal="task-repeat-monthly-range-start-field">
+            <span class="field-label">Range start</span>
+            <input
+              id="task-repeat-monthly-range-start"
+              type="text"
+              class="field-input"
+              data-date-picker="true"
+              data-test-skedpal="task-repeat-monthly-range-start"
+            />
+          </label>
+          <label class="field" data-test-skedpal="task-repeat-monthly-range-end-field">
+            <span class="field-label">Range end</span>
+            <input
+              id="task-repeat-monthly-range-end"
+              type="text"
+              class="field-input"
+              data-date-picker="true"
+              data-test-skedpal="task-repeat-monthly-range-end"
+            />
+          </label>
         </div>
       </div>
       <div class="mt-3 hidden" id="task-repeat-yearly-section" data-test-skedpal="task-repeat-yearly-section">

@@ -6,6 +6,7 @@ import {
 } from "./constants.js";
 import { getLocalDateKey, getNthWeekday } from "./utils.js";
 import { getDateParts, syncYearlyRangeInputs } from "./repeat-yearly.js";
+import { updateMonthlyRangeState } from "./repeat-monthly.js";
 import {
   buildRepeatFromState,
   closeRepeatModal,
@@ -29,6 +30,8 @@ const {
   taskRepeatMonthlyDay,
   taskRepeatMonthlyNth,
   taskRepeatMonthlyWeekday,
+  taskRepeatMonthlyRangeStart,
+  taskRepeatMonthlyRangeEnd,
   taskRepeatYearlyRangeStart,
   taskRepeatYearlyRangeEnd,
   taskRepeatEndNever,
@@ -175,6 +178,71 @@ function handleRepeatMonthlyNthChange() {
 
 function handleRepeatMonthlyWeekdayChange() {
   repeatStore.repeatState.monthlyWeekday = Number(taskRepeatMonthlyWeekday.value) || 0;
+}
+
+function resolveMonthlyRangeDay(value, fallbackDay) {
+  if (!value) {return fallbackDay;}
+  if (typeof value === "string") {
+    const match = value.match(/^\d{4}-\d{2}-(\d{2})/);
+    if (match) {
+      const parsed = Number(match[1]);
+      return Number.isFinite(parsed) ? parsed : fallbackDay;
+    }
+    const dayMatch = value.match(/^\d{1,2}$/);
+    if (dayMatch) {
+      const parsed = Number(dayMatch[0]);
+      return Number.isFinite(parsed) ? parsed : fallbackDay;
+    }
+  }
+  const date = new Date(value);
+  if (!Number.isNaN(date.getTime())) {return date.getDate();}
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallbackDay;
+}
+
+function resolveMonthlyRangeDateValue(value) {
+  if (typeof value !== "string") {return "";}
+  return /^\d{4}-\d{2}-\d{2}/.test(value) ? value : "";
+}
+
+function handleRepeatMonthlyRangeStartInput() {
+  const baseDate = getStartDate();
+  const startValue = taskRepeatMonthlyRangeStart.value || "";
+  const endValue = taskRepeatMonthlyRangeEnd?.value || "";
+  const fallbackStart = repeatStore.repeatState.monthlyRangeStart || baseDate.getDate();
+  const fallbackEnd = repeatStore.repeatState.monthlyRangeEnd || fallbackStart;
+  const startDay = resolveMonthlyRangeDay(startValue, fallbackStart);
+  const endDay = resolveMonthlyRangeDay(endValue, fallbackEnd);
+  updateMonthlyRangeState(
+    repeatStore.repeatState,
+    baseDate,
+    startDay,
+    endDay,
+    taskRepeatMonthlyRangeStart,
+    taskRepeatMonthlyRangeEnd,
+    resolveMonthlyRangeDateValue(startValue),
+    resolveMonthlyRangeDateValue(endValue)
+  );
+}
+
+function handleRepeatMonthlyRangeEndInput() {
+  const baseDate = getStartDate();
+  const startValue = taskRepeatMonthlyRangeStart?.value || "";
+  const endValue = taskRepeatMonthlyRangeEnd.value || "";
+  const fallbackStart = repeatStore.repeatState.monthlyRangeStart || baseDate.getDate();
+  const fallbackEnd = repeatStore.repeatState.monthlyRangeEnd || fallbackStart;
+  const startDay = resolveMonthlyRangeDay(startValue, fallbackStart);
+  const endDay = resolveMonthlyRangeDay(endValue, fallbackEnd);
+  updateMonthlyRangeState(
+    repeatStore.repeatState,
+    baseDate,
+    startDay,
+    endDay,
+    taskRepeatMonthlyRangeStart,
+    taskRepeatMonthlyRangeEnd,
+    resolveMonthlyRangeDateValue(startValue),
+    resolveMonthlyRangeDateValue(endValue)
+  );
 }
 
 function handleRepeatYearlyRangeStartInput() {
@@ -342,6 +410,18 @@ function registerRepeatMonthlyHandlers() {
     taskRepeatMonthlyWeekday.addEventListener("change", handleRepeatMonthlyWeekdayChange);
     cleanupFns.push(() =>
       taskRepeatMonthlyWeekday.removeEventListener("change", handleRepeatMonthlyWeekdayChange)
+    );
+  }
+  if (taskRepeatMonthlyRangeStart) {
+    taskRepeatMonthlyRangeStart.addEventListener("input", handleRepeatMonthlyRangeStartInput);
+    cleanupFns.push(() =>
+      taskRepeatMonthlyRangeStart.removeEventListener("input", handleRepeatMonthlyRangeStartInput)
+    );
+  }
+  if (taskRepeatMonthlyRangeEnd) {
+    taskRepeatMonthlyRangeEnd.addEventListener("input", handleRepeatMonthlyRangeEndInput);
+    cleanupFns.push(() =>
+      taskRepeatMonthlyRangeEnd.removeEventListener("input", handleRepeatMonthlyRangeEndInput)
     );
   }
   return cleanupFns;

@@ -47,6 +47,8 @@ const {
   taskRepeatMonthlyDay,
   taskRepeatMonthlyNth,
   taskRepeatMonthlyWeekday,
+  taskRepeatMonthlyRangeStart,
+  taskRepeatMonthlyRangeEnd,
   taskRepeatWeeklySection,
   taskRepeatMonthlySection,
   taskRepeatYearlySection,
@@ -54,6 +56,7 @@ const {
   taskRepeatYearlyRangeEnd,
   taskRepeatMonthlyDayWrap,
   taskRepeatMonthlyNthWrap,
+  taskRepeatMonthlyRangeWrap,
   taskRepeatEndNever,
   taskRepeatEndOn,
   taskRepeatEndAfter,
@@ -149,7 +152,6 @@ function syncRepeatTargetSelect(target) {
 export function renderRepeatUI(target = repeatStore.repeatTarget) {
   if (!taskRepeatUnit) {return;}
   const repeatState = repeatStore.repeatState;
-  if (repeatState.monthlyMode === "range") {repeatState.monthlyMode = "day";}
   normalizeMonthlyRange(repeatState, getStartDate());
   taskRepeatUnit.value = repeatState.unit === TASK_REPEAT_NONE ? "week" : repeatState.unit;
   taskRepeatInterval.value = repeatState.interval;
@@ -163,17 +165,17 @@ export function renderRepeatUI(target = repeatStore.repeatTarget) {
   setInputValue(taskRepeatMonthlyDay, repeatState.monthlyDay || 1);
   setInputValue(taskRepeatMonthlyNth, String(repeatState.monthlyNth || 1));
   setInputValue(taskRepeatMonthlyWeekday, String(repeatState.monthlyWeekday ?? 0));
-  syncMonthlyRangeInputs(repeatState, getStartDate(), null, null);
+  syncMonthlyRangeInputs(repeatState, getStartDate(), taskRepeatMonthlyRangeStart, taskRepeatMonthlyRangeEnd);
   syncMonthlyModeText(repeatState, taskRepeatMonthlyMode);
   syncMonthlyModeVisibility(repeatState, {
     taskRepeatMonthlyDay,
     taskRepeatMonthlyNth,
     taskRepeatMonthlyWeekday,
-    taskRepeatMonthlyRangeStart: null,
-    taskRepeatMonthlyRangeEnd: null,
+    taskRepeatMonthlyRangeStart,
+    taskRepeatMonthlyRangeEnd,
     taskRepeatMonthlyDayWrap,
     taskRepeatMonthlyNthWrap,
-    taskRepeatMonthlyRangeWrap: null
+    taskRepeatMonthlyRangeWrap
   });
   syncYearlyRangeInputs(repeatState, getStartDate(), taskRepeatYearlyRangeStart, taskRepeatYearlyRangeEnd);
   syncRepeatEndControls(repeatState);

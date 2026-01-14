@@ -134,7 +134,12 @@ export function updateMonthlyRangeState(
 }
 
 export function resolveMonthlyMode(repeat) {
-  if (repeat.monthlyMode && repeat.monthlyMode !== "range") {return repeat.monthlyMode;}
+  if (repeat.monthlyMode === "range") {
+    if (repeat.bySetPos) {return "nth";}
+    if (repeat.byMonthDay) {return "day";}
+    return "range";
+  }
+  if (repeat.monthlyMode) {return repeat.monthlyMode;}
   if (repeat.bySetPos) {return "nth";}
   if (repeat.byMonthDay) {return "day";}
   return "day";

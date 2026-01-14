@@ -125,6 +125,7 @@ describe("repeat monthly helpers", () => {
     assert.strictEqual(resolveMonthlyMode({ monthlyMode: "nth" }), "nth");
     assert.strictEqual(resolveMonthlyMode({ monthlyMode: "range", bySetPos: 2 }), "nth");
     assert.strictEqual(resolveMonthlyMode({ monthlyMode: "range", byMonthDay: 4 }), "day");
+    assert.strictEqual(resolveMonthlyMode({ monthlyMode: "range" }), "range");
   });
 
   it("builds monthly rules for each mode", () => {

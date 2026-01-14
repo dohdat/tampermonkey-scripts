@@ -10,8 +10,10 @@ const TITLE_KEYWORD_TRAIL_CLEANUP =
 const REPEAT_DAYLIST_REGEX =
   /\b(?:repeat\s+)?every\s+((?:mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)(?:\s*(?:,|and)\s*(?:mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?))*)\b/i;
 const REPEAT_WEEKDAY_REGEX = /\b(?:repeat\s+)?every\s+(\d+)?\s*(weekday|weekend)s?\b/i;
-const REPEAT_YEARLY_RANGE_REGEX =
+export const REPEAT_YEARLY_RANGE_REGEX =
   /\b(?:repeat\s+)?(?:every\s+(\d+|other)?\s*years?|yearly)\s+between\s+/i;
+export const BETWEEN_RANGE_REGEX =
+  /\bbetween\s+[^]+?\s+(?:and|to)\s+[^]+?(?=$|[,.])/i;
 const REPEAT_INTERVAL_REGEX = /\b(?:repeat\s+)?every\s+(\d+|other)?\s*(day|week|month|year)s?\b/i;
 const REPEAT_INTERVAL_WEEK_REGEX = /\b(?:repeat\s+)?every\s+(\d+|other)\s*weeks?\b/i;
 const REPEAT_DAYLIST_ON_REGEX =

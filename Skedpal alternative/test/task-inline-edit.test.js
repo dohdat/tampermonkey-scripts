@@ -504,6 +504,45 @@ describe("inline edit parsing guard", () => {
     assert.strictEqual(titleEl.textContent, task.title);
   });
 
+  it("updates descendants after inline edit when parent has subtasks", async () => {
+    const { applyInlineTitleUpdate } = await import(
+      "../src/ui/tasks/task-inline-edit.js"
+    );
+    const parent = {
+      id: "parent-inline",
+      title: "Parent task",
+      deadline: null,
+      startFrom: null,
+      repeat: { type: "none" }
+    };
+    const child = { id: "child-inline", subtaskParentId: parent.id };
+    const tasksCache = [parent, child];
+    const saved = [];
+    let descendantArgs = null;
+    const update = {
+      shouldSave: true,
+      nextTitle: "Parent task",
+      nextDeadline: null,
+      nextStartFrom: "2026-01-02T00:00:00.000Z",
+      nextRepeat: { type: "none" }
+    };
+
+    await applyInlineTitleUpdate(parent, update, {
+      tasksCache,
+      saveTaskFn: async (task) => {
+        saved.push(task);
+      },
+      updateDescendantsFn: async (parentId, updatedTask) => {
+        descendantArgs = { parentId, updatedTask };
+      },
+      loadTasksFn: async () => {}
+    });
+
+    assert.strictEqual(saved.length, 1);
+    assert.strictEqual(descendantArgs?.parentId, parent.id);
+    assert.strictEqual(descendantArgs?.updatedTask?.startFrom, update.nextStartFrom);
+  });
+
   it("prevents link clicks inside titles without modifier keys", async () => {
     const { handleTaskTitleClick } = await import(
       "../src/ui/tasks/task-inline-edit.js"

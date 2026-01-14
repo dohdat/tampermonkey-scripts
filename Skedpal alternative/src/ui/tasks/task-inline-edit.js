@@ -9,6 +9,33 @@ import {
 } from "../title-date-utils.js";
 import { state } from "../state/page-state.js";
 
+export async function applyInlineTitleUpdate(task, update, options = {}) {
+  const {
+    saveTaskFn = saveTask,
+    updateDescendantsFn = null,
+    loadTasksFn = null,
+    tasksCache = state.tasksCache
+  } = options;
+  if (!task || !update?.shouldSave) {return null;}
+  const updatedTask = {
+    ...task,
+    title: update.nextTitle,
+    deadline: update.nextDeadline,
+    startFrom: update.nextStartFrom,
+    repeat: update.nextRepeat
+  };
+  await saveTaskFn(updatedTask);
+  const hasChildren = Array.isArray(tasksCache) &&
+    tasksCache.some((entry) => entry?.subtaskParentId === task.id);
+  if (hasChildren && typeof updateDescendantsFn === "function") {
+    await updateDescendantsFn(task.id, updatedTask);
+  }
+  if (typeof loadTasksFn === "function") {
+    await loadTasksFn();
+  }
+  return updatedTask;
+}
+
 function cleanupInlineTitleEdit() {
   if (typeof state.taskTitleEditCleanup !== "function") {return;}
   state.taskTitleEditCleanup();
@@ -261,15 +288,11 @@ function startInlineTitleEdit(titleEl, task, options = {}) {
       restoreInlineTitle(titleEl, task, originalTitle);
       return;
     }
-    await saveTask({
-      ...task,
-      title: update.nextTitle,
-      deadline: update.nextDeadline,
-      startFrom: update.nextStartFrom,
-      repeat: update.nextRepeat
+    const { loadTasks, updateParentTaskDescendants } = await import("./tasks-actions.js");
+    await applyInlineTitleUpdate(task, update, {
+      loadTasksFn: loadTasks,
+      updateDescendantsFn: updateParentTaskDescendants
     });
-    const { loadTasks } = await import("./tasks-actions.js");
-    await loadTasks();
   }
 
   function handleInlineTitleKeydown(event) {

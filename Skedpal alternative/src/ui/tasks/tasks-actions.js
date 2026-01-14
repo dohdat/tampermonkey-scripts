@@ -314,6 +314,8 @@ async function updateParentTaskDescendants(taskId, updatedTask) {
   );
 }
 
+export { updateParentTaskDescendants };
+
 async function handleTemplateParentSubmit(values) {
   const existing = state.taskTemplatesCache.find((entry) => entry.id === values.id) || null;
   const template = buildTemplatePayload(values, existing, {

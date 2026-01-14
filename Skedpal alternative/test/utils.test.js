@@ -251,6 +251,37 @@ describe("utils date parsing", () => {
     assert.strictEqual(parsed.repeat.interval, 2);
   });
 
+  it("extracts yearly ranges without setting start or deadline", () => {
+    const referenceDate = new Date(2026, 0, 5, 9, 0, 0);
+    const parsed = parseTitleDates(
+      "File taxes repeat yearly between Mar 3 and Apr 4",
+      { referenceDate }
+    );
+    assert.strictEqual(parsed.title, "File taxes");
+    assert.strictEqual(parsed.repeat.unit, "year");
+    assert.strictEqual(parsed.repeat.interval, 1);
+    assert.strictEqual(parsed.repeat.yearlyRangeStartDate, "2026-03-03");
+    assert.strictEqual(parsed.repeat.yearlyRangeEndDate, "2026-04-04");
+    assert.strictEqual(parsed.startFrom, null);
+    assert.strictEqual(parsed.deadline, null);
+    assert.strictEqual(parsed.hasDate, false);
+  });
+
+  it("extracts yearly ranges when dates are hyphenated", () => {
+    const referenceDate = new Date(2026, 0, 5, 9, 0, 0);
+    const parsed = parseTitleDates(
+      "File taxes repeat yearly between Mar 3 - Apr 4",
+      { referenceDate }
+    );
+    assert.strictEqual(parsed.title, "File taxes");
+    assert.strictEqual(parsed.repeat.unit, "year");
+    assert.strictEqual(parsed.repeat.yearlyRangeStartDate, "2026-03-03");
+    assert.strictEqual(parsed.repeat.yearlyRangeEndDate, "2026-04-04");
+    assert.strictEqual(parsed.startFrom, null);
+    assert.strictEqual(parsed.deadline, null);
+    assert.strictEqual(parsed.hasDate, false);
+  });
+
   it("builds conversion preview html when matches are present", () => {
     const preview = buildTitleConversionPreviewHtml("Test every 2 weeks anyday");
     assert.strictEqual(preview.hasRanges, true);

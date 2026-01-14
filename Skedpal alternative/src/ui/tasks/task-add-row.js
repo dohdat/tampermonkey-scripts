@@ -1,4 +1,7 @@
 import {
+  ADD_TASK_BUTTON_TEST_ID,
+  ADD_TASK_INPUT_TEST_ID,
+  ADD_TASK_ROW_TEST_ID,
   DEFAULT_TASK_DURATION_MIN,
   DEFAULT_TASK_MIN_BLOCK_MIN,
   DEFAULT_TASK_PRIORITY,
@@ -28,9 +31,6 @@ import {
   serializeTitleLiteralList
 } from "../title-date-utils.js";
 
-const ADD_TASK_ROW_TEST_ID = "task-add-row";
-const ADD_TASK_BUTTON_TEST_ID = "task-add-button";
-const ADD_TASK_INPUT_TEST_ID = "task-add-input";
 const CLIPBOARD_LINE_REGEX = /\r?\n/;
 const CLIPBOARD_BULLET_REGEX = /^(?:[-*]|\d+[).])\s+/;
 

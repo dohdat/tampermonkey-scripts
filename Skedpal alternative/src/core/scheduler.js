@@ -1,11 +1,14 @@
 import { addDays, endOfDay, parseTime, startOfDay, startOfWeek } from "./scheduler/date-utils.js";
 import { buildOccurrenceDates, getUpcomingOccurrences } from "./scheduler/occurrences.js";
 import { normalizeTask } from "./scheduler/task-utils.js";
-import { INDEX_NOT_FOUND, MS_PER_DAY, THREE } from "../constants.js";
+import {
+  FLEXIBLE_REPEAT_WINDOW_DAYS,
+  INDEX_NOT_FOUND,
+  MS_PER_DAY,
+  THREE
+} from "../constants.js";
 
 export { getUpcomingOccurrences };
-
-const FLEXIBLE_REPEAT_WINDOW_DAYS = 3;
 
 function normalizeTimeMap(timeMap) {
   if (Array.isArray(timeMap.rules) && timeMap.rules.length > 0) {

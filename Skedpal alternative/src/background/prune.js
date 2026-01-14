@@ -1,10 +1,6 @@
-const HOURS_PER_DAY = 24;
-const MINUTES_PER_HOUR = 60;
-const SECONDS_PER_MINUTE = 60;
-const MS_PER_SECOND = 1000;
-const MS_PER_DAY = HOURS_PER_DAY * MINUTES_PER_HOUR * SECONDS_PER_MINUTE * MS_PER_SECOND;
+import { COMPLETED_TASK_RETENTION_DAYS, MS_PER_DAY } from "../constants.js";
 
-export const COMPLETED_TASK_RETENTION_DAYS = 30;
+export { COMPLETED_TASK_RETENTION_DAYS };
 
 export function shouldRunDailyPrune(lastPrunedAt, now = new Date()) {
   if (!lastPrunedAt) {return true;}

@@ -1,4 +1,5 @@
 import { parse as chronoParse } from "../../vendor/chrono-node/locales/en/index.js";
+import { ONE } from "./constants.js";
 import { parseLocalDateInput } from "./utils.js";
 import {
   BETWEEN_RANGE_REGEX,
@@ -11,7 +12,6 @@ import {
 
 export { formatLocalDateInputValue };
 
-const ONE = 1;
 const TITLE_START_KEYWORDS = /\b(from|start|starting|begin|beginning|after)\s*$/i;
 const TITLE_DEADLINE_KEYWORDS = /\b(by|due|until|before|deadline)\s*$/i;
 function resolveTitleDateIntent(rawTitle, matchIndex, matchText) {

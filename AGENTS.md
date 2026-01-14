@@ -10,6 +10,7 @@
 
 ## Coding Style
 - Always add a `data-test-skedpal` attribute to any DOM elements you create or modify, to make debugging and test selectors stable and explicit.
+- Any constants should be defined in `src/core/constants.js` or `src/ui/constants.js` as appropriate.
 - Use theme.js colors and Tailwind classes consistently for UI elements; avoid hardcoded colors or styles.
 - Favor small, single-purpose functions and composable helpers; keep shared utilities in `src/ui/utils.js` or nearby.
 - Be defensive with DOM access (null checks, stable selectors). Avoid brittle selectors tied to cosmetic changes on target sites.

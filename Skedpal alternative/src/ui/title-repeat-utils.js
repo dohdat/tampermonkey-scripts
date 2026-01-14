@@ -1,8 +1,5 @@
 import { parse as chronoParse } from "../../vendor/chrono-node/locales/en/index.js";
-import { TWO, THREE, FOUR, FIVE, SIX } from "./constants.js";
-
-const ZERO = 0;
-const ONE = 1;
+import { FIVE, FOUR, ONE, SIX, THREE, TWO, ZERO } from "./constants.js";
 const TITLE_KEYWORD_CLEANUP =
   /^(from|starting|start|beginning|begin|by|due|until|before|deadline)\b\s*/i;
 const TITLE_KEYWORD_TRAIL_CLEANUP =

@@ -1,15 +1,18 @@
 import { saveTask } from "../../data/db.js";
-import { domRefs, TASK_DURATION_STEP_MIN, TASK_STATUS_UNSCHEDULED } from "../constants.js";
+import {
+  PRIORITY_MAX,
+  PRIORITY_MIN,
+  TIME_MAP_MODE_KEEP,
+  TIME_MAP_MODE_REPLACE,
+  TASK_DURATION_STEP_MIN,
+  TASK_STATUS_UNSCHEDULED,
+  domRefs
+} from "../constants.js";
 import { showNotificationBanner } from "../notifications.js";
 import { state } from "../state/page-state.js";
 import { parseLocalDateInput } from "../utils.js";
 import { collectSelectedValues, renderTimeMapOptions } from "../time-maps.js";
 import { getSelectedTaskCards } from "./task-selection-utils.js";
-
-const TIME_MAP_MODE_KEEP = "keep";
-const TIME_MAP_MODE_REPLACE = "replace";
-const PRIORITY_MIN = 1;
-const PRIORITY_MAX = 5;
 
 let bulkEditFallbackId = "";
 

@@ -1,4 +1,4 @@
-import { domRefs } from "../constants.js";
+import { SORT_AFTER, domRefs } from "../constants.js";
 import { state } from "../state/page-state.js";
 
 function getTemplateTitle(template) {
@@ -6,7 +6,6 @@ function getTemplateTitle(template) {
 }
 
 const SORT_BEFORE = -1;
-const SORT_AFTER = 1;
 
 function getTemplateOrder(template) {
   const order = Number(template?.order);

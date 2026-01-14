@@ -1,10 +1,8 @@
 import { DEFAULT_SCHEDULING_HORIZON_DAYS } from "../../data/db.js";
 import { getUpcomingOccurrences } from "../../core/scheduler.js";
 import { addDays, endOfDay } from "../../core/scheduler/date-utils.js";
-import { TASK_REPEAT_NONE } from "../constants.js";
+import { TASK_REPEAT_NONE, UPCOMING_OCCURRENCE_LOOKAHEAD_DAYS } from "../constants.js";
 import { getLocalDateKey } from "../utils.js";
-
-const UPCOMING_OCCURRENCE_LOOKAHEAD_DAYS = 365;
 
 export function buildParentMap(tasks) {
   return tasks.reduce((map, task) => {

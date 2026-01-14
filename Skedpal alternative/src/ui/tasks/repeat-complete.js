@@ -6,6 +6,7 @@ import {
   END_OF_DAY_MINUTE,
   END_OF_DAY_MS,
   END_OF_DAY_SECOND,
+  REPEAT_COMPLETE_OUT_OF_RANGE_ID,
   TEN,
   domRefs
 } from "../constants.js";
@@ -190,15 +191,14 @@ export function openRepeatCompleteModal(task) {
       const firstOut = outOfRange[0].date;
       const lastOut = outOfRange[outOfRange.length - 1].date;
       const label = formatMonthRange(firstOut, lastOut);
-      const outOfRangeId = "repeat-complete-out-of-range";
-      const separator = buildOutOfRangeSeparator({
-        label,
-        count: outOfRange.length,
-        isCollapsed: true,
-        controlsId: outOfRangeId
-      });
-      const outOfRangeWrap = document.createElement("div");
-      outOfRangeWrap.id = outOfRangeId;
+        const separator = buildOutOfRangeSeparator({
+          label,
+          count: outOfRange.length,
+          isCollapsed: true,
+          controlsId: REPEAT_COMPLETE_OUT_OF_RANGE_ID
+        });
+        const outOfRangeWrap = document.createElement("div");
+        outOfRangeWrap.id = REPEAT_COMPLETE_OUT_OF_RANGE_ID;
       outOfRangeWrap.className = "repeat-complete-out-of-range hidden";
       outOfRangeWrap.setAttribute("data-test-skedpal", "repeat-complete-out-of-range");
       repeatCompleteList.appendChild(separator);

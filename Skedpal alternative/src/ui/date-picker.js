@@ -8,12 +8,9 @@ import {
   parseDateInputValue,
   toDateInputValue
 } from "./date-picker-utils.js";
+import { ENTER_KEY, ESC_KEY, NEXT_MONTH_OFFSET, SPACE_KEY } from "../constants.js";
 
 const PREV_MONTH_OFFSET = -1;
-const NEXT_MONTH_OFFSET = 1;
-const ENTER_KEY = "Enter";
-const SPACE_KEY = " ";
-const ESC_KEY = "Escape";
 
 let datePickerCleanup = null;
 

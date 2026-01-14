@@ -1,4 +1,4 @@
-import { dayOptions } from "./constants.js";
+import { ONE, dayOptions } from "./constants.js";
 import { getWeekdayShortLabel } from "./utils.js";
 
 export function renderRepeatWeekdayOptions(container, selected = []) {
@@ -29,7 +29,7 @@ export function syncWeeklyModeInputs(repeatState, anyInput, allInput) {
 }
 
 export function syncWeeklyModeLabels(repeatState, anyCountEl, allCountEl) {
-  const value = 1;
+  const value = ONE;
   const label = String(value);
   if (anyCountEl) {anyCountEl.textContent = label;}
   if (allCountEl) {allCountEl.textContent = label;}

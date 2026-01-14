@@ -1,9 +1,12 @@
-import { DB_NAME, DB_VERSION } from "../constants.js";
+import {
+  DB_NAME,
+  DB_VERSION,
+  DEFAULT_SCHEDULING_HORIZON_DAYS
+} from "../constants.js";
 const DEFAULT_SECTIONS = [
   { id: "section-work-default", name: "Work" },
   { id: "section-personal-default", name: "Personal" }
 ];
-const DEFAULT_SCHEDULING_HORIZON_DAYS = 14;
 const DEFAULT_SETTINGS = {
   schedulingHorizonDays: DEFAULT_SCHEDULING_HORIZON_DAYS,
   defaultTimeMapId: null,

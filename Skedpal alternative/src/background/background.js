@@ -13,6 +13,7 @@ import { shouldIncrementMissedCount } from "./schedule-metrics.js";
 import {
   CREATE_TASK_MENU_ID,
   CREATE_TASK_OVERLAY_SCRIPT,
+  COMPLETED_TASK_RETENTION_DAYS,
   END_OF_DAY_HOUR,
   END_OF_DAY_MINUTE,
   END_OF_DAY_MS,
@@ -33,7 +34,6 @@ import {
 import { buildCreateTaskUrl } from "./context-menu.js";
 import { buildSequentialSingleDeferredIds } from "./deferred-utils.js";
 import {
-  COMPLETED_TASK_RETENTION_DAYS,
   getPrunableCompletedTaskIds,
   pruneSettingsCollapsedTasks,
   shouldRunDailyPrune

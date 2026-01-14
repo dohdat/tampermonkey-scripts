@@ -3,6 +3,8 @@ import {
   FOURTEEN,
   MINUTES_PER_HOUR,
   MS_PER_MINUTE,
+  SPLIT_VIEW_FOCUS_OFFSET_PX,
+  SPLIT_VIEW_FOCUS_PADDING_PX,
   THREE,
   domRefs
 } from "./constants.js";
@@ -49,8 +51,6 @@ import {
 let nowIndicatorTimer = null;
 let calendarViewInitialized = false;
 let externalDeletePending = false;
-const SPLIT_VIEW_FOCUS_OFFSET_PX = 72;
-const SPLIT_VIEW_FOCUS_PADDING_PX = 16;
 
 function getEventMetaFromBlock(block) {
   if (!block?.dataset) {return null;}

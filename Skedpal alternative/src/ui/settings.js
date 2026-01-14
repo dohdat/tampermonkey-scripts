@@ -11,7 +11,12 @@ import {
   DEFAULT_SETTINGS,
   DEFAULT_SCHEDULING_HORIZON_DAYS
 } from "../data/db.js";
-import { SIXTY, domRefs } from "./constants.js";
+import {
+  BACKUP_FILENAME_PAD_LENGTH,
+  HORIZON_PERSIST_DEBOUNCE_MS,
+  SIXTY,
+  domRefs
+} from "./constants.js";
 import { state } from "./state/page-state.js";
 import { normalizeHorizonDays, debounce } from "./utils.js";
 import { invalidateExternalEventsCache } from "./calendar-external.js";
@@ -37,8 +42,6 @@ const {
   backupStatus,
   taskBackgroundModeSelect
 } = domRefs;
-
-const HORIZON_PERSIST_DEBOUNCE_MS = 250;
 
 function getRuntime() {
   return globalThis.chrome?.runtime || null;
@@ -429,8 +432,7 @@ function formatBackupFilename(value) {
   if (Number.isNaN(date.getTime())) {
     return "skedpal-backup.json";
   }
-  const padLength = 2;
-  const pad = (num) => String(num).padStart(padLength, "0");
+  const pad = (num) => String(num).padStart(BACKUP_FILENAME_PAD_LENGTH, "0");
   const stamp = `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
   return `skedpal-backup-${stamp}.json`;
 }

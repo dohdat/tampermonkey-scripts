@@ -4,14 +4,12 @@ import {
   deleteTaskTemplate
 } from "../data/db.js";
 import Sortable from "../../vendor/sortable.esm.js";
-import { domRefs } from "./constants.js";
+import { SORT_AFTER, TEMPLATE_SORTABLE_STYLE_ID, domRefs } from "./constants.js";
 import { state } from "./state/page-state.js";
 import { openTemplateEditor, openTemplateSubtaskEditor } from "./tasks/tasks-actions.js";
 import { toggleTemplateSubtaskList, getExpandedTemplateIds } from "./task-templates-utils.js";
 
-const TEMPLATE_SORTABLE_STYLE_ID = "task-template-sortable-styles";
 const SORT_BEFORE = -1;
-const SORT_AFTER = 1;
 let templateSortableInstances = [];
 
 function getTemplateTitle(template) {

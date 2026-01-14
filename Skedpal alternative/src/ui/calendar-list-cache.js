@@ -1,6 +1,5 @@
 import { getCalendarCacheEntry, saveCalendarCacheEntry } from "../data/db.js";
-
-const CALENDAR_LIST_CACHE_KEY = "google-calendar-list";
+import { CALENDAR_LIST_CACHE_KEY } from "../constants.js";
 
 function normalizeCalendarEntry(entry) {
   if (!entry || !entry.id) {return null;}

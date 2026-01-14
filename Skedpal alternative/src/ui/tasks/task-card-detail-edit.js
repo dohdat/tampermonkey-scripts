@@ -1,6 +1,5 @@
-const PRIORITY_MIN = 1;
-const PRIORITY_MAX = 5;
-const MINUTES_PER_HOUR = 60;
+import { MINUTES_PER_HOUR, PRIORITY_MAX, PRIORITY_MIN } from "../constants.js";
+
 const durationOptions = [
   { label: "15m", value: 15 },
   { label: "30m", value: 30 },

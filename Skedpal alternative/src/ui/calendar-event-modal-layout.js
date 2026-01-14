@@ -1,3 +1,5 @@
+import { CALENDAR_EVENT_MODAL_MARGIN_PX } from "../constants.js";
+
 function resolveViewportSize() {
   return {
     width: window.innerWidth || document.documentElement.clientWidth || 0,
@@ -44,7 +46,7 @@ export function positionCalendarEventModal(calendarEventModal, anchorRect) {
   if (!calendarEventModal || !anchorRect) {return;}
   const panel = getCalendarEventModalPanel(calendarEventModal);
   if (!panel) {return;}
-  const margin = 12;
+  const margin = CALENDAR_EVENT_MODAL_MARGIN_PX;
   const viewport = resolveViewportSize();
   const panelRect = panel.getBoundingClientRect();
   const left = computeModalLeft(anchorRect, panelRect.width, viewport.width, margin);

@@ -1,11 +1,13 @@
-const TWO = 2;
-const THREE = 3;
-const FIVE = 5;
-const SIX = 6;
-const SEVEN = 7;
-const TWELVE = 12;
-const FOURTEEN = 14;
-const TWENTY_ONE = 21;
+import {
+  FIVE,
+  FOURTEEN,
+  SEVEN,
+  SIX,
+  THREE,
+  TWELVE,
+  TWENTY_ONE,
+  TWO
+} from "../constants.js";
 
 function getDaysInMonth(year, monthIndex) {
   return new Date(year, monthIndex + 1, 0).getDate();

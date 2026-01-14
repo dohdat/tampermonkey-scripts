@@ -6,6 +6,7 @@ import {
   MS_PER_MINUTE,
   ONE_HUNDRED,
   PERCENT_LABEL_CAP,
+  REPORT_MISSED_FILL_COLOR,
   TEN,
   TWO,
   SUBTASK_SCHEDULE_SEQUENTIAL_SINGLE,
@@ -326,9 +327,8 @@ function buildReportRow(row, context) {
   wrapper.appendChild(card);
   const fillPercent = getMissedFillPercent(row);
   if (fillPercent > 0) {
-    const fillColor = "rgba(var(--color-orange-500-rgb), 0.18)";
     card.style.backgroundImage =
-      `linear-gradient(90deg, ${fillColor} ${fillPercent}%, rgba(0, 0, 0, 0) ${fillPercent}%)`;
+      `linear-gradient(90deg, ${REPORT_MISSED_FILL_COLOR} ${fillPercent}%, rgba(0, 0, 0, 0) ${fillPercent}%)`;
   }
   const missedBase = row.expectedCount
     ? `Missed: ${row.missedLastRun} of ${row.expectedCount}${formatMissedPercentage(

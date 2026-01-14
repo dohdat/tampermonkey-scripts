@@ -1,4 +1,4 @@
-const JSON_INDENT = 2;
+import { JSON_INDENT } from "../constants.js";
 
 function normalizeSnapshot(value) {
   const snapshot = value && typeof value === "object" ? value : {};

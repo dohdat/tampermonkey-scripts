@@ -16,7 +16,7 @@ import {
   uuid
 } from "../utils.js";
 import {
-  buildTitleConversionPreviewHtml,
+  buildTitleConversionHighlightsHtml,
   parseTitleLiteralList,
   pruneTitleLiteralList,
   serializeTitleLiteralList
@@ -125,15 +125,13 @@ export function updateTaskTitleConversionPreview() {
   if (!taskTitleInput || !taskTitleConversionPreview) {return;}
   const value = taskTitleInput.value || "";
   const literals = readTitleLiterals(taskTitleInput, value);
-  const preview = buildTitleConversionPreviewHtml(value, { literals });
+  const preview = buildTitleConversionHighlightsHtml(value, { literals });
   if (!preview.hasRanges) {
     taskTitleConversionPreview.textContent = "";
     taskTitleConversionPreview.classList.add("opacity-0", "pointer-events-none");
     return;
   }
-  const prefix =
-    '<span class="text-slate-500" data-test-skedpal="task-title-conversion-prefix">Will convert: </span>';
-  taskTitleConversionPreview.innerHTML = `${prefix}${preview.html}`;
+  taskTitleConversionPreview.innerHTML = preview.html;
   taskTitleConversionPreview.classList.remove("opacity-0", "pointer-events-none");
 }
 

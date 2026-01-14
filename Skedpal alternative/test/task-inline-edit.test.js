@@ -469,7 +469,7 @@ describe("inline edit parsing guard", () => {
     assert.ok(input);
     assert.ok(preview);
     input.dispatchEvent({ type: "input" });
-    assert.ok(preview.innerHTML.includes("Will convert"));
+    assert.ok(preview.innerHTML.includes("task-title-conversion-highlight"));
   });
 
   it("commits inline edit with Enter when no changes", async () => {

@@ -34,6 +34,7 @@ const {
 } = await import("../src/ui/utils.js");
 const {
   buildTitleConversionPreviewHtml,
+  buildTitleConversionHighlightsHtml,
   buildTitleUpdateFromInput,
   formatLocalDateInputValue,
   parseTitleDates,
@@ -286,6 +287,13 @@ describe("utils date parsing", () => {
     const preview = buildTitleConversionPreviewHtml("Test every 2 weeks anyday");
     assert.strictEqual(preview.hasRanges, true);
     assert.ok(preview.html.includes("task-title-conversion-highlight"));
+  });
+
+  it("builds highlight-only conversion html without title text", () => {
+    const preview = buildTitleConversionHighlightsHtml("Pay rent tomorrow");
+    assert.strictEqual(preview.hasRanges, true);
+    assert.ok(preview.html.includes("task-title-conversion-highlight"));
+    assert.strictEqual(preview.html.includes("Pay rent"), false);
   });
 
   it("highlights date prefixes along with dates", () => {

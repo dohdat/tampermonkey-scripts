@@ -20,7 +20,7 @@ import {
   uuid
 } from "../utils.js";
 import {
-  buildTitleConversionPreviewHtml,
+  buildTitleConversionHighlightsHtml,
   parseTitleDates,
   parseTitleLiteralList,
   pruneTitleLiteralList,
@@ -209,15 +209,13 @@ function updateAddTaskConversionPreview(input) {
   if (!preview) {return;}
   const value = input.value || "";
   const literals = readTitleLiterals(input, value);
-  const result = buildTitleConversionPreviewHtml(value, { literals });
+  const result = buildTitleConversionHighlightsHtml(value, { literals });
   if (!result.hasRanges) {
     preview.textContent = "";
     preview.classList.add("opacity-0", "pointer-events-none");
     return;
   }
-  const prefix =
-    '<span class="text-slate-500" data-test-skedpal="task-add-conversion-prefix">Will convert: </span>';
-  preview.innerHTML = `${prefix}${result.html}`;
+  preview.innerHTML = result.html;
   preview.classList.remove("opacity-0", "pointer-events-none");
 }
 
@@ -454,7 +452,7 @@ export function buildAddTaskRow({
   row.appendChild(input);
   const preview = document.createElement("div");
   preview.className =
-    "mt-1 h-3 truncate text-left text-[10px] text-slate-400 opacity-0 pointer-events-none pl-3";
+    "mt-1 h-3 w-full min-w-0 truncate text-left text-[10px] text-slate-400 opacity-0 pointer-events-none pl-3";
   preview.setAttribute("data-test-skedpal", "task-add-conversion-preview");
   row.appendChild(preview);
   return row;

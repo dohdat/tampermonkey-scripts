@@ -1,7 +1,7 @@
 import { saveTask } from "../../data/db.js";
 import { INDEX_NOT_FOUND, TASK_TITLE_MAX_LENGTH } from "../constants.js";
 import {
-  buildTitleConversionPreviewHtml,
+  buildTitleConversionHighlightsHtml,
   buildTitleUpdateFromInput,
   parseTitleLiteralList,
   pruneTitleLiteralList,
@@ -135,22 +135,20 @@ function updateInlineTitleConversionPreview(input, preview) {
   } else {
     delete input.dataset.titleLiterals;
   }
-  const result = buildTitleConversionPreviewHtml(value, { literals });
+  const result = buildTitleConversionHighlightsHtml(value, { literals });
   if (!result.hasRanges) {
     preview.textContent = "";
     preview.classList.add("opacity-0", "pointer-events-none");
     return;
   }
-  const prefix =
-    '<span class="text-slate-500" data-test-skedpal="task-title-inline-conversion-prefix">Will convert: </span>';
-  preview.innerHTML = `${prefix}${result.html}`;
+  preview.innerHTML = result.html;
   preview.classList.remove("opacity-0", "pointer-events-none");
 }
 
 function createInlineTitleConversionPreview(titleEl, input) {
   const preview = document.createElement("div");
   preview.className =
-    "mt-1 h-3 truncate text-left text-[10px] text-slate-400 opacity-0 pointer-events-none pl-2";
+    "mt-1 h-3 w-full min-w-0 truncate text-left text-[10px] text-slate-400 opacity-0 pointer-events-none pl-2";
   preview.setAttribute("data-test-skedpal", "task-title-inline-conversion-preview");
   titleEl.appendChild(preview);
 

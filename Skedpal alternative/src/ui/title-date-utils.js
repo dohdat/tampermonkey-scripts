@@ -167,6 +167,21 @@ export function buildTitleConversionPreviewHtml(rawTitle, options = {}) {
   return { html: parts.join(""), hasRanges: true };
 }
 
+export function buildTitleConversionHighlightsHtml(rawTitle, options = {}) {
+  const title = typeof rawTitle === "string" ? rawTitle : "";
+  const ranges = getTitleConversionRanges(title, options);
+  if (!ranges.length) {
+    return { html: "", hasRanges: false };
+  }
+  const highlights = ranges.map((range) => {
+    const rawMatchText = title.slice(range.start, range.end);
+    const matchText = escapeHtml(rawMatchText);
+    const attrText = escapeHtml(rawMatchText);
+    return `<span class="rounded bg-lime-400/10 px-1 text-lime-300" data-test-skedpal="task-title-conversion-highlight" data-title-literal="${attrText}">${matchText}</span>`;
+  });
+  return { html: highlights.join(" "), hasRanges: true };
+}
+
 function buildCleanedTitle(title, matchText, matchIndex) {
   /* c8 ignore next */
   if (!matchText || matchIndex < 0) {return title;}

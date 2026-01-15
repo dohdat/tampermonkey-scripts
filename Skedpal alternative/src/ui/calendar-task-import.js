@@ -187,7 +187,7 @@ export function buildCalendarTaskPayload({
     priority,
     deadline: null,
     startFrom: null,
-    link: event.link || "",
+    link: "",
     timeMapIds,
     section: effectiveSection,
     subsection: effectiveSubsection,

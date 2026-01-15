@@ -4,7 +4,8 @@ import {
   END_OF_DAY_MINUTE,
   END_OF_DAY_MS,
   END_OF_DAY_SECOND,
-  INDEX_NOT_FOUND
+  INDEX_NOT_FOUND,
+  TWO
 } from "../../constants.js";
 
 export function parseTime(timeString) {
@@ -34,6 +35,15 @@ export function startOfWeek(date) {
   const d = startOfDay(date);
   d.setDate(d.getDate() - d.getDay());
   return d;
+}
+
+export function getLocalDateKey(value) {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) {return "";}
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(TWO, "0");
+  const day = `${date.getDate()}`.padStart(TWO, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export function normalizeDeadline(value, fallback) {

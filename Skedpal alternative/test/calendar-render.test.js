@@ -277,12 +277,15 @@ describe("calendar render", () => {
     const end = new Date(2026, 0, 6, 10, 0, 0);
     const completed = new Date(start);
     completed.setHours(23, 59, 59, 999);
+    const localKey = `${completed.getFullYear()}-${String(
+      completed.getMonth() + 1
+    ).padStart(2, "0")}-${String(completed.getDate()).padStart(2, "0")}`;
     const tasks = [
       {
         id: "task-2",
         title: "Repeat block",
         scheduleStatus: "scheduled",
-        completedOccurrences: [completed.toISOString()],
+        completedOccurrences: [localKey],
         scheduledInstances: [
           {
             start: start.toISOString(),

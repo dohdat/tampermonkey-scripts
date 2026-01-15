@@ -178,6 +178,32 @@ describe("scheduler occurrences", () => {
     assert.deepStrictEqual(second, []);
   });
 
+  it("filters completed occurrences stored as local date keys", () => {
+    const task = {
+      id: "t5-local",
+      deadline: "2026-01-05T12:00:00Z",
+      durationMin: 30,
+      minBlockMin: 15,
+      priority: 1,
+      timeMapIds: [],
+      repeat: { type: "none" },
+      completedOccurrences: []
+    };
+    const first = getUpcomingOccurrences(task, now, 3, 14);
+    assert.strictEqual(first.length, 1);
+    const completedDate = first[0].date;
+    const localKey = `${completedDate.getFullYear()}-${String(
+      completedDate.getMonth() + 1
+    ).padStart(2, "0")}-${String(completedDate.getDate()).padStart(2, "0")}`;
+    const second = getUpcomingOccurrences(
+      { ...task, completedOccurrences: [localKey] },
+      now,
+      3,
+      14
+    );
+    assert.deepStrictEqual(second, []);
+  });
+
   it("keeps occurrences when completed dates are invalid", () => {
     const task = {
       id: "t5b",

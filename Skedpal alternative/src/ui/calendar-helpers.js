@@ -6,6 +6,23 @@ import {
   INDEX_NOT_FOUND,
   TASK_STATUS_SCHEDULED
 } from "./constants.js";
+import { getLocalDateKey } from "./utils.js";
+
+function buildCompletedOccurrenceSet(values) {
+  const completed = new Set();
+  (values || []).forEach((value) => {
+    if (!value) {return;}
+    if (typeof value === "string" && value.trim()) {
+      completed.add(value);
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {return;}
+    completed.add(date.toISOString());
+    const localKey = getLocalDateKey(date);
+    if (localKey) {completed.add(localKey);}
+  });
+  return completed;
+}
 
 export function endOfDay(date) {
   const d = new Date(date);
@@ -23,6 +40,8 @@ export function parseInstanceDates(instance) {
 
 export function isCompletedOccurrence(start, completedOccurrences) {
   if (!completedOccurrences?.size) {return false;}
+  const localKey = getLocalDateKey(start);
+  if (localKey && completedOccurrences.has(localKey)) {return true;}
   const occurrenceIso = endOfDay(start).toISOString();
   return completedOccurrences.has(occurrenceIso);
 }
@@ -93,7 +112,7 @@ export function getScheduledEvents(tasks) {
     if (task.scheduleStatus !== TASK_STATUS_SCHEDULED) {return;}
     const instances = Array.isArray(task.scheduledInstances) ? task.scheduledInstances : [];
     if (!instances.length) {return;}
-    const completedOccurrences = new Set(task.completedOccurrences || []);
+    const completedOccurrences = buildCompletedOccurrenceSet(task.completedOccurrences);
     instances.forEach((instance, index) => {
       const event = buildScheduledEvent(task, instance, index, completedOccurrences);
       if (event) {

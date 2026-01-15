@@ -1,4 +1,11 @@
-import { addDays, endOfDay, nthWeekdayOfMonth, startOfDay, startOfWeek } from "./date-utils.js";
+import {
+  addDays,
+  endOfDay,
+  nthWeekdayOfMonth,
+  startOfDay,
+  startOfWeek,
+  getLocalDateKey
+} from "./date-utils.js";
 import { normalizeTask } from "./task-utils.js";
 import { DAYS_PER_WEEK, DAYS_PER_YEAR, TEN, THREE } from "../../constants.js";
 
@@ -261,6 +268,30 @@ function resolveRepeatHandler(unit) {
   return handlers[unit] || null;
 }
 
+function buildCompletedOccurrenceSet(values) {
+  const completed = new Set();
+  (values || []).forEach((value) => {
+    if (!value) {return;}
+    if (typeof value === "string" && value.trim()) {
+      completed.add(value);
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {return;}
+    completed.add(date.toISOString());
+    const localKey = getLocalDateKey(date);
+    if (localKey) {completed.add(localKey);}
+  });
+  return completed;
+}
+
+function isOccurrenceCompleted(completedOccurrences, date) {
+  if (!completedOccurrences?.size || !date) {return false;}
+  return (
+    completedOccurrences.has(date.toISOString()) ||
+    completedOccurrences.has(getLocalDateKey(date))
+  );
+}
+
 export function buildOccurrenceDates(task, now, horizonEnd) {
   const repeat = task.repeat || { type: "none" };
   if (isNonRepeating(repeat)) {
@@ -281,17 +312,12 @@ export function getUpcomingOccurrences(
   const horizonEnd = endOfDay(addDays(now, horizonDays));
   const normalized = normalizeTask(task, now, horizonEnd);
   const occurrences = buildOccurrenceDates(normalized, now, horizonEnd);
-  const completedOccurrences = new Set(
-    (task.completedOccurrences || []).map((value) => {
-      const date = new Date(value);
-      return Number.isNaN(date.getTime()) ? String(value) : date.toISOString();
-    })
-  );
+  const completedOccurrences = buildCompletedOccurrenceSet(task.completedOccurrences);
   return occurrences
     .map((date, index) => ({
       date,
       occurrenceId: `${normalized.id || normalized.taskId || task.id}-occ-${index}`
     }))
-    .filter((entry) => !completedOccurrences.has(entry.date.toISOString()))
+    .filter((entry) => !isOccurrenceCompleted(completedOccurrences, entry.date))
     .slice(0, count);
 }

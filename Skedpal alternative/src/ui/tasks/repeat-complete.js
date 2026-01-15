@@ -6,11 +6,13 @@ import {
   END_OF_DAY_MINUTE,
   END_OF_DAY_MS,
   END_OF_DAY_SECOND,
+  REPEAT_COMPLETE_COMPLETED_ID,
+  REPEAT_COMPLETE_COMPLETED_LIMIT,
   REPEAT_COMPLETE_OUT_OF_RANGE_ID,
   TEN,
   domRefs
 } from "../constants.js";
-import { formatDate, getLocalDateKey } from "../utils.js";
+import { formatDate, getLocalDateKey, parseLocalDateInput } from "../utils.js";
 import { getDateParts } from "../repeat-yearly.js";
 import { state } from "../state/page-state.js";
 
@@ -55,6 +57,62 @@ function buildYearlyRangeLabel(task, date) {
   return `${startLabel} - ${endLabel}`;
 }
 
+const localDateKeyPattern = /^\d{4}-\d{2}-\d{2}$/;
+
+function parseCompletedOccurrenceDate(value) {
+  if (!value) {return null;}
+  if (typeof value === "string" && localDateKeyPattern.test(value)) {
+    const iso = parseLocalDateInput(value);
+    return iso ? new Date(iso) : null;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function buildCompletedOccurrenceEntries(task) {
+  const entries = [];
+  const seenKeys = new Set();
+  (task?.completedOccurrences || []).forEach((value) => {
+    const date = parseCompletedOccurrenceDate(value);
+    if (!date) {return;}
+    const key = getLocalDateKey(date);
+    if (!key || seenKeys.has(key)) {return;}
+    seenKeys.add(key);
+    entries.push({ date, key });
+  });
+  entries.sort((a, b) => b.date.getTime() - a.date.getTime());
+  return entries;
+}
+
+function resolveOccurrenceTimeLabel({
+  task,
+  date,
+  occurrenceId,
+  horizonEnd,
+  fallbackLabel,
+  showOutOfRange
+}) {
+  if (showOutOfRange && date > horizonEnd) {
+    return "Out of range";
+  }
+  const instances = task.scheduledInstances || [];
+  let matches = instances.filter((instance) => instance.occurrenceId === occurrenceId);
+  if (!matches.length) {
+    const targetKey = getLocalDateKey(date);
+    matches = instances.filter((instance) => getLocalDateKey(instance.start) === targetKey);
+  }
+  if (!matches.length) {
+    return fallbackLabel;
+  }
+  const starts = matches.map((m) => new Date(m.start));
+  const ends = matches.map((m) => new Date(m.end));
+  const minStart = new Date(Math.min(...starts.map((d) => d.getTime())));
+  const maxEnd = new Date(Math.max(...ends.map((d) => d.getTime())));
+  const startLabel = minStart.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const endLabel = maxEnd.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return `${startLabel} - ${endLabel}`;
+}
+
 function buildOccurrenceButton({
   task,
   date,
@@ -89,29 +147,14 @@ function buildOccurrenceButton({
   const time = document.createElement("span");
   time.className = "repeat-complete-time";
   time.setAttribute("data-test-skedpal", "repeat-complete-time");
-  if (date > horizonEnd) {
-    time.textContent = "Out of range";
-  } else {
-    const instances = task.scheduledInstances || [];
-    let matches = instances.filter((instance) => instance.occurrenceId === occurrenceId);
-    if (!matches.length) {
-      const targetKey = getLocalDateKey(date);
-      matches = instances.filter(
-        (instance) => getLocalDateKey(instance.start) === targetKey
-      );
-    }
-    if (matches.length) {
-      const starts = matches.map((m) => new Date(m.start));
-      const ends = matches.map((m) => new Date(m.end));
-      const minStart = new Date(Math.min(...starts.map((d) => d.getTime())));
-      const maxEnd = new Date(Math.max(...ends.map((d) => d.getTime())));
-      const startLabel = minStart.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-      const endLabel = maxEnd.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-      time.textContent = `${startLabel} - ${endLabel}`;
-    } else {
-      time.textContent = "Unscheduled";
-    }
-  }
+  time.textContent = resolveOccurrenceTimeLabel({
+    task,
+    date,
+    occurrenceId,
+    horizonEnd,
+    fallbackLabel: "Unscheduled",
+    showOutOfRange: true
+  });
   const meta = document.createElement("span");
   meta.className = "repeat-complete-meta";
   meta.textContent = date.toLocaleDateString(undefined, { weekday: "short" });
@@ -131,13 +174,49 @@ function buildOccurrenceButton({
   return btn;
 }
 
+function buildCompletedOccurrenceRow({ task, date, horizonEnd }) {
+  const row = document.createElement("div");
+  row.className = "repeat-complete-option";
+  row.setAttribute("data-test-skedpal", "repeat-complete-completed-option");
+  const details = document.createElement("span");
+  details.className = "repeat-complete-details";
+  details.setAttribute("data-test-skedpal", "repeat-complete-details");
+  const radio = document.createElement("span");
+  radio.className = "repeat-complete-radio";
+  radio.setAttribute("data-test-skedpal", "repeat-complete-radio");
+  const label = document.createElement("span");
+  label.className = "repeat-complete-label";
+  label.textContent =
+    buildYearlyRangeLabel(task, date) || formatDate(date) || date.toLocaleDateString();
+  label.setAttribute("data-test-skedpal", "repeat-complete-label");
+  const time = document.createElement("span");
+  time.className = "repeat-complete-time";
+  time.textContent = resolveOccurrenceTimeLabel({
+    task,
+    date,
+    occurrenceId: "",
+    horizonEnd,
+    fallbackLabel: "Completed",
+    showOutOfRange: false
+  });
+  time.setAttribute("data-test-skedpal", "repeat-complete-time");
+  const meta = document.createElement("span");
+  meta.className = "repeat-complete-meta";
+  meta.textContent = date.toLocaleDateString(undefined, { weekday: "short" });
+  meta.setAttribute("data-test-skedpal", "repeat-complete-meta");
+  details.appendChild(radio);
+  details.appendChild(label);
+  details.appendChild(time);
+  row.appendChild(details);
+  row.appendChild(meta);
+  return row;
+}
+
 function buildOutOfRangeSeparator({ label, count, isCollapsed, controlsId }) {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "repeat-complete-separator";
-  if (!isCollapsed) {
-    button.classList.add("repeat-complete-separator--open");
-  }
+  button.classList.toggle("repeat-complete-separator--open", !isCollapsed);
   button.setAttribute("data-test-skedpal", "repeat-complete-separator");
   button.dataset.repeatCompleteSeparator = "true";
   button.setAttribute("aria-expanded", String(!isCollapsed));
@@ -145,6 +224,74 @@ function buildOutOfRangeSeparator({ label, count, isCollapsed, controlsId }) {
   const suffix = count === 1 ? "occurrence" : "occurrences";
   button.textContent = `${label} - Out of range (${count} ${suffix})`;
   return button;
+}
+
+function buildCompletedSeparator({ label, count, isCollapsed, controlsId }) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "repeat-complete-separator";
+  button.classList.toggle("repeat-complete-separator--open", !isCollapsed);
+  button.setAttribute("data-test-skedpal", "repeat-complete-completed-separator");
+  button.dataset.repeatCompleteSeparator = "true";
+  button.setAttribute("aria-expanded", String(!isCollapsed));
+  button.setAttribute("aria-controls", controlsId);
+  const suffix = count === 1 ? "occurrence" : "occurrences";
+  button.textContent = `${label} - Completed (${count} ${suffix})`;
+  return button;
+}
+
+function appendOutOfRangeSection({ task, outOfRange, horizonEnd }) {
+  if (!outOfRange.length || !repeatCompleteList) {return;}
+  const firstOut = outOfRange[0].date;
+  const lastOut = outOfRange[outOfRange.length - 1].date;
+  const label = formatMonthRange(firstOut, lastOut);
+  const separator = buildOutOfRangeSeparator({
+    label,
+    count: outOfRange.length,
+    isCollapsed: true,
+    controlsId: REPEAT_COMPLETE_OUT_OF_RANGE_ID
+  });
+  const outOfRangeWrap = document.createElement("div");
+  outOfRangeWrap.id = REPEAT_COMPLETE_OUT_OF_RANGE_ID;
+  outOfRangeWrap.className = "repeat-complete-out-of-range hidden";
+  outOfRangeWrap.setAttribute("data-test-skedpal", "repeat-complete-out-of-range");
+  repeatCompleteList.appendChild(separator);
+  outOfRange.forEach(({ date, occurrenceId }) => {
+    const btn = buildOccurrenceButton({
+      task,
+      date,
+      occurrenceId,
+      horizonEnd,
+      isNext: false,
+      isOutOfRange: true
+    });
+    outOfRangeWrap.appendChild(btn);
+  });
+  repeatCompleteList.appendChild(outOfRangeWrap);
+}
+
+function appendCompletedSection({ task, completedEntries, horizonEnd }) {
+  if (!completedEntries.length || !repeatCompleteList) {return;}
+  const limited = completedEntries.slice(0, REPEAT_COMPLETE_COMPLETED_LIMIT);
+  const first = limited[limited.length - 1]?.date || limited[0]?.date;
+  const last = limited[0]?.date || limited[limited.length - 1]?.date;
+  const label = formatMonthRange(first, last) || "Previous";
+  const completedWrap = document.createElement("div");
+  completedWrap.id = REPEAT_COMPLETE_COMPLETED_ID;
+  completedWrap.className = "repeat-complete-out-of-range hidden";
+  completedWrap.setAttribute("data-test-skedpal", "repeat-complete-completed-wrap");
+  const separator = buildCompletedSeparator({
+    label,
+    count: completedEntries.length,
+    isCollapsed: true,
+    controlsId: REPEAT_COMPLETE_COMPLETED_ID
+  });
+  repeatCompleteList.appendChild(separator);
+  limited.forEach(({ date }) => {
+    const row = buildCompletedOccurrenceRow({ task, date, horizonEnd });
+    completedWrap.appendChild(row);
+  });
+  repeatCompleteList.appendChild(completedWrap);
 }
 
 export function closeRepeatCompleteModal() {
@@ -187,35 +334,10 @@ export function openRepeatCompleteModal(task) {
       });
       repeatCompleteList.appendChild(btn);
     });
-    if (outOfRange.length) {
-      const firstOut = outOfRange[0].date;
-      const lastOut = outOfRange[outOfRange.length - 1].date;
-      const label = formatMonthRange(firstOut, lastOut);
-        const separator = buildOutOfRangeSeparator({
-          label,
-          count: outOfRange.length,
-          isCollapsed: true,
-          controlsId: REPEAT_COMPLETE_OUT_OF_RANGE_ID
-        });
-        const outOfRangeWrap = document.createElement("div");
-        outOfRangeWrap.id = REPEAT_COMPLETE_OUT_OF_RANGE_ID;
-      outOfRangeWrap.className = "repeat-complete-out-of-range hidden";
-      outOfRangeWrap.setAttribute("data-test-skedpal", "repeat-complete-out-of-range");
-      repeatCompleteList.appendChild(separator);
-      outOfRange.forEach(({ date, occurrenceId }) => {
-        const btn = buildOccurrenceButton({
-          task,
-          date,
-          occurrenceId,
-          horizonEnd,
-          isNext: false,
-          isOutOfRange: true
-        });
-        outOfRangeWrap.appendChild(btn);
-      });
-      repeatCompleteList.appendChild(outOfRangeWrap);
-    }
+    appendOutOfRangeSection({ task, outOfRange, horizonEnd });
   }
+  const completedEntries = buildCompletedOccurrenceEntries(task);
+  appendCompletedSection({ task, completedEntries, horizonEnd });
   repeatCompleteModal.classList.remove("hidden");
   document.body.classList.add("modal-open");
 }

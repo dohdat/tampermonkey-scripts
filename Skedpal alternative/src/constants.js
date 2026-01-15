@@ -121,6 +121,8 @@ export const UPCOMING_OCCURRENCE_LOOKAHEAD_DAYS = THREE_SIXTY_FIVE;
 export const REPORT_MISSED_FILL_COLOR = "rgba(var(--color-orange-500-rgb), 0.18)";
 export const BACKUP_FILENAME_PAD_LENGTH = TWO;
 export const REPEAT_COMPLETE_OUT_OF_RANGE_ID = "repeat-complete-out-of-range";
+export const REPEAT_COMPLETE_COMPLETED_ID = "repeat-complete-completed";
+export const REPEAT_COMPLETE_COMPLETED_LIMIT = FIVE;
 
 export const GROQ_BASE_URL = "https://api.groq.com/openai/v1/chat/completions";
 export const GROQ_MODEL = "openai/gpt-oss-20b";

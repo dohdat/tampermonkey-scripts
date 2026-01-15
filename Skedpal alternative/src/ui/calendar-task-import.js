@@ -1,9 +1,7 @@
 import {
-  DEFAULT_TASK_MIN_BLOCK_MIN,
   DEFAULT_TASK_PRIORITY,
   DEFAULT_TASK_REPEAT,
   GOOGLE_CALENDAR_TASK_ID_PREFIX,
-  MS_PER_MINUTE,
   TASK_STATUS_COMPLETED,
   TASK_STATUS_UNSCHEDULED
 } from "./constants.js";
@@ -90,8 +88,9 @@ function resolveScheduleFields(existingTask) {
 function buildCalendarTaskDefaults(settings, sectionId, subsectionId) {
   const template = resolveSubsectionTemplate(settings, sectionId, subsectionId);
   return {
+    durationMin: resolveNumber(template?.durationMin, null),
     priority: resolveNumber(template?.priority, DEFAULT_TASK_PRIORITY),
-    minBlockMin: resolveNumber(template?.minBlockMin, DEFAULT_TASK_MIN_BLOCK_MIN),
+    minBlockMin: resolveNumber(template?.minBlockMin, null),
     timeMapIds: resolveTemplateTimeMapIds(settings, template),
     repeat: template?.repeat ? { ...template.repeat } : { ...DEFAULT_TASK_REPEAT },
     subtaskScheduleMode: normalizeSubtaskScheduleMode(
@@ -108,20 +107,6 @@ function resolveEffectiveSection(existingTask, sectionId, subsectionId) {
     ? existingTask?.subsection || fallbackSubsection
     : "";
   return { effectiveSection, effectiveSubsection };
-}
-
-function resolveDurationMin(event) {
-  return Math.max(
-    DEFAULT_TASK_MIN_BLOCK_MIN,
-    Math.ceil((event.end.getTime() - event.start.getTime()) / MS_PER_MINUTE)
-  );
-}
-
-function resolveMinBlockMin(durationMin, existingTask, defaults) {
-  return Math.min(
-    durationMin,
-    resolveNumber(existingTask?.minBlockMin, defaults.minBlockMin)
-  );
 }
 
 function resolveExistingTimeMapIds(existingTask, defaults) {
@@ -159,6 +144,14 @@ function resolveCompletedOccurrences(existingTask) {
     : [];
 }
 
+function resolveDurationFromDefaults(existingTask, defaults) {
+  return existingTask?.durationMin ?? defaults.durationMin ?? null;
+}
+
+function resolveMinBlockFromDefaults(existingTask, defaults) {
+  return existingTask?.minBlockMin ?? defaults.minBlockMin ?? null;
+}
+
 export function buildCalendarTaskPayload({
   event,
   settings,
@@ -178,8 +171,8 @@ export function buildCalendarTaskPayload({
   );
 
   const defaults = buildCalendarTaskDefaults(settings, effectiveSection, effectiveSubsection);
-  const durationMin = resolveDurationMin(event);
-  const minBlockMin = resolveMinBlockMin(durationMin, existingTask, defaults);
+  const durationMin = resolveDurationFromDefaults(existingTask, defaults);
+  const minBlockMin = resolveMinBlockFromDefaults(existingTask, defaults);
   const timeMapIds = resolveExistingTimeMapIds(existingTask, defaults);
   const priority = resolvePriority(existingTask, defaults);
   const repeat = resolveRepeat(existingTask, defaults);
@@ -192,8 +185,8 @@ export function buildCalendarTaskPayload({
     durationMin,
     minBlockMin,
     priority,
-    deadline: event.end.toISOString(),
-    startFrom: event.start.toISOString(),
+    deadline: null,
+    startFrom: null,
     link: event.link || "",
     timeMapIds,
     section: effectiveSection,

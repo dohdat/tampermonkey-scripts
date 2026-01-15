@@ -7,7 +7,7 @@ import {
   getCalendarTaskCalendarIds,
   getCalendarTaskSettings
 } from "../src/ui/calendar-task-import.js";
-import { DEFAULT_TASK_MIN_BLOCK_MIN, TASK_STATUS_COMPLETED } from "../src/ui/constants.js";
+import { TASK_STATUS_COMPLETED } from "../src/ui/constants.js";
 
 describe("calendar task import", () => {
   it("builds stable task ids for calendar events", () => {
@@ -49,7 +49,7 @@ describe("calendar task import", () => {
           {
             id: "sub-1",
             name: "Sub",
-            template: { timeMapIds: ["tm-template"], priority: 4 }
+            template: { timeMapIds: ["tm-template"], priority: 4, durationMin: 45 }
           }
         ]
       }
@@ -75,7 +75,7 @@ describe("calendar task import", () => {
     assert.strictEqual(task.subsection, "sub-1");
     assert.deepStrictEqual(task.timeMapIds, ["tm-template"]);
     assert.strictEqual(task.title, "Planning");
-    assert.ok(task.durationMin >= DEFAULT_TASK_MIN_BLOCK_MIN);
+    assert.strictEqual(task.durationMin, 45);
   });
 
   it("keeps existing task placement choices", () => {

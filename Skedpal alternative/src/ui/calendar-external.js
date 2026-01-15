@@ -1,4 +1,6 @@
+import { saveTask } from "../data/db.js";
 import { state } from "./state/page-state.js";
+import { buildCalendarTaskUpdates } from "./calendar-task-import.js";
 
 const pendingFetches = new Set();
 
@@ -119,7 +121,20 @@ export async function ensureExternalEvents(range) {
       throw new Error(response?.error || "Calendar events fetch failed");
     }
     const normalized = coerceEvents(response.events);
-    state.calendarExternalEvents = normalized;
+    const { tasksToSave, treatedCalendarIds } = buildCalendarTaskUpdates({
+      events: normalized,
+      settings: state.settingsCache,
+      tasks: state.tasksCache
+    });
+    if (tasksToSave.length) {
+      await Promise.all(tasksToSave.map((task) => saveTask(task)));
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("skedpal:tasks-updated"));
+      }
+    }
+    state.calendarExternalEvents = normalized.filter(
+      (event) => !treatedCalendarIds.has(event.calendarId)
+    );
     setExternalRange(range);
     state.calendarExternalRangeKey = key;
     return true;

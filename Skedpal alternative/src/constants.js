@@ -95,6 +95,7 @@ export const SUBTASK_SCHEDULE_PARALLEL = "parallel";
 export const SUBTASK_SCHEDULE_SEQUENTIAL = "sequential";
 export const SUBTASK_SCHEDULE_SEQUENTIAL_SINGLE = "sequential-single";
 export const EXTERNAL_CALENDAR_TIMEMAP_PREFIX = "external-calendar:";
+export const GOOGLE_CALENDAR_TASK_ID_PREFIX = "google-calendar-task:";
 export const COMPLETED_TASK_RETENTION_DAYS = 30;
 export const DEFAULT_SCHEDULING_HORIZON_DAYS = FOURTEEN;
 export const FLEXIBLE_REPEAT_WINDOW_DAYS = THREE;

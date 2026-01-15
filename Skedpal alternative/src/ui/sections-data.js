@@ -22,7 +22,16 @@ export function getSectionName(id) {
 }
 
 export function getSubsectionsFor(sectionId) {
-  return ((state.settingsCache.subsections || {})[sectionId] || []).map((s) => {
+  const subsections = state.settingsCache.subsections || {};
+  let list = subsections[sectionId] || [];
+  if (!list.length) {
+    const section = getSectionById(sectionId);
+    const nameKey = section?.name || "";
+    if (nameKey && Array.isArray(subsections[nameKey])) {
+      list = subsections[nameKey];
+    }
+  }
+  return (list || []).map((s) => {
     const template = {
       title: "",
       link: "",

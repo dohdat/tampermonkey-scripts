@@ -11,6 +11,7 @@ const DEFAULT_SETTINGS = {
   schedulingHorizonDays: DEFAULT_SCHEDULING_HORIZON_DAYS,
   defaultTimeMapId: null,
   googleCalendarIds: [],
+  googleCalendarTaskSettings: {},
   favoriteGroupExpanded: {},
   collapsedSections: [],
   collapsedSubsections: [],

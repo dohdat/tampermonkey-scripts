@@ -54,4 +54,16 @@ describe("subsection templates", () => {
     const result = getSubsectionsFor("s1");
     assert.strictEqual(result[0].template.subtaskScheduleMode, "sequential");
   });
+
+  it("falls back to name-keyed subsections when id key is missing", () => {
+    state.settingsCache = {
+      ...state.settingsCache,
+      sections: [{ id: "s1", name: "Personal" }],
+      subsections: {
+        Personal: [{ id: "sub1", name: "Home" }]
+      }
+    };
+    const result = getSubsectionsFor("s1");
+    assert.strictEqual(result[0].name, "Home");
+  });
 });

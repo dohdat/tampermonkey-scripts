@@ -182,6 +182,20 @@ function runBackgroundPrune() {
     });
 }
 
+function getCalendarTaskIdSet(settings) {
+  const ids = new Set();
+  const map = settings?.googleCalendarTaskSettings;
+  if (!map || typeof map !== "object") {
+    return ids;
+  }
+  Object.entries(map).forEach(([calendarId, entry]) => {
+    if (calendarId && entry?.treatAsTasks) {
+      ids.add(calendarId);
+    }
+  });
+  return ids;
+}
+
 async function runReschedule() {
   const now = new Date();
   let [tasks, timeMaps, settings] = await Promise.all([
@@ -206,8 +220,9 @@ async function runReschedule() {
   }
 
   let busy = [];
+  const calendarTaskIds = getCalendarTaskIdSet(settings);
   const calendarIds = Array.isArray(settings.googleCalendarIds)
-    ? settings.googleCalendarIds
+    ? settings.googleCalendarIds.filter((id) => !calendarTaskIds.has(id))
     : null;
   const horizonDays = Number(settings.schedulingHorizonDays) || DEFAULT_SCHEDULING_HORIZON_DAYS;
   const horizonEnd = new Date(now.getTime());

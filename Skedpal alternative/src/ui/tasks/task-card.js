@@ -352,7 +352,7 @@ function appendMinBlockDetailItem(meta, task) {
   if (!task.minBlockMin) {return;}
   const { item, valueEl } = buildDetailItemElement({
     key: "min-block",
-    label: "Min block",
+    label: "Min",
     iconSvg: detailStackIconSvg,
     valueTestId: "task-min-block"
   });

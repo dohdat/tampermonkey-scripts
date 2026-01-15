@@ -142,7 +142,7 @@ export function buildTimeMapDetailItem({
 }) {
   const { item, valueEl } = buildDetailItemElement({
     key: "timemaps",
-    label: "TimeMaps",
+    label: "Maps",
     iconSvg,
     valueTestId: "task-timemaps"
   });
@@ -219,7 +219,7 @@ export function buildStartFromDetailItem({
   if (!task.startFrom) {return { item: null, cleanup: () => {} };}
   const { item, valueEl } = buildDetailItemElement({
     key: "start-from",
-    label: "Start from",
+    label: "Start",
     iconSvg,
     valueTestId: "task-start-from"
   });
@@ -262,7 +262,7 @@ export function buildDeadlineDetailItem({
   if (!task.deadline) {return { item: null, cleanup: () => {} };}
   const { item, valueEl } = buildDetailItemElement({
     key: "deadline",
-    label: "Deadline",
+    label: "Due",
     iconSvg,
     valueTestId: "task-deadline"
   });

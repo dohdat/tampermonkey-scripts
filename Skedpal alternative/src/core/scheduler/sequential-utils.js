@@ -72,6 +72,13 @@ function buildChildrenByParent(tasks) {
   return map;
 }
 
+function parseOrderValue(value) {
+  if (value === null || value === undefined) {return Number.NaN;}
+  if (typeof value === "string" && value.trim() === "") {return Number.NaN;}
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : Number.NaN;
+}
+
 function sortChildrenByOrder(children, subtaskOrderById) {
   return [...children].sort((a, b) => {
     const aOrder = subtaskOrderById.has(a.id)
@@ -87,6 +94,54 @@ function sortChildrenByOrder(children, subtaskOrderById) {
   });
 }
 
+function buildIndexById(tasks) {
+  const map = new Map();
+  tasks.forEach((task, index) => {
+    if (!task?.id) {return;}
+    map.set(task.id, index);
+  });
+  return map;
+}
+
+function compareNumbers(aValue, bValue) {
+  if (aValue < bValue) {return INDEX_NOT_FOUND;}
+  if (aValue > bValue) {return 1;}
+  return 0;
+}
+
+function resolveOrderForTask(task) {
+  const order = parseOrderValue(task?.order);
+  return Number.isFinite(order) ? order : Number.MAX_SAFE_INTEGER;
+}
+
+function resolveSubtaskPosition(taskId, subtaskOrderById) {
+  return subtaskOrderById.has(taskId)
+    ? subtaskOrderById.get(taskId)
+    : Number.MAX_SAFE_INTEGER;
+}
+
+function resolveIndexPosition(taskId, indexById) {
+  return indexById.has(taskId) ? indexById.get(taskId) : Number.MAX_SAFE_INTEGER;
+}
+
+function compareSequentialGroupItems(aId, bId, tasksById, subtaskOrderById, indexById) {
+  const aTask = tasksById.get(aId);
+  const bTask = tasksById.get(bId);
+  const orderResult = compareNumbers(resolveOrderForTask(aTask), resolveOrderForTask(bTask));
+  if (orderResult !== 0) {return orderResult;}
+  const positionResult = compareNumbers(
+    resolveSubtaskPosition(aId, subtaskOrderById),
+    resolveSubtaskPosition(bId, subtaskOrderById)
+  );
+  if (positionResult !== 0) {return positionResult;}
+  const indexResult = compareNumbers(
+    resolveIndexPosition(aId, indexById),
+    resolveIndexPosition(bId, indexById)
+  );
+  if (indexResult !== 0) {return indexResult;}
+  return (aTask?.title || "").localeCompare(bTask?.title || "");
+}
+
 function buildFlatOrderForParent(parentId, childrenByParent, subtaskOrderById, list) {
   const children = sortChildrenByOrder(childrenByParent.get(parentId) || [], subtaskOrderById);
   children.forEach((child) => {
@@ -97,6 +152,7 @@ function buildFlatOrderForParent(parentId, childrenByParent, subtaskOrderById, l
 
 function buildSequentialOrderIndexMap(tasks, tasksById, parentModeById, subtaskOrderById) {
   const childrenByParent = buildChildrenByParent(tasks);
+  const indexById = buildIndexById(tasks);
   const byGroup = new Map();
   tasks.forEach((task) => {
     if (!task?.id) {return;}
@@ -106,6 +162,9 @@ function buildSequentialOrderIndexMap(tasks, tasksById, parentModeById, subtaskO
     if (byGroup.has(groupId)) {return;}
     const list = [];
     buildFlatOrderForParent(groupId, childrenByParent, subtaskOrderById, list);
+    list.sort((aId, bId) =>
+      compareSequentialGroupItems(aId, bId, tasksById, subtaskOrderById, indexById)
+    );
     const indexMap = new Map();
     list.forEach((id, index) => {
       indexMap.set(id, index);

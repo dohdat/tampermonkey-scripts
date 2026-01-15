@@ -36,6 +36,13 @@ function buildParentModeMap(tasks) {
   return map;
 }
 
+function parseOrderValue(value) {
+  if (value === null || value === undefined) {return Number.NaN;}
+  if (typeof value === "string" && value.trim() === "") {return Number.NaN;}
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : Number.NaN;
+}
+
 function buildSubtaskOrderMap(tasks) {
   const groups = new Map();
   tasks.forEach((task, index) => {
@@ -44,7 +51,7 @@ function buildSubtaskOrderMap(tasks) {
     if (!groups.has(parentId)) {groups.set(parentId, []);}
     groups.get(parentId).push({
       id: task.id,
-      order: Number(task.order),
+      order: parseOrderValue(task.order),
       index
     });
   });
@@ -362,7 +369,7 @@ function compareNumeric(aValue, bValue) {
 }
 
 function resolveOrderValue(value) {
-  const numeric = Number(value);
+  const numeric = parseOrderValue(value);
   return Number.isFinite(numeric) ? numeric : Number.MAX_SAFE_INTEGER;
 }
 

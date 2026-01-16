@@ -9,6 +9,7 @@ import {
   END_OF_DAY_MINUTE,
   END_OF_DAY_MS,
   END_OF_DAY_SECOND,
+  EIGHT,
   GOOGLE_CALENDAR_SKEDPAL_INSTANCE_ID_KEY,
   GOOGLE_CALENDAR_SKEDPAL_OCCURRENCE_ID_KEY,
   GOOGLE_CALENDAR_SKEDPAL_SOURCE,
@@ -18,9 +19,17 @@ import {
   GOOGLE_CALENDAR_SYNC_MIN_DAYS,
   RESCHEDULE_SYNC_MAX_DELAY_MS,
   RESCHEDULE_SYNC_MIN_DELAY_MS,
+  SIXTEEN,
   THREE,
-  TASK_STATUS_SCHEDULED
+  TASK_STATUS_SCHEDULED,
+  TWO,
+  TWO_FIFTY_FIVE
 } from "../constants.js";
+import {
+  GOOGLE_CALENDAR_EVENT_COLORS,
+  TASK_BACKGROUND_NONE_COLOR_HEX,
+  TASK_PRIORITY_COLOR_HEX
+} from "../core/constants.js";
 import {
   createCalendarEvent,
   deleteCalendarEvent,
@@ -76,7 +85,8 @@ function buildTaskInstances(task) {
     .map((instance) => ({
       start: toDate(instance?.start),
       end: toDate(instance?.end),
-      occurrenceId: instance?.occurrenceId || ""
+      occurrenceId: instance?.occurrenceId || "",
+      timeMapId: instance?.timeMapId || ""
     }))
     .filter((instance) => instance.start && instance.end && instance.end > instance.start)
     .sort((a, b) => a.start.getTime() - b.start.getTime());
@@ -114,16 +124,167 @@ function buildExistingEventIndex(events = []) {
   return map;
 }
 
+function normalizeHexColor(value) {
+  const hex = String(value || "").trim().toLowerCase();
+  if (!/^#([0-9a-f]{6})$/.test(hex)) {return "";}
+  return hex;
+}
+
+function hexToRgb(hex) {
+  const normalized = normalizeHexColor(hex);
+  if (!normalized) {return null;}
+  const intValue = Number.parseInt(normalized.slice(1), SIXTEEN);
+  return {
+    r: (intValue >> SIXTEEN) & TWO_FIFTY_FIVE,
+    g: (intValue >> EIGHT) & TWO_FIFTY_FIVE,
+    b: intValue & TWO_FIFTY_FIVE
+  };
+}
+
+function resolveGoogleColorId(colorHex) {
+  const normalized = normalizeHexColor(colorHex);
+  if (!normalized) {return "";}
+  const target = hexToRgb(normalized);
+  if (!target) {return "";}
+  let closest = "";
+  let bestDistance = Number.POSITIVE_INFINITY;
+  GOOGLE_CALENDAR_EVENT_COLORS.forEach((entry) => {
+    const rgb = hexToRgb(entry.hex);
+    if (!rgb) {return;}
+    const distance =
+      (target.r - rgb.r) ** TWO +
+      (target.g - rgb.g) ** TWO +
+      (target.b - rgb.b) ** TWO;
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      closest = entry.id;
+    }
+  });
+  return closest;
+}
+
+function resolveTaskBackgroundMode(settings) {
+  const mode = settings?.taskBackgroundMode || "priority";
+  if (mode === "priority" || mode === "timemap" || mode === "none") {
+    return mode;
+  }
+  return "priority";
+}
+
+function resolvePriorityColorHex(priorityValue) {
+  return TASK_PRIORITY_COLOR_HEX[priorityValue] || "";
+}
+
+function buildTimeMapColorById(timeMaps = []) {
+  return new Map(
+    (timeMaps || [])
+      .filter((timeMap) => timeMap?.id)
+      .map((timeMap) => [timeMap.id, timeMap.color || ""])
+  );
+}
+
+function resolveTaskEventColorHex({
+  task,
+  instance,
+  settings,
+  timeMapColorById
+}) {
+  const backgroundMode = resolveTaskBackgroundMode(settings);
+  if (backgroundMode === "priority") {
+    const priorityValue = Number(task?.priority) || 0;
+    return resolvePriorityColorHex(priorityValue);
+  }
+  if (backgroundMode === "none") {
+    return TASK_BACKGROUND_NONE_COLOR_HEX;
+  }
+  const timeMapId = instance?.timeMapId || task?.scheduledTimeMapId || "";
+  return timeMapColorById?.get?.(timeMapId) || "";
+}
+
 function isInstanceInRange(instance, range) {
   if (!instance?.start || !instance?.end || !range?.start || !range?.end) {return false;}
   return instance.end > range.start && instance.start < range.end;
+}
+
+function isExistingEventMatching(existing, startIso, endIso, colorId) {
+  if (!existing?.start || !existing?.end) {return false;}
+  if (!(existing.start instanceof Date) || !(existing.end instanceof Date)) {return false;}
+  if (existing.start.toISOString() !== startIso) {return false;}
+  if (existing.end.toISOString() !== endIso) {return false;}
+  return (existing.colorId || "") === colorId;
+}
+
+function buildSyncItemPayload({
+  existing,
+  task,
+  instance,
+  calendarId,
+  startIso,
+  endIso,
+  colorId,
+  instanceId,
+  skip
+}) {
+  return {
+    action: existing?.id ? "update" : "create",
+    calendarId,
+    eventId: existing?.id || "",
+    title: task.title || "Scheduled task",
+    start: startIso,
+    end: endIso,
+    taskId: task.id,
+    occurrenceId: instance.occurrenceId || "",
+    instanceId,
+    colorId,
+    skip
+  };
+}
+
+function buildSyncItemFromInstance({
+  task,
+  instance,
+  calendarId,
+  range,
+  existingByInstance,
+  settings,
+  timeMapColorById
+}) {
+  if (!isInstanceInRange(instance, range)) {return null;}
+  const instanceId = buildInstanceId(task.id, instance.occurrenceId, instance.index);
+  const existing = existingByInstance.get(instanceId);
+  const startIso = instance.start.toISOString();
+  const endIso = instance.end.toISOString();
+  const colorHex = resolveTaskEventColorHex({
+    task,
+    instance,
+    settings,
+    timeMapColorById
+  });
+  const colorId = resolveGoogleColorId(colorHex);
+  const skip = isExistingEventMatching(existing, startIso, endIso, colorId);
+  return {
+    instanceId,
+    item: buildSyncItemPayload({
+      existing,
+      task,
+      instance,
+      calendarId,
+      startIso,
+      endIso,
+      colorId,
+      instanceId,
+      skip
+    })
+  };
 }
 
 function buildCalendarSyncItems({
   calendarId,
   tasks,
   range,
-  existingEvents = []
+  existingEvents = [],
+  settings = {},
+  timeMapColorById = new Map()
 }) {
   const existingByInstance = buildExistingEventIndex(existingEvents);
   const desiredInstanceIds = new Set();
@@ -132,29 +293,18 @@ function buildCalendarSyncItems({
     if (!task?.id || task.completed || task.scheduleStatus !== TASK_STATUS_SCHEDULED) {return;}
     const instances = buildTaskInstances(task);
     instances.forEach((instance) => {
-      if (!isInstanceInRange(instance, range)) {return;}
-      const instanceId = buildInstanceId(task.id, instance.occurrenceId, instance.index);
-      desiredInstanceIds.add(instanceId);
-      const existing = existingByInstance.get(instanceId);
-      const startIso = instance.start.toISOString();
-      const endIso = instance.end.toISOString();
-      const skip =
-        existing?.start instanceof Date &&
-        existing?.end instanceof Date &&
-        existing.start.toISOString() === startIso &&
-        existing.end.toISOString() === endIso;
-      items.push({
-        action: existing?.id ? "update" : "create",
+      const entry = buildSyncItemFromInstance({
+        task,
+        instance,
         calendarId,
-        eventId: existing?.id || "",
-        title: task.title || "Scheduled task",
-        start: startIso,
-        end: endIso,
-        taskId: task.id,
-        occurrenceId: instance.occurrenceId || "",
-        instanceId,
-        skip
+        range,
+        existingByInstance,
+        settings,
+        timeMapColorById
       });
+      if (!entry) {return;}
+      desiredInstanceIds.add(entry.instanceId);
+      items.push(entry.item);
     });
   });
   existingEvents.forEach((event) => {
@@ -178,12 +328,14 @@ function buildCalendarSyncItems({
 
 export function buildCalendarSyncPlan({
   tasks = [],
+  timeMaps = [],
   settings = {},
   now = new Date(),
   existingEventsByCalendar = new Map()
 } = {}) {
   const targets = getCalendarSyncTargets(settings);
   const existing = resolveExistingEventsByCalendar(existingEventsByCalendar);
+  const timeMapColorById = buildTimeMapColorById(timeMaps);
   const plan = [];
   targets.forEach((target) => {
     const range = buildSyncRange(now, target.syncDays);
@@ -193,7 +345,9 @@ export function buildCalendarSyncPlan({
         calendarId: target.calendarId,
         tasks,
         range,
-        existingEvents
+        existingEvents,
+        settings,
+        timeMapColorById
       })
     );
   });
@@ -268,7 +422,9 @@ async function processCalendarSyncItem(item) {
       return;
     }
     if (item.eventId) {
-      await updateCalendarEvent(item.calendarId, item.eventId, item.start, item.end);
+      await updateCalendarEvent(item.calendarId, item.eventId, item.start, item.end, {
+        colorId: item.colorId
+      });
       return;
     }
     await createCalendarEvent(
@@ -277,6 +433,7 @@ async function processCalendarSyncItem(item) {
       item.start,
       item.end,
       {
+        colorId: item.colorId,
         description: `source=${GOOGLE_CALENDAR_SKEDPAL_SOURCE}`,
         extendedProperties: buildSkedpalExtendedProperties(item)
       }
@@ -329,6 +486,7 @@ export function initCalendarSyncAlarms() {
 
 export async function startCalendarSyncJob({
   tasks = [],
+  timeMaps = [],
   settings = {},
   now = new Date()
 } = {}) {
@@ -356,6 +514,7 @@ export async function startCalendarSyncJob({
   }
   const items = buildCalendarSyncPlan({
     tasks,
+    timeMaps,
     settings,
     now,
     existingEventsByCalendar

@@ -212,17 +212,24 @@ export async function deleteCalendarEvent(calendarId, eventId) {
   return true;
 }
 
-export async function updateCalendarEvent(calendarId, eventId, start, end) {
+export async function updateCalendarEvent(calendarId, eventId, start, end, options = {}) {
   if (!calendarId || !eventId || !start || !end) {
     throw new Error("Missing calendar update data");
+  }
+  const colorId = options?.colorId || "";
+  const payload = {
+    start: { dateTime: start },
+    end: { dateTime: end }
+  };
+  if (colorId) {
+    payload.colorId = colorId;
   }
   const url = `${GOOGLE_API_BASE}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`;
   const response = await fetchWithAuth(url, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      start: { dateTime: start },
-      end: { dateTime: end }
+      ...payload
     })
   });
   if (!response.ok) {
@@ -232,23 +239,30 @@ export async function updateCalendarEvent(calendarId, eventId, start, end) {
   return true;
 }
 
+function buildCreateEventPayload(title, start, end, options = {}) {
+  const extendedProperties = options.extendedProperties || null;
+  const description = options.description || "";
+  const colorId = options.colorId || "";
+  return {
+    summary: title || "",
+    start: { dateTime: start },
+    end: { dateTime: end },
+    description,
+    ...(extendedProperties ? { extendedProperties } : {}),
+    ...(colorId ? { colorId } : {})
+  };
+}
+
 export async function createCalendarEvent(calendarId, title, start, end, options = {}) {
   if (!calendarId || !start || !end) {
     throw new Error("Missing calendar create data");
   }
   const url = `${GOOGLE_API_BASE}/calendars/${encodeURIComponent(calendarId)}/events`;
-  const extendedProperties = options.extendedProperties || null;
-  const description = options.description || "";
+  const payload = buildCreateEventPayload(title, start, end, options);
   const response = await fetchWithAuth(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      summary: title || "",
-      start: { dateTime: start },
-      end: { dateTime: end },
-      description,
-      ...(extendedProperties ? { extendedProperties } : {})
-    })
+    body: JSON.stringify(payload)
   });
   if (!response.ok) {
     const text = await response.text();

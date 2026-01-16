@@ -103,6 +103,143 @@ describe("calendar sync planning", () => {
     assert.strictEqual(plan[0].skip, true);
   });
 
+  it("adds color ids based on timemap colors", () => {
+    const now = new Date("2026-01-07T00:00:00Z");
+    const settings = {
+      taskBackgroundMode: "timemap",
+      schedulingHorizonDays: 3,
+      googleCalendarTaskSettings: {
+        "cal-1": { syncScheduledEvents: true, syncDays: 2 }
+      }
+    };
+    const timeMaps = [{ id: "tm-1", color: "#a4bdfc" }];
+    const tasks = [
+      {
+        id: "task-6",
+        title: "Color sync",
+        completed: false,
+        scheduleStatus: "scheduled",
+        scheduledInstances: [
+          {
+            start: "2026-01-07T10:00:00Z",
+            end: "2026-01-07T11:00:00Z",
+            timeMapId: "tm-1",
+            occurrenceId: "occ-1"
+          }
+        ]
+      }
+    ];
+    const existingEventsByCalendar = new Map([
+      [
+        "cal-1",
+        [
+          {
+            id: "evt-6",
+            start: new Date("2026-01-07T10:00:00Z"),
+            end: new Date("2026-01-07T11:00:00Z"),
+            colorId: "1",
+            extendedProperties: {
+              private: {
+                skedpalInstanceId: "task-6:occ-1"
+              }
+            }
+          }
+        ]
+      ]
+    ]);
+    const plan = buildCalendarSyncPlan({
+      tasks,
+      timeMaps,
+      settings,
+      now,
+      existingEventsByCalendar
+    });
+    assert.strictEqual(plan.length, 1);
+    assert.strictEqual(plan[0].colorId, "1");
+    assert.strictEqual(plan[0].skip, true);
+  });
+
+  it("updates when event colors drift", () => {
+    const now = new Date("2026-01-07T00:00:00Z");
+    const settings = {
+      taskBackgroundMode: "timemap",
+      schedulingHorizonDays: 3,
+      googleCalendarTaskSettings: {
+        "cal-1": { syncScheduledEvents: true, syncDays: 2 }
+      }
+    };
+    const timeMaps = [{ id: "tm-1", color: "#a4bdfc" }];
+    const tasks = [
+      {
+        id: "task-7",
+        title: "Color update",
+        completed: false,
+        scheduleStatus: "scheduled",
+        scheduledInstances: [
+          {
+            start: "2026-01-07T10:00:00Z",
+            end: "2026-01-07T11:00:00Z",
+            timeMapId: "tm-1",
+            occurrenceId: "occ-1"
+          }
+        ]
+      }
+    ];
+    const existingEventsByCalendar = new Map([
+      [
+        "cal-1",
+        [
+          {
+            id: "evt-7",
+            start: new Date("2026-01-07T10:00:00Z"),
+            end: new Date("2026-01-07T11:00:00Z"),
+            colorId: "2",
+            extendedProperties: {
+              private: {
+                skedpalInstanceId: "task-7:occ-1"
+              }
+            }
+          }
+        ]
+      ]
+    ]);
+    const plan = buildCalendarSyncPlan({
+      tasks,
+      timeMaps,
+      settings,
+      now,
+      existingEventsByCalendar
+    });
+    assert.strictEqual(plan.length, 1);
+    assert.strictEqual(plan[0].colorId, "1");
+    assert.strictEqual(plan[0].skip, false);
+  });
+
+  it("adds a fallback color when background mode is none", () => {
+    const now = new Date("2026-01-07T00:00:00Z");
+    const settings = {
+      taskBackgroundMode: "none",
+      schedulingHorizonDays: 3,
+      googleCalendarTaskSettings: {
+        "cal-1": { syncScheduledEvents: true, syncDays: 2 }
+      }
+    };
+    const tasks = [
+      {
+        id: "task-8",
+        title: "Muted",
+        completed: false,
+        scheduleStatus: "scheduled",
+        scheduledInstances: [
+          { start: "2026-01-07T10:00:00Z", end: "2026-01-07T11:00:00Z" }
+        ]
+      }
+    ];
+    const plan = buildCalendarSyncPlan({ tasks, settings, now });
+    assert.strictEqual(plan.length, 1);
+    assert.ok(plan[0].colorId);
+  });
+
   it("builds instance ids without occurrence ids", () => {
     const now = new Date("2026-01-07T00:00:00Z");
     const settings = {
@@ -605,6 +742,54 @@ describe("calendar sync planning", () => {
     assert.strictEqual(lastMethod, "POST");
   });
 
+  it("continues when sync step writes fail", async () => {
+    let alarmHandler = null;
+    globalThis.chrome = {
+      identity: {
+        lastError: null,
+        getAuthToken: (_opts, cb) => cb("token")
+      },
+      alarms: {
+        create: () => {},
+        clear: () => {},
+        onAlarm: {
+          addListener: (handler) => {
+            alarmHandler = handler;
+          }
+        }
+      }
+    };
+    globalThis.fetch = async () => {
+      throw new Error("network down");
+    };
+    await saveCalendarCacheEntry({
+      key: GOOGLE_CALENDAR_SYNC_JOB_CACHE_KEY,
+      value: {
+        id: "job-9",
+        cursor: 0,
+        items: [
+          {
+            action: "update",
+            calendarId: "cal-1",
+            eventId: "evt-4",
+            start: "2026-01-07T10:00:00Z",
+            end: "2026-01-07T11:00:00Z",
+            skip: false
+          }
+        ]
+      },
+      updatedAt: new Date().toISOString()
+    });
+    initCalendarSyncAlarms();
+    await alarmHandler({ name: "skedpal-calendar-sync-step" });
+    let cached = await getCalendarCacheEntry(GOOGLE_CALENDAR_SYNC_JOB_CACHE_KEY);
+    for (let attempt = 0; attempt < 5 && cached; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      cached = await getCalendarCacheEntry(GOOGLE_CALENDAR_SYNC_JOB_CACHE_KEY);
+    }
+    assert.strictEqual(cached, null);
+  });
+
   it("uses a timeout fallback when alarms are unavailable", async () => {
     globalThis.chrome = undefined;
     await saveCalendarCacheEntry({
@@ -615,5 +800,19 @@ describe("calendar sync planning", () => {
     const resumed = await resumeCalendarSyncJob();
     await new Promise((resolve) => setTimeout(resolve, 10));
     assert.strictEqual(resumed, true);
+  });
+
+  it("clears the fallback timeout before rescheduling", async () => {
+    globalThis.chrome = undefined;
+    await saveCalendarCacheEntry({
+      key: GOOGLE_CALENDAR_SYNC_JOB_CACHE_KEY,
+      value: { id: "job-10", cursor: 0, items: [{ skip: true }] },
+      updatedAt: new Date().toISOString()
+    });
+    const first = await resumeCalendarSyncJob();
+    const second = await resumeCalendarSyncJob();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.strictEqual(first, true);
+    assert.strictEqual(second, true);
   });
 });

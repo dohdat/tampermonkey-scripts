@@ -366,6 +366,23 @@ describe("google calendar helpers", () => {
     assert.ok(capturedBody.includes("\"dateTime\":\"2026-01-07T10:00:00Z\""));
   });
 
+  it("includes colorId when updating calendar events", async () => {
+    installChrome();
+    let capturedBody = "";
+    globalThis.fetch = async (_url, options) => {
+      capturedBody = options?.body || "";
+      return { ok: true, status: 200, text: async () => "" };
+    };
+    await updateCalendarEvent(
+      "cal-1",
+      "evt-2",
+      "2026-01-07T12:00:00Z",
+      "2026-01-07T13:00:00Z",
+      { colorId: "9" }
+    );
+    assert.ok(capturedBody.includes("\"colorId\":\"9\""));
+  });
+
   it("throws when updating without required data", async () => {
     await assert.rejects(
       () => updateCalendarEvent("cal-1", "", "2026-01-07T10:00:00Z", "2026-01-07T11:00:00Z"),
@@ -419,6 +436,32 @@ describe("google calendar helpers", () => {
     );
     assert.ok(created);
     assert.strictEqual(created.title, "Created");
+  });
+
+  it("includes colorId when creating calendar events", async () => {
+    installChrome();
+    let capturedBody = "";
+    globalThis.fetch = async (_url, options) => {
+      capturedBody = options?.body || "";
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          id: "evt-6",
+          summary: "Created",
+          start: { dateTime: "2026-01-07T10:00:00Z" },
+          end: { dateTime: "2026-01-07T11:00:00Z" }
+        })
+      };
+    };
+    await createCalendarEvent(
+      "cal-1",
+      "Created",
+      "2026-01-07T10:00:00Z",
+      "2026-01-07T11:00:00Z",
+      { colorId: "1" }
+    );
+    assert.ok(capturedBody.includes("\"colorId\":\"1\""));
   });
 
   it("throws when create responses fail", async () => {

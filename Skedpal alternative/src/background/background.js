@@ -270,7 +270,7 @@ async function runReschedule() {
     now,
     horizonDays
   );
-  await startCalendarSyncJob({ tasks, settings, now });
+  await startCalendarSyncJob({ tasks, timeMaps, settings, now });
 
   const scheduledTaskCount = new Set(scheduled.map((p) => p.taskId)).size;
 

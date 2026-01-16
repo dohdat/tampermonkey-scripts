@@ -20,16 +20,8 @@ import {
   resolveCalendarDefaultToggleTarget,
   updateDefaultCalendarToggles
 } from "./settings-google-calendar-default.js";
-const {
-  googleCalendarConnectBtn,
-  googleCalendarRefreshBtn,
-  googleCalendarDisconnectBtn,
-  googleCalendarStatus,
-  googleCalendarList
-} = domRefs;
-function getRuntime() {
-  return globalThis.chrome?.runtime || null;
-}
+const { googleCalendarConnectBtn, googleCalendarRefreshBtn, googleCalendarDisconnectBtn, googleCalendarStatus, googleCalendarList } = domRefs;
+function getRuntime() { return globalThis.chrome?.runtime || null; }
 function setCalendarStatus(message) {
   if (!googleCalendarStatus) {return;}
   googleCalendarStatus.textContent = message;
@@ -189,7 +181,7 @@ function setCalendarTaskControlsEnabled(row, enabled) {
 function buildCalendarCheckbox(entry, selectedIds) {
   const checkbox = document.createElement("input");
   checkbox.type = "checkbox";
-  checkbox.className = "mt-1 h-4 w-4 accent-lime-400";
+  checkbox.className = "h-3.5 w-3.5 accent-lime-400";
   checkbox.value = entry.id || "";
   checkbox.dataset.calendarSelect = "true";
   checkbox.dataset.calendarId = entry.id || "";
@@ -199,7 +191,7 @@ function buildCalendarCheckbox(entry, selectedIds) {
 }
 function buildCalendarColor(entry) {
   const color = document.createElement("span");
-  color.className = "mt-1 h-3 w-3 rounded-full border-slate-700";
+  color.className = "h-2.5 w-2.5 rounded-full border-slate-700";
   color.setAttribute("data-test-skedpal", "google-calendar-color");
   if (entry.backgroundColor) {
     color.style.backgroundColor = entry.backgroundColor;
@@ -211,11 +203,11 @@ function buildCalendarMetaDetails(entry) {
   details.className = "flex flex-col";
   details.setAttribute("data-test-skedpal", "google-calendar-details");
   const name = document.createElement("span");
-  name.className = "text-sm font-semibold text-slate-100";
+  name.className = "text-[13px] font-semibold text-slate-100";
   name.textContent = entry.summary || entry.id || "Untitled calendar";
   name.setAttribute("data-test-skedpal", "google-calendar-name");
   const meta = document.createElement("span");
-  meta.className = "text-xs text-slate-400";
+  meta.className = "text-[11px] text-slate-400";
   meta.textContent = formatCalendarMeta(entry);
   meta.setAttribute("data-test-skedpal", "google-calendar-meta");
   details.appendChild(name);
@@ -224,17 +216,17 @@ function buildCalendarMetaDetails(entry) {
 }
 function buildCalendarTaskToggle(entry, calendarTaskSettings) {
   const taskToggleLabel = document.createElement("label");
-  taskToggleLabel.className = "flex items-center gap-2";
+  taskToggleLabel.className = "flex items-center gap-2 text-xs text-slate-300";
   taskToggleLabel.setAttribute("data-test-skedpal", "google-calendar-task-toggle-label");
   const taskToggle = document.createElement("input");
   taskToggle.type = "checkbox";
-  taskToggle.className = "h-4 w-4 accent-lime-400";
+  taskToggle.className = "h-3.5 w-3.5 accent-lime-400";
   taskToggle.dataset.calendarTaskToggle = "true";
   taskToggle.dataset.calendarId = entry.id || "";
   taskToggle.checked = Boolean(calendarTaskSettings.treatAsTasks);
   taskToggle.setAttribute("data-test-skedpal", "google-calendar-task-toggle");
   const taskToggleText = document.createElement("span");
-  taskToggleText.textContent = "Treat this calendar as tasks";
+  taskToggleText.textContent = "Tasks";
   taskToggleText.setAttribute("data-test-skedpal", "google-calendar-task-toggle-text");
   taskToggleLabel.appendChild(taskToggle);
   taskToggleLabel.appendChild(taskToggleText);
@@ -277,31 +269,55 @@ function buildCalendarTaskSelectRow(entry, calendarTaskSettings) {
   return selectRow;
 }
 function buildCalendarTaskOptions(entry, calendarTaskSettings) {
-  const options = document.createElement("div");
-  options.className = "mt-2 flex flex-col gap-2 text-xs text-slate-300";
-  options.setAttribute("data-test-skedpal", "google-calendar-options");
-  const selectedIds = Array.isArray(state.settingsCache.googleCalendarIds)
-    ? state.settingsCache.googleCalendarIds
-    : [];
-  const defaultId = getDefaultCalendarId();
-  options.appendChild(buildCalendarDefaultToggle(entry, selectedIds, defaultId));
-  options.appendChild(buildCalendarTaskToggle(entry, calendarTaskSettings));
-  options.appendChild(buildCalendarTaskSelectRow(entry, calendarTaskSettings));
-  options.appendChild(buildCalendarSyncToggle(entry, calendarTaskSettings));
-  options.appendChild(buildCalendarSyncDaysField(entry, calendarTaskSettings));
-  return options;
+  const advanced = document.createElement("details");
+  advanced.className = "rounded-lg border border-slate-800/70 bg-slate-950/40 px-2 py-2";
+  advanced.open = Boolean(
+    calendarTaskSettings.treatAsTasks || calendarTaskSettings.syncScheduledEvents
+  );
+  advanced.setAttribute("data-test-skedpal", "google-calendar-advanced");
+  const summary = document.createElement("summary");
+  summary.className = "cursor-pointer list-none text-xs text-slate-400 hover:text-slate-200";
+  summary.textContent = "Advanced";
+  summary.setAttribute("data-test-skedpal", "google-calendar-advanced-summary");
+  const content = document.createElement("div");
+  content.className = "mt-2 flex flex-col gap-2";
+  content.setAttribute("data-test-skedpal", "google-calendar-advanced-content");
+  content.appendChild(buildCalendarTaskSelectRow(entry, calendarTaskSettings));
+  content.appendChild(buildCalendarSyncDaysField(entry, calendarTaskSettings));
+  advanced.appendChild(summary);
+  advanced.appendChild(content);
+  return advanced;
 }
 function buildCalendarRow(entry, selectedIds, calendarTaskSettings) {
   const row = document.createElement("div");
   row.className =
-    "flex items-start gap-3 rounded-xl border-slate-800 bg-slate-950/60 px-3 py-2 text-slate-200 transition hover:border-lime-400/60";
+    "flex flex-col gap-2 rounded-lg border-slate-800 bg-slate-950/60 px-3 py-2 text-slate-200 transition hover:border-lime-400/60";
   row.setAttribute("data-test-skedpal", "google-calendar-row");
   row.dataset.calendarId = entry.id || "";
-  row.appendChild(buildCalendarCheckbox(entry, selectedIds));
-  row.appendChild(buildCalendarColor(entry));
-  const details = buildCalendarMetaDetails(entry);
-  details.appendChild(buildCalendarTaskOptions(entry, calendarTaskSettings));
-  row.appendChild(details);
+  const header = document.createElement("div");
+  header.className = "flex flex-wrap items-center justify-between gap-3";
+  header.setAttribute("data-test-skedpal", "google-calendar-row-header");
+  const left = document.createElement("div");
+  left.className = "flex min-w-0 items-start gap-2";
+  left.setAttribute("data-test-skedpal", "google-calendar-row-left");
+  left.appendChild(buildCalendarCheckbox(entry, selectedIds));
+  left.appendChild(buildCalendarColor(entry));
+  left.appendChild(buildCalendarMetaDetails(entry));
+  const controls = document.createElement("div");
+  controls.className = "flex items-center gap-3";
+  controls.setAttribute("data-test-skedpal", "google-calendar-row-controls");
+  const defaultToggle = buildCalendarDefaultToggle(
+    entry,
+    selectedIds,
+    getDefaultCalendarId()
+  );
+  controls.appendChild(defaultToggle);
+  controls.appendChild(buildCalendarSyncToggle(entry, calendarTaskSettings));
+  controls.appendChild(buildCalendarTaskToggle(entry, calendarTaskSettings));
+  header.appendChild(left);
+  header.appendChild(controls);
+  row.appendChild(header);
+  row.appendChild(buildCalendarTaskOptions(entry, calendarTaskSettings));
   setCalendarTaskControlsEnabled(row, Boolean(calendarTaskSettings.treatAsTasks));
   setCalendarSyncControlsEnabled(row, Boolean(calendarTaskSettings.syncScheduledEvents));
   return row;

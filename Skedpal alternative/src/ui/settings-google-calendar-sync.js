@@ -23,19 +23,19 @@ function normalizeSyncDays(value) {
 
 function buildCalendarSyncToggle(entry, calendarTaskSettings) {
   const syncToggleLabel = document.createElement("label");
-  syncToggleLabel.className = "flex items-center gap-2";
+  syncToggleLabel.className = "flex items-center gap-2 text-xs text-slate-300";
   syncToggleLabel.setAttribute("data-test-skedpal", "google-calendar-sync-toggle-label");
 
   const syncToggle = document.createElement("input");
   syncToggle.type = "checkbox";
-  syncToggle.className = "h-4 w-4 accent-lime-400";
+  syncToggle.className = "h-3.5 w-3.5 accent-lime-400";
   syncToggle.dataset.calendarSyncToggle = "true";
   syncToggle.dataset.calendarId = entry.id || "";
   syncToggle.checked = Boolean(calendarTaskSettings.syncScheduledEvents);
   syncToggle.setAttribute("data-test-skedpal", "google-calendar-sync-toggle");
 
   const syncToggleText = document.createElement("span");
-  syncToggleText.textContent = "Sync scheduled events to this calendar";
+  syncToggleText.textContent = "Sync";
   syncToggleText.setAttribute("data-test-skedpal", "google-calendar-sync-toggle-text");
 
   syncToggleLabel.appendChild(syncToggle);

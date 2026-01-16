@@ -296,20 +296,43 @@ function prepareExternalFetchState({
   state.calendarExternalPendingKey = key;
 }
 
+function filterEventsForRange(events, range) {
+  if (!range?.start || !range?.end) {return [];}
+  return (events || []).filter((event) => event.end > range.start && event.start < range.end);
+}
+
+function hasExternalRangeOverlap(range) {
+  if (!state.calendarExternalRange?.start || !state.calendarExternalRange?.end) {return false;}
+  return (
+    state.calendarExternalRange.end > range.start &&
+    state.calendarExternalRange.start < range.end
+  );
+}
+
+function resolveCachedStateUsage(cached, key) {
+  const hasStateEvents = Array.isArray(state.calendarExternalEvents)
+    ? state.calendarExternalEvents.length > 0
+    : false;
+  const cacheIsFresh = Boolean(cached) && isCacheFresh(cached);
+  const shouldApply =
+    Boolean(cached) &&
+    state.calendarExternalRangeKey !== key &&
+    (cacheIsFresh || !hasStateEvents);
+  return { cacheIsFresh, shouldApply };
+}
+
 export function getExternalEventsForRange(range, viewMode = "week") {
   if (!range?.start || !range?.end) {return [];}
   const buffered = buildBufferedRange(range);
   const key = buildCacheKey(buffered, viewMode, getSelectedCalendarIds());
-  const hasStateRange = state.calendarExternalRange?.start && state.calendarExternalRange?.end;
   const matchesKey = key && state.calendarExternalRangeKey === key;
-  const overlaps =
-    hasStateRange &&
-    state.calendarExternalRange.end > range.start &&
-    state.calendarExternalRange.start < range.end;
-  if (!matchesKey && !overlaps) {return [];}
-  return (state.calendarExternalEvents || []).filter(
-    (event) => event.end > range.start && event.start < range.end
-  );
+  const overlaps = hasExternalRangeOverlap(range);
+  const events = state.calendarExternalEvents || [];
+  if (matchesKey || overlaps) {
+    return filterEventsForRange(events, range);
+  }
+  if (!events.length) {return [];}
+  return filterEventsForRange(events, range);
 }
 
 export function invalidateExternalEventsCache() {
@@ -474,11 +497,12 @@ export async function ensureExternalEvents(range, viewMode = "week") {
 
   let stateUpdated = false;
   const cached = await getCacheEntry(key);
-  if (cached && state.calendarExternalRangeKey !== key) {
+  const { cacheIsFresh, shouldApply } = resolveCachedStateUsage(cached, key);
+  if (shouldApply) {
     setExternalStateFromCache(cached);
     stateUpdated = true;
   }
-  if (cached && isCacheFresh(cached)) {
+  if (cacheIsFresh) {
     schedulePrefetch(range, viewMode);
     return stateUpdated;
   }

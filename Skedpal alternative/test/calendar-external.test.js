@@ -90,6 +90,21 @@ describe("calendar external events", () => {
     );
   });
 
+  it("returns cached events when no range is stored", () => {
+    state.calendarExternalEvents = [
+      {
+        id: "evt-2",
+        title: "Fallback",
+        start: range.start,
+        end: range.end
+      }
+    ];
+    assert.deepStrictEqual(
+      getExternalEventsForRange(range, viewMode),
+      state.calendarExternalEvents
+    );
+  });
+
   it("short-circuits when runtime is unavailable", async () => {
     globalThis.chrome = undefined;
     const updated = await ensureExternalEvents(range, viewMode);
@@ -228,6 +243,57 @@ describe("calendar external events", () => {
     assert.strictEqual(state.calendarExternalPendingKey, "");
     assert.ok(state.calendarExternalRangeKey.length > 0);
     assert.ok(state.calendarExternalRange);
+  });
+
+  it("keeps in-memory events when cache is stale before fetch", async () => {
+    state.settingsCache = {
+      ...state.settingsCache,
+      googleCalendarIds: ["calendar-1"]
+    };
+    const inMemoryEvents = [
+      {
+        id: "evt-live",
+        calendarId: "calendar-1",
+        title: "Live",
+        start: range.start,
+        end: range.end
+      }
+    ];
+    state.calendarExternalEvents = inMemoryEvents;
+    state.calendarExternalRangeKey = "other";
+    const cacheKey = buildKey(bufferedRange, viewMode, state.settingsCache.googleCalendarIds);
+    await saveCalendarCacheEntry({
+      key: cacheKey,
+      viewMode,
+      calendarIdsKey: "calendar-1",
+      range: {
+        start: bufferedRange.start.toISOString(),
+        end: bufferedRange.end.toISOString()
+      },
+      events: [
+        {
+          id: "evt-stale",
+          calendarId: "calendar-1",
+          title: "Stale",
+          start: range.start.toISOString(),
+          end: range.end.toISOString()
+        }
+      ],
+      syncTokensByCalendar: {},
+      updatedAt: new Date(0).toISOString()
+    });
+    let capturedEvents = null;
+    globalThis.chrome = {
+      runtime: {
+        lastError: null,
+        sendMessage: (_msg, cb) => {
+          capturedEvents = state.calendarExternalEvents;
+          cb({ ok: true, events: [] });
+        }
+      }
+    };
+    await ensureExternalEvents(range, viewMode);
+    assert.deepStrictEqual(capturedEvents, inMemoryEvents);
   });
 
   it("sends null calendarIds when none are selected", async () => {

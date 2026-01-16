@@ -1,6 +1,7 @@
 import { DEFAULT_TASK_REPEAT, HALF, domRefs } from "./constants.js";
 import {
   resetTimeMapForm,
+  initTimeMapFormInteractions,
   handleTimeMapSubmit,
   handleSetDefaultTimeMap,
   handleTimeMapListClick,
@@ -363,6 +364,7 @@ function registerTimeMapHandlers() {
     timeMapList.addEventListener("click", handleTimeMapListClickEvent);
     cleanupFns.push(() => timeMapList.removeEventListener("click", handleTimeMapListClickEvent));
   }
+  cleanupFns.push(initTimeMapFormInteractions());
   return () => {
     cleanupFns.forEach((cleanup) => cleanup());
   };

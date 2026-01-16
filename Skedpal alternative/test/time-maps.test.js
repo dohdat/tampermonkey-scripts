@@ -92,20 +92,17 @@ function findFirst(root, predicate) {
 
 function createRow({
   day,
-  checked,
   blocks = []
 }) {
   return {
     dataset: { dayRow: String(day) },
-    querySelector: (selector) => {
-      if (selector === "input[type='checkbox']") {
-        return { checked };
-      }
-      return null;
-    },
     querySelectorAll: (selector) => {
       if (selector === "[data-block]") {
         return blocks.map((block) => ({
+          dataset: {
+            startMinute: block.startMinute,
+            endMinute: block.endMinute
+          },
           querySelector: (inputSelector) => {
             if (inputSelector === "input[data-start-for]") {
               return { value: block.startTime };
@@ -200,16 +197,14 @@ describe("time maps", () => {
       querySelectorAll: () => [
         createRow({
           day: 2,
-          checked: true,
           blocks: [
-            { startTime: "09:00", endTime: "12:00" },
-            { startTime: "13:00", endTime: "12:00" }
+            { startMinute: 540, endMinute: 720 },
+            { startMinute: 780, endMinute: 720 }
           ]
         }),
         createRow({
           day: 1,
-          checked: true,
-          blocks: [{ startTime: "10:00", endTime: "11:00" }]
+          blocks: [{ startMinute: 600, endMinute: 660 }]
         })
       ]
     };
@@ -237,8 +232,7 @@ describe("time maps", () => {
     elements.get("timemap-day-rows").querySelectorAll = () => [
       createRow({
         day: 1,
-        checked: true,
-        blocks: [{ startTime: "09:00", endTime: "12:00" }]
+        blocks: [{ startMinute: 540, endMinute: 720 }]
       })
     ];
     const data = getTimeMapFormData();
@@ -255,8 +249,7 @@ describe("time maps", () => {
     elements.get("timemap-day-rows").querySelectorAll = () => [
       createRow({
         day: 1,
-        checked: true,
-        blocks: [{ startTime: "09:00", endTime: "12:00" }]
+        blocks: [{ startMinute: 540, endMinute: 720 }]
       })
     ];
     assert.strictEqual(getTimeMapFormData(), null);
@@ -274,7 +267,7 @@ describe("time maps", () => {
     assert.strictEqual(rows[0].dataset.dayRow, "0");
     assert.strictEqual(rows[1].dataset.dayRow, "2");
     const firstRow = rows[0];
-    const blocksContainer = findFirst(firstRow, (child) => child.dataset?.blocksFor !== undefined);
+    const blocksContainer = findFirst(firstRow, (child) => child.dataset?.timeline !== undefined);
     const addBlockBtn = findFirst(firstRow, (child) => child.tagName === "BUTTON");
     assert.ok(blocksContainer.children.length > 0);
     assert.ok(addBlockBtn);

@@ -1,3 +1,16 @@
+import {
+  EIGHT,
+  FIFTEEN,
+  FOUR,
+  HOURS_PER_DAY,
+  MINUTES_PER_HOUR,
+  SIXTEEN,
+  TWELVE,
+  TWENTY,
+  TWENTY_FOUR,
+  ZERO
+} from "../constants.js";
+
 export * from "../constants.js";
 
 export const dayOptions = [
@@ -9,6 +22,12 @@ export const dayOptions = [
   { label: "Fri", value: 5 },
   { label: "Sat", value: 6 }
 ];
+
+export const TIME_MAP_MINUTES_IN_DAY = HOURS_PER_DAY * MINUTES_PER_HOUR;
+export const TIME_MAP_MINUTE_STEP = FIFTEEN;
+export const TIME_MAP_DEFAULT_START = "09:00";
+export const TIME_MAP_DEFAULT_END = "12:00";
+export const TIME_MAP_LABEL_HOURS = [ZERO, FOUR, EIGHT, TWELVE, SIXTEEN, TWENTY, TWENTY_FOUR];
 
 export const editIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path d="M14.7 2.3a1 1 0 0 1 1.4 0l1.6 1.6a1 1 0 0 1 0 1.4l-9.2 9.2-3.3.7a.5.5 0 0 1-.6-.6l.7-3.3 9.2-9.2Z"></path><path d="M2.5 17.5h15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>`;
 export const duplicateIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="6" y="6" width="10" height="10" rx="2"></rect><rect x="2.5" y="2.5" width="10" height="10" rx="2"></rect></svg>`;

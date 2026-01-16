@@ -6,13 +6,20 @@ import {
   saveTimeMap,
   deleteTimeMap
 } from "../data/db.js";
-import { dayOptions, domRefs } from "./constants.js";
+import { dayOptions, domRefs, TIME_MAP_DEFAULT_END, TIME_MAP_DEFAULT_START } from "./constants.js";
 import { isExternalCalendarTimeMapId, normalizeTimeMap, resolveTimeMapIdsAfterDelete, uuid } from "./utils.js";
 import { state } from "./state/page-state.js";
 import { themeColors } from "./theme.js";
 import { pickTimeMapColor } from "./time-map-colors.js";
 import { appendExternalCalendarOptions } from "./time-map-external-options.js";
-
+import {
+  createTimeBlock,
+  createTimeline,
+  minutesToTimeString,
+  normalizeTimeRange,
+  setupTimeMapTimelineInteractions,
+  syncTimeMapTimelineHeader
+} from "./time-map-timeline.js";
 const getTimeMapList = () => domRefs.timeMapList;
 const getTimeMapDayRows = () => domRefs.timeMapDayRows;
 const getTimeMapFormWrap = () => domRefs.timeMapFormWrap;
@@ -22,43 +29,37 @@ const getTimeMapColorInput = () => domRefs.timeMapColorInput;
 const getTimeMapColorSwatch = () => domRefs.timeMapColorSwatch;
 const getTimeMapDaySelect = () => domRefs.timeMapDaySelect;
 const getTimeMapDayAdd = () => domRefs.timeMapDayAdd;
-
 function syncTimeMapColorSwatch(color) {
   const swatch = getTimeMapColorSwatch();
   if (!swatch) {return;}
   swatch.style.backgroundColor = color || themeColors.green500;
   swatch.style.borderColor = color || themeColors.slate500;
 }
-
-function handleRemoveDayClick(event) {
-  const row = event?.currentTarget?.closest?.("[data-day-row]");
+function handleRemoveDayClick(trigger) {
+  const row = trigger?.closest?.("[data-day-row]");
   if (!row) {return;}
   row.remove();
   syncTimeMapDaySelect();
 }
-
-function handleRemoveBlockClick(event) {
-  const blockRow = event?.currentTarget?.closest?.("[data-block]");
+function handleRemoveBlockClick(trigger) {
+  const blockRow = trigger?.closest?.("[data-block]");
   if (!blockRow) {return;}
   blockRow.remove();
 }
-
-function handleAddBlockClick(event) {
-  const btn = event?.currentTarget;
+function handleAddBlockClick(trigger) {
+  const btn = trigger;
   const day = btn?.dataset?.day;
   if (!day) {return;}
   const row = btn.closest?.("[data-day-row]");
-  const blocksContainer = row?.querySelector?.(`[data-blocks-for="${day}"]`);
-  if (!blocksContainer) {return;}
-  blocksContainer.appendChild(createTimeBlock(day));
+  const timeline = row?.querySelector?.(`[data-timeline="${day}"]`);
+  if (!timeline) {return;}
+  timeline.appendChild(createTimeBlock(day));
 }
-
 function handleTimeMapDayAddClick() {
   const timeMapDaySelect = getTimeMapDaySelect();
   if (!timeMapDaySelect) {return;}
   addTimeMapDay(timeMapDaySelect.value);
 }
-
 function createDayHeader(day) {
   const header = document.createElement("div");
   header.className = "flex items-center justify-between gap-2";
@@ -73,75 +74,10 @@ function createDayHeader(day) {
     "rounded-lg border-slate-700 px-2 py-1 text-xs font-semibold text-slate-300 hover:border-orange-400 hover:text-orange-300";
   removeDayBtn.textContent = "Remove";
   removeDayBtn.setAttribute("data-test-skedpal", "timemap-day-remove");
-  removeDayBtn.addEventListener("click", handleRemoveDayClick);
+  removeDayBtn.setAttribute("data-day-remove", "true");
   header.appendChild(label);
   header.appendChild(removeDayBtn);
   return header;
-}
-
-function createTimeBlock(day, block = { startTime: "09:00", endTime: "12:00" }) {
-  const wrapper = document.createElement("div");
-  wrapper.className =
-    "flex flex-wrap items-center gap-2 rounded-lg border-slate-700 bg-slate-950/70 px-3 py-2 text-xs text-slate-200";
-  wrapper.dataset.block = day;
-  wrapper.setAttribute("data-test-skedpal", "timemap-block");
-  const start = document.createElement("input");
-  start.type = "time";
-  start.value = block.startTime || "09:00";
-  start.className =
-    "w-24 rounded-lg border-slate-700 bg-slate-900 px-2 py-1 text-slate-100 focus:border-lime-400 focus:outline-none";
-  start.dataset.startFor = day;
-  start.setAttribute("data-test-skedpal", "timemap-block-start");
-  const end = document.createElement("input");
-  end.type = "time";
-  end.value = block.endTime || "12:00";
-  end.className =
-    "w-24 rounded-lg border-slate-700 bg-slate-900 px-2 py-1 text-slate-100 focus:border-lime-400 focus:outline-none";
-  end.dataset.endFor = day;
-  end.setAttribute("data-test-skedpal", "timemap-block-end");
-  const removeBtn = document.createElement("button");
-  removeBtn.type = "button";
-  removeBtn.title = "Remove block";
-  removeBtn.className = "modal-close-btn modal-close-btn--sm";
-  removeBtn.setAttribute("aria-label", "Remove block");
-  removeBtn.innerHTML = `
-      <svg
-        class="modal-close-icon modal-close-icon--sm"
-        aria-hidden="true"
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 24 24"
-        data-test-skedpal="modal-close-icon"
-      >
-        <path
-          stroke="currentColor"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M6 18 17.94 6M18 18 6.06 6"
-        ></path>
-      </svg>
-      <span class="sr-only" data-test-skedpal="modal-close-label">Remove block</span>
-    `;
-  removeBtn.setAttribute("data-test-skedpal", "timemap-block-remove");
-  removeBtn.addEventListener("click", handleRemoveBlockClick);
-  wrapper.appendChild(start);
-  wrapper.appendChild(document.createTextNode("to"));
-  wrapper.appendChild(end);
-  wrapper.appendChild(removeBtn);
-  return wrapper;
-}
-
-function createBlocksContainer(day, blocks) {
-  const blocksContainer = document.createElement("div");
-  blocksContainer.className = "mt-2 flex flex-col gap-2";
-  blocksContainer.dataset.blocksFor = day;
-  blocksContainer.setAttribute("data-test-skedpal", "timemap-blocks");
-  if (blocks.length > 0) {
-    blocks.forEach((block) => blocksContainer.appendChild(createTimeBlock(day, block)));
-  } else {
-    blocksContainer.appendChild(createTimeBlock(day));
-  }
-  return blocksContainer;
 }
 
 function createAddBlockButton(day) {
@@ -152,7 +88,7 @@ function createAddBlockButton(day) {
     "mt-2 w-fit rounded-lg border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
   addBlockBtn.setAttribute("data-test-skedpal", "timemap-block-add");
   addBlockBtn.dataset.day = String(day);
-  addBlockBtn.addEventListener("click", handleAddBlockClick);
+  addBlockBtn.setAttribute("data-block-add", "true");
   return addBlockBtn;
 }
 
@@ -162,14 +98,13 @@ function createDayRow(day, blocks = []) {
   row.className = "rounded-xl border-slate-700 bg-slate-900/60 p-3";
   row.setAttribute("data-test-skedpal", "timemap-day-row");
   const header = createDayHeader(day);
-  const blocksContainer = createBlocksContainer(day, blocks);
+  const timeline = createTimeline(day, blocks);
   const addBlockBtn = createAddBlockButton(day);
   row.appendChild(header);
-  row.appendChild(blocksContainer);
+  row.appendChild(timeline);
   row.appendChild(addBlockBtn);
   return row;
 }
-
 function sortDayRows(container) {
   const rows = [...container.children].filter((row) => row.dataset?.dayRow !== undefined);
   rows.sort((a, b) => Number(a.dataset.dayRow) - Number(b.dataset.dayRow));
@@ -180,7 +115,6 @@ function sortDayRows(container) {
   container.children = [];
   rows.forEach((row) => container.appendChild(row));
 }
-
 function syncTimeMapDaySelect() {
   const select = getTimeMapDaySelect();
   const rows = getTimeMapDayRows();
@@ -215,9 +149,30 @@ function syncTimeMapDaySelect() {
   }
   select.selectedIndex = 0;
 }
-
+function handleTimeMapDayRowsClick(event) {
+  const target =
+    event?.target && typeof Element !== "undefined" && event.target instanceof Element
+      ? event.target
+      : null;
+  if (!target) {return;}
+  const removeDayBtn = target.closest?.("[data-day-remove]");
+  if (removeDayBtn) {
+    handleRemoveDayClick(removeDayBtn);
+    return;
+  }
+  const addBlockBtn = target.closest?.("[data-block-add]");
+  if (addBlockBtn) {
+    handleAddBlockClick(addBlockBtn);
+    return;
+  }
+  const removeBlockBtn = target.closest?.("[data-block-remove]");
+  if (removeBlockBtn) {
+    handleRemoveBlockClick(removeBlockBtn);
+  }
+}
 export function renderDayRows(container, rules = []) {
   container.innerHTML = "";
+  syncTimeMapTimelineHeader();
   const rulesMap = new Map();
   rules.forEach((r) => {
     const day = Number(r.day);
@@ -402,10 +357,21 @@ export function collectTimeMapRules(container) {
   container.querySelectorAll("[data-day-row]").forEach((row) => {
     const day = Number(row.dataset.dayRow);
     row.querySelectorAll("[data-block]").forEach((blockRow) => {
-      const start = blockRow.querySelector("input[data-start-for]");
-      const end = blockRow.querySelector("input[data-end-for]");
-      const startTime = start?.value || "09:00";
-      const endTime = end?.value || "12:00";
+      const startMinutes = Number(blockRow.dataset.startMinute);
+      const endMinutes = Number(blockRow.dataset.endMinute);
+      let startTime = "";
+      let endTime = "";
+      if (Number.isFinite(startMinutes) && Number.isFinite(endMinutes)) {
+        if (startMinutes >= endMinutes) {return;}
+        const normalized = normalizeTimeRange(startMinutes, endMinutes);
+        startTime = minutesToTimeString(normalized.start);
+        endTime = minutesToTimeString(normalized.end);
+      } else {
+        const start = blockRow.querySelector("input[data-start-for]");
+        const end = blockRow.querySelector("input[data-end-for]");
+        startTime = start?.value || TIME_MAP_DEFAULT_START;
+        endTime = end?.value || TIME_MAP_DEFAULT_END;
+      }
       if (startTime && endTime && startTime < endTime) {
         rules.push({ day, startTime, endTime });
       }
@@ -488,6 +454,34 @@ export function resetTimeMapForm() {
   if (timeMapDayRows) {
     renderDayRows(timeMapDayRows, []);
   }
+}
+
+export function initTimeMapFormInteractions() {
+  const cleanupFns = [];
+  const timeMapDayAdd = getTimeMapDayAdd();
+  const timeMapDayRows = getTimeMapDayRows();
+  if (timeMapDayAdd) {
+    timeMapDayAdd.addEventListener("click", handleTimeMapDayAddClick);
+    cleanupFns.push(() => timeMapDayAdd.removeEventListener("click", handleTimeMapDayAddClick));
+  }
+  if (timeMapDayRows) {
+    timeMapDayRows.addEventListener("click", handleTimeMapDayRowsClick);
+    cleanupFns.push(() => timeMapDayRows.removeEventListener("click", handleTimeMapDayRowsClick));
+    cleanupFns.push(setupTimeMapTimelineInteractions(timeMapDayRows));
+  }
+  const timeMapColorInput = getTimeMapColorInput();
+  if (timeMapColorInput) {
+    const current = timeMapColorInput.value || "";
+    if (!current || current.toLowerCase() === "#000000") {
+      const nextColor = pickTimeMapColor(state.tasksTimeMapsCache || [], uuid());
+      timeMapColorInput.value = nextColor;
+    }
+    syncTimeMapColorSwatch(timeMapColorInput.value);
+  }
+  syncTimeMapTimelineHeader();
+  return () => {
+    cleanupFns.forEach((cleanup) => cleanup?.());
+  };
 }
 
 export function openTimeMapForm() {
@@ -603,19 +597,4 @@ export async function handleTimeMapListClick(event, timeMaps) {
   } else if (deleteId) {
     await handleTimeMapDelete(deleteId);
   }
-}
-
-const timeMapDayAdd = getTimeMapDayAdd();
-const timeMapDaySelect = getTimeMapDaySelect();
-if (timeMapDayAdd && typeof timeMapDayAdd.addEventListener === "function" && timeMapDaySelect) {
-  timeMapDayAdd.addEventListener("click", handleTimeMapDayAddClick);
-}
-const timeMapColorInput = getTimeMapColorInput();
-if (timeMapColorInput) {
-  const current = timeMapColorInput.value || "";
-  if (!current || current.toLowerCase() === "#000000") {
-    const nextColor = pickTimeMapColor(state.tasksTimeMapsCache || [], uuid());
-    timeMapColorInput.value = nextColor;
-  }
-  syncTimeMapColorSwatch(timeMapColorInput.value);
 }

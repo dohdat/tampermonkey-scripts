@@ -285,7 +285,7 @@ body.modal-open{overflow:hidden}
 .tasks-layout-tight [data-test-skedpal="subsection-task-zone-wrap"]{padding:var(--space-0-35) var(--space-0-45)}
 .tasks-layout-tight [data-test-skedpal="subsection-task-zone-wrap"] > :not([hidden]) ~ :not([hidden]){margin-top:var(--space-0-25)}
 .tasks-layout-tight [data-test-skedpal="subsection-task-zone"]{gap:var(--space-0-25)}
-.tasks-layout-tight [data-test-skedpal="task-add-conversion-preview"]{margin-top:0;height:var(--space-0-35)}
+.tasks-layout-tight [data-test-skedpal="task-add-conversion-preview"]{margin-top:0;min-height:var(--space-0-75)}
 .tasks-layout-tight [data-subsection-card]{padding-top:var(--space-0-45);padding-right:var(--space-0-45);padding-bottom:var(--space-0-45)}
 .tasks-layout-tight [data-subsection-card]{padding-left:var(--space-0-5)}
 .tasks-layout-tight [data-subsection-children]{padding-left:var(--space-0-5)}

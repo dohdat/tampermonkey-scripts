@@ -452,7 +452,7 @@ export function buildAddTaskRow({
   row.appendChild(input);
   const preview = document.createElement("div");
   preview.className =
-    "mt-1 h-3 w-full min-w-0 truncate text-left text-[10px] text-slate-400 opacity-0 pointer-events-none pl-3";
+    "mt-1 w-full min-w-0 break-words text-left text-[10px] leading-tight text-slate-400 opacity-0 pointer-events-none pl-3";
   preview.setAttribute("data-test-skedpal", "task-add-conversion-preview");
   row.appendChild(preview);
   return row;

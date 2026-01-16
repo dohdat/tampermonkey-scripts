@@ -112,6 +112,51 @@ describe("utils date parsing", () => {
     assert.strictEqual(parsed.hasDate, false);
   });
 
+  it("extracts reminder days from titles", () => {
+    const parsed = parseTitleDates("Call mom remind 2 days");
+    assert.strictEqual(parsed.title, "Call mom");
+    assert.deepStrictEqual(parsed.reminderDays, [2]);
+    assert.strictEqual(parsed.hasReminder, true);
+  });
+
+  it("parses reminder keywords with chrono phrases", () => {
+    const referenceDate = new Date(2026, 0, 5, 9, 0, 0);
+    const tomorrowParsed = parseTitleDates("Call mom remind tomorrow", { referenceDate });
+    assert.strictEqual(tomorrowParsed.title, "Call mom");
+    assert.deepStrictEqual(tomorrowParsed.reminderDays, [1]);
+
+    const nextWeekParsed = parseTitleDates("Standup remind next week", { referenceDate });
+    assert.strictEqual(nextWeekParsed.title, "Standup");
+    assert.deepStrictEqual(nextWeekParsed.reminderDays, [7]);
+  });
+
+  it("ignores reminder phrases without valid dates", () => {
+    const referenceDate = new Date(2026, 0, 5, 9, 0, 0);
+    const parsed = parseTitleDates("Ping remind", { referenceDate });
+    assert.strictEqual(parsed.title, "Ping remind");
+    assert.strictEqual(parsed.hasReminder, false);
+  });
+
+  it("skips reminder phrases in the past", () => {
+    const referenceDate = new Date(2026, 0, 5, 9, 0, 0);
+    const parsed = parseTitleDates("Ping remind yesterday", { referenceDate });
+    assert.strictEqual(parsed.title, "Ping remind");
+    assert.strictEqual(parsed.hasReminder, false);
+  });
+
+  it("skips reminders with invalid reference dates", () => {
+    const referenceDate = new Date("bad-date");
+    const parsed = parseTitleDates("Ping remind tomorrow", { referenceDate });
+    assert.strictEqual(parsed.title, "Ping remind tomorrow");
+    assert.strictEqual(parsed.hasReminder, false);
+  });
+
+  it("dedupes overlapping numeric reminders", () => {
+    const parsed = parseTitleDates("Ping remind 2 days");
+    assert.strictEqual(parsed.title, "Ping");
+    assert.deepStrictEqual(parsed.reminderDays, [2]);
+  });
+
   it("keeps empty titles empty when parsing", () => {
     const parsed = parseTitleDates("   ");
     assert.strictEqual(parsed.title, "");

@@ -1,5 +1,11 @@
 import { parse as chronoParse } from "../../vendor/chrono-node/locales/en/index.js";
-import { ONE } from "./constants.js";
+import {
+  MS_PER_DAY,
+  ONE,
+  TITLE_REMINDER_PREFIX_REGEX,
+  TITLE_REMINDER_REGEX
+} from "./constants.js";
+import { mergeReminderEntries } from "./tasks/task-reminders-helpers.js";
 import { parseLocalDateInput } from "./utils.js";
 import {
   BETWEEN_RANGE_REGEX,
@@ -119,6 +125,108 @@ function appendBetweenRanges(title, ranges) {
   ranges.push({ start: matchIndex, end: matchIndex + match[0].length });
 }
 
+function resolveReminderDayFromChrono(referenceDate, result) {
+  const targetDate = result?.start?.date?.();
+  if (!targetDate || Number.isNaN(targetDate.getTime())) {return null;}
+  const baseDate = referenceDate instanceof Date ? referenceDate : new Date(referenceDate);
+  const baseTime = baseDate.getTime();
+  if (!Number.isFinite(baseTime)) {return null;}
+  const diffDays = (targetDate.getTime() - baseTime) / MS_PER_DAY;
+  if (!Number.isFinite(diffDays) || diffDays <= 0) {return null;}
+  return Math.max(1, Math.ceil(diffDays));
+}
+
+function collectNumericReminderMatches(title) {
+  const matches = [];
+  if (!title) {return matches;}
+  const matcher = new RegExp(TITLE_REMINDER_REGEX.source, "gi");
+  let match = matcher.exec(title);
+  while (match) {
+    const matchText = match[0] || "";
+    const dayValue = Number(match[1]);
+    if (matchText && Number.isFinite(dayValue) && dayValue > 0) {
+      matches.push({
+        range: { start: match.index, end: match.index + matchText.length },
+        dayValue
+      });
+    }
+    match = matcher.exec(title);
+  }
+  return matches;
+}
+
+function collectChronoReminderMatches(title, referenceDate) {
+  const matches = [];
+  if (!title) {return matches;}
+  const matcher = new RegExp(TITLE_REMINDER_PREFIX_REGEX.source, "gi");
+  let match = matcher.exec(title);
+  while (match) {
+    const prefixText = match[0] || "";
+    const startIndex = match.index ?? 0;
+    const tailStart = startIndex + prefixText.length;
+    const tail = title.slice(tailStart);
+    const results = chronoParse(tail, referenceDate, { forwardDate: true }) || [];
+    const [result] = results;
+    const matchText = result?.text || "";
+    if (!matchText) {
+      match = matcher.exec(title);
+      continue;
+    }
+    const reminderDays = resolveReminderDayFromChrono(referenceDate, result);
+    if (!reminderDays) {
+      match = matcher.exec(title);
+      continue;
+    }
+    const resultIndex = Number.isFinite(result?.index)
+      ? result.index
+      : tail.indexOf(matchText);
+    const endIndex = tailStart + Math.max(0, resultIndex) + matchText.length;
+    matches.push({
+      range: { start: startIndex, end: endIndex },
+      dayValue: reminderDays
+    });
+    match = matcher.exec(title);
+  }
+  return matches;
+}
+
+function collectReminderMatches(title, referenceDate) {
+  const numeric = collectNumericReminderMatches(title);
+  if (!title) {return numeric;}
+  const ranges = numeric.map((entry) => entry.range);
+  const chronoMatches = collectChronoReminderMatches(title, referenceDate).filter(
+    (entry) => !doesRangeOverlap(entry.range, ranges)
+  );
+  return [...numeric, ...chronoMatches];
+}
+
+function removeRangesFromTitle(title, ranges) {
+  if (!title || !ranges.length) {return title;}
+  const merged = mergeRanges(ranges);
+  let cleaned = title;
+  for (let i = merged.length - ONE; i >= 0; i -= 1) {
+    const range = merged[i];
+    cleaned = `${cleaned.slice(0, range.start)} ${cleaned.slice(range.end)}`;
+  }
+  const normalized = cleanupParsedTitle(cleaned);
+  return normalized || title;
+}
+
+function parseTitleReminders(title, referenceDate) {
+  if (!title) {return { title, reminderDays: [], hasReminder: false };}
+  const matches = collectReminderMatches(title, referenceDate);
+  if (!matches.length) {
+    return { title, reminderDays: [], hasReminder: false };
+  }
+  const ranges = matches.map((entry) => entry.range);
+  const reminderDays = [...new Set(matches.map((entry) => entry.dayValue))];
+  return {
+    title: removeRangesFromTitle(title, ranges),
+    reminderDays,
+    hasReminder: true
+  };
+}
+
 export function getTitleConversionRanges(rawTitle, options = {}) {
   const title = typeof rawTitle === "string" ? rawTitle : "";
   if (!title) {return [];}
@@ -127,6 +235,9 @@ export function getTitleConversionRanges(rawTitle, options = {}) {
   const ranges = [];
   TITLE_REPEAT_PATTERNS.forEach((pattern) => {
     ranges.push(...collectRegexRanges(title, pattern));
+  });
+  collectReminderMatches(title, referenceDate).forEach((entry) => {
+    ranges.push(entry.range);
   });
   appendBetweenRanges(title, ranges);
   const chronoMatch = getChronoMatch(title, referenceDate);
@@ -293,7 +404,8 @@ function buildTitleUpdateWithoutParsing(task, nextTitle, originalTitle) {
     nextTitle,
     nextDeadline: task.deadline,
     nextStartFrom: task.startFrom,
-    nextRepeat: task.repeat
+    nextRepeat: task.repeat,
+    nextReminders: Array.isArray(task.reminders) ? task.reminders : []
   };
 }
 
@@ -308,6 +420,35 @@ function resolveParsedDateUpdate(task, parsed, originalTitle, literals) {
     startFromSource: parsed.startFrom ? "parsed" : "existing",
     deadlineSource: parsed.deadline ? "parsed" : "existing"
   });
+}
+
+function resolveParsedReminderUpdate(task, parsed) {
+  const reminderDays = parsed.reminderDays || [];
+  if (!reminderDays.length) {
+    return {
+      reminders: Array.isArray(task.reminders) ? task.reminders : [],
+      added: false
+    };
+  }
+  return mergeReminderEntries(task.reminders || [], reminderDays);
+}
+
+function shouldSaveTitleUpdate({
+  safeTitle,
+  originalTitle,
+  nextDeadline,
+  nextStartFrom,
+  nextRepeat,
+  task,
+  remindersAdded
+}) {
+  return (
+    safeTitle !== originalTitle ||
+    nextDeadline !== task.deadline ||
+    nextStartFrom !== task.startFrom ||
+    nextRepeat !== task.repeat ||
+    remindersAdded
+  );
 }
 
 function buildTitleUpdateWithParsing({
@@ -325,17 +466,24 @@ function buildTitleUpdateWithParsing({
   const nextDeadline = resolvedDates.deadline;
   const nextStartFrom = resolvedDates.startFrom;
   const nextRepeat = parsed.repeat ?? task.repeat;
-  const shouldSave =
-    safeTitle !== originalTitle ||
-    nextDeadline !== task.deadline ||
-    nextStartFrom !== task.startFrom ||
-    nextRepeat !== task.repeat;
+  const remindersResult = resolveParsedReminderUpdate(task, parsed);
+  const nextReminders = remindersResult.reminders;
+  const shouldSave = shouldSaveTitleUpdate({
+    safeTitle,
+    originalTitle,
+    nextDeadline,
+    nextStartFrom,
+    nextRepeat,
+    task,
+    remindersAdded: remindersResult.added
+  });
   return {
     shouldSave,
     nextTitle: safeTitle,
     nextDeadline,
     nextStartFrom,
-    nextRepeat
+    nextRepeat,
+    nextReminders
   };
 }
 
@@ -383,12 +531,23 @@ export function pruneTitleLiteralList(title, list) {
   return list.filter((literal) => literal && title.includes(literal));
 }
 
-function buildTitleParseResult({ title, tokenMap, repeatParsed, startFrom, deadline, hasDate }) {
+function buildTitleParseResult({
+  title,
+  tokenMap,
+  repeatParsed,
+  startFrom,
+  deadline,
+  hasDate,
+  reminderDays,
+  hasReminder
+}) {
   return {
     title: restoreLiteralTokens(title, tokenMap),
     startFrom: startFrom ?? null,
     deadline: deadline ?? null,
     hasDate: Boolean(hasDate),
+    reminderDays: Array.isArray(reminderDays) ? reminderDays : [],
+    hasReminder: Boolean(hasReminder),
     repeat: repeatParsed.repeat,
     hasRepeat: repeatParsed.hasRepeat
   };
@@ -423,7 +582,8 @@ export function parseTitleDates(rawTitle, options = {}) {
   const referenceDate = resolveReferenceDate(options);
   const { tokenizedTitle, tokenMap } = applyLiteralTokens(baseTitle, literals);
   const repeatParsed = parseTitleRepeat(tokenizedTitle, referenceDate);
-  const title = repeatParsed.title || "";
+  const reminderParsed = parseTitleReminders(repeatParsed.title || "", referenceDate);
+  const title = reminderParsed.title || "";
   if (!title) {
     return buildTitleParseResult({
       title: "",
@@ -431,7 +591,9 @@ export function parseTitleDates(rawTitle, options = {}) {
       repeatParsed,
       startFrom: null,
       deadline: null,
-      hasDate: false
+      hasDate: false,
+      reminderDays: reminderParsed.reminderDays,
+      hasReminder: reminderParsed.hasReminder
     });
   }
   const match = getChronoMatch(title, referenceDate);
@@ -442,7 +604,9 @@ export function parseTitleDates(rawTitle, options = {}) {
       repeatParsed,
       startFrom: null,
       deadline: null,
-      hasDate: false
+      hasDate: false,
+      reminderDays: reminderParsed.reminderDays,
+      hasReminder: reminderParsed.hasReminder
     });
   }
   const cleanedTitle = buildCleanedTitle(title, match.matchText, match.matchIndex);
@@ -453,6 +617,8 @@ export function parseTitleDates(rawTitle, options = {}) {
     repeatParsed,
     startFrom: resolved.startFrom,
     deadline: resolved.deadline,
-    hasDate: resolved.hasDate
+    hasDate: resolved.hasDate,
+    reminderDays: reminderParsed.reminderDays,
+    hasReminder: reminderParsed.hasReminder
   });
 }

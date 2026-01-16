@@ -56,6 +56,7 @@ import {
 } from "./task-form-helpers.js";
 import { renderReport } from "../report.js";
 import { renderTaskReminderBadge } from "./task-reminders.js";
+import { mergeReminderEntries } from "./task-reminders-helpers.js";
 import { requestCreateTaskOverlayClose } from "../overlay-messaging.js";
 import { buildTasksFromAiList } from "./task-ai-helpers.js";
 import { getNextTemplateOrder } from "../task-templates-utils.js";
@@ -269,7 +270,7 @@ function resolveTaskSubtaskScheduleMode(existingTask, isParentTask) {
     isSelectorVisible: isParentTask || isSelectorVisible
   });
 }
-function buildTaskPayload(values, existingTask, parentTask, isParentTask, order) {
+function buildTaskPayload(values, existingTask, parentTask, isParentTask, order, reminders) {
   const repeat = resolveTaskRepeatSelection();
   const subtaskScheduleMode = resolveTaskSubtaskScheduleMode(existingTask, isParentTask);
   const deadline = parseLocalDateInput(values.deadline);
@@ -296,7 +297,7 @@ function buildTaskPayload(values, existingTask, parentTask, isParentTask, order)
     order,
     subtaskScheduleMode,
     repeat,
-    reminders: existingTask?.reminders || [],
+    reminders: Array.isArray(reminders) ? reminders : existingTask?.reminders || [],
     completed: existingTask?.completed || false,
     completedAt: existingTask?.completedAt || null,
     completedOccurrences: existingTask?.completedOccurrences || [],
@@ -428,28 +429,43 @@ async function applyTaskAiSuggestions(updatedTask) {
   await Promise.all(tasks.map((task) => saveTask(task)));
 }
 
-export async function handleTaskSubmit(event) {
-  event.preventDefault();
-  const values = getTaskFormValues();
-  const selectedTemplateId = values.templateId;
-  if (await maybeHandleTemplateSubmit(values)) {return;}
-  const storedLiterals = parseTitleLiteralList(domRefs.taskTitleInput?.dataset?.titleLiterals);
-  const literals = pruneTitleLiteralList(values.title, storedLiterals);
-  const parsed = parseTitleDates(values.title, { literals });
-  if (parsed.title !== values.title) {
-    values.title = parsed.title;
+function applyParsedTitleUpdates(values, parsed) {
+  const next = { ...values };
+  if (parsed.title !== next.title) {
+    next.title = parsed.title;
   }
   if (parsed.deadline) {
-    values.deadline = formatLocalDateInputValue(new Date(parsed.deadline));
+    next.deadline = formatLocalDateInputValue(new Date(parsed.deadline));
   }
   if (parsed.startFrom) {
-    values.startFrom = formatLocalDateInputValue(new Date(parsed.startFrom));
+    next.startFrom = formatLocalDateInputValue(new Date(parsed.startFrom));
   }
   if (parsed.repeat) {
     setRepeatFromSelection(parsed.repeat, "task");
     syncRepeatSelectLabel();
   }
+  return next;
+}
+
+function resolveParsedReminders(existingTask, parsed) {
+  const reminderDays = parsed.reminderDays || [];
+  if (!reminderDays.length) {
+    return existingTask?.reminders || [];
+  }
+  return mergeReminderEntries(existingTask?.reminders || [], reminderDays).reminders;
+}
+
+export async function handleTaskSubmit(event) {
+  event.preventDefault();
+  let values = getTaskFormValues();
+  const selectedTemplateId = values.templateId;
+  if (await maybeHandleTemplateSubmit(values)) {return;}
+  const storedLiterals = parseTitleLiteralList(domRefs.taskTitleInput?.dataset?.titleLiterals);
+  const literals = pruneTitleLiteralList(values.title, storedLiterals);
+  const parsed = parseTitleDates(values.title, { literals });
+  values = applyParsedTitleUpdates(values, parsed);
   const { parentTask, existingTask, isParentTask } = getTaskFormContext(values);
+  const reminders = resolveParsedReminders(existingTask, parsed);
   const isNewTask = !existingTask;
   const error = validateTaskForm(values);
   if (error) {
@@ -457,7 +473,14 @@ export async function handleTaskSubmit(event) {
     return;
   }
   const order = resolveTaskOrder(existingTask, parentTask, values.section, values.subsection);
-  const updatedTask = buildTaskPayload(values, existingTask, parentTask, isParentTask, order);
+  const updatedTask = buildTaskPayload(
+    values,
+    existingTask,
+    parentTask,
+    isParentTask,
+    order,
+    reminders
+  );
   await saveTask(updatedTask);
   await applySelectedTemplateSubtasks(selectedTemplateId, updatedTask);
   await applyTaskAiSuggestions(updatedTask);

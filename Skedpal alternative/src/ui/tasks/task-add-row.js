@@ -32,6 +32,7 @@ import {
   resolveMergedDateRange,
   serializeTitleLiteralList
 } from "../title-date-utils.js";
+import { mergeReminderEntries } from "./task-reminders-helpers.js";
 
 const CLIPBOARD_LINE_REGEX = /\r?\n/;
 const CLIPBOARD_BULLET_REGEX = /^(?:[-*]|\d+[).])\s+/;
@@ -250,6 +251,7 @@ function buildQuickAddBasePayload({
   defaults,
   dateRange,
   repeat,
+  reminders,
   inheritedSection,
   inheritedSubsection,
   order
@@ -270,7 +272,7 @@ function buildQuickAddBasePayload({
     subtaskParentId: null,
     subtaskScheduleMode: defaults.subtaskScheduleMode,
     repeat,
-    reminders: [],
+    reminders: Array.isArray(reminders) ? reminders : [],
     completed: false,
     completedAt: null,
     completedOccurrences: [],
@@ -307,6 +309,7 @@ function buildQuickAddPayload({
   parsedDeadline,
   parsedStartFrom,
   parsedRepeat,
+  parsedReminderDays,
   sectionId,
   subsectionId,
   parentTask,
@@ -324,12 +327,14 @@ function buildQuickAddPayload({
   const dateRange = resolveQuickAddDateRange(parsedStartFrom, parsedDeadline, defaults);
   const order = resolveQuickAddOrder(parentTask, inheritedSection, inheritedSubsection, tasks);
   const repeat = parsedRepeat || defaults.repeat;
+  const reminders = mergeReminderEntries([], parsedReminderDays || []).reminders;
   const basePayload = buildQuickAddBasePayload({
     id,
     title,
     defaults,
     dateRange,
     repeat,
+    reminders,
     inheritedSection,
     inheritedSubsection,
     order
@@ -357,6 +362,7 @@ export function buildQuickAddTaskPayload({
       parsedDeadline: parsed.deadline,
       parsedStartFrom: parsed.startFrom,
       parsedRepeat: parsed.repeat,
+      parsedReminderDays: parsed.reminderDays,
       parentTask,
       tasks,
       template,
@@ -369,6 +375,7 @@ export function buildQuickAddTaskPayload({
     parsedDeadline: parsed.deadline,
     parsedStartFrom: parsed.startFrom,
     parsedRepeat: parsed.repeat,
+    parsedReminderDays: parsed.reminderDays,
     sectionId,
     subsectionId,
     parentTask,

@@ -22,7 +22,8 @@ export async function applyInlineTitleUpdate(task, update, options = {}) {
     title: update.nextTitle,
     deadline: update.nextDeadline,
     startFrom: update.nextStartFrom,
-    repeat: update.nextRepeat
+    repeat: update.nextRepeat,
+    reminders: Array.isArray(update.nextReminders) ? update.nextReminders : task.reminders
   };
   await saveTaskFn(updatedTask);
   const hasChildren = Array.isArray(tasksCache) &&

@@ -1,7 +1,12 @@
 import assert from "assert";
 import { describe, it } from "mocha";
 
-import { removeReminderEntry } from "../src/ui/tasks/task-reminders-helpers.js";
+import {
+  buildReminderEntry,
+  mergeReminderEntries,
+  normalizeReminders,
+  removeReminderEntry
+} from "../src/ui/tasks/task-reminders-helpers.js";
 import { state } from "../src/ui/state/page-state.js";
 import { domRefs } from "../src/ui/constants.js";
 
@@ -841,6 +846,60 @@ describe("task reminders", () => {
     assert.strictEqual(result.removed, true);
     assert.strictEqual(result.reminders.length, 1);
     assert.strictEqual(result.reminders[0].id, "r2");
+  });
+
+  it("merges reminder days without duplicating existing entries", () => {
+    const now = new Date("2026-01-10T10:00:00.000Z");
+    const existing = [
+      { id: "r1", days: 2, remindAt: "2026-01-12T10:00:00.000Z", dismissedAt: "" }
+    ];
+    const result = mergeReminderEntries(existing, [2, 3], now);
+
+    assert.strictEqual(result.added, true);
+    assert.strictEqual(result.reminders.length, 2);
+    assert.ok(result.reminders.some((entry) => entry.days === 3));
+  });
+
+  it("returns existing reminders when no new days are added", () => {
+    const now = new Date("2026-01-10T10:00:00.000Z");
+    const existing = [
+      { id: "r1", days: 2, remindAt: "2026-01-12T10:00:00.000Z", dismissedAt: "" }
+    ];
+    const result = mergeReminderEntries(existing, [2], now);
+
+    assert.strictEqual(result.added, false);
+    assert.strictEqual(result.reminders.length, 1);
+  });
+
+  it("normalizes reminders and drops invalid entries", () => {
+    const reminders = normalizeReminders([
+      { id: "", days: 2, remindAt: "2026-01-12T10:00:00.000Z", dismissedAt: "" },
+      { id: "r2", days: 0, remindAt: "", dismissedAt: "" }
+    ]);
+    assert.strictEqual(reminders.length, 1);
+    assert.ok(reminders[0].id);
+    assert.strictEqual(reminders[0].days, 2);
+  });
+
+  it("returns empty reminders when input is not an array", () => {
+    const reminders = normalizeReminders(null);
+    assert.deepStrictEqual(reminders, []);
+  });
+
+  it("builds reminder entries using non-Date inputs", () => {
+    const entry = buildReminderEntry(1, "2026-01-10T10:00:00.000Z");
+    assert.strictEqual(entry.days, 1);
+    assert.ok(entry.remindAt);
+    assert.ok(entry.createdAt);
+  });
+
+  it("ignores non-array reminder day inputs", () => {
+    const existing = [
+      { id: "r1", days: 2, remindAt: "2026-01-12T10:00:00.000Z", dismissedAt: "" }
+    ];
+    const result = mergeReminderEntries(existing, "bad");
+    assert.strictEqual(result.added, false);
+    assert.strictEqual(result.reminders.length, 1);
   });
 
   it("returns unchanged reminders when id is missing", () => {

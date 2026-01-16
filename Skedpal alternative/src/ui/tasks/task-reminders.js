@@ -16,9 +16,12 @@ import {
   domRefs
 } from "../constants.js";
 import { state } from "../state/page-state.js";
-import { uuid } from "../utils.js";
 import { showNotificationBanner, hideNotificationBanner, showUndoBanner } from "../notifications.js";
-import { removeReminderEntry } from "./task-reminders-helpers.js";
+import {
+  buildReminderEntry,
+  normalizeReminders,
+  removeReminderEntry
+} from "./task-reminders-helpers.js";
 
 const DAY_MS = MS_PER_DAY;
 const SECONDS_PER_DAY = DAY_MS / MS_PER_SECOND;
@@ -33,20 +36,6 @@ let reminderZoomTarget = null;
 async function reloadTasks() {
   const { loadTasks } = await import("./tasks-actions.js");
   return loadTasks();
-}
-
-function normalizeReminders(reminders = []) {
-  if (!Array.isArray(reminders)) {return [];}
-  return reminders
-    .filter((entry) => entry && typeof entry === "object")
-    .map((entry) => ({
-      id: entry.id || uuid(),
-      days: Number(entry.days) || 0,
-      remindAt: entry.remindAt || "",
-      createdAt: entry.createdAt || entry.remindAt || "",
-      dismissedAt: entry.dismissedAt || ""
-    }))
-    .filter((entry) => entry.days > 0 && Boolean(entry.remindAt));
 }
 
 export function getOverdueReminders(task, now = new Date()) {
@@ -198,18 +187,6 @@ async function handleReminderZoomClick() {
     sectionId: reminderZoomTarget.sectionId || "",
     subsectionId: reminderZoomTarget.subsectionId || ""
   });
-}
-
-function buildReminderEntry(days, now = new Date()) {
-  const baseTime = now instanceof Date ? now.getTime() : new Date(now).getTime();
-  const remindAt = new Date(baseTime + days * DAY_MS).toISOString();
-  return {
-    id: uuid(),
-    days,
-    remindAt,
-    createdAt: now.toISOString(),
-    dismissedAt: ""
-  };
 }
 
 function getSecondsAsDays(seconds) {

@@ -1,6 +1,7 @@
 import { saveTask } from "../data/db.js";
 import { state } from "./state/page-state.js";
 import { buildCalendarTaskUpdates } from "./calendar-task-import.js";
+import { getCalendarSyncSettings } from "./utils.js";
 
 const pendingFetches = new Set();
 
@@ -36,9 +37,17 @@ function getRuntime() {
 }
 
 function getSelectedCalendarIds() {
-  return Array.isArray(state.settingsCache?.googleCalendarIds)
+  const selected = Array.isArray(state.settingsCache?.googleCalendarIds)
     ? state.settingsCache.googleCalendarIds
     : null;
+  if (!selected) {return null;}
+  const syncSettings = getCalendarSyncSettings(state.settingsCache);
+  const hiddenIds = new Set(
+    Object.entries(syncSettings)
+      .filter(([, entry]) => entry?.syncScheduledEvents)
+      .map(([calendarId]) => calendarId)
+  );
+  return selected.filter((id) => !hiddenIds.has(id));
 }
 
 function shouldSkipFetch(key) {

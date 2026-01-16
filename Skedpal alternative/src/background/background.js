@@ -31,6 +31,12 @@ import {
   fetchFreeBusy,
   clearCachedAuthTokens
 } from "./google-calendar.js";
+import {
+  getCalendarSyncTargets,
+  initCalendarSyncAlarms,
+  resumeCalendarSyncJob,
+  startCalendarSyncJob
+} from "./calendar-sync.js";
 import { buildCreateTaskUrl } from "./context-menu.js";
 import { buildSequentialSingleDeferredIds } from "./deferred-utils.js";
 import {
@@ -196,6 +202,10 @@ function getCalendarTaskIdSet(settings) {
   return ids;
 }
 
+function getCalendarSyncIdSet(settings) {
+  return new Set(getCalendarSyncTargets(settings).map((entry) => entry.calendarId));
+}
+
 async function runReschedule() {
   const now = new Date();
   let [tasks, timeMaps, settings] = await Promise.all([
@@ -221,8 +231,11 @@ async function runReschedule() {
 
   let busy = [];
   const calendarTaskIds = getCalendarTaskIdSet(settings);
+  const calendarSyncIds = getCalendarSyncIdSet(settings);
   const calendarIds = Array.isArray(settings.googleCalendarIds)
-    ? settings.googleCalendarIds.filter((id) => !calendarTaskIds.has(id))
+    ? settings.googleCalendarIds.filter(
+      (id) => !calendarTaskIds.has(id) && !calendarSyncIds.has(id)
+    )
     : null;
   const horizonDays = Number(settings.schedulingHorizonDays) || DEFAULT_SCHEDULING_HORIZON_DAYS;
   const horizonEnd = new Date(now.getTime());
@@ -257,6 +270,7 @@ async function runReschedule() {
     now,
     horizonDays
   );
+  await startCalendarSyncJob({ tasks, settings, now });
 
   const scheduledTaskCount = new Set(scheduled.map((p) => p.taskId)).size;
 
@@ -383,11 +397,17 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 chrome.runtime.onInstalled.addListener(() => {
   ensureContextMenu();
   runBackgroundPrune();
+  resumeCalendarSyncJob().catch((error) => {
+    console.warn("Failed to resume calendar sync.", error);
+  });
 });
 
 chrome.runtime.onStartup.addListener(() => {
   ensureContextMenu();
   runBackgroundPrune();
+  resumeCalendarSyncJob().catch((error) => {
+    console.warn("Failed to resume calendar sync.", error);
+  });
 });
 
 function getTabTitle(tabId) {
@@ -449,3 +469,5 @@ chrome.contextMenus?.onClicked?.addListener(handleContextMenuClick);
 chrome.action.onClicked.addListener(() => {
   chrome.runtime.openOptionsPage();
 });
+
+initCalendarSyncAlarms();

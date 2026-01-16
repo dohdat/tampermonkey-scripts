@@ -15,6 +15,7 @@
     "type": "module"
   },
   "permissions": [
+    "alarms",
     "identity",
     "storage",
     "contextMenus",

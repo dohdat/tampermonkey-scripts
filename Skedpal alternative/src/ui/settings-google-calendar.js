@@ -1,8 +1,18 @@
-import { domRefs } from "./constants.js";
+import { GOOGLE_CALENDAR_SYNC_MIN_DAYS, domRefs } from "./constants.js";
 import { state } from "./state/page-state.js";
 import { invalidateExternalEventsCache } from "./calendar-external.js";
 import { saveCalendarListCache } from "./calendar-list-cache.js";
 import { getSectionName, getSubsectionsFor } from "./sections-data.js";
+import { normalizeHorizonDays } from "./utils.js";
+import {
+  buildCalendarSyncDaysField,
+  buildCalendarSyncToggle,
+  getMaxSyncDays,
+  handleCalendarSyncDaysChange,
+  handleCalendarSyncToggleChange,
+  resolveCalendarSyncToggleTarget,
+  setCalendarSyncControlsEnabled
+} from "./settings-google-calendar-sync.js";
 
 const {
   googleCalendarConnectBtn,
@@ -15,7 +25,6 @@ const {
 function getRuntime() {
   return globalThis.chrome?.runtime || null;
 }
-
 function setCalendarStatus(message) {
   if (!googleCalendarStatus) {return;}
   googleCalendarStatus.textContent = message;
@@ -44,26 +53,44 @@ function getCalendarTaskSettingsById(settings) {
   const source = settings?.googleCalendarTaskSettings;
   return source && typeof source === "object" ? source : {};
 }
-
 function normalizeCalendarTaskSetting(setting) {
+  const maxSyncDays = getMaxSyncDays();
   if (!setting || typeof setting !== "object") {
-    return { treatAsTasks: false, sectionId: "", subsectionId: "" };
+    return {
+      treatAsTasks: false,
+      sectionId: "",
+      subsectionId: "",
+      syncScheduledEvents: false,
+      syncDays: maxSyncDays
+    };
   }
   return {
     treatAsTasks: Boolean(setting.treatAsTasks),
     sectionId: setting.sectionId || "",
-    subsectionId: setting.subsectionId || ""
+    subsectionId: setting.subsectionId || "",
+    syncScheduledEvents: Boolean(setting.syncScheduledEvents),
+    syncDays: normalizeHorizonDays(
+      setting.syncDays,
+      GOOGLE_CALENDAR_SYNC_MIN_DAYS,
+      maxSyncDays,
+      maxSyncDays
+    )
   };
 }
 
 function resolveCalendarTaskSetting(settings, calendarId) {
   if (!calendarId) {
-    return { treatAsTasks: false, sectionId: "", subsectionId: "" };
+    return {
+      treatAsTasks: false,
+      sectionId: "",
+      subsectionId: "",
+      syncScheduledEvents: false,
+      syncDays: getMaxSyncDays()
+    };
   }
   const settingsMap = getCalendarTaskSettingsById(settings);
   return normalizeCalendarTaskSetting(settingsMap[calendarId]);
 }
-
 function createSectionOption(value, label, selected, testId) {
   const option = document.createElement("option");
   option.value = value;
@@ -80,7 +107,6 @@ function buildCalendarSectionSelect(calendarId, selectedSectionId = "") {
   select.dataset.calendarTaskSection = "true";
   select.dataset.calendarId = calendarId || "";
   select.setAttribute("data-test-skedpal", "google-calendar-task-section-select");
-
   const sections = state.settingsCache.sections || [];
   select.appendChild(
     createSectionOption("", "No section", !selectedSectionId, "google-calendar-task-section-option")
@@ -274,6 +300,8 @@ function buildCalendarTaskOptions(entry, calendarTaskSettings) {
   options.setAttribute("data-test-skedpal", "google-calendar-options");
   options.appendChild(buildCalendarTaskToggle(entry, calendarTaskSettings));
   options.appendChild(buildCalendarTaskSelectRow(entry, calendarTaskSettings));
+  options.appendChild(buildCalendarSyncToggle(entry, calendarTaskSettings));
+  options.appendChild(buildCalendarSyncDaysField(entry, calendarTaskSettings));
   return options;
 }
 
@@ -290,6 +318,7 @@ function buildCalendarRow(entry, selectedIds, calendarTaskSettings) {
   details.appendChild(buildCalendarTaskOptions(entry, calendarTaskSettings));
   row.appendChild(details);
   setCalendarTaskControlsEnabled(row, Boolean(calendarTaskSettings.treatAsTasks));
+  setCalendarSyncControlsEnabled(row, Boolean(calendarTaskSettings.syncScheduledEvents));
   return row;
 }
 
@@ -365,11 +394,19 @@ function createCalendarTaskSettingsUpdater(persistSettingsSafely) {
   return (calendarId, updates) => {
     if (!calendarId) {return;}
     const current = resolveCalendarTaskSetting(state.settingsCache, calendarId);
+    const maxSyncDays = getMaxSyncDays();
     const next = {
       ...current,
       ...updates,
       sectionId: updates.sectionId ?? current.sectionId,
-      subsectionId: updates.subsectionId ?? current.subsectionId
+      subsectionId: updates.subsectionId ?? current.subsectionId,
+      syncScheduledEvents: updates.syncScheduledEvents ?? current.syncScheduledEvents,
+      syncDays: normalizeHorizonDays(
+        updates.syncDays ?? current.syncDays,
+        GOOGLE_CALENDAR_SYNC_MIN_DAYS,
+        maxSyncDays,
+        maxSyncDays
+      )
     };
     if (!next.sectionId) {
       next.subsectionId = "";
@@ -449,6 +486,14 @@ function createCalendarListChangeHandler(persistSettingsSafely, updateCalendarTa
     }
     if (target.matches?.("select[data-calendar-task-subsection]")) {
       handleCalendarTaskSubsectionChange(target, updateCalendarTaskSettings);
+      return;
+    }
+    if (target.matches?.("input[data-calendar-sync-toggle]")) {
+      handleCalendarSyncToggleChange(target, updateCalendarTaskSettings);
+      return;
+    }
+    if (target.matches?.("input[data-calendar-sync-days]")) {
+      handleCalendarSyncDaysChange(target, updateCalendarTaskSettings);
     }
   }
   return handleCalendarListChange;
@@ -457,8 +502,14 @@ function createCalendarListChangeHandler(persistSettingsSafely, updateCalendarTa
 function createCalendarListClickHandler(updateCalendarTaskSettings) {
   function handleCalendarListClick(event) {
     const toggle = resolveCalendarTaskToggleTarget(event?.target);
-    if (!toggle) {return;}
-    handleCalendarTaskToggleChange(toggle, updateCalendarTaskSettings);
+    if (toggle) {
+      handleCalendarTaskToggleChange(toggle, updateCalendarTaskSettings);
+      return;
+    }
+    const syncToggle = resolveCalendarSyncToggleTarget(event?.target);
+    if (syncToggle) {
+      handleCalendarSyncToggleChange(syncToggle, updateCalendarTaskSettings);
+    }
   }
   return handleCalendarListClick;
 }

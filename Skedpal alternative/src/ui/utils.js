@@ -4,6 +4,7 @@ import {
   EXTERNAL_CALENDAR_TIMEMAP_PREFIX,
   FORTY,
   FOUR,
+  GOOGLE_CALENDAR_SYNC_MIN_DAYS,
   INDEX_NOT_FOUND,
   ONE_HUNDRED,
   SEVEN,
@@ -181,6 +182,24 @@ export function normalizeHorizonDays(
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) {return fallback;}
   return Math.min(max, Math.max(min, parsed));
+}
+
+export function getCalendarSyncSettings(settings = {}) {
+  const map = settings?.googleCalendarTaskSettings;
+  if (!map || typeof map !== "object") {return {};}
+  const maxDays = Number(settings?.schedulingHorizonDays) || DEFAULT_SCHEDULING_HORIZON_DAYS;
+  return Object.entries(map).reduce((acc, [calendarId, entry]) => {
+    if (!calendarId || !entry || typeof entry !== "object") {return acc;}
+    const syncScheduledEvents = Boolean(entry.syncScheduledEvents);
+    const syncDays = normalizeHorizonDays(
+      entry.syncDays,
+      GOOGLE_CALENDAR_SYNC_MIN_DAYS,
+      maxDays,
+      maxDays
+    );
+    acc[calendarId] = { syncScheduledEvents, syncDays };
+    return acc;
+  }, {});
 }
 
 export function getInheritedSubtaskFields(parentTask) {

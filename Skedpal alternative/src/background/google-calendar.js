@@ -48,6 +48,7 @@ export function normalizeGoogleEvent(event, calendarId) {
     colorHex,
     title: event.summary || "Busy",
     link: event.htmlLink || "",
+    extendedProperties: event.extendedProperties || null,
     start,
     end,
     source: "external"
@@ -142,7 +143,15 @@ async function fetchWithAuth(url, options = {}) {
   return response;
 }
 
-async function fetchPagedEvents(calendarId, timeMin, timeMax) {
+function appendExtendedPropertyFilters(params, filters) {
+  if (!filters) {return;}
+  const list = Array.isArray(filters) ? filters : [filters];
+  list.filter(Boolean).forEach((filter) => {
+    params.append("privateExtendedProperty", filter);
+  });
+}
+
+async function fetchPagedEvents(calendarId, timeMin, timeMax, options = {}) {
   const events = [];
   let pageToken = "";
   do {
@@ -153,6 +162,7 @@ async function fetchPagedEvents(calendarId, timeMin, timeMax) {
       orderBy: "startTime",
       maxResults: "2500"
     });
+    appendExtendedPropertyFilters(params, options.privateExtendedProperty);
     if (pageToken) {
       params.set("pageToken", pageToken);
     }
@@ -175,12 +185,15 @@ async function fetchPagedEvents(calendarId, timeMin, timeMax) {
 export async function fetchCalendarEvents({
   timeMin,
   timeMax,
-  calendarIds = null
+  calendarIds = null,
+  privateExtendedProperty = null
 }) {
   const ids = getCalendarIds(calendarIds);
   const events = [];
   for (const calendarId of ids) {
-    const calendarEvents = await fetchPagedEvents(calendarId, timeMin, timeMax);
+    const calendarEvents = await fetchPagedEvents(calendarId, timeMin, timeMax, {
+      privateExtendedProperty
+    });
     events.push(...calendarEvents);
   }
   return events;
@@ -219,18 +232,22 @@ export async function updateCalendarEvent(calendarId, eventId, start, end) {
   return true;
 }
 
-export async function createCalendarEvent(calendarId, title, start, end) {
+export async function createCalendarEvent(calendarId, title, start, end, options = {}) {
   if (!calendarId || !start || !end) {
     throw new Error("Missing calendar create data");
   }
   const url = `${GOOGLE_API_BASE}/calendars/${encodeURIComponent(calendarId)}/events`;
+  const extendedProperties = options.extendedProperties || null;
+  const description = options.description || "";
   const response = await fetchWithAuth(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       summary: title || "",
       start: { dateTime: start },
-      end: { dateTime: end }
+      end: { dateTime: end },
+      description,
+      ...(extendedProperties ? { extendedProperties } : {})
     })
   });
   if (!response.ok) {

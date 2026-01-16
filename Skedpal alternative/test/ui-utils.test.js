@@ -5,6 +5,7 @@ import { setTimeout as realSetTimeout, clearTimeout as realClearTimeout } from "
 import {
   applyPrioritySelectColor,
   getInheritedSubtaskFields,
+  getCalendarSyncSettings,
   getLocalDateKey,
   normalizeHorizonDays,
   debounce,
@@ -112,6 +113,26 @@ describe("normalizeHorizonDays", () => {
 
   it("falls back for invalid values", () => {
     assert.strictEqual(normalizeHorizonDays("nope", 1, 60, 14), 14);
+  });
+});
+
+describe("getCalendarSyncSettings", () => {
+  it("normalizes sync settings against the scheduling horizon", () => {
+    const settings = {
+      schedulingHorizonDays: 7,
+      googleCalendarTaskSettings: {
+        "cal-1": { syncScheduledEvents: true, syncDays: 14 }
+      }
+    };
+    const resolved = getCalendarSyncSettings(settings);
+    assert.deepStrictEqual(resolved["cal-1"], {
+      syncScheduledEvents: true,
+      syncDays: 7
+    });
+  });
+
+  it("returns an empty object when settings are missing", () => {
+    assert.deepStrictEqual(getCalendarSyncSettings(null), {});
   });
 });
 

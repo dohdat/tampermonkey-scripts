@@ -108,6 +108,29 @@ describe("calendar external events", () => {
     assert.strictEqual(maxDate.toISOString(), range.end.toISOString());
   });
 
+  it("filters out calendars used for scheduled event sync", async () => {
+    let capturedMessage = null;
+    state.settingsCache = {
+      ...state.settingsCache,
+      googleCalendarIds: ["calendar-1", "calendar-2"],
+      googleCalendarTaskSettings: {
+        "calendar-2": { syncScheduledEvents: true, syncDays: 3 }
+      }
+    };
+    globalThis.chrome = {
+      runtime: {
+        lastError: null,
+        sendMessage: (msg, cb) => {
+          capturedMessage = msg;
+          cb({ ok: true, events: [] });
+        }
+      }
+    };
+    const updated = await ensureExternalEvents(range);
+    assert.strictEqual(updated, true);
+    assert.deepStrictEqual(capturedMessage.calendarIds, ["calendar-1"]);
+  });
+
   it("skips fetch when a pending key matches", async () => {
     state.calendarExternalPendingKey = buildKey(range, state.settingsCache.googleCalendarIds);
     let called = 0;

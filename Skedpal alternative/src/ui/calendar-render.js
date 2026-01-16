@@ -286,6 +286,9 @@ function buildCalendarEventBlock(item, timeMapColorById) {
     block.style.backgroundColor = styles.backgroundColor;
     block.style.borderColor = styles.borderColor;
   }
+  if (source === "external" && item.eventEnd < new Date()) {
+    block.classList.add("calendar-event--past");
+  }
   block.setAttribute("data-test-skedpal", "calendar-event");
   const title = buildEventTitle(item);
   if (source === "external") {

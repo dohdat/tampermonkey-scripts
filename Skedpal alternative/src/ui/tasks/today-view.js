@@ -30,7 +30,7 @@ function endOfDay(date) {
 export function getTodayRange(date = new Date()) {
   const dayStart = startOfDay(date);
   const dayEnd = endOfDay(date);
-  return { start: dayStart, end: dayEnd };
+  return { start: dayStart, end: dayEnd, days: 1 };
 }
 
 function getTodayStart(task, dayStart, dayEnd) {
@@ -216,7 +216,10 @@ function buildExternalEventCard(event, dayStart, dayEnd) {
 }
 
 function buildExternalEventEntries(dayStart, dayEnd) {
-  const externalEvents = getExternalEventsForRange({ start: dayStart, end: dayEnd });
+  const externalEvents = getExternalEventsForRange(
+    { start: dayStart, end: dayEnd, days: 1 },
+    "day"
+  );
   return (externalEvents || []).map((event) => ({
     type: "external",
     start: event.start < dayStart ? dayStart : event.start,
@@ -275,7 +278,7 @@ export function renderTodayView(tasks, timeMaps, options = {}) {
 export async function refreshTodayView(tasks, timeMaps, options = {}) {
   const now = options.now ? new Date(options.now) : new Date();
   renderTodayView(tasks, timeMaps, { ...options, now });
-  const updated = await ensureExternalEvents(getTodayRange(now));
+  const updated = await ensureExternalEvents(getTodayRange(now), "day");
   if (updated) {
     renderTodayView(tasks, timeMaps, { ...options, now });
   }

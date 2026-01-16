@@ -196,6 +196,88 @@ describe("google calendar helpers", () => {
     assert.strictEqual(events[0].colorHex, "");
   });
 
+  it("returns sync tokens and deleted events when incremental sync is enabled", async () => {
+    installChrome();
+    let capturedUrl = "";
+    globalThis.fetch = async (url) => {
+      capturedUrl = String(url || "");
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          items: [
+            {
+              id: "evt-1",
+              summary: "Block 1",
+              start: { dateTime: "2026-01-07T09:00:00Z" },
+              end: { dateTime: "2026-01-07T10:00:00Z" }
+            },
+            {
+              id: "evt-2",
+              status: "cancelled",
+              start: { dateTime: "2026-01-07T11:00:00Z" },
+              end: { dateTime: "2026-01-07T12:00:00Z" }
+            }
+          ],
+          nextSyncToken: "sync-next"
+        })
+      };
+    };
+    const result = await fetchCalendarEvents({
+      timeMin: "2026-01-07T00:00:00Z",
+      timeMax: "2026-01-08T00:00:00Z",
+      calendarIds: ["calendar-1"],
+      syncTokensByCalendar: { "calendar-1": "sync-1" },
+      includeSyncTokens: true
+    });
+    assert.ok(capturedUrl.includes("syncToken=sync-1"));
+    assert.strictEqual(result.events.length, 1);
+    assert.strictEqual(result.deletedEvents.length, 1);
+    assert.strictEqual(result.deletedEvents[0].id, "evt-2");
+    assert.strictEqual(result.syncTokensByCalendar["calendar-1"], "sync-next");
+    assert.strictEqual(result.isIncremental, true);
+  });
+
+  it("resyncs a calendar when the sync token is gone", async () => {
+    installChrome();
+    let callCount = 0;
+    globalThis.fetch = async () => {
+      callCount += 1;
+      if (callCount === 1) {
+        return {
+          ok: false,
+          status: 410,
+          text: async () => "gone"
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          items: [
+            {
+              id: "evt-3",
+              summary: "Resynced",
+              start: { dateTime: "2026-01-07T13:00:00Z" },
+              end: { dateTime: "2026-01-07T14:00:00Z" }
+            }
+          ],
+          nextSyncToken: "sync-2"
+        })
+      };
+    };
+    const result = await fetchCalendarEvents({
+      timeMin: "2026-01-07T00:00:00Z",
+      timeMax: "2026-01-08T00:00:00Z",
+      calendarIds: ["calendar-1"],
+      syncTokensByCalendar: { "calendar-1": "stale" },
+      includeSyncTokens: true
+    });
+    assert.strictEqual(result.events.length, 1);
+    assert.strictEqual(result.events[0].title, "Resynced");
+    assert.strictEqual(result.syncTokensByCalendar["calendar-1"], "sync-2");
+  });
+
   it("throws when calendar events fetch fails", async () => {
     installChrome();
     globalThis.fetch = async () => ({

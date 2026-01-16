@@ -366,14 +366,32 @@ function handleCalendarEventsMessage(message, sendResponse) {
     return false;
   }
   const calendarIds = Array.isArray(message.calendarIds) ? message.calendarIds : null;
-  fetchCalendarEvents({ timeMin, timeMax, calendarIds })
-    .then((events) => {
+  const syncTokensByCalendar =
+    message.syncTokensByCalendar && typeof message.syncTokensByCalendar === "object"
+      ? message.syncTokensByCalendar
+      : null;
+  fetchCalendarEvents({
+    timeMin,
+    timeMax,
+    calendarIds,
+    syncTokensByCalendar,
+    includeCancelled: true,
+    includeSyncTokens: true
+  })
+    .then((result) => {
+      const events = Array.isArray(result?.events) ? result.events : [];
       const payload = events.map((event) => ({
         ...event,
         start: event.start.toISOString(),
         end: event.end.toISOString()
       }));
-      sendResponse({ ok: true, events: payload });
+      sendResponse({
+        ok: true,
+        events: payload,
+        deletedEvents: result?.deletedEvents || [],
+        syncTokensByCalendar: result?.syncTokensByCalendar || {},
+        isIncremental: Boolean(result?.isIncremental)
+      });
     })
     .catch((error) => sendResponse({ ok: false, error: error.message }));
   return true;

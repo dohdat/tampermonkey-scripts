@@ -71,6 +71,7 @@ export const OPACITY_EIGHTY = 0.8;
 
 export const HTTP_STATUS_UNAUTHORIZED = 401;
 export const HTTP_STATUS_FORBIDDEN = 403;
+export const HTTP_STATUS_GONE = 410;
 
 export const HALF = 0.5;
 export const SORT_BEFORE = INDEX_NOT_FOUND;
@@ -103,6 +104,10 @@ export const FLEXIBLE_REPEAT_WINDOW_DAYS = THREE;
 export const JSON_INDENT = TWO;
 export const CALENDAR_EVENT_MODAL_MARGIN_PX = TWELVE;
 export const CALENDAR_LIST_CACHE_KEY = "google-calendar-list";
+export const CALENDAR_EVENTS_CACHE_PREFIX = "google-calendar-events:";
+export const CALENDAR_EXTERNAL_BUFFER_HOURS = TWO;
+export const CALENDAR_EXTERNAL_CACHE_TTL_MS = SIXTY * MS_PER_MINUTE;
+export const CALENDAR_EXTERNAL_PREFETCH_DELAY_MS = TWO_FIFTY;
 export const SPLIT_VIEW_FOCUS_OFFSET_PX = 72;
 export const SPLIT_VIEW_FOCUS_PADDING_PX = SIXTEEN;
 export const NEXT_MONTH_OFFSET = ONE;

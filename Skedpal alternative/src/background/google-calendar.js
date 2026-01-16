@@ -2,9 +2,11 @@ import {
   CALENDAR_COLOR_OVERRIDES,
   DEFAULT_CALENDAR_IDS,
   GOOGLE_API_BASE,
+  HTTP_STATUS_GONE,
   HTTP_STATUS_FORBIDDEN,
   HTTP_STATUS_UNAUTHORIZED,
-  THREE
+  THREE,
+  TWO_THOUSAND_FIVE_HUNDRED
 } from "../constants.js";
 
 function parseIsoDate(value) {
@@ -35,8 +37,13 @@ function resolveEventColor(event, calendarId) {
   return { colorId, colorHex };
 }
 
-export function normalizeGoogleEvent(event, calendarId) {
-  if (!event || event.status === "cancelled") {return null;}
+function normalizeCancelledEvent(event, calendarId, includeCancelled) {
+  if (event.status !== "cancelled") {return null;}
+  if (!includeCancelled || !event.id) {return null;}
+  return { id: event.id, calendarId, cancelled: true };
+}
+
+function normalizeTimedEvent(event, calendarId) {
   const start = parseGoogleEventTime(event.start);
   const end = parseGoogleEventTime(event.end);
   if (!start || !end || end <= start) {return null;}
@@ -53,6 +60,14 @@ export function normalizeGoogleEvent(event, calendarId) {
     end,
     source: "external"
   };
+}
+
+export function normalizeGoogleEvent(event, calendarId, options = {}) {
+  if (!event) {return null;}
+  const cancelled = normalizeCancelledEvent(event, calendarId, options.includeCancelled);
+  if (cancelled) {return cancelled;}
+  if (event.status === "cancelled") {return null;}
+  return normalizeTimedEvent(event, calendarId);
 }
 
 export function normalizeBusyBlocks(calendarId, busyRanges = []) {
@@ -151,52 +166,147 @@ function appendExtendedPropertyFilters(params, filters) {
   });
 }
 
+const DEFAULT_EVENTS_FIELDS =
+  "items(id,summary,htmlLink,start,end,updated,colorId,status,extendedProperties),nextPageToken,nextSyncToken";
+
+function buildEventsParams(timeMin, timeMax, options, pageToken) {
+  const params = new URLSearchParams({
+    timeMin,
+    timeMax,
+    singleEvents: "true",
+    orderBy: "startTime",
+    maxResults: String(TWO_THOUSAND_FIVE_HUNDRED),
+    fields: options.fields || DEFAULT_EVENTS_FIELDS
+  });
+  appendExtendedPropertyFilters(params, options.privateExtendedProperty);
+  if (options.syncToken) {
+    params.set("syncToken", options.syncToken);
+  }
+  if (options.includeCancelled || options.syncToken) {
+    params.set("showDeleted", "true");
+  }
+  if (pageToken) {
+    params.set("pageToken", pageToken);
+  }
+  return params;
+}
+
+async function fetchEventsPage(calendarId, params, hasSyncToken) {
+  const url = `${GOOGLE_API_BASE}/calendars/${encodeURIComponent(calendarId)}/events?${params}`;
+  const response = await fetchWithAuth(url, { method: "GET" });
+  if (response.status === HTTP_STATUS_GONE && hasSyncToken) {
+    await response.text().catch(() => "");
+    return { reset: true, data: null };
+  }
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Google Calendar events error (${response.status}): ${text}`);
+  }
+  const data = await response.json();
+  return { reset: false, data };
+}
+
 async function fetchPagedEvents(calendarId, timeMin, timeMax, options = {}) {
   const events = [];
   let pageToken = "";
+  let nextSyncToken = "";
   do {
-    const params = new URLSearchParams({
-      timeMin,
-      timeMax,
-      singleEvents: "true",
-      orderBy: "startTime",
-      maxResults: "2500"
-    });
-    appendExtendedPropertyFilters(params, options.privateExtendedProperty);
-    if (pageToken) {
-      params.set("pageToken", pageToken);
+    const params = buildEventsParams(timeMin, timeMax, options, pageToken);
+    const { reset, data } = await fetchEventsPage(
+      calendarId,
+      params,
+      Boolean(options.syncToken)
+    );
+    if (reset) {
+      return { events: [], nextSyncToken: "", reset: true };
     }
-    const url = `${GOOGLE_API_BASE}/calendars/${encodeURIComponent(calendarId)}/events?${params}`;
-    const response = await fetchWithAuth(url, { method: "GET" });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Google Calendar events error (${response.status}): ${text}`);
-    }
-    const data = await response.json();
     (data.items || []).forEach((event) => {
-      const normalized = normalizeGoogleEvent(event, calendarId);
+      const normalized = normalizeGoogleEvent(event, calendarId, {
+        includeCancelled: options.includeCancelled || Boolean(options.syncToken)
+      });
       if (normalized) {events.push(normalized);}
     });
     pageToken = data.nextPageToken || "";
+    if (data.nextSyncToken) {nextSyncToken = data.nextSyncToken;}
   } while (pageToken);
-  return events;
+  return { events, nextSyncToken, reset: false };
+}
+
+async function fetchCalendarEventsForId({
+  calendarId,
+  timeMin,
+  timeMax,
+  privateExtendedProperty,
+  syncToken,
+  includeCancelled,
+  fields
+}) {
+  const options = {
+    privateExtendedProperty,
+    syncToken,
+    includeCancelled: includeCancelled || Boolean(syncToken),
+    fields
+  };
+  let pageResult = await fetchPagedEvents(calendarId, timeMin, timeMax, options);
+  if (pageResult.reset && syncToken) {
+    pageResult = await fetchPagedEvents(calendarId, timeMin, timeMax, {
+      ...options,
+      syncToken: ""
+    });
+  }
+  return pageResult;
 }
 
 export async function fetchCalendarEvents({
   timeMin,
   timeMax,
   calendarIds = null,
-  privateExtendedProperty = null
+  privateExtendedProperty = null,
+  syncTokensByCalendar = null,
+  includeCancelled = false,
+  includeSyncTokens = false,
+  fields = ""
 }) {
   const ids = getCalendarIds(calendarIds);
   const events = [];
+  const deletedEvents = [];
+  const nextTokens = {};
+  const requestedTokens =
+    syncTokensByCalendar && typeof syncTokensByCalendar === "object"
+      ? syncTokensByCalendar
+      : null;
+  const isIncremental = Boolean(requestedTokens);
   for (const calendarId of ids) {
-    const calendarEvents = await fetchPagedEvents(calendarId, timeMin, timeMax, {
-      privateExtendedProperty
+    const syncToken = requestedTokens?.[calendarId] || "";
+    const pageResult = await fetchCalendarEventsForId({
+      calendarId,
+      timeMin,
+      timeMax,
+      privateExtendedProperty,
+      syncToken,
+      includeCancelled,
+      fields
     });
-    events.push(...calendarEvents);
+    if (pageResult.nextSyncToken) {
+      nextTokens[calendarId] = pageResult.nextSyncToken;
+    }
+    (pageResult.events || []).forEach((event) => {
+      if (event.cancelled) {
+        deletedEvents.push({ id: event.id, calendarId });
+        return;
+      }
+      events.push(event);
+    });
   }
-  return events;
+  if (!includeSyncTokens) {
+    return events;
+  }
+  return {
+    events,
+    deletedEvents,
+    syncTokensByCalendar: nextTokens,
+    isIncremental
+  };
 }
 
 export async function deleteCalendarEvent(calendarId, eventId) {

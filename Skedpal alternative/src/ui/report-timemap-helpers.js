@@ -119,7 +119,10 @@ export function buildScheduledIntervalsByTimeMap(tasks, horizonStart, horizonEnd
 }
 
 export function buildExternalIntervalsByTimeMap(timeMaps, horizonStart, horizonEnd) {
-  const externalEvents = getExternalEventsForRange({ start: horizonStart, end: horizonEnd });
+  const externalEvents = getExternalEventsForRange(
+    { start: horizonStart, end: horizonEnd },
+    "report"
+  );
   if (!externalEvents.length) {return new Map();}
   const usage = new Map();
   const horizonStartMs = horizonStart.getTime();

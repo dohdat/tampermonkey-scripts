@@ -80,11 +80,27 @@ function installDomStubs() {
 installDomStubs();
 
 const { domRefs } = await import("../src/ui/constants.js");
+const {
+  CALENDAR_EVENTS_CACHE_PREFIX,
+  CALENDAR_EXTERNAL_BUFFER_HOURS,
+  MS_PER_HOUR
+} = await import("../src/constants.js");
 const { state } = await import("../src/ui/state/page-state.js");
-const { refreshTodayView, renderTodayView } = await import("../src/ui/tasks/today-view.js");
+const {
+  refreshTodayView,
+  renderTodayView
+} = await import("../src/ui/tasks/today-view.js");
+const { removeExternalEventsCacheEntry } = await import("../src/ui/calendar-external.js");
+
+function buildRangeKey(range, viewMode, calendarIds) {
+  const idsKey = Array.isArray(calendarIds)
+    ? calendarIds.filter(Boolean).sort().join(",") || "none"
+    : "all";
+  return `${CALENDAR_EVENTS_CACHE_PREFIX}${viewMode}:${range.start.toISOString()}_${range.end.toISOString()}_${idsKey}`;
+}
 
 describe("today view", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     installDomStubs();
     domRefs.todayList = todayList;
     todayList.children = [];
@@ -93,6 +109,19 @@ describe("today view", () => {
     state.calendarExternalEvents = [];
     state.calendarExternalRange = null;
     state.calendarExternalRangeKey = "";
+    const baseRange = {
+      start: new Date(2026, 0, 6, 0, 0, 0, 0),
+      end: new Date(2026, 0, 6, 23, 59, 59, 999),
+      days: 1
+    };
+    const bufferedRange = {
+      start: new Date(baseRange.start.getTime() - CALENDAR_EXTERNAL_BUFFER_HOURS * MS_PER_HOUR),
+      end: new Date(baseRange.end.getTime() + CALENDAR_EXTERNAL_BUFFER_HOURS * MS_PER_HOUR),
+      days: 1
+    };
+    await removeExternalEventsCacheEntry(
+      buildRangeKey(bufferedRange, "day", state.settingsCache.googleCalendarIds)
+    );
   });
 
   it("renders tasks scheduled for today", () => {
@@ -137,7 +166,17 @@ describe("today view", () => {
     const now = new Date(2026, 0, 6, 9, 0);
     const dayStart = new Date(2026, 0, 6, 0, 0);
     const dayEnd = new Date(2026, 0, 6, 23, 59, 59, 999);
-    state.calendarExternalRange = { start: dayStart, end: dayEnd };
+    const bufferedRange = {
+      start: new Date(dayStart.getTime() - CALENDAR_EXTERNAL_BUFFER_HOURS * MS_PER_HOUR),
+      end: new Date(dayEnd.getTime() + CALENDAR_EXTERNAL_BUFFER_HOURS * MS_PER_HOUR),
+      days: 1
+    };
+    state.calendarExternalRange = bufferedRange;
+    state.calendarExternalRangeKey = buildRangeKey(
+      bufferedRange,
+      "day",
+      state.settingsCache.googleCalendarIds
+    );
     state.calendarExternalEvents = [
       {
         id: "evt-1",
@@ -160,7 +199,17 @@ describe("today view", () => {
     const now = new Date(2026, 0, 6, 9, 0);
     const dayStart = new Date(2026, 0, 6, 0, 0);
     const dayEnd = new Date(2026, 0, 6, 23, 59, 59, 999);
-    state.calendarExternalRange = { start: dayStart, end: dayEnd };
+    const bufferedRange = {
+      start: new Date(dayStart.getTime() - CALENDAR_EXTERNAL_BUFFER_HOURS * MS_PER_HOUR),
+      end: new Date(dayEnd.getTime() + CALENDAR_EXTERNAL_BUFFER_HOURS * MS_PER_HOUR),
+      days: 1
+    };
+    state.calendarExternalRange = bufferedRange;
+    state.calendarExternalRangeKey = buildRangeKey(
+      bufferedRange,
+      "day",
+      state.settingsCache.googleCalendarIds
+    );
     state.calendarExternalEvents = [
       {
         id: "evt-2",

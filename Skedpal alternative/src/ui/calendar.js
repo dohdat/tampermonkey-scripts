@@ -1,6 +1,5 @@
 import {
   DAYS_PER_WEEK,
-  FOURTEEN,
   MINUTES_PER_HOUR,
   MS_PER_MINUTE,
   SPLIT_VIEW_FOCUS_OFFSET_PX,
@@ -34,6 +33,7 @@ import {
 import {
   ensureExternalEvents,
   getExternalEventsForRange,
+  hydrateExternalEvents,
   syncExternalEventsCache
 } from "./calendar-external.js";
 import { ensureCalendarDragHandlers } from "./calendar-drag.js";
@@ -237,15 +237,6 @@ function isCalendarVisible() {
   return isCalendarSplitVisible() || domRefs.appShell?.dataset?.activeView === "calendar";
 }
 
-function getExternalFetchRange() {
-  const horizonDays = Number(state.settingsCache?.schedulingHorizonDays);
-  const safeDays = Number.isFinite(horizonDays) && horizonDays > 0 ? horizonDays : FOURTEEN;
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = addCalendarDays(start, safeDays);
-  return { start, end };
-}
-
 function getSplitViewFocusOffsetPx() {
   const header = domRefs.appHeader;
   if (header?.getBoundingClientRect) {
@@ -330,8 +321,9 @@ export function focusCalendarEvent(taskId, options = {}) {
 export async function renderCalendar(tasks = state.tasksCache) {
   const viewMode = getActiveCalendarViewMode();
   const range = getCalendarRange(state.calendarAnchorDate, viewMode);
+  await hydrateExternalEvents(range, viewMode);
   const scheduledEvents = getScheduledEvents(tasks);
-  const externalEvents = getExternalEventsForRange(range);
+  const externalEvents = getExternalEventsForRange(range, viewMode);
   const events = [...scheduledEvents, ...externalEvents].filter(
     (event) => event.end > range.start && event.start < range.end
   );
@@ -351,8 +343,7 @@ export async function renderCalendar(tasks = state.tasksCache) {
   }
   if (isCalendarVisible() && state.calendarExternalAllowFetch) {
     state.calendarExternalAllowFetch = false;
-    const fetchRange = getExternalFetchRange();
-    ensureExternalEvents(fetchRange)
+    ensureExternalEvents(range, viewMode)
       .then((updated) => {
         if (updated) {
           renderCalendar(tasks);

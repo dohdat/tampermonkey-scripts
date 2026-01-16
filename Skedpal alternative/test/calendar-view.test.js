@@ -333,7 +333,7 @@ describe("calendar view", () => {
       }
     };
     const range = getCalendarRange(state.calendarAnchorDate, state.calendarViewMode);
-    await ensureExternalEvents(range);
+    await ensureExternalEvents(range, state.calendarViewMode);
     assert.strictEqual(state.calendarExternalPendingKey, "");
     globalThis.chrome = originalChrome;
     console.warn = originalWarn;

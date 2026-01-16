@@ -6,6 +6,26 @@ import {
   getUniqueAvailabilityMinutes
 } from "../src/ui/report.js";
 import { state } from "../src/ui/state/page-state.js";
+import {
+  CALENDAR_EVENTS_CACHE_PREFIX,
+  CALENDAR_EXTERNAL_BUFFER_HOURS,
+  MS_PER_HOUR
+} from "../src/constants.js";
+
+function buildRangeKey(range, viewMode, calendarIds) {
+  const idsKey = Array.isArray(calendarIds)
+    ? calendarIds.filter(Boolean).sort().join(",") || "none"
+    : "all";
+  return `${CALENDAR_EVENTS_CACHE_PREFIX}${viewMode}:${range.start.toISOString()}_${range.end.toISOString()}_${idsKey}`;
+}
+
+function buildBufferedRange(range) {
+  return {
+    start: new Date(range.start.getTime() - CALENDAR_EXTERNAL_BUFFER_HOURS * MS_PER_HOUR),
+    end: new Date(range.end.getTime() + CALENDAR_EXTERNAL_BUFFER_HOURS * MS_PER_HOUR),
+    days: range.days
+  };
+}
 
 describe("report", () => {
   it("ranks missed tasks by missed percentage then priority", () => {
@@ -398,11 +418,17 @@ describe("report", () => {
       rangeStart.setHours(0, 0, 0, 0);
       const rangeEnd = new OriginalDate(rangeStart);
       rangeEnd.setDate(rangeEnd.getDate() + 1);
-      state.calendarExternalRange = {
+      const bufferedRange = buildBufferedRange({
         start: rangeStart,
-        end: rangeEnd
-      };
-      state.calendarExternalRangeKey = "report-test";
+        end: rangeEnd,
+        days: 1
+      });
+      state.calendarExternalRange = bufferedRange;
+      state.calendarExternalRangeKey = buildRangeKey(
+        bufferedRange,
+        "report",
+        state.settingsCache.googleCalendarIds
+      );
       state.calendarExternalEvents = [
         {
           start: new OriginalDate(scheduledStart.getTime() + 30 * 60 * 1000),
@@ -464,11 +490,18 @@ describe("report", () => {
           ]
         }
       ];
-      state.calendarExternalRange = {
+      const baseRange = {
         start: new OriginalDate(2026, 0, 5, 0, 0, 0),
-        end: new OriginalDate(2026, 0, 6, 0, 0, 0)
+        end: new OriginalDate(2026, 0, 6, 0, 0, 0),
+        days: 1
       };
-      state.calendarExternalRangeKey = "report-test-2";
+      const bufferedRange = buildBufferedRange(baseRange);
+      state.calendarExternalRange = bufferedRange;
+      state.calendarExternalRangeKey = buildRangeKey(
+        bufferedRange,
+        "report",
+        state.settingsCache.googleCalendarIds
+      );
       state.calendarExternalEvents = [
         {
           start: new OriginalDate(2026, 0, 5, 10, 0, 0),

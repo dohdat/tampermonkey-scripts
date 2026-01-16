@@ -495,7 +495,7 @@ export function renderReport(tasks = state.tasksCache) {
   const { reportList, reportBadge } = domRefs;
   if (!reportList) {return;}
   const { horizonStart, horizonEnd } = buildReportHorizonRange(state.settingsCache);
-  ensureExternalEvents({ start: horizonStart, end: horizonEnd }).then((didFetch) => {
+  ensureExternalEvents({ start: horizonStart, end: horizonEnd }, "report").then((didFetch) => {
     if (didFetch) {
       renderReport(state.tasksCache);
     }

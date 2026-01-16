@@ -244,16 +244,40 @@ function isNonRepeating(repeat) {
   return !repeat || repeat.type === "none" || repeat.unit === "none";
 }
 
-function buildRepeatContext(task, now, horizonEnd, repeat) {
-  const anchor = startOfDay(task.startFrom || task.deadline || now);
+function normalizeAnchorDate(value, fallback) {
+  if (!value) {return fallback;}
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? fallback : date;
+}
+
+function resolveRepeatAnchorDate(task, now) {
+  const fallbackAnchor = now instanceof Date ? now : new Date();
+  const anchorSource =
+    normalizeAnchorDate(task.repeatAnchor, null) ||
+    normalizeAnchorDate(task.startFrom, null) ||
+    normalizeAnchorDate(task.deadline, null) ||
+    fallbackAnchor;
+  return startOfDay(anchorSource);
+}
+
+function resolveRepeatLimitDate(repeat, horizonEnd) {
   const limitDateRaw =
     repeat.end?.type === "on" && repeat.end?.date ? new Date(repeat.end.date) : horizonEnd;
-  const limitDate = endOfDay(limitDateRaw > horizonEnd ? horizonEnd : limitDateRaw);
+  return endOfDay(limitDateRaw > horizonEnd ? horizonEnd : limitDateRaw);
+}
+
+function resolveRepeatMaxCount(repeat) {
+  if (repeat.end?.type === "after" && repeat.end?.count) {
+    return Math.max(0, Number(repeat.end.count));
+  }
+  return Number.POSITIVE_INFINITY;
+}
+
+function buildRepeatContext(task, now, horizonEnd, repeat) {
+  const anchor = resolveRepeatAnchorDate(task, now);
+  const limitDate = resolveRepeatLimitDate(repeat, horizonEnd);
   const interval = Math.max(1, Number(repeat.interval) || 1);
-  const maxCount =
-    repeat.end?.type === "after" && repeat.end?.count
-      ? Math.max(0, Number(repeat.end.count))
-      : Number.POSITIVE_INFINITY;
+  const maxCount = resolveRepeatMaxCount(repeat);
   const nowStart = startOfDay(now);
   return { anchor, interval, limitDate, maxCount, nowStart, horizonEnd, repeat };
 }

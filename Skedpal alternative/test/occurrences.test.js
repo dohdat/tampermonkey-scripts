@@ -74,6 +74,27 @@ describe("scheduler occurrences", () => {
     assert.strictEqual(dates[0].getDay(), startFrom.getDay());
   });
 
+  it("uses repeatAnchor when resolving the weekly any anchor", () => {
+    const anchor = new Date(2026, 0, 1);
+    const localNow = new Date(2026, 0, 10);
+    const localHorizon = new Date(2026, 1, 1, 23, 59, 59);
+    const task = {
+      id: "t6c",
+      repeatAnchor: anchor,
+      startFrom: new Date(2026, 0, 5),
+      repeat: {
+        type: "custom",
+        unit: "week",
+        interval: 2,
+        weeklyMode: "any",
+        weeklyDays: [0, 1, 2, 3, 4, 5, 6]
+      }
+    };
+    const dates = buildOccurrenceDates(task, localNow, localHorizon);
+    assert.ok(dates.length > 0);
+    assert.strictEqual(dates[0].getDay(), anchor.getDay());
+  });
+
   it("uses the monthly range end day for range repeats", () => {
     const task = {
       id: "t7",

@@ -23,7 +23,8 @@ import {
   isStartAfterDeadline,
   normalizeTimeMap,
   uuid,
-  parseLocalDateInput
+  parseLocalDateInput,
+  resolveRepeatAnchor
 } from "../utils.js";
 import {
   formatLocalDateInputValue,
@@ -271,14 +272,22 @@ function resolveTaskSubtaskScheduleMode(existingTask, isParentTask) {
 function buildTaskPayload(values, existingTask, parentTask, isParentTask, order) {
   const repeat = resolveTaskRepeatSelection();
   const subtaskScheduleMode = resolveTaskSubtaskScheduleMode(existingTask, isParentTask);
+  const deadline = parseLocalDateInput(values.deadline);
+  const startFrom = parseLocalDateInput(values.startFrom);
+  const repeatAnchor = resolveRepeatAnchor({
+    repeat,
+    startFrom,
+    deadline,
+    existingAnchor: existingTask?.repeatAnchor
+  });
   return {
     id: values.id,
     title: values.title,
     durationMin: values.durationMin,
     minBlockMin: values.minBlockMin,
     priority: values.priority,
-    deadline: parseLocalDateInput(values.deadline),
-    startFrom: parseLocalDateInput(values.startFrom),
+    deadline,
+    startFrom,
     subtaskParentId: parentTask?.id || values.parentId || null,
     link: values.link || "",
     timeMapIds: values.timeMapIds,
@@ -291,6 +300,7 @@ function buildTaskPayload(values, existingTask, parentTask, isParentTask, order)
     completed: existingTask?.completed || false,
     completedAt: existingTask?.completedAt || null,
     completedOccurrences: existingTask?.completedOccurrences || [],
+    repeatAnchor,
     scheduleStatus: TASK_STATUS_UNSCHEDULED,
     scheduledStart: null,
     scheduledEnd: null

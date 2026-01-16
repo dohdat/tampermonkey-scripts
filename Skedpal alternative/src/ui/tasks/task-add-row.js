@@ -21,6 +21,7 @@ import {
   getNextSubtaskOrder,
   normalizeSubtaskScheduleMode,
   parseLocalDateInput,
+  resolveRepeatAnchor,
   uuid
 } from "../utils.js";
 import {
@@ -176,6 +177,10 @@ function resolveQuickAddDefaults(resolvedTemplate, settings) {
   };
 }
 
+function normalizeOptionalString(value) {
+  return value || "";
+}
+
 function normalizeClipboardTaskTitle(value) {
   const trimmed = (value || "").trim();
   if (!trimmed) {return "";}
@@ -228,6 +233,74 @@ export function parseClipboardTaskTitles(text) {
     .filter(Boolean);
 }
 
+function resolveQuickAddDateRange(parsedStartFrom, parsedDeadline, defaults) {
+  const startFrom = parsedStartFrom ?? defaults.startFrom;
+  const deadline = parsedDeadline ?? defaults.deadline;
+  return resolveMergedDateRange({
+    startFrom,
+    deadline,
+    startFromSource: parsedStartFrom ? "parsed" : "existing",
+    deadlineSource: parsedDeadline ? "parsed" : "existing"
+  });
+}
+
+function buildQuickAddBasePayload({
+  id,
+  title,
+  defaults,
+  dateRange,
+  repeat,
+  inheritedSection,
+  inheritedSubsection,
+  order
+}) {
+  return {
+    id,
+    title,
+    durationMin: defaults.durationMin,
+    minBlockMin: defaults.minBlockMin,
+    priority: defaults.priority,
+    deadline: dateRange.deadline,
+    startFrom: dateRange.startFrom,
+    link: defaults.link,
+    timeMapIds: defaults.timeMapIds,
+    section: normalizeOptionalString(inheritedSection),
+    subsection: normalizeOptionalString(inheritedSubsection),
+    order,
+    subtaskParentId: null,
+    subtaskScheduleMode: defaults.subtaskScheduleMode,
+    repeat,
+    reminders: [],
+    completed: false,
+    completedAt: null,
+    completedOccurrences: [],
+    scheduleStatus: TASK_STATUS_UNSCHEDULED,
+    scheduledStart: null,
+    scheduledEnd: null,
+    scheduledTimeMapId: null,
+    scheduledInstances: [],
+    repeatAnchor: resolveRepeatAnchor({
+      repeat,
+      startFrom: dateRange.startFrom,
+      deadline: dateRange.deadline
+    })
+  };
+}
+
+function finalizeQuickAddPayload(basePayload, parentTask) {
+  if (!parentTask) {return basePayload;}
+  const inherited = buildInheritedSubtaskUpdate(basePayload, parentTask) || basePayload;
+  return {
+    ...inherited,
+    repeatAnchor: resolveRepeatAnchor({
+      repeat: inherited.repeat,
+      startFrom: inherited.startFrom,
+      deadline: inherited.deadline,
+      existingAnchor: parentTask?.repeatAnchor || basePayload.repeatAnchor
+    })
+  };
+}
+
 function buildQuickAddPayload({
   id,
   title,
@@ -248,41 +321,20 @@ function buildQuickAddPayload({
     template
   );
   const defaults = resolveQuickAddDefaults(resolvedTemplate, settings);
-  const dateRange = resolveMergedDateRange({
-    startFrom: parsedStartFrom ?? defaults.startFrom,
-    deadline: parsedDeadline ?? defaults.deadline,
-    startFromSource: parsedStartFrom ? "parsed" : "existing",
-    deadlineSource: parsedDeadline ? "parsed" : "existing"
-  });
+  const dateRange = resolveQuickAddDateRange(parsedStartFrom, parsedDeadline, defaults);
   const order = resolveQuickAddOrder(parentTask, inheritedSection, inheritedSubsection, tasks);
-  const basePayload = {
+  const repeat = parsedRepeat || defaults.repeat;
+  const basePayload = buildQuickAddBasePayload({
     id,
     title,
-    durationMin: defaults.durationMin,
-    minBlockMin: defaults.minBlockMin,
-    priority: defaults.priority,
-    deadline: dateRange.deadline,
-    startFrom: dateRange.startFrom,
-    link: defaults.link,
-    timeMapIds: defaults.timeMapIds,
-    section: inheritedSection || "",
-    subsection: inheritedSubsection || "",
-    order,
-    subtaskParentId: null,
-    subtaskScheduleMode: defaults.subtaskScheduleMode,
-    repeat: parsedRepeat || defaults.repeat,
-    reminders: [],
-    completed: false,
-    completedAt: null,
-    completedOccurrences: [],
-    scheduleStatus: TASK_STATUS_UNSCHEDULED,
-    scheduledStart: null,
-    scheduledEnd: null,
-    scheduledTimeMapId: null,
-    scheduledInstances: []
-  };
-  if (!parentTask) {return basePayload;}
-  return buildInheritedSubtaskUpdate(basePayload, parentTask) || basePayload;
+    defaults,
+    dateRange,
+    repeat,
+    inheritedSection,
+    inheritedSubsection,
+    order
+  });
+  return finalizeQuickAddPayload(basePayload, parentTask);
 }
 
 export function buildQuickAddTaskPayload({

@@ -22,7 +22,8 @@ import {
   TWELVE,
   TWENTY_NINE,
   TWO,
-  TASK_STATUS_UNSCHEDULED
+  TASK_STATUS_UNSCHEDULED,
+  TASK_REPEAT_NONE
 } from "./constants.js";
 import { DEFAULT_SCHEDULING_HORIZON_DAYS } from "../data/db.js";
 
@@ -275,6 +276,22 @@ export function parseLocalDateInput(value) {
     return null;
   }
   return localDate.toISOString();
+}
+
+function normalizeRepeatAnchorValue(value) {
+  if (!value) {return null;}
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {return null;}
+  return date.toISOString();
+}
+
+export function resolveRepeatAnchor({ repeat, startFrom, deadline, existingAnchor }) {
+  if (!repeat || repeat.type === TASK_REPEAT_NONE || repeat.unit === TASK_REPEAT_NONE) {return null;}
+  const normalized =
+    normalizeRepeatAnchorValue(existingAnchor) ||
+    normalizeRepeatAnchorValue(startFrom) ||
+    normalizeRepeatAnchorValue(deadline);
+  return normalized || new Date().toISOString();
 }
 
 export function isStartAfterDeadline(startFrom, deadline) {

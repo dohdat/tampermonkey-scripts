@@ -18,6 +18,7 @@ import {
   END_OF_DAY_MINUTE,
   END_OF_DAY_MS,
   END_OF_DAY_SECOND,
+  TASK_REPEAT_NONE,
   TASK_STATUS_IGNORED,
   TASK_STATUS_SCHEDULED,
   TASK_STATUS_UNSCHEDULED
@@ -82,6 +83,72 @@ function getScheduledOccurrenceCount(taskPlacements) {
     return new Set(occurrenceIds).size;
   }
   return 1;
+}
+
+function parseAnchorDate(value) {
+  if (!value) {return null;}
+  if (typeof value === "string") {
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (match) {
+      const year = Number(match[1]);
+      const month = Number(match[2]);
+      const day = Number(match[3]);
+      const localDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+      return Number.isNaN(localDate.getTime()) ? null : localDate;
+    }
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getLatestCompletedAnchor(completedOccurrences) {
+  let latest = null;
+  (completedOccurrences || []).forEach((value) => {
+    const date = parseAnchorDate(value);
+    if (!date) {return;}
+    if (!latest || date > latest) {
+      latest = date;
+    }
+  });
+  return latest;
+}
+
+function getFirstScheduledInstanceAnchor(scheduledInstances) {
+  const entries = Array.isArray(scheduledInstances) ? scheduledInstances : [];
+  for (const entry of entries) {
+    const date = parseAnchorDate(entry?.start);
+    if (date) {return date;}
+  }
+  return null;
+}
+
+function ensureRepeatAnchorForTask(task, now) {
+  const repeat = task?.repeat;
+  if (!repeat || repeat.type === TASK_REPEAT_NONE || repeat.unit === TASK_REPEAT_NONE) {
+    return false;
+  }
+  if (parseAnchorDate(task.repeatAnchor)) {
+    return false;
+  }
+  const anchor =
+    parseAnchorDate(task.startFrom) ||
+    parseAnchorDate(task.deadline) ||
+    getLatestCompletedAnchor(task.completedOccurrences) ||
+    parseAnchorDate(task.scheduledStart) ||
+    getFirstScheduledInstanceAnchor(task.scheduledInstances) ||
+    now;
+  task.repeatAnchor = anchor.toISOString();
+  return true;
+}
+
+function ensureRepeatAnchors(tasks, now) {
+  let updated = false;
+  (tasks || []).forEach((task) => {
+    if (ensureRepeatAnchorForTask(task, now)) {
+      updated = true;
+    }
+  });
+  return updated;
 }
 
 async function persistSchedule(tasks, placements, unscheduled, ignored, deferred, now, horizonDays) {
@@ -218,6 +285,8 @@ async function runReschedule() {
   tasks = pruneResult.remaining;
   settings = pruneResult.settings;
   const deleted = pruneResult.prunedCount;
+
+  ensureRepeatAnchors(tasks, now);
 
   if (timeMaps.length === 0 || tasks.length === 0) {
     return {

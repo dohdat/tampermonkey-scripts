@@ -13,7 +13,8 @@ import { registerRepeatEventHandlers } from "./repeat-events.js";
 import {
   handleRepeatOccurrenceComplete,
   closeRepeatCompleteModal,
-  openTaskEditById
+  openTaskEditById,
+  cleanupTasksUpdatedListener
 } from "./tasks/tasks-actions.js";
 import {
   handleTaskListInputKeydown,
@@ -54,6 +55,7 @@ import { initDatePicker } from "./date-picker.js";
 import { initTaskModalSections } from "./task-modal-sections.js";
 import { initTaskPriorityDropdown } from "./tasks/task-priority-dropdown.js";
 import { initTaskDeleteShortcut } from "./tasks/task-delete-shortcut.js";
+import { cleanupCalendarView } from "./calendar.js";
 
 const {
   timeMapFormWrap,
@@ -311,7 +313,9 @@ export function registerEventListeners() {
     registerModalHandlers(),
     registerKeyboardHandlers(),
     registerCustomEventHandlers(),
-    registerRepeatEventHandlers()
+    registerRepeatEventHandlers(),
+    cleanupCalendarView,
+    cleanupTasksUpdatedListener
   ];
 
   setRepeatFromSelection({ ...DEFAULT_TASK_REPEAT });

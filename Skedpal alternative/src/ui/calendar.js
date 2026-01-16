@@ -22,6 +22,7 @@ import {
 export { buildUpdatedTaskForDrag, formatRescheduledMessage } from "./calendar-helpers.js";
 export { buildExternalUpdatePayload } from "./calendar-drag.js";
 import {
+  cleanupCalendarEventModal,
   initCalendarEventModal,
   openCalendarEventModal,
   openExternalEventModal
@@ -37,8 +38,12 @@ import {
   markExternalEventsCacheDirty,
   syncExternalEventsCache
 } from "./calendar-external.js";
-import { ensureCalendarDragHandlers } from "./calendar-drag.js";
-import { initCalendarCreateModal, openCalendarCreateFromClick } from "./calendar-create-event.js";
+import { ensureCalendarDragHandlers, cleanupCalendarDragHandlers } from "./calendar-drag.js";
+import {
+  initCalendarCreateModal,
+  openCalendarCreateFromClick,
+  cleanupCalendarCreateModal
+} from "./calendar-create-event.js";
 import {
   buildExternalEventMeta,
   sendExternalDeleteRequest
@@ -360,6 +365,32 @@ export async function renderCalendar(tasks = state.tasksCache) {
         console.warn("Failed to refresh external calendar events.", error);
       });
   }
+}
+
+export function cleanupCalendarView() {
+  if (!calendarViewInitialized) {return;}
+  const {
+    calendarPrevBtn,
+    calendarNextBtn,
+    calendarTodayBtn,
+    calendarDayBtn,
+    calendarThreeBtn,
+    calendarWeekBtn
+  } = domRefs;
+  calendarPrevBtn?.removeEventListener("click", handleCalendarPrevClick);
+  calendarNextBtn?.removeEventListener("click", handleCalendarNextClick);
+  calendarTodayBtn?.removeEventListener("click", handleCalendarTodayClick);
+  calendarDayBtn?.removeEventListener("click", handleCalendarDayClick);
+  calendarThreeBtn?.removeEventListener("click", handleCalendarThreeClick);
+  calendarWeekBtn?.removeEventListener("click", handleCalendarWeekClick);
+  if (nowIndicatorTimer) {
+    clearInterval(nowIndicatorTimer);
+    nowIndicatorTimer = null;
+  }
+  cleanupCalendarDragHandlers();
+  cleanupCalendarCreateModal();
+  cleanupCalendarEventModal();
+  calendarViewInitialized = false;
 }
 
 export function initCalendarView() {

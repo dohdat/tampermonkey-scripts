@@ -3,6 +3,7 @@ export const DEFAULT_TASK_MIN_BLOCK_MIN = 15;
 export const TASK_DURATION_STEP_MIN = 15;
 export const DEFAULT_TASK_PRIORITY = 3;
 export const INDEX_NOT_FOUND = -1;
+export const AUTO_SORT_NEW_TASKS_DEFAULT = false;
 
 export const ZERO = 0;
 export const ONE = 1;

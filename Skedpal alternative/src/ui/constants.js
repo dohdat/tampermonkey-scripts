@@ -205,6 +205,7 @@ export const domRefs = {
     ? document.querySelector("[data-test-skedpal='nav-tasks-reminder-badge']")
     : null,
   horizonInput: document.getElementById("horizon"),
+  autoSortNewTasksCheckbox: document.getElementById("auto-sort-new-tasks"),
   notificationBanner: document.getElementById("notification-banner"),
   notificationMessage: document.getElementById("notification-message"),
   notificationZoomButton: document.getElementById("notification-zoom"),

@@ -43,6 +43,7 @@ import { renderTasks } from "./tasks-render.js";
 import { refreshTodayView, renderTodayView } from "./today-view.js";
 import { renderCalendar } from "../calendar.js";
 import { ensureTaskIds, migrateSectionsAndTasks } from "./tasks.js";
+import { maybeAutoSortSubsectionOnAdd } from "./task-auto-sort.js";
 import { renderBreadcrumb } from "../navigation.js";
 import { showUndoBanner } from "../notifications.js";
 import { buildDuplicateTasks } from "./task-duplicate.js";
@@ -203,6 +204,7 @@ export function renderTimeMapsAndTasks(timeMaps) {
   renderReport(state.tasksCache);
   renderTaskReminderBadge(state.tasksCache);
 }
+
 function getTaskFormValues() {
   return {
     id: document.getElementById("task-id").value || uuid(),
@@ -438,6 +440,7 @@ export async function handleTaskSubmit(event) {
     syncRepeatSelectLabel();
   }
   const { parentTask, existingTask, isParentTask } = getTaskFormContext(values);
+  const isNewTask = !existingTask;
   const error = validateTaskForm(values);
   if (error) {
     alert(error);
@@ -452,6 +455,9 @@ export async function handleTaskSubmit(event) {
     await updateParentTaskDescendants(values.id, updatedTask);
   }
   resetTaskForm(true);
+  if (isNewTask) {
+    await maybeAutoSortSubsectionOnAdd(updatedTask.section, updatedTask.subsection);
+  }
   await loadTasks();
   requestCreateTaskOverlayClose();
 }

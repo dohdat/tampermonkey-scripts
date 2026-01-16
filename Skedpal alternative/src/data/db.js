@@ -1,4 +1,5 @@
 import {
+  AUTO_SORT_NEW_TASKS_DEFAULT,
   DB_NAME,
   DB_VERSION,
   DEFAULT_SCHEDULING_HORIZON_DAYS
@@ -10,6 +11,7 @@ const DEFAULT_SECTIONS = [
 const DEFAULT_SETTINGS = {
   schedulingHorizonDays: DEFAULT_SCHEDULING_HORIZON_DAYS,
   defaultTimeMapId: null,
+  autoSortNewTasks: AUTO_SORT_NEW_TASKS_DEFAULT,
   googleCalendarIds: [],
   googleCalendarTaskSettings: {},
   favoriteGroupExpanded: {},

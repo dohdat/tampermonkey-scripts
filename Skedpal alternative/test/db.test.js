@@ -79,6 +79,7 @@ describe("db", () => {
     assert.deepStrictEqual(settings.collapsedSections, DEFAULT_SETTINGS.collapsedSections);
     assert.deepStrictEqual(settings.collapsedSubsections, DEFAULT_SETTINGS.collapsedSubsections);
     assert.deepStrictEqual(settings.collapsedTasks, DEFAULT_SETTINGS.collapsedTasks);
+    assert.strictEqual(settings.autoSortNewTasks, DEFAULT_SETTINGS.autoSortNewTasks);
     assert.strictEqual(settings.taskBackgroundMode, DEFAULT_SETTINGS.taskBackgroundMode);
     assert.deepStrictEqual(settings.sections, DEFAULT_SETTINGS.sections);
     assert.deepStrictEqual(settings.subsections, DEFAULT_SETTINGS.subsections);
@@ -91,6 +92,7 @@ describe("db", () => {
     assert.strictEqual(settings.defaultTimeMapId, "tm-1");
     assert.deepStrictEqual(settings.googleCalendarIds, DEFAULT_SETTINGS.googleCalendarIds);
     assert.deepStrictEqual(settings.googleCalendarTaskSettings, DEFAULT_SETTINGS.googleCalendarTaskSettings);
+    assert.strictEqual(settings.autoSortNewTasks, DEFAULT_SETTINGS.autoSortNewTasks);
     assert.strictEqual(settings.taskBackgroundMode, DEFAULT_SETTINGS.taskBackgroundMode);
     assert.deepStrictEqual(settings.sections, DEFAULT_SETTINGS.sections);
     assert.deepStrictEqual(settings.subsections, DEFAULT_SETTINGS.subsections);

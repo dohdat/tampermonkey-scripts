@@ -39,6 +39,7 @@ const {
   backupRestoreBtn,
   backupTrimBtn,
   backupStatus,
+  autoSortNewTasksCheckbox,
   taskBackgroundModeSelect
 } = domRefs;
 
@@ -85,6 +86,11 @@ function updateHorizonInputValue() {
   horizonInput.value = String(
     normalizeHorizonDays(state.settingsCache.schedulingHorizonDays, min, max, fallback)
   );
+}
+
+function updateAutoSortNewTasksToggle() {
+  if (!autoSortNewTasksCheckbox) {return;}
+  autoSortNewTasksCheckbox.checked = Boolean(state.settingsCache.autoSortNewTasks);
 }
 
 function applyCollapsedPreferences(settings) {
@@ -147,8 +153,24 @@ function initHorizonSettings(persistSettings) {
   horizonInput.addEventListener("change", persistSafely);
   return () => {
     horizonInput.removeEventListener("input", debouncedPersist);
-    horizonInput.removeEventListener("change", persistSafely);
-    debouncedPersist.cancel?.();
+  horizonInput.removeEventListener("change", persistSafely);
+  debouncedPersist.cancel?.();
+  };
+}
+
+function initAutoSortNewTasksSetting(persistSettingsSafely) {
+  if (!autoSortNewTasksCheckbox) {return () => {};}
+  updateAutoSortNewTasksToggle();
+  const handleChange = () => {
+    const enabled = Boolean(autoSortNewTasksCheckbox.checked);
+    persistSettingsSafely(
+      { autoSortNewTasks: enabled },
+      "Failed to save auto-sort preference."
+    );
+  };
+  autoSortNewTasksCheckbox.addEventListener("change", handleChange);
+  return () => {
+    autoSortNewTasksCheckbox.removeEventListener("change", handleChange);
   };
 }
 
@@ -252,6 +274,7 @@ async function applyBackupSnapshot(latest) {
   state.settingsCache = { ...DEFAULT_SETTINGS, ...(latest.settings || {}) };
   applyCollapsedPreferences(state.settingsCache);
   updateHorizonInputValue();
+  updateAutoSortNewTasksToggle();
   updateCalendarStatusFromSettings();
   invalidateExternalEventsCache();
   await loadTasks();
@@ -423,6 +446,7 @@ export async function initSettings(prefetchedSettings) {
     state.settingsCleanup = null;
   }
   cleanupFns.push(initHorizonSettings(persistSettings));
+  cleanupFns.push(initAutoSortNewTasksSetting(persistSettingsSafely));
   cleanupFns.push(initTaskBackgroundSetting(persistSettingsSafely));
   cleanupFns.push(initTimeMapSectionToggle());
   cleanupFns.push(initGoogleCalendarSettings(persistSettingsSafely));

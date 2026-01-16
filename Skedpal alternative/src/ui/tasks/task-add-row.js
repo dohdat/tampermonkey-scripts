@@ -14,6 +14,7 @@ import {
 import { saveTask } from "../../data/db.js";
 import { state } from "../state/page-state.js";
 import { getSubsectionTemplate } from "../sections.js";
+import { maybeAutoSortSubsectionOnAdd } from "./task-auto-sort.js";
 import {
   buildInheritedSubtaskUpdate,
   getNextOrder,
@@ -375,6 +376,7 @@ export async function handleAddTaskInputSubmit(input) {
     titleLiterals: literals
   });
   await saveTask(payload);
+  await maybeAutoSortSubsectionOnAdd(payload.section, payload.subsection);
   collapseAddTaskRowForInput(input);
   window.dispatchEvent(new Event("skedpal:tasks-updated"));
   return true;

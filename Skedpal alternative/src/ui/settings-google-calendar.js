@@ -13,7 +13,13 @@ import {
   resolveCalendarSyncToggleTarget,
   setCalendarSyncControlsEnabled
 } from "./settings-google-calendar-sync.js";
-
+import {
+  buildCalendarDefaultToggle,
+  getDefaultCalendarId,
+  handleCalendarDefaultToggleChange,
+  resolveCalendarDefaultToggleTarget,
+  updateDefaultCalendarToggles
+} from "./settings-google-calendar-default.js";
 const {
   googleCalendarConnectBtn,
   googleCalendarRefreshBtn,
@@ -21,7 +27,6 @@ const {
   googleCalendarStatus,
   googleCalendarList
 } = domRefs;
-
 function getRuntime() {
   return globalThis.chrome?.runtime || null;
 }
@@ -29,7 +34,6 @@ function setCalendarStatus(message) {
   if (!googleCalendarStatus) {return;}
   googleCalendarStatus.textContent = message;
 }
-
 export function updateCalendarStatusFromSettings() {
   const ids = Array.isArray(state.settingsCache.googleCalendarIds)
     ? state.settingsCache.googleCalendarIds
@@ -40,7 +44,6 @@ export function updateCalendarStatusFromSettings() {
   }
   setCalendarStatus("Connect to load your calendars.");
 }
-
 function formatCalendarMeta(entry) {
   const parts = [];
   if (entry.primary) {parts.push("Primary");}
@@ -48,7 +51,6 @@ function formatCalendarMeta(entry) {
   if (entry.id) {parts.push(entry.id);}
   return parts.filter(Boolean).join(" | ");
 }
-
 function getCalendarTaskSettingsById(settings) {
   const source = settings?.googleCalendarTaskSettings;
   return source && typeof source === "object" ? source : {};
@@ -77,7 +79,6 @@ function normalizeCalendarTaskSetting(setting) {
     )
   };
 }
-
 function resolveCalendarTaskSetting(settings, calendarId) {
   if (!calendarId) {
     return {
@@ -99,7 +100,6 @@ function createSectionOption(value, label, selected, testId) {
   option.setAttribute("data-test-skedpal", testId);
   return option;
 }
-
 function buildCalendarSectionSelect(calendarId, selectedSectionId = "") {
   const select = document.createElement("select");
   select.className =
@@ -123,7 +123,6 @@ function buildCalendarSectionSelect(calendarId, selectedSectionId = "") {
   });
   return select;
 }
-
 function buildCalendarSubsectionSelect(calendarId, sectionId, selectedSubsectionId = "") {
   const select = document.createElement("select");
   select.className =
@@ -134,7 +133,6 @@ function buildCalendarSubsectionSelect(calendarId, sectionId, selectedSubsection
   updateCalendarSubsectionOptions(select, sectionId, selectedSubsectionId);
   return select;
 }
-
 function updateCalendarSubsectionOptions(select, sectionId, selectedSubsectionId = "") {
   if (!select) {return;}
   const safeSectionId = sectionId || "";
@@ -172,7 +170,6 @@ function updateCalendarSubsectionOptions(select, sectionId, selectedSubsectionId
     select.value = "";
   }
 }
-
 function setCalendarTaskControlsEnabled(row, enabled) {
   if (!row) {return;}
   const selectsWrap = row.querySelector?.("[data-calendar-task-selects]");
@@ -189,7 +186,6 @@ function setCalendarTaskControlsEnabled(row, enabled) {
     control.classList.toggle("opacity-60", !enabled);
   });
 }
-
 function buildCalendarCheckbox(entry, selectedIds) {
   const checkbox = document.createElement("input");
   checkbox.type = "checkbox";
@@ -201,7 +197,6 @@ function buildCalendarCheckbox(entry, selectedIds) {
   checkbox.setAttribute("data-test-skedpal", "google-calendar-checkbox");
   return checkbox;
 }
-
 function buildCalendarColor(entry) {
   const color = document.createElement("span");
   color.className = "mt-1 h-3 w-3 rounded-full border-slate-700";
@@ -211,32 +206,26 @@ function buildCalendarColor(entry) {
   }
   return color;
 }
-
 function buildCalendarMetaDetails(entry) {
   const details = document.createElement("div");
   details.className = "flex flex-col";
   details.setAttribute("data-test-skedpal", "google-calendar-details");
-
   const name = document.createElement("span");
   name.className = "text-sm font-semibold text-slate-100";
   name.textContent = entry.summary || entry.id || "Untitled calendar";
   name.setAttribute("data-test-skedpal", "google-calendar-name");
-
   const meta = document.createElement("span");
   meta.className = "text-xs text-slate-400";
   meta.textContent = formatCalendarMeta(entry);
   meta.setAttribute("data-test-skedpal", "google-calendar-meta");
-
   details.appendChild(name);
   details.appendChild(meta);
   return details;
 }
-
 function buildCalendarTaskToggle(entry, calendarTaskSettings) {
   const taskToggleLabel = document.createElement("label");
   taskToggleLabel.className = "flex items-center gap-2";
   taskToggleLabel.setAttribute("data-test-skedpal", "google-calendar-task-toggle-label");
-
   const taskToggle = document.createElement("input");
   taskToggle.type = "checkbox";
   taskToggle.className = "h-4 w-4 accent-lime-400";
@@ -244,22 +233,18 @@ function buildCalendarTaskToggle(entry, calendarTaskSettings) {
   taskToggle.dataset.calendarId = entry.id || "";
   taskToggle.checked = Boolean(calendarTaskSettings.treatAsTasks);
   taskToggle.setAttribute("data-test-skedpal", "google-calendar-task-toggle");
-
   const taskToggleText = document.createElement("span");
   taskToggleText.textContent = "Treat this calendar as tasks";
   taskToggleText.setAttribute("data-test-skedpal", "google-calendar-task-toggle-text");
-
   taskToggleLabel.appendChild(taskToggle);
   taskToggleLabel.appendChild(taskToggleText);
   return taskToggleLabel;
 }
-
 function buildCalendarTaskSelectRow(entry, calendarTaskSettings) {
   const selectRow = document.createElement("div");
   selectRow.className = "grid gap-2 md:grid-cols-2";
   selectRow.setAttribute("data-test-skedpal", "google-calendar-task-selects");
   selectRow.dataset.calendarTaskSelects = "true";
-
   const sectionField = document.createElement("label");
   sectionField.className = "flex flex-col gap-1";
   sectionField.setAttribute("data-test-skedpal", "google-calendar-task-section-field");
@@ -273,7 +258,6 @@ function buildCalendarTaskSelectRow(entry, calendarTaskSettings) {
   );
   sectionField.appendChild(sectionLabel);
   sectionField.appendChild(sectionSelect);
-
   const subsectionField = document.createElement("label");
   subsectionField.className = "flex flex-col gap-1";
   subsectionField.setAttribute("data-test-skedpal", "google-calendar-task-subsection-field");
@@ -288,30 +272,31 @@ function buildCalendarTaskSelectRow(entry, calendarTaskSettings) {
   );
   subsectionField.appendChild(subsectionLabel);
   subsectionField.appendChild(subsectionSelect);
-
   selectRow.appendChild(sectionField);
   selectRow.appendChild(subsectionField);
   return selectRow;
 }
-
 function buildCalendarTaskOptions(entry, calendarTaskSettings) {
   const options = document.createElement("div");
   options.className = "mt-2 flex flex-col gap-2 text-xs text-slate-300";
   options.setAttribute("data-test-skedpal", "google-calendar-options");
+  const selectedIds = Array.isArray(state.settingsCache.googleCalendarIds)
+    ? state.settingsCache.googleCalendarIds
+    : [];
+  const defaultId = getDefaultCalendarId();
+  options.appendChild(buildCalendarDefaultToggle(entry, selectedIds, defaultId));
   options.appendChild(buildCalendarTaskToggle(entry, calendarTaskSettings));
   options.appendChild(buildCalendarTaskSelectRow(entry, calendarTaskSettings));
   options.appendChild(buildCalendarSyncToggle(entry, calendarTaskSettings));
   options.appendChild(buildCalendarSyncDaysField(entry, calendarTaskSettings));
   return options;
 }
-
 function buildCalendarRow(entry, selectedIds, calendarTaskSettings) {
   const row = document.createElement("div");
   row.className =
     "flex items-start gap-3 rounded-xl border-slate-800 bg-slate-950/60 px-3 py-2 text-slate-200 transition hover:border-lime-400/60";
   row.setAttribute("data-test-skedpal", "google-calendar-row");
   row.dataset.calendarId = entry.id || "";
-
   row.appendChild(buildCalendarCheckbox(entry, selectedIds));
   row.appendChild(buildCalendarColor(entry));
   const details = buildCalendarMetaDetails(entry);
@@ -321,7 +306,6 @@ function buildCalendarRow(entry, selectedIds, calendarTaskSettings) {
   setCalendarSyncControlsEnabled(row, Boolean(calendarTaskSettings.syncScheduledEvents));
   return row;
 }
-
 function renderCalendarList(calendars, selectedIds) {
   if (!googleCalendarList) {return;}
   googleCalendarList.innerHTML = "";
@@ -339,8 +323,8 @@ function renderCalendarList(calendars, selectedIds) {
     fragment.appendChild(buildCalendarRow(entry, selectedIds, calendarTaskSettings));
   });
   googleCalendarList.appendChild(fragment);
+  updateDefaultCalendarToggles(selectedIds, getDefaultCalendarId());
 }
-
 async function requestCalendarList() {
   const runtime = getRuntime();
   if (!runtime?.sendMessage) {
@@ -360,7 +344,6 @@ async function requestCalendarList() {
   }
   return response.calendars || [];
 }
-
 async function disconnectCalendar() {
   const runtime = getRuntime();
   if (!runtime?.sendMessage) {
@@ -380,7 +363,6 @@ async function disconnectCalendar() {
   }
   return response.cleared;
 }
-
 function applyInitialCalendarStatus() {
   const initialSelectedIds = Array.isArray(state.settingsCache.googleCalendarIds)
     ? state.settingsCache.googleCalendarIds
@@ -389,7 +371,6 @@ function applyInitialCalendarStatus() {
     setCalendarStatus(`Selected ${initialSelectedIds.length} calendar(s).`);
   }
 }
-
 function createCalendarTaskSettingsUpdater(persistSettingsSafely) {
   return (calendarId, updates) => {
     if (!calendarId) {return;}
@@ -421,28 +402,28 @@ function createCalendarTaskSettingsUpdater(persistSettingsSafely) {
     );
   };
 }
-
 function handleCalendarSelectionChange(persistSettingsSafely) {
   if (!googleCalendarList) {return;}
   const ids = [...googleCalendarList.querySelectorAll("input[data-calendar-select]")]
     .filter((input) => input.checked)
     .map((input) => input.value)
     .filter(Boolean);
+  const preferred = state.settingsCache.defaultGoogleCalendarId || "";
+  const defaultGoogleCalendarId = ids.includes(preferred) ? preferred : (ids[0] || "");
   persistSettingsSafely(
-    { googleCalendarIds: ids },
+    { googleCalendarIds: ids, defaultGoogleCalendarId },
     "Failed to save calendar selection."
   );
+  updateDefaultCalendarToggles(ids, defaultGoogleCalendarId);
   invalidateExternalEventsCache();
   setCalendarStatus(ids.length ? `Selected ${ids.length} calendar(s).` : "No calendars selected.");
 }
-
 function handleCalendarTaskToggleChange(target, updateCalendarTaskSettings) {
   const calendarId = target?.dataset?.calendarId || "";
   const row = target?.closest?.("[data-calendar-id]");
   setCalendarTaskControlsEnabled(row, Boolean(target?.checked));
   updateCalendarTaskSettings(calendarId, { treatAsTasks: Boolean(target?.checked) });
 }
-
 function handleCalendarTaskSectionChange(target, updateCalendarTaskSettings) {
   const calendarId = target?.dataset?.calendarId || "";
   const sectionId = target?.value || "";
@@ -454,12 +435,10 @@ function handleCalendarTaskSectionChange(target, updateCalendarTaskSettings) {
     subsectionId: subsectionSelect?.value || ""
   });
 }
-
 function handleCalendarTaskSubsectionChange(target, updateCalendarTaskSettings) {
   const calendarId = target?.dataset?.calendarId || "";
   updateCalendarTaskSettings(calendarId, { subsectionId: target?.value || "" });
 }
-
 function resolveCalendarTaskToggleTarget(target) {
   if (!target) {return null;}
   if (target.matches?.("input[data-calendar-task-toggle]")) {return target;}
@@ -467,13 +446,16 @@ function resolveCalendarTaskToggleTarget(target) {
   if (!label) {return null;}
   return label.querySelector?.("input[data-calendar-task-toggle]") || null;
 }
-
 function createCalendarListChangeHandler(persistSettingsSafely, updateCalendarTaskSettings) {
   function handleCalendarListChange(event) {
     const target = event?.target;
     if (!target) {return;}
     if (target.matches?.("input[data-calendar-select]")) {
       handleCalendarSelectionChange(persistSettingsSafely);
+      return;
+    }
+    if (target.matches?.("input[data-calendar-default-toggle]")) {
+      handleCalendarDefaultToggleChange(target, persistSettingsSafely);
       return;
     }
     if (target.matches?.("input[data-calendar-task-toggle]")) {
@@ -498,9 +480,13 @@ function createCalendarListChangeHandler(persistSettingsSafely, updateCalendarTa
   }
   return handleCalendarListChange;
 }
-
-function createCalendarListClickHandler(updateCalendarTaskSettings) {
+function createCalendarListClickHandler(persistSettingsSafely, updateCalendarTaskSettings) {
   function handleCalendarListClick(event) {
+    const defaultToggle = resolveCalendarDefaultToggleTarget(event?.target);
+    if (defaultToggle) {
+      handleCalendarDefaultToggleChange(defaultToggle, persistSettingsSafely);
+      return;
+    }
     const toggle = resolveCalendarTaskToggleTarget(event?.target);
     if (toggle) {
       handleCalendarTaskToggleChange(toggle, updateCalendarTaskSettings);
@@ -513,7 +499,6 @@ function createCalendarListClickHandler(updateCalendarTaskSettings) {
   }
   return handleCalendarListClick;
 }
-
 function createCalendarConnectHandler() {
   async function handleCalendarConnect() {
     setCalendarStatus("Connecting to Google Calendar...");
@@ -546,7 +531,6 @@ function createCalendarConnectHandler() {
   }
   return handleCalendarConnect;
 }
-
 function createCalendarDisconnectHandler(persistSettingsSafely) {
   async function handleCalendarDisconnect() {
     setCalendarStatus("Disconnecting...");
@@ -555,7 +539,7 @@ function createCalendarDisconnectHandler(persistSettingsSafely) {
       state.googleCalendarListCache = [];
       renderCalendarList([], []);
       persistSettingsSafely(
-        { googleCalendarIds: [] },
+        { googleCalendarIds: [], defaultGoogleCalendarId: "" },
         "Failed to clear calendar selection."
       );
       invalidateExternalEventsCache();
@@ -567,13 +551,11 @@ function createCalendarDisconnectHandler(persistSettingsSafely) {
   }
   return handleCalendarDisconnect;
 }
-
 function addListener(cleanupFns, node, eventName, handler) {
   if (!node || !handler) {return;}
   node.addEventListener(eventName, handler);
   cleanupFns.push(() => node.removeEventListener(eventName, handler));
 }
-
 function attachCalendarListeners(onConnect, onDisconnect, onListChange, onListClick) {
   const cleanupFns = [];
   addListener(cleanupFns, googleCalendarConnectBtn, "click", onConnect);
@@ -585,7 +567,6 @@ function attachCalendarListeners(onConnect, onDisconnect, onListChange, onListCl
     cleanupFns.forEach((cleanup) => cleanup());
   };
 }
-
 export function initGoogleCalendarSettings(persistSettingsSafely) {
   applyInitialCalendarStatus();
   const updateCalendarTaskSettings = createCalendarTaskSettingsUpdater(persistSettingsSafely);
@@ -593,7 +574,10 @@ export function initGoogleCalendarSettings(persistSettingsSafely) {
     persistSettingsSafely,
     updateCalendarTaskSettings
   );
-  const onListClick = createCalendarListClickHandler(updateCalendarTaskSettings);
+  const onListClick = createCalendarListClickHandler(
+    persistSettingsSafely,
+    updateCalendarTaskSettings
+  );
   const onConnect = createCalendarConnectHandler();
   const onDisconnect = createCalendarDisconnectHandler(persistSettingsSafely);
   return attachCalendarListeners(onConnect, onDisconnect, onListChange, onListClick);

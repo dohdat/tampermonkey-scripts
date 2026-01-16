@@ -66,6 +66,10 @@ function resolveDefaultCalendarId(calendars) {
   const selection = Array.isArray(state.settingsCache.googleCalendarIds)
     ? state.settingsCache.googleCalendarIds
     : [];
+  const preferred = state.settingsCache.defaultGoogleCalendarId || "";
+  if (preferred && selection.includes(preferred)) {
+    return preferred;
+  }
   if (selection.length) {
     return selection[0];
   }

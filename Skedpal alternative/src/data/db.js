@@ -13,6 +13,7 @@ const DEFAULT_SETTINGS = {
   defaultTimeMapId: null,
   autoSortNewTasks: AUTO_SORT_NEW_TASKS_DEFAULT,
   googleCalendarIds: [],
+  defaultGoogleCalendarId: "",
   googleCalendarTaskSettings: {},
   favoriteGroupExpanded: {},
   collapsedSections: [],

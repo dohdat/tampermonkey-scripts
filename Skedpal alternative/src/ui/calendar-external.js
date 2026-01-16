@@ -109,6 +109,12 @@ function isCacheFresh(entry) {
   if (!entry?.updatedAt) {return false;}
   const updatedAt = new Date(entry.updatedAt);
   if (Number.isNaN(updatedAt.getTime())) {return false;}
+  const bustedAt = state.calendarExternalCacheBustedAt
+    ? new Date(state.calendarExternalCacheBustedAt)
+    : null;
+  if (bustedAt && !Number.isNaN(bustedAt.getTime()) && updatedAt <= bustedAt) {
+    return false;
+  }
   return Date.now() - updatedAt.getTime() < CALENDAR_EXTERNAL_CACHE_TTL_MS;
 }
 
@@ -294,7 +300,13 @@ export function getExternalEventsForRange(range, viewMode = "week") {
   if (!range?.start || !range?.end) {return [];}
   const buffered = buildBufferedRange(range);
   const key = buildCacheKey(buffered, viewMode, getSelectedCalendarIds());
-  if (!key || state.calendarExternalRangeKey !== key) {return [];}
+  const hasStateRange = state.calendarExternalRange?.start && state.calendarExternalRange?.end;
+  const matchesKey = key && state.calendarExternalRangeKey === key;
+  const overlaps =
+    hasStateRange &&
+    state.calendarExternalRange.end > range.start &&
+    state.calendarExternalRange.start < range.end;
+  if (!matchesKey && !overlaps) {return [];}
   return (state.calendarExternalEvents || []).filter(
     (event) => event.end > range.start && event.start < range.end
   );
@@ -305,6 +317,7 @@ export function invalidateExternalEventsCache() {
   state.calendarExternalPendingKey = "";
   state.calendarExternalEvents = [];
   state.calendarExternalRange = null;
+  state.calendarExternalCacheBustedAt = "";
   memoryCache.clear();
   pendingFetches.clear();
   if (prefetchTimeoutId) {
@@ -331,6 +344,10 @@ export async function syncExternalEventsCache(events) {
   return true;
 }
 
+export function markExternalEventsCacheDirty() {
+  state.calendarExternalCacheBustedAt = new Date().toISOString();
+}
+
 export async function primeExternalEventsOnLoad(range, viewMode = "week") {
   if (!range?.start || !range?.end) {return false;}
   return hydrateExternalEvents(range, viewMode);
@@ -341,7 +358,7 @@ export async function hydrateExternalEvents(range, viewMode = "week") {
   const key = buildCacheKey(buffered, viewMode, getSelectedCalendarIds());
   if (!key || state.calendarExternalRangeKey === key) {return false;}
   const cached = await getCacheEntry(key);
-  if (!cached) {return false;}
+  if (!cached || !isCacheFresh(cached)) {return false;}
   setExternalStateFromCache(cached);
   return true;
 }

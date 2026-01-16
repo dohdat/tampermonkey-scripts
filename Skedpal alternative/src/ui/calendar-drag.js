@@ -30,7 +30,7 @@ import {
   getUpdatedExternalEvents,
   sendExternalUpdateRequest
 } from "./calendar-external-events.js";
-import { syncExternalEventsCache } from "./calendar-external.js";
+import { markExternalEventsCacheDirty, syncExternalEventsCache } from "./calendar-external.js";
 import { HOUR_HEIGHT, formatEventTimeRange } from "./calendar-render.js";
 
 const DRAG_STEP_MINUTES = DEFAULT_TASK_MIN_BLOCK_MIN;
@@ -86,6 +86,7 @@ async function persistDraggedExternalEvent(payload) {
     throw new Error(response?.error || "Failed to update calendar event");
   }
   updateExternalEventInState(payload);
+  markExternalEventsCacheDirty();
   await syncExternalEventsCache(state.calendarExternalEvents);
 }
 
@@ -355,11 +356,13 @@ async function handleCalendarDragEnd() {
     showNotificationBanner("Saving...");
     try {
       await persistDraggedExternalEvent(payload);
+      state.calendarExternalAllowFetch = true;
       calendarRenderHandler?.();
       showUndoBanner(formatRescheduledMessage(payload.start), async () => {
         showNotificationBanner("Undoing...");
         try {
           await persistDraggedExternalEvent(previous);
+          state.calendarExternalAllowFetch = true;
           calendarRenderHandler?.();
           showNotificationBanner("Changes reverted.", { autoHideMs: TWO_THOUSAND_FIVE_HUNDRED });
         } catch (error) {
@@ -417,11 +420,13 @@ async function handleCalendarResizeEnd() {
     showNotificationBanner("Saving...");
     try {
       await persistDraggedExternalEvent(payload);
+      state.calendarExternalAllowFetch = true;
       calendarRenderHandler?.();
       showUndoBanner(formatRescheduledMessage(payload.start), async () => {
         showNotificationBanner("Undoing...");
         try {
           await persistDraggedExternalEvent(previous);
+          state.calendarExternalAllowFetch = true;
           calendarRenderHandler?.();
           showNotificationBanner("Changes reverted.", { autoHideMs: TWO_THOUSAND_FIVE_HUNDRED });
         } catch (error) {

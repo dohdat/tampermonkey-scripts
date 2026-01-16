@@ -34,6 +34,7 @@ import {
   ensureExternalEvents,
   getExternalEventsForRange,
   hydrateExternalEvents,
+  markExternalEventsCacheDirty,
   syncExternalEventsCache
 } from "./calendar-external.js";
 import { ensureCalendarDragHandlers } from "./calendar-drag.js";
@@ -103,6 +104,8 @@ async function deleteExternalEvent(deleteBtn) {
       throw new Error(response?.error || "Failed to delete calendar event");
     }
     removeExternalEvent(payload);
+    markExternalEventsCacheDirty();
+    state.calendarExternalAllowFetch = true;
     await syncExternalEventsCache(state.calendarExternalEvents);
     renderCalendar();
   } catch (error) {
@@ -217,16 +220,19 @@ function getViewStep(viewMode) {
 function setCalendarViewMode(viewMode) {
   state.calendarViewMode = viewMode;
   updateUrlWithCalendarView(viewMode);
+  state.calendarExternalAllowFetch = true;
   renderCalendar();
 }
 function handleCalendarPrevClick() {
   const step = -getViewStep(getActiveCalendarViewMode());
   state.calendarAnchorDate = addCalendarDays(state.calendarAnchorDate, step);
+  state.calendarExternalAllowFetch = true;
   renderCalendar();
 }
 function handleCalendarNextClick() {
   const step = getViewStep(getActiveCalendarViewMode());
   state.calendarAnchorDate = addCalendarDays(state.calendarAnchorDate, step);
+  state.calendarExternalAllowFetch = true;
   renderCalendar();
 }
 function isCalendarSplitVisible() {
@@ -261,6 +267,7 @@ function scrollCalendarGridToIndicator(calendarGrid, indicator, offsetPx) {
 }
 function handleCalendarTodayClick() {
   state.calendarAnchorDate = new Date();
+  state.calendarExternalAllowFetch = true;
   renderCalendar();
   const block = isCalendarSplitVisible() ? "start" : "center";
   focusCalendarNow({ behavior: "auto", block });

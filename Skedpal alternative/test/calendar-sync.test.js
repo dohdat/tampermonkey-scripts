@@ -19,14 +19,20 @@ import { GOOGLE_CALENDAR_SYNC_JOB_CACHE_KEY } from "../src/constants.js";
 describe("calendar sync planning", () => {
   const originalFetch = globalThis.fetch;
   const originalChrome = globalThis.chrome;
+  const originalConsoleWarn = console.warn;
+  const originalConsoleError = console.error;
 
   beforeEach(async () => {
     await deleteCalendarCacheEntry(GOOGLE_CALENDAR_SYNC_JOB_CACHE_KEY);
+    console.warn = () => {};
+    console.error = () => {};
   });
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
     globalThis.chrome = originalChrome;
+    console.warn = originalConsoleWarn;
+    console.error = originalConsoleError;
   });
 
   it("clamps sync days to the scheduling horizon", () => {

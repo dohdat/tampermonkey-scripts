@@ -417,6 +417,27 @@ async function applyExternalEventsUpdate({
   return entry;
 }
 
+function handleExternalFetchUnavailable(fetchRange, key, allowStateUpdate) {
+  if (allowStateUpdate) {
+    setEmptyExternalState(fetchRange, key);
+  }
+  return { updated: false };
+}
+
+function handleExternalFetchFailure(fetchRange, key, allowStateUpdate) {
+  if (allowStateUpdate) {
+    setEmptyExternalState(fetchRange, key);
+  }
+  return { updated: true };
+}
+
+function assertExternalResponseOk(response) {
+  if (!response?.ok) {
+    throw new Error(response?.error || "Calendar events fetch failed");
+  }
+  return response;
+}
+
 async function fetchExternalEvents({
   range,
   viewMode,
@@ -429,22 +450,18 @@ async function fetchExternalEvents({
   const calendarIdsKey = buildCalendarIdsKey(calendarIds);
   const key = buildCacheKey(fetchRange, viewMode, calendarIds);
   if (!runtime?.sendMessage || !fetchRange) {
-    setEmptyExternalState(fetchRange, key);
-    return { updated: false };
+    return handleExternalFetchUnavailable(fetchRange, key, allowStateUpdate);
   }
   prepareExternalFetchState({ fetchRange, key, existingEntry, allowStateUpdate });
   pendingFetches.add(key);
   try {
-    const response = await requestExternalEvents(runtime, {
+    const response = assertExternalResponseOk(await requestExternalEvents(runtime, {
       type: "calendar-events",
       timeMin: fetchRange.start.toISOString(),
       timeMax: fetchRange.end.toISOString(),
       calendarIds,
       syncTokensByCalendar: existingEntry?.syncTokensByCalendar || {}
-    });
-    if (!response?.ok) {
-      throw new Error(response?.error || "Calendar events fetch failed");
-    }
+    }));
     const updatedEntry = await applyExternalEventsUpdate({
       fetchRange,
       viewMode,
@@ -460,8 +477,7 @@ async function fetchExternalEvents({
     return { updated: true };
   } catch (error) {
     console.warn("Failed to fetch external calendar events.", error);
-    setEmptyExternalState(fetchRange, key);
-    return { updated: true };
+    return handleExternalFetchFailure(fetchRange, key, allowStateUpdate);
   } finally {
     pendingFetches.delete(key);
     if (state.calendarExternalPendingKey === key) {state.calendarExternalPendingKey = "";}
@@ -518,6 +534,25 @@ export async function ensureExternalEvents(range, viewMode = "week") {
   );
   schedulePrefetch(range, viewMode);
   return Boolean(result?.updated) || stateUpdated;
+}
+
+export async function refreshExternalEvents(range, viewMode = "week", options = {}) {
+  const calendarIds = getSelectedCalendarIds();
+  const fetchRange = buildBufferedRange(range);
+  if (!fetchRange) {return false;}
+  const key = buildCacheKey(fetchRange, viewMode, calendarIds);
+  if (shouldSkipFetch(key)) {return false;}
+  const cached = await getCacheEntry(key);
+  const result = await enqueueFetch(() =>
+    fetchExternalEvents({
+      range,
+      viewMode,
+      calendarIds,
+      existingEntry: cached,
+      allowStateUpdate: Boolean(options.allowStateUpdate)
+    })
+  );
+  return Boolean(result?.updated);
 }
 
 export async function removeExternalEventsCacheEntry(key) {

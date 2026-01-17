@@ -18,6 +18,8 @@ import {
 } from "./utils.js";
 import { state } from "./state/page-state.js";
 import { initCalendarView, renderCalendar } from "./calendar.js";
+import { getCalendarRange } from "./calendar-utils.js";
+import { refreshExternalEvents } from "./calendar-external.js";
 import { applyTheme } from "./theme.js";
 import { registerEventListeners } from "./page-listeners.js";
 
@@ -33,9 +35,20 @@ async function hydrate() {
   await loadTaskTemplates();
   const isCalendarView = domRefs.appShell?.dataset?.activeView === "calendar";
   const isCalendarSplit = domRefs.tasksCalendarSplitWrap?.dataset?.split === "true";
+  const viewMode = state.calendarViewMode || "day";
+  const range = getCalendarRange(state.calendarAnchorDate, viewMode);
+  const refreshPromise = refreshExternalEvents(range, viewMode, {
+    allowStateUpdate: isCalendarView || isCalendarSplit
+  }).catch((error) => {
+    console.warn("Failed to refresh external calendar events on load.", error);
+  });
   if (isCalendarView || isCalendarSplit) {
-    state.calendarExternalAllowFetch = true;
     await renderCalendar();
+    refreshPromise.then((updated) => {
+      if (updated) {
+        renderCalendar();
+      }
+    });
   }
   if (initialZoom) {
     pushNavigation(initialZoom);

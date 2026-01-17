@@ -13,6 +13,7 @@ import {
   getExternalEventsForRange,
   invalidateExternalEventsCache,
   primeExternalEventsOnLoad,
+  refreshExternalEvents,
   removeExternalEventsCacheEntry,
   syncExternalEventsCache
 } from "../src/ui/calendar-external.js";
@@ -389,6 +390,39 @@ describe("calendar external events", () => {
     const updated = await ensureExternalEvents(range, viewMode);
     assert.strictEqual(updated, true);
     assert.strictEqual(called, 0);
+  });
+
+  it("forces a refresh even when cache is fresh", async () => {
+    state.settingsCache = {
+      ...state.settingsCache,
+      googleCalendarIds: ["calendar-1"]
+    };
+    const cacheKey = buildKey(bufferedRange, viewMode, state.settingsCache.googleCalendarIds);
+    await saveCalendarCacheEntry({
+      key: cacheKey,
+      viewMode,
+      calendarIdsKey: "calendar-1",
+      range: {
+        start: bufferedRange.start.toISOString(),
+        end: bufferedRange.end.toISOString()
+      },
+      events: [],
+      syncTokensByCalendar: { "calendar-1": "sync-1" },
+      updatedAt: new Date().toISOString()
+    });
+    let called = 0;
+    globalThis.chrome = {
+      runtime: {
+        lastError: null,
+        sendMessage: (_msg, cb) => {
+          called += 1;
+          cb({ ok: true, events: [] });
+        }
+      }
+    };
+    const updated = await refreshExternalEvents(range, viewMode, { allowStateUpdate: true });
+    assert.strictEqual(updated, true);
+    assert.strictEqual(called, 1);
   });
 
   it("returns false when the range is invalid", async () => {

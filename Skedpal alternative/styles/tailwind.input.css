@@ -465,6 +465,9 @@ body.modal-open{overflow:hidden}
 .calendar-event-modal__panel{max-width:var(--size-520px)}
 .calendar-event-modal__header{align-items:flex-start}
 .calendar-event-modal__actions{display:flex;align-items:center;gap:var(--space-0-75);margin-top:var(--space-0-35)}
+.calendar-event-modal__title-row{display:flex;align-items:flex-start;gap:var(--space-0-45)}
+.calendar-event-modal__title-row .calendar-event-modal__icon-btn{margin-top:var(--space-0-15);flex:0 0 auto}
+.calendar-event-modal__title-row .task-modal__title{min-width:0}
 .calendar-event-modal__complete{display:inline-flex;align-items:center;gap:var(--space-0-4);font-size:var(--font-size-sm);color:var(--color-slate-200)}
 .calendar-event-modal__complete input{accent-color:var(--color-lime-400)}
 .calendar-event-modal__details{display:grid;gap:var(--space-0-5);font-size:var(--font-size-sm-plus);color:var(--color-slate-200)}

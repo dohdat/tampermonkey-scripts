@@ -966,7 +966,7 @@
 >
   <div class="task-modal__panel calendar-event-modal__panel">
     <div class="task-modal__header calendar-event-modal__header">
-      <div>
+      <div data-test-skedpal="calendar-event-modal-header-main">
         <p
           id="calendar-event-modal-eyebrow"
           class="task-modal__eyebrow"
@@ -974,11 +974,19 @@
         >
           Scheduled task
         </p>
-        <h3
-          id="calendar-event-modal-title"
-          class="task-modal__title"
-          data-test-skedpal="calendar-event-modal-title"
-        ></h3>
+        <div class="calendar-event-modal__title-row" data-test-skedpal="calendar-event-modal-title-row">
+          <button
+            type="button"
+            class="calendar-event-modal__icon-btn"
+            data-calendar-event-action="complete"
+            data-test-skedpal="calendar-event-modal-complete-btn"
+          ></button>
+          <h3
+            id="calendar-event-modal-title"
+            class="task-modal__title"
+            data-test-skedpal="calendar-event-modal-title"
+          ></h3>
+        </div>
         <p
           id="calendar-event-modal-time"
           class="task-modal__subtitle"
@@ -991,12 +999,6 @@
           class="calendar-event-modal__toolbar"
           data-test-skedpal="calendar-event-modal-toolbar"
         >
-          <button
-            type="button"
-            class="calendar-event-modal__icon-btn"
-            data-calendar-event-action="complete"
-            data-test-skedpal="calendar-event-modal-complete-btn"
-          ></button>
           <button
             type="button"
             class="calendar-event-modal__icon-btn"

@@ -23,7 +23,14 @@ import {
   startTaskInSection
 } from "./tasks/tasks-actions.js";
 import { setZoomFilter } from "./navigation.js";
-import { applyPrioritySelectColor, toggleClearButtonVisibility } from "./utils.js";
+import {
+  applyPrioritySelectColor,
+  parseLocalDateInput,
+  toggleClearButtonVisibility
+} from "./utils.js";
+import { toDateInputValue } from "./date-picker-utils.js";
+import { updateTaskDetailField } from "./tasks/task-detail-updates.js";
+import { state } from "./state/page-state.js";
 
 const {
   taskToggle,
@@ -34,6 +41,7 @@ const {
   taskList,
   todayList,
   reportList,
+  reportDelayInput,
   rescheduleButtons
 } = domRefs;
 
@@ -87,6 +95,7 @@ function handleTodayListDoubleClickEvent(event) {
 }
 
 async function handleReportListClickEvent(event) {
+  if (handleReportDelayClick(event)) {return;}
   if (handleTaskTitleClick(event)) {return;}
   await handleTaskListClick(event, { switchView: false });
 }
@@ -102,6 +111,40 @@ function handleReportListDoubleClickEvent(event) {
     sectionId: card.dataset.sectionId || "",
     subsectionId: card.dataset.subsectionId || ""
   });
+}
+
+function resolveReportDelayAnchor(task) {
+  if (!task) {return new Date();}
+  const anchorValue = task.repeatAnchor || task.startFrom || task.deadline || null;
+  const anchorDate = anchorValue ? new Date(anchorValue) : null;
+  return anchorDate && !Number.isNaN(anchorDate.getTime()) ? anchorDate : new Date();
+}
+
+function handleReportDelayClick(event) {
+  const btn = event.target.closest?.("[data-report-delay]");
+  if (!btn) {return false;}
+  if (!reportDelayInput) {return true;}
+  const taskId = btn.dataset.reportDelay || "";
+  const task = state.tasksCache.find((entry) => entry.id === taskId);
+  if (!task) {return true;}
+  const anchorDate = resolveReportDelayAnchor(task);
+  reportDelayInput.dataset.reportDelayTask = taskId;
+  reportDelayInput.value = toDateInputValue(anchorDate);
+  reportDelayInput.click();
+  return true;
+}
+
+async function handleReportDelayInputChange(event) {
+  const input = event.currentTarget;
+  const taskId = input?.dataset?.reportDelayTask || "";
+  if (!taskId) {return;}
+  const selectedIso = parseLocalDateInput(input.value);
+  input.dataset.reportDelayTask = "";
+  input.value = "";
+  if (!selectedIso) {return;}
+  const task = state.tasksCache.find((entry) => entry.id === taskId);
+  if (!task) {return;}
+  await updateTaskDetailField(task, { repeatAnchor: selectedIso });
 }
 
 function setupTaskFormSubmit(cleanupFns) {
@@ -229,6 +272,14 @@ function setupTaskLists(cleanupFns) {
   }
 }
 
+function setupReportDelayInput(cleanupFns) {
+  if (!reportDelayInput) {return;}
+  reportDelayInput.addEventListener("change", handleReportDelayInputChange);
+  cleanupFns.push(() =>
+    reportDelayInput.removeEventListener("change", handleReportDelayInputChange)
+  );
+}
+
 function setupRescheduleButtons(cleanupFns) {
   rescheduleButtons.forEach((btn) => {
     btn.addEventListener("click", handleReschedule);
@@ -252,6 +303,7 @@ export function registerTaskFormHandlers() {
   setupTaskPriority(cleanupFns);
   setupTaskToggle(cleanupFns);
   setupTaskLists(cleanupFns);
+  setupReportDelayInput(cleanupFns);
   setupRescheduleButtons(cleanupFns);
   setupTaskHelpers(cleanupFns);
   return () => {

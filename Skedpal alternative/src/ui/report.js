@@ -9,6 +9,7 @@ import {
   REPORT_MISSED_FILL_COLOR,
   TEN,
   TWO,
+  deferIconSvg,
   SUBTASK_SCHEDULE_SEQUENTIAL_SINGLE,
   TASK_REPEAT_NONE,
   TASK_STATUS_IGNORED,
@@ -343,7 +344,21 @@ function buildReportRow(row, context) {
   summaryRow.style.alignItems = "center";
   summaryRow.style.marginLeft = "auto";
   summaryRow.style.gap = "0.35rem";
-  summaryRow.textContent = missedBase;
+  const summaryText = document.createElement("span");
+  summaryText.setAttribute("data-test-skedpal", "report-missed-summary-text");
+  summaryText.textContent = missedBase;
+  summaryRow.appendChild(summaryText);
+  if (row.repeat && row.repeat.type !== TASK_REPEAT_NONE) {
+    const delayBtn = document.createElement("button");
+    delayBtn.type = "button";
+    delayBtn.className = "title-icon-btn";
+    delayBtn.title = "Delay occurrence";
+    delayBtn.setAttribute("aria-label", "Delay occurrence");
+    delayBtn.setAttribute("data-test-skedpal", "report-missed-delay");
+    delayBtn.dataset.reportDelay = row.id;
+    delayBtn.innerHTML = deferIconSvg;
+    summaryRow.appendChild(delayBtn);
+  }
   const actionsWrap = card.querySelector(".task-actions-wrap");
   if (actionsWrap) {
     actionsWrap.appendChild(summaryRow);

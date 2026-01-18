@@ -221,6 +221,7 @@ export const domRefs = {
   rescheduleButtons: [...document.querySelectorAll("[data-reschedule-btn]")],
   scheduleSummary: document.getElementById("scheduled-summary"),
   reportList: document.getElementById("report-list"),
+  reportDelayInput: document.getElementById("report-delay-date"),
   reportBadge: document.querySelector
     ? document.querySelector("[data-test-skedpal='nav-report-badge']")
     : null,

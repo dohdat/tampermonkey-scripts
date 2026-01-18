@@ -135,20 +135,43 @@ describe("report render", () => {
       title: "Missed task",
       scheduleStatus: "scheduled",
       missedCount: 2,
-      expectedCount: 0,
-      missedLastRun: 0,
+      expectedCount: 1,
+      missedLastRun: 1,
       priority: 1,
       durationMin: 30,
-      timeMapIds: []
+      timeMapIds: [],
+      repeat: { type: "custom", unit: "week" }
     };
     state.expandedTaskDetails = new Set(["t100"]);
     renderReport([task]);
     const row = findByTestAttr(domRefs.reportList, "report-missed-row");
     const meta = findByTestAttr(domRefs.reportList, "report-missed-meta");
+    const delayBtn = findByTestAttr(domRefs.reportList, "report-missed-delay");
     assert.ok(row);
     assert.ok(meta);
+    assert.ok(delayBtn);
     assert.strictEqual(domRefs.reportBadge.textContent, "1");
     assert.strictEqual(domRefs.reportBadge.classList.contains("hidden"), false);
+  });
+
+  it("does not render delay action for non-repeating tasks", () => {
+    const task = {
+      id: "t120",
+      title: "One-off missed",
+      scheduleStatus: "scheduled",
+      missedCount: 1,
+      expectedCount: 0,
+      missedLastRun: 0,
+      priority: 2,
+      durationMin: 15,
+      timeMapIds: [],
+      repeat: { type: "none" }
+    };
+    renderReport([task]);
+    const row = findByTestAttr(domRefs.reportList, "report-missed-row");
+    const delayBtn = findByTestAttr(domRefs.reportList, "report-missed-delay");
+    assert.ok(row);
+    assert.strictEqual(delayBtn, null);
   });
 
   it("does not render missed rows for future startFrom tasks", () => {

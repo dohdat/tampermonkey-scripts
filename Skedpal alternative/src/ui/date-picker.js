@@ -1,5 +1,6 @@
 import {
   addMonths,
+  addDays,
   buildQuickPickSections,
   formatLongDateLabel,
   formatShortDateLabel,
@@ -8,7 +9,19 @@ import {
   parseDateInputValue,
   toDateInputValue
 } from "./date-picker-utils.js";
-import { ENTER_KEY, ESC_KEY, NEXT_MONTH_OFFSET, SPACE_KEY } from "../constants.js";
+import {
+  DAYS_PER_YEAR,
+  ENTER_KEY,
+  ESC_KEY,
+  NEXT_MONTH_OFFSET,
+  ONE,
+  SPACE_KEY,
+  TASK_REPEAT_NONE
+} from "../constants.js";
+import { DATE_PICKER_SUGGESTED_COUNT } from "./constants.js";
+import { getUpcomingOccurrences } from "../core/scheduler.js";
+import { getWeekdayShortLabel } from "./utils.js";
+import { state as pageState } from "./state/page-state.js";
 
 const PREV_MONTH_OFFSET = -1;
 
@@ -96,6 +109,8 @@ function resolveNodes() {
     subtitle: modal.querySelector("#date-picker-subtitle"),
     monthLabel: modal.querySelector("#date-picker-month"),
     grid: modal.querySelector("#date-picker-grid"),
+    quickSuggested: modal.querySelector("#date-picker-quick-suggested"),
+    suggestedCard: modal.querySelector("[data-test-skedpal='date-picker-card-suggested']"),
     quickSoon: modal.querySelector("#date-picker-quick-soon"),
     quickMonth: modal.querySelector("#date-picker-quick-month"),
     quickLater: modal.querySelector("#date-picker-quick-later"),
@@ -143,6 +158,77 @@ function renderQuickPicks(nodes, quickPickMap) {
   });
 }
 
+export function buildSuggestedQuickOptions(
+  task,
+  now = new Date(),
+  count = DATE_PICKER_SUGGESTED_COUNT
+) {
+  if (!task?.repeat || task.repeat.type === TASK_REPEAT_NONE) {return [];}
+  const upcoming = getUpcomingOccurrences(task, now, count, DAYS_PER_YEAR);
+  return upcoming.map(({ date }, index) => {
+    const weekday = getWeekdayShortLabel(date.getDay());
+    const label = index === 0 ? `Next ${weekday}` : `Then ${weekday}`;
+    return { label, date };
+  });
+}
+
+function startOfLocalDay(date) {
+  const copy = new Date(date);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
+}
+
+function buildNextAllowedWeekdayOptions(repeat, now, count) {
+  const weeklyDays = Array.isArray(repeat?.weeklyDays) ? repeat.weeklyDays : [];
+  if (!weeklyDays.length) {return [];}
+  const allowedDays = Array.from(
+    new Set(weeklyDays.map((day) => Number(day)).filter((day) => Number.isFinite(day)))
+  );
+  if (!allowedDays.length) {return [];}
+  const start = addDays(startOfLocalDay(now), ONE);
+  const options = [];
+  for (let offset = 0; offset < DAYS_PER_YEAR && options.length < count; offset += 1) {
+    const candidate = addDays(start, offset);
+    if (!allowedDays.includes(candidate.getDay())) {continue;}
+    const weekday = getWeekdayShortLabel(candidate.getDay());
+    const label = options.length === 0 ? `Next ${weekday}` : `Then ${weekday}`;
+    options.push({ label, date: candidate });
+  }
+  return options;
+}
+
+export function buildReportDelaySuggestions(
+  task,
+  now = new Date(),
+  count = DATE_PICKER_SUGGESTED_COUNT
+) {
+  if (!task?.repeat || task.repeat.type === TASK_REPEAT_NONE) {return [];}
+  if (task.repeat.unit === "week") {
+    const quick = buildNextAllowedWeekdayOptions(task.repeat, now, count);
+    if (quick.length) {return quick;}
+  }
+  return buildSuggestedQuickOptions(task, now, count);
+}
+
+function renderSuggestedQuickPicks(state, nodes) {
+  if (!nodes.suggestedCard || !nodes.quickSuggested) {return;}
+  const taskId = state.activeInput?.dataset?.reportDelayTask || "";
+  const task = taskId && Array.isArray(pageState.tasksCache)
+    ? pageState.tasksCache.find((entry) => entry?.id === taskId)
+    : null;
+  const options = task ? buildReportDelaySuggestions(task, new Date()) : [];
+  if (!options.length) {
+    nodes.suggestedCard.classList.add("hidden");
+    clearNode(nodes.quickSuggested);
+    return;
+  }
+  nodes.suggestedCard.classList.remove("hidden");
+  clearNode(nodes.quickSuggested);
+  options.forEach((option) => {
+    nodes.quickSuggested.appendChild(createQuickOption(option));
+  });
+}
+
 function renderCalendar(state, nodes) {
   if (!nodes.grid || !nodes.monthLabel) {return;}
   const { year, monthIndex, daysInMonth, startWeekday } = getMonthData(state.viewDate);
@@ -164,6 +250,7 @@ function openDatePicker(state, nodes, quickPickMap, input) {
   state.selectedDate = parseDateInputValue(input.value) || new Date();
   state.viewDate = new Date(state.selectedDate.getFullYear(), state.selectedDate.getMonth(), 1);
   renderQuickPicks(nodes, quickPickMap);
+  renderSuggestedQuickPicks(state, nodes);
   renderCalendar(state, nodes);
   updateSubtitle(state, nodes);
   nodes.modal.classList.remove("hidden");
@@ -173,6 +260,9 @@ function openDatePicker(state, nodes, quickPickMap, input) {
 function closeDatePicker(state, nodes) {
   nodes.modal.classList.add("hidden");
   nodes.modal.setAttribute("aria-hidden", "true");
+  if (state.activeInput?.dataset?.reportDelayTask) {
+    state.activeInput.dataset.reportDelayTask = "";
+  }
   state.activeInput = null;
 }
 
@@ -189,7 +279,7 @@ function bindInputListeners(inputs, handlers, cleanupFns) {
 
 function bindQuickPickListeners(nodes, handlers, cleanupFns) {
   const { onQuickClick } = handlers;
-  [nodes.quickSoon, nodes.quickMonth, nodes.quickLater].forEach((section) => {
+  [nodes.quickSuggested, nodes.quickSoon, nodes.quickMonth, nodes.quickLater].forEach((section) => {
     if (!section) {return;}
     section.addEventListener("click", onQuickClick);
     cleanupFns.push(() => section.removeEventListener("click", onQuickClick));

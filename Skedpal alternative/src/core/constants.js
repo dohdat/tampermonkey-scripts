@@ -21,3 +21,5 @@ export const GOOGLE_CALENDAR_EVENT_COLORS = Object.freeze([
   { id: "10", hex: "#51b749" },
   { id: "11", hex: "#dc2127" }
 ]);
+
+export const GOOGLE_CALENDAR_SYNC_LOOKBACK_DAYS = 3;

@@ -27,6 +27,7 @@ import {
 } from "../constants.js";
 import {
   GOOGLE_CALENDAR_EVENT_COLORS,
+  GOOGLE_CALENDAR_SYNC_LOOKBACK_DAYS,
   TASK_BACKGROUND_NONE_COLOR_HEX,
   TASK_PRIORITY_COLOR_HEX
 } from "../core/constants.js";
@@ -43,6 +44,8 @@ let fallbackTimeoutId = null;
 
 function buildSyncRange(now, syncDays) {
   const start = new Date(now.getTime());
+  start.setDate(start.getDate() - GOOGLE_CALENDAR_SYNC_LOOKBACK_DAYS);
+  start.setHours(0, 0, 0, 0);
   const end = new Date(now.getTime());
   end.setDate(end.getDate() + syncDays);
   end.setHours(END_OF_DAY_HOUR, END_OF_DAY_MINUTE, END_OF_DAY_SECOND, END_OF_DAY_MS);

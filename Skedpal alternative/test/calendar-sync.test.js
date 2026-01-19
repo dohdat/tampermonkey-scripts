@@ -9,6 +9,7 @@ import {
   resumeCalendarSyncJob,
   startCalendarSyncJob
 } from "../src/background/calendar-sync.js";
+import { GOOGLE_CALENDAR_SYNC_LOOKBACK_DAYS } from "../src/core/constants.js";
 import {
   getCalendarCacheEntry,
   saveCalendarCacheEntry,
@@ -382,6 +383,49 @@ describe("calendar sync planning", () => {
     assert.strictEqual(result.started, true);
     assert.ok(cached?.value?.items?.length);
     assert.ok(alarmCreated);
+  });
+
+  it("includes a lookback window when fetching existing events", async () => {
+    let capturedUrl = "";
+    globalThis.chrome = {
+      identity: {
+        lastError: null,
+        getAuthToken: (_opts, cb) => cb("token")
+      },
+      alarms: {
+        create: () => {},
+        clear: () => {},
+        onAlarm: { addListener: () => {} }
+      }
+    };
+    globalThis.fetch = async (url) => {
+      capturedUrl = url;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ items: [] })
+      };
+    };
+    const now = new Date("2026-01-07T12:34:56Z");
+    const settings = {
+      schedulingHorizonDays: 5,
+      googleCalendarTaskSettings: {
+        "cal-1": { syncScheduledEvents: true, syncDays: 5 }
+      }
+    };
+    await startCalendarSyncJob({ tasks: [], settings, now });
+    assert.ok(capturedUrl);
+    const url = new URL(capturedUrl);
+    const timeMin = new Date(url.searchParams.get("timeMin"));
+    const timeMax = new Date(url.searchParams.get("timeMax"));
+    const expectedStart = new Date(now.getTime());
+    expectedStart.setDate(expectedStart.getDate() - GOOGLE_CALENDAR_SYNC_LOOKBACK_DAYS);
+    expectedStart.setHours(0, 0, 0, 0);
+    const expectedEnd = new Date(now.getTime());
+    expectedEnd.setDate(expectedEnd.getDate() + 5);
+    expectedEnd.setHours(23, 59, 59, 999);
+    assert.strictEqual(timeMin.getTime(), expectedStart.getTime());
+    assert.strictEqual(timeMax.getTime(), expectedEnd.getTime());
   });
 
   it("does not start when no sync targets exist", async () => {

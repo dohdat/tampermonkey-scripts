@@ -19,4 +19,22 @@ describe("background scheduling horizon", () => {
     const expected = getExpectedOccurrenceCount(task, now, "14");
     assert.strictEqual(expected, 0);
   });
+
+  it("returns zero for non-repeating tasks", () => {
+    const now = new Date("2026-01-01T10:00:00.000Z");
+    const task = { id: "no-repeat", repeat: { type: "none" } };
+    assert.strictEqual(getExpectedOccurrenceCount(task, now, 7), 0);
+  });
+
+  it("uses default horizon when the provided value is invalid", () => {
+    const now = new Date("2026-01-01T10:00:00.000Z");
+    const task = {
+      id: "repeat-weekly",
+      repeat: { type: "custom", unit: "week", interval: 1, weeklyDays: [1] },
+      repeatAnchor: "2025-12-15T00:00:00.000Z"
+    };
+    const invalid = getExpectedOccurrenceCount(task, now, 0);
+    const fallback = getExpectedOccurrenceCount(task, now, undefined);
+    assert.strictEqual(invalid, fallback);
+  });
 });

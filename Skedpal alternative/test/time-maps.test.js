@@ -1,5 +1,5 @@
 import assert from "assert";
-import { describe, it, beforeEach } from "mocha";
+import { describe, it, beforeEach, afterEach } from "mocha";
 
 class FakeElement {
   constructor(tagName = "div") {
@@ -16,6 +16,7 @@ class FakeElement {
     this.style = {};
     this._handlers = {};
     this._classSet = new Set();
+    this.closestResult = {};
     this.classList = {
       add: (...names) => names.forEach((n) => this._classSet.add(n)),
       remove: (...names) => names.forEach((n) => this._classSet.delete(n)),
@@ -41,8 +42,28 @@ class FakeElement {
     this.children = [];
   }
 
+  get options() {
+    return this.children.filter((child) => child.tagName === "OPTION");
+  }
+
   appendChild(child) {
+    if (child?.parentNode) {
+      const siblings = child.parentNode.children || [];
+      child.parentNode.children = siblings.filter((node) => node !== child);
+    }
+    this.children = this.children.filter((node) => node !== child);
     this.children.push(child);
+    if (child && typeof child === "object") {
+      child.parentNode = this;
+    }
+    return child;
+  }
+
+  removeChild(child) {
+    this.children = this.children.filter((node) => node !== child);
+    if (child && typeof child === "object") {
+      child.parentNode = null;
+    }
     return child;
   }
 
@@ -52,6 +73,23 @@ class FakeElement {
 
   addEventListener(type, handler) {
     this._handlers[type] = handler;
+  }
+
+  removeEventListener(type, handler) {
+    if (this._handlers[type] === handler) {
+      delete this._handlers[type];
+    }
+  }
+
+  remove() {
+    if (!this.parentNode) {return;}
+    const next = this.parentNode.children.filter((child) => child !== this);
+    this.parentNode.children = next;
+    this.parentNode = null;
+  }
+
+  closest(selector) {
+    return this.closestResult?.[selector] || null;
   }
 
   querySelectorAll(selector) {
@@ -76,6 +114,10 @@ class FakeElement {
     if (selector?.startsWith("[data-day-row=")) {
       const value = selector.split('"')[1];
       return findFirst(this, (node) => node.dataset?.dayRow === value);
+    }
+    if (selector?.startsWith("[data-timeline=")) {
+      const value = selector.split('"')[1];
+      return findFirst(this, (node) => node.dataset?.timeline === value);
     }
     return null;
   }
@@ -144,7 +186,7 @@ function installDomStubs() {
 }
 
 installDomStubs();
-const { domRefs } = await import("../src/ui/constants.js");
+const { domRefs, dayOptions } = await import("../src/ui/constants.js");
 const { state } = await import("../src/ui/state/page-state.js");
 domRefs.timeMapColorInput = elements.get("timemap-color");
 domRefs.timeMapColorSwatch = elements.get("timemap-color-swatch");
@@ -163,6 +205,7 @@ const {
   renderTimeMaps,
   renderTaskTimeMapOptions,
   renderTimeMapOptions,
+  initTimeMapFormInteractions,
   openTimeMapForm,
   closeTimeMapForm,
   resetTimeMapForm,
@@ -170,6 +213,9 @@ const {
 } = timeMaps;
 
 describe("time maps", () => {
+  const originalElement = global.Element;
+  const originalWindow = global.window;
+
   beforeEach(() => {
     installDomStubs();
     domRefs.timeMapColorInput = elements.get("timemap-color");
@@ -184,6 +230,11 @@ describe("time maps", () => {
     elements.get("timemap-day-rows").children = [];
     elements.get("timemap-list").children = [];
     elements.get("task-timemap-options").children = [];
+  });
+
+  afterEach(() => {
+    global.Element = originalElement;
+    global.window = originalWindow;
   });
   it("collects selected checkbox values", () => {
     const container = {
@@ -213,6 +264,50 @@ describe("time maps", () => {
       { day: 1, startTime: "10:00", endTime: "11:00" },
       { day: 2, startTime: "09:00", endTime: "12:00" }
     ]);
+  });
+
+  it("collects rules from input values when minute metadata is missing", () => {
+    const container = {
+      querySelectorAll: () => [
+        {
+          dataset: { dayRow: "2" },
+          querySelectorAll: () => [
+            {
+              dataset: {},
+              querySelector: (selector) => {
+                if (selector === "input[data-start-for]") {
+                  return { value: "08:00" };
+                }
+                if (selector === "input[data-end-for]") {
+                  return { value: "10:30" };
+                }
+                return null;
+              }
+            }
+          ]
+        }
+      ]
+    };
+    const rules = collectTimeMapRules(container);
+    assert.deepStrictEqual(rules, [{ day: 2, startTime: "08:00", endTime: "10:30" }]);
+  });
+
+  it("collects rules with fallback time strings", () => {
+    const container = {
+      querySelectorAll: () => [
+        {
+          dataset: { dayRow: "3" },
+          querySelectorAll: () => [
+            {
+              dataset: {},
+              querySelector: () => null
+            }
+          ]
+        }
+      ]
+    };
+    const rules = collectTimeMapRules(container);
+    assert.strictEqual(rules.length, 1);
   });
 
   it("builds time map form data and validates inputs", () => {
@@ -256,6 +351,40 @@ describe("time maps", () => {
     assert.strictEqual(alertMessage, "Name is required.");
   });
 
+  it("handles missing form inputs and placeholder colors", () => {
+    domRefs.timeMapColorInput = null;
+    assert.strictEqual(getTimeMapFormData(), null);
+
+    domRefs.timeMapColorInput = elements.get("timemap-color");
+    domRefs.timeMapDayRows = elements.get("timemap-day-rows");
+    elements.get("timemap-name").value = "Focus";
+    elements.get("timemap-color").value = "#000000";
+    elements.get("timemap-day-rows").querySelectorAll = () => [
+      createRow({
+        day: 1,
+        blocks: [{ startMinute: 540, endMinute: 720 }]
+      })
+    ];
+    domRefs.timeMapColorSwatch = null;
+    const data = getTimeMapFormData();
+    assert.strictEqual(data.name, "Focus");
+    assert.notStrictEqual(data.color, "#000000");
+    assert.notStrictEqual(elements.get("timemap-color").value, "#000000");
+  });
+
+  it("assigns a default color when input is empty", () => {
+    elements.get("timemap-name").value = "Default Color";
+    elements.get("timemap-color").value = "";
+    elements.get("timemap-day-rows").querySelectorAll = () => [
+      createRow({
+        day: 1,
+        blocks: [{ startMinute: 540, endMinute: 720 }]
+      })
+    ];
+    const data = getTimeMapFormData();
+    assert.ok(data.color);
+  });
+
   it("renders day rows and toggles blocks", () => {
     const container = elements.get("timemap-day-rows");
     renderDayRows(container, [
@@ -271,6 +400,59 @@ describe("time maps", () => {
     const addBlockBtn = findFirst(firstRow, (child) => child.tagName === "BUTTON");
     assert.ok(blocksContainer.children.length > 0);
     assert.ok(addBlockBtn);
+  });
+
+  it("syncs day select options for full and partial day sets", () => {
+    const daySelect = new FakeElement("select");
+    daySelect.value = "2";
+    domRefs.timeMapDaySelect = daySelect;
+    domRefs.timeMapDayRows = elements.get("timemap-day-rows");
+
+    renderDayRows(
+      elements.get("timemap-day-rows"),
+      dayOptions.map((day) => ({
+        day: day.value,
+        startTime: "09:00",
+        endTime: "10:00"
+      }))
+    );
+    assert.strictEqual(daySelect.options.length, 1);
+    assert.strictEqual(daySelect.options[0].textContent, "All days added");
+    assert.strictEqual(daySelect.value, "");
+
+    elements.get("timemap-day-rows").children = [];
+    daySelect.value = "2";
+    renderDayRows(elements.get("timemap-day-rows"), [
+      { day: 1, startTime: "09:00", endTime: "10:00" },
+      { day: 3, startTime: "09:00", endTime: "10:00" }
+    ]);
+    assert.strictEqual(daySelect.value, "2");
+  });
+
+  it("renders day rows with a container that cannot remove children", () => {
+    class BareContainer {
+      constructor() {
+        this.children = [];
+        this._innerHTML = "";
+      }
+
+      set innerHTML(value) {
+        this._innerHTML = value;
+        this.children = [];
+      }
+
+      appendChild(child) {
+        this.children.push(child);
+        return child;
+      }
+    }
+
+    const container = new BareContainer();
+    domRefs.timeMapDayRows = container;
+    domRefs.timeMapDaySelect = null;
+    addTimeMapDay(1);
+    addTimeMapDay(0);
+    assert.strictEqual(container.children.length, 2);
   });
 
   it("renders time map lists and options", () => {
@@ -295,6 +477,69 @@ describe("time maps", () => {
     const container = new FakeElement("div");
     renderTimeMapOptions(container, ["tm-1"], timeMapsData);
     assert.strictEqual(container.children.length, 1);
+  });
+
+  it("handles missing option containers and unnamed time maps", () => {
+    const originalOptions = domRefs.taskTimeMapOptions;
+    domRefs.taskTimeMapOptions = null;
+    renderTaskTimeMapOptions([{ id: "tm-missing", name: "Missing" }], [], "");
+    domRefs.taskTimeMapOptions = originalOptions;
+
+    renderTimeMapOptions(null, ["tm-1"], [{ id: "tm-1", name: "Work" }]);
+
+    const container = new FakeElement("div");
+    renderTimeMapOptions(container, [], [{ id: "tm-2" }]);
+    assert.strictEqual(container.children.length, 1);
+  });
+
+  it("handles non-array selections in time map options", () => {
+    const container = new FakeElement("div");
+    renderTimeMapOptions(container, "tm-1", [{ id: "tm-1", name: "Solo" }]);
+    assert.strictEqual(container.children.length, 1);
+  });
+
+  it("supports explicit and implicit time map selections", () => {
+    const container = elements.get("task-timemap-options");
+    renderTaskTimeMapOptions([{ id: "tm-a", name: "Alpha", color: "#123456" }], "tm-a", "");
+    assert.strictEqual(container.children.length, 1);
+
+    container.children = [];
+    renderTaskTimeMapOptions([{ id: "tm-b", name: "Bravo" }], ["tm-b"], "");
+    const input = container.children[0].children[0];
+    assert.strictEqual(input.checked, true);
+  });
+
+  it("renders fallback timemap content and handles missing lists", () => {
+    domRefs.timeMapList = null;
+    renderTimeMaps([{ id: "tm-2", name: "No List" }]);
+
+    domRefs.timeMapList = elements.get("timemap-list");
+    renderTimeMaps([{ id: "tm-3", name: "Empty", rules: [] }]);
+    assert.strictEqual(elements.get("timemap-list").children.length, 1);
+    assert.ok(elements.get("timemap-list").children[0].innerHTML.includes("No time ranges yet."));
+
+    elements.get("timemap-list").children = [];
+    renderTimeMaps([
+      { id: "tm-4", name: "Fallback", rules: [{ day: 9, startTime: "09:00", endTime: "11:00" }] }
+    ]);
+    assert.strictEqual(elements.get("timemap-list").children.length, 1);
+  });
+
+  it("counts timemap usage excluding external ids", () => {
+    const tasks = [
+      { id: "t1", timeMapIds: ["tm-1", "external-calendar:cal-1"] },
+      { id: "t2", timeMapIds: ["tm-1"], subtaskParentId: "t1" },
+      { id: "t3", timeMapIds: ["tm-2"] }
+    ];
+    const counts = getTimeMapUsageCounts(tasks);
+    assert.strictEqual(counts.get("tm-1"), 1);
+    assert.strictEqual(counts.get("tm-2"), 1);
+    assert.strictEqual(counts.has("external-calendar:cal-1"), false);
+  });
+
+  it("returns empty usage counts for missing tasks", () => {
+    const counts = getTimeMapUsageCounts();
+    assert.strictEqual(counts.size, 0);
   });
 
   it("counts timemap usage for parent tasks only", () => {
@@ -326,6 +571,77 @@ describe("time maps", () => {
     assert.strictEqual(elements.get("timemap-name").value, "");
   });
 
+  it("wires day list interactions and cleans up listeners", () => {
+    global.Element = FakeElement;
+    global.window = {
+      addEventListener: () => {},
+      removeEventListener: () => {}
+    };
+
+    const dayAdd = new FakeElement("button");
+    const dayRows = new FakeElement("div");
+    domRefs.timeMapDayAdd = dayAdd;
+    domRefs.timeMapDayRows = dayRows;
+    domRefs.timeMapDaySelect = new FakeElement("select");
+    domRefs.timeMapColorInput.value = "";
+
+    const dayRow = new FakeElement("div");
+    dayRow.dataset.dayRow = "1";
+    const timeline = new FakeElement("div");
+    timeline.dataset.timeline = "1";
+    dayRow.appendChild(timeline);
+    dayRows.appendChild(dayRow);
+
+    const addBlockBtn = new FakeElement("button");
+    addBlockBtn.dataset.day = "1";
+    addBlockBtn.closestResult = { "[data-day-row]": dayRow, "[data-block-add]": addBlockBtn };
+    const removeDayBtn = new FakeElement("button");
+    removeDayBtn.closestResult = { "[data-day-remove]": removeDayBtn, "[data-day-row]": dayRow };
+    const block = new FakeElement("div");
+    block.dataset.block = "1";
+    const removeBlockBtn = new FakeElement("button");
+    removeBlockBtn.closestResult = { "[data-block]": block, "[data-block-remove]": removeBlockBtn };
+    timeline.appendChild(block);
+
+    const cleanup = initTimeMapFormInteractions();
+    dayRows._handlers.click({ target: {} });
+    dayRows._handlers.click({ target: addBlockBtn });
+    dayRows._handlers.click({ target: removeBlockBtn });
+    dayRows._handlers.click({ target: removeDayBtn });
+    cleanup();
+  });
+
+  it("handles day row click edge cases and fallback labels", () => {
+    global.Element = FakeElement;
+    global.window = {
+      addEventListener: () => {},
+      removeEventListener: () => {}
+    };
+    const dayRows = new FakeElement("div");
+    domRefs.timeMapDayRows = dayRows;
+    domRefs.timeMapDaySelect = new FakeElement("select");
+    const addBlockBtn = new FakeElement("button");
+    addBlockBtn.closestResult = { "[data-block-add]": addBlockBtn };
+    const addBlockNoTimeline = new FakeElement("button");
+    addBlockNoTimeline.dataset.day = "1";
+    addBlockNoTimeline.closestResult = {
+      "[data-block-add]": addBlockNoTimeline,
+      "[data-day-row]": { querySelector: () => null }
+    };
+    const removeDayBtn = new FakeElement("button");
+    removeDayBtn.closestResult = { "[data-day-remove]": removeDayBtn };
+    const removeBlockBtn = new FakeElement("button");
+    removeBlockBtn.closestResult = { "[data-block-remove]": removeBlockBtn };
+
+    const cleanup = initTimeMapFormInteractions();
+    dayRows._handlers.click({ target: addBlockBtn });
+    dayRows._handlers.click({ target: addBlockNoTimeline });
+    dayRows._handlers.click({ target: removeDayBtn });
+    dayRows._handlers.click({ target: removeBlockBtn });
+    addTimeMapDay(99);
+    cleanup();
+  });
+
   it("adds day rows defensively", () => {
     const container = elements.get("timemap-day-rows");
     addTimeMapDay("bad");
@@ -334,5 +650,8 @@ describe("time maps", () => {
     assert.strictEqual(container.children.length, 1);
     addTimeMapDay(1);
     assert.strictEqual(container.children.length, 1);
+
+    domRefs.timeMapDayRows = null;
+    addTimeMapDay(2);
   });
 });

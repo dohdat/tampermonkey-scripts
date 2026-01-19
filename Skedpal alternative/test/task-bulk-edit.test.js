@@ -203,6 +203,25 @@ describe("task bulk edit", () => {
     assert.deepStrictEqual(updates[0].timeMapIds, ["tm-3"]);
   });
 
+  it("updates timemaps when existing ids are missing", () => {
+    const task = {
+      id: "task-2b",
+      timeMapIds: null
+    };
+    const values = {
+      priority: undefined,
+      deadline: undefined,
+      startFrom: undefined,
+      durationMin: undefined,
+      minBlockMin: undefined,
+      timeMapMode: "replace",
+      timeMapIds: ["tm-9"]
+    };
+    const { updates, changed } = buildBulkEditUpdates([task], ["task-2b"], values);
+    assert.strictEqual(changed, true);
+    assert.deepStrictEqual(updates[0].timeMapIds, ["tm-9"]);
+  });
+
   it("returns no updates when nothing changes", () => {
     const task = {
       id: "task-3",
@@ -228,6 +247,47 @@ describe("task bulk edit", () => {
       timeMapIds: []
     };
     const { updates, changed } = buildBulkEditUpdates([task], ["task-3"], values);
+    assert.strictEqual(changed, false);
+    assert.strictEqual(updates.length, 0);
+  });
+
+  it("returns empty updates for empty or unknown task ids", () => {
+    const values = {
+      priority: 1,
+      deadline: undefined,
+      startFrom: undefined,
+      durationMin: undefined,
+      minBlockMin: undefined,
+      timeMapMode: "keep",
+      timeMapIds: []
+    };
+    const empty = buildBulkEditUpdates([{ id: "t1" }], [], values);
+    assert.deepStrictEqual(empty, { updates: [], changed: false });
+
+    const unknown = buildBulkEditUpdates(null, ["missing"], values);
+    assert.deepStrictEqual(unknown, { updates: [], changed: false });
+  });
+
+  it("skips updates when values match existing task fields", () => {
+    const task = {
+      id: "task-same",
+      priority: 2,
+      deadline: null,
+      startFrom: null,
+      durationMin: 30,
+      minBlockMin: 30,
+      timeMapIds: []
+    };
+    const values = {
+      priority: 2,
+      deadline: null,
+      startFrom: null,
+      durationMin: 30,
+      minBlockMin: 30,
+      timeMapMode: "keep",
+      timeMapIds: []
+    };
+    const { updates, changed } = buildBulkEditUpdates([task], ["task-same"], values);
     assert.strictEqual(changed, false);
     assert.strictEqual(updates.length, 0);
   });
@@ -279,6 +339,14 @@ describe("task bulk edit", () => {
     elements["task-bulk-edit-apply"].click();
     assert.strictEqual(elements["task-bulk-edit-banner"].classList.contains("hidden"), false);
 
+    elements["task-bulk-edit-priority"].value = "abc";
+    elements["task-bulk-edit-apply"].click();
+    assert.strictEqual(elements["task-bulk-edit-banner"].classList.contains("hidden"), false);
+
+    elements["task-bulk-edit-priority"].value = "0";
+    elements["task-bulk-edit-apply"].click();
+    assert.strictEqual(elements["task-bulk-edit-banner"].classList.contains("hidden"), false);
+
     elements["task-bulk-edit-priority"].value = "";
     elements["task-bulk-edit-duration"].value = "20";
     elements["task-bulk-edit-apply"].click();
@@ -301,6 +369,97 @@ describe("task bulk edit", () => {
 
     elements["task-bulk-edit-cancel"].click();
     assert.strictEqual(elements["task-bulk-edit-banner"].classList.contains("hidden"), true);
+  });
+
+  it("blocks invalid date ranges", () => {
+    const selectedCard = new FakeElement();
+    selectedCard.dataset.taskId = "task-11";
+    elements["task-list"].selectedCards = [selectedCard];
+    elements["task-bulk-edit-banner"].classList.add("hidden");
+    openBulkEditBanner("task-11");
+
+    elements["task-bulk-edit-start-from"].value = "2026-01-10";
+    elements["task-bulk-edit-deadline"].value = "2026-01-01";
+    elements["task-bulk-edit-apply"].click();
+    assert.strictEqual(elements["task-bulk-edit-banner"].classList.contains("hidden"), false);
+    elements["task-bulk-edit-cancel"].click();
+  });
+
+  it("closes when no target ids are available", () => {
+    const selectedCard = new FakeElement();
+    selectedCard.dataset.taskId = "task-13";
+    elements["task-list"].selectedCards = [selectedCard];
+    elements["task-bulk-edit-banner"].classList.add("hidden");
+    openBulkEditBanner("");
+    elements["task-list"].selectedCards = [];
+    domRefs.taskList.querySelectorAll = () => [];
+    state.bulkEditSelectionIds = null;
+    elements["task-bulk-edit-apply"].click();
+    assert.strictEqual(elements["task-bulk-edit-banner"].classList.contains("hidden"), true);
+  });
+
+  it("keeps selected ids when both selection and fallback exist", () => {
+    const selectedCard = new FakeElement();
+    selectedCard.dataset.taskId = "task-17";
+    elements["task-list"].selectedCards = [selectedCard];
+    domRefs.taskList.querySelectorAll = () => [selectedCard];
+    elements["task-bulk-edit-banner"].classList.add("hidden");
+    openBulkEditBanner("fallback-17");
+    assert.deepStrictEqual(state.bulkEditSelectionIds, ["task-17"]);
+    elements["task-bulk-edit-cancel"].click();
+  });
+
+  it("uses explicit selection ids and handles no-change apply", () => {
+    const selectedCard = new FakeElement();
+    selectedCard.dataset.taskId = "task-12";
+    elements["task-list"].selectedCards = [selectedCard];
+    elements["task-bulk-edit-banner"].classList.add("hidden");
+    state.tasksCache = [
+      { id: "task-12", priority: 2, durationMin: 30, minBlockMin: 30, timeMapIds: [] }
+    ];
+    openBulkEditBanner("task-12");
+
+    state.bulkEditSelectionIds = ["task-12"];
+    elements["task-bulk-edit-apply"].click();
+    assert.strictEqual(elements["task-bulk-edit-banner"].classList.contains("hidden"), false);
+    elements["task-bulk-edit-cancel"].click();
+  });
+
+  it("reuses existing cleanup before reopening", () => {
+    let cleaned = false;
+    state.bulkEditCleanup = () => {
+      cleaned = true;
+    };
+    elements["task-list"].selectedCards = [];
+    elements["task-bulk-edit-banner"].classList.add("hidden");
+    openBulkEditBanner("task-cleanup");
+    assert.strictEqual(cleaned, true);
+    elements["task-bulk-edit-cancel"].click();
+  });
+
+  it("validates and skips unchanged values with valid inputs", () => {
+    const selectedCard = new FakeElement();
+    selectedCard.dataset.taskId = "task-18";
+    elements["task-list"].selectedCards = [selectedCard];
+    elements["task-bulk-edit-banner"].classList.add("hidden");
+    state.tasksCache = [
+      { id: "task-18", priority: 3, durationMin: 30, minBlockMin: 30, timeMapIds: [] }
+    ];
+    openBulkEditBanner("task-18");
+
+    elements["task-bulk-edit-priority"].value = "3";
+    elements["task-bulk-edit-duration"].value = "30";
+    elements["task-bulk-edit-min-block"].value = "30";
+    elements["task-bulk-edit-apply"].click();
+    assert.strictEqual(elements["task-bulk-edit-banner"].classList.contains("hidden"), false);
+    elements["task-bulk-edit-cancel"].click();
+  });
+
+  it("returns early when banner nodes are missing", () => {
+    const originalBanner = domRefs.taskBulkEditBanner;
+    domRefs.taskBulkEditBanner = null;
+    openBulkEditBanner("task-missing");
+    domRefs.taskBulkEditBanner = originalBanner;
   });
 
   it("skips timemap updates when unchanged", () => {
@@ -339,6 +498,15 @@ describe("task bulk edit", () => {
     assert.strictEqual(state.sortableInstances[0].disabled, false);
   });
 
+  it("skips null sortable instances", () => {
+    elements["task-list"].selectedCards = [];
+    elements["task-bulk-edit-banner"].classList.add("hidden");
+    state.sortableInstances = [null];
+    openBulkEditBanner("task-null");
+    assert.strictEqual(elements["task-bulk-edit-banner"].classList.contains("hidden"), false);
+    elements["task-bulk-edit-cancel"].click();
+  });
+
   it("handles timemap replace with existing selection", () => {
     const selectedCard = new FakeElement();
     selectedCard.dataset.taskId = "task-8";
@@ -349,8 +517,8 @@ describe("task bulk edit", () => {
     ];
     const checkedInput = { checked: true, value: "tm-1" };
     elements["task-bulk-edit-timemap-options"].querySelectorAll = () => [checkedInput];
-    elements["task-bulk-edit-timemap-mode"].value = "replace";
     openBulkEditBanner("task-8");
+    elements["task-bulk-edit-timemap-mode"].value = "replace";
     elements["task-bulk-edit-timemap-mode"].trigger("change");
     elements["task-bulk-edit-apply"].click();
     assert.strictEqual(elements["task-bulk-edit-banner"].classList.contains("hidden"), false);
@@ -358,6 +526,65 @@ describe("task bulk edit", () => {
     assert.strictEqual(elements["task-bulk-edit-banner"].classList.contains("hidden"), true);
   });
 
+  it("defaults to keep when timemap mode is empty", () => {
+    const selectedCard = new FakeElement();
+    selectedCard.dataset.taskId = "task-15";
+    elements["task-list"].selectedCards = [selectedCard];
+    elements["task-bulk-edit-banner"].classList.add("hidden");
+    openBulkEditBanner("task-15");
+    elements["task-bulk-edit-timemap-mode"].value = "";
+    elements["task-bulk-edit-timemap-mode"].trigger("change");
+    elements["task-bulk-edit-cancel"].click();
+  });
+
+  it("handles missing count nodes", () => {
+    const selectedCard = new FakeElement();
+    selectedCard.dataset.taskId = "task-16";
+    elements["task-list"].selectedCards = [selectedCard];
+    const originalCount = domRefs.taskBulkEditCount;
+    domRefs.taskBulkEditCount = null;
+    openBulkEditBanner("task-16");
+    domRefs.taskBulkEditCount = originalCount;
+  });
+
+  it("handles missing timemap mode controls", () => {
+    const selectedCard = new FakeElement();
+    selectedCard.dataset.taskId = "task-14";
+    elements["task-list"].selectedCards = [selectedCard];
+    elements["task-bulk-edit-banner"].classList.add("hidden");
+    const originalMode = domRefs.taskBulkEditTimeMapMode;
+    domRefs.taskBulkEditTimeMapMode = null;
+    openBulkEditBanner("task-14");
+    domRefs.taskBulkEditTimeMapMode = originalMode;
+    elements["task-bulk-edit-cancel"].click();
+  });
+
+  it("handles missing timemap options", () => {
+    const selectedCard = new FakeElement();
+    selectedCard.dataset.taskId = "task-19";
+    elements["task-list"].selectedCards = [selectedCard];
+    elements["task-bulk-edit-banner"].classList.add("hidden");
+    const originalOptions = domRefs.taskBulkEditTimeMapOptions;
+    domRefs.taskBulkEditTimeMapOptions = null;
+    openBulkEditBanner("task-19");
+    domRefs.taskBulkEditTimeMapOptions = originalOptions;
+    elements["task-bulk-edit-cancel"].click();
+  });
+
+  it("applies with an empty timemap mode value", () => {
+    const selectedCard = new FakeElement();
+    selectedCard.dataset.taskId = "task-20";
+    elements["task-list"].selectedCards = [selectedCard];
+    elements["task-bulk-edit-banner"].classList.add("hidden");
+    state.tasksCache = [
+      { id: "task-20", priority: 3, durationMin: 30, minBlockMin: 30, timeMapIds: [] }
+    ];
+    openBulkEditBanner("task-20");
+    elements["task-bulk-edit-timemap-mode"].value = "";
+    elements["task-bulk-edit-apply"].click();
+    assert.strictEqual(elements["task-bulk-edit-banner"].classList.contains("hidden"), false);
+    elements["task-bulk-edit-cancel"].click();
+  });
   it("toggles timemap wrap visibility based on mode", () => {
     const selectedCard = new FakeElement();
     selectedCard.dataset.taskId = "task-9";

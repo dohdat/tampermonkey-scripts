@@ -48,7 +48,11 @@ describe("calendar external events", () => {
     state.calendarExternalRangeKey = "";
     state.calendarExternalRange = null;
     state.calendarExternalPendingKey = "";
-    state.settingsCache = { ...state.settingsCache, googleCalendarIds: [] };
+    state.settingsCache = {
+      ...state.settingsCache,
+      googleCalendarIds: [],
+      googleCalendarTaskSettings: {}
+    };
     invalidateExternalEventsCache();
     await Promise.all([
       removeExternalEventsCacheEntry(buildKey(bufferedRange, viewMode, ["calendar-1"])),

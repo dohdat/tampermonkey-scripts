@@ -62,6 +62,18 @@ describe("task virtualization helpers", () => {
     assert.strictEqual(findEndIndex(offsets, 70), 3);
   });
 
+  it("returns safe defaults for empty offsets and pinned inputs", () => {
+    assert.strictEqual(findStartIndex([], 25), 0);
+    assert.strictEqual(findEndIndex([], 25), 0);
+    const adjusted = adjustRangeForPinned({
+      startIndex: 1,
+      endIndex: 3,
+      pinnedIndices: [],
+      itemCount: 5
+    });
+    assert.deepStrictEqual(adjusted, { startIndex: 1, endIndex: 3 });
+  });
+
   it("expands range to include pinned rows", () => {
     const adjusted = adjustRangeForPinned({
       startIndex: 5,
@@ -83,6 +95,36 @@ describe("task virtualization helpers", () => {
       tasks: []
     });
     initializeTaskVirtualizers();
+    destroyTaskVirtualizers();
+  });
+
+  it("ignores invalid configs and empty initialization", () => {
+    registerTaskVirtualizer({ listEl: null, tasks: [] });
+    initializeTaskVirtualizers();
+  });
+
+  it("reuses global listeners and scheduled updates", async () => {
+    const listEl = {
+      isConnected: true,
+      style: {},
+      getBoundingClientRect: () => ({ width: 0, top: 0 })
+    };
+    registerTaskVirtualizer({
+      listEl,
+      tasks: [{ id: "t1" }],
+      context: {}
+    });
+    initializeTaskVirtualizers();
+    scheduleTaskVirtualizationUpdate();
+    scheduleTaskVirtualizationUpdate();
+
+    registerTaskVirtualizer({
+      listEl,
+      tasks: [{ id: "t2" }],
+      context: {}
+    });
+    initializeTaskVirtualizers();
+    await new Promise((resolve) => setTimeout(resolve, 0));
     destroyTaskVirtualizers();
   });
 

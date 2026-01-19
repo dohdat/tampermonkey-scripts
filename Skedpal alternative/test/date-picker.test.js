@@ -58,6 +58,28 @@ describe("date picker suggested quick picks", () => {
     assert.ok(hasNextWeekend);
   });
 
+  it("returns empty report delay suggestions when no repeat is set", () => {
+    const task = { id: "t4", repeat: { type: "none" } };
+    const options = buildReportDelaySuggestions(task, new Date("2026-01-17T12:00:00Z"));
+    assert.strictEqual(options.length, 0);
+  });
+
+  it("falls back to suggested options when weekly days are empty or invalid", () => {
+    const task = {
+      id: "t5",
+      repeat: { type: "custom", unit: "week", interval: 1, weeklyDays: [] },
+      repeatAnchor: "2026-01-03T00:00:00.000Z"
+    };
+    const now = new Date("2026-01-17T12:00:00Z");
+    const fallback = buildSuggestedQuickOptions(task, now, 3);
+    const options = buildReportDelaySuggestions(task, now, 3);
+    assert.strictEqual(options.length, fallback.length);
+
+    task.repeat.weeklyDays = ["x"];
+    const invalidOptions = buildReportDelaySuggestions(task, now, 3);
+    assert.strictEqual(invalidOptions.length, fallback.length);
+  });
+
   it("jumps to today without changing the active input value", () => {
     const state = {
       activeInput: { value: "2026-01-10" },
@@ -72,5 +94,48 @@ describe("date picker suggested quick picks", () => {
     assert.strictEqual(state.viewDate.getDate(), 1);
     assert.strictEqual(state.activeInput.value, "2026-01-10");
     assert.strictEqual(state.selectedDate.getMonth(), 0);
+  });
+
+  it("renders calendar placeholders when nodes are available", () => {
+    class FakeElement {
+      constructor() {
+        this.children = [];
+        this.textContent = "";
+        this.attributes = {};
+        this._classSet = new Set();
+        this.classList = {
+          add: (name) => this._classSet.add(name)
+        };
+      }
+
+      appendChild(child) {
+        this.children.push(child);
+        return child;
+      }
+
+      removeChild(child) {
+        this.children = this.children.filter((node) => node !== child);
+      }
+
+      setAttribute(name, value) {
+        this.attributes[name] = value;
+      }
+    }
+
+    const originalDocument = global.document;
+    global.document = {
+      createElement: () => new FakeElement()
+    };
+
+    const state = {
+      activeInput: null,
+      selectedDate: null,
+      viewDate: new Date(2026, 0, 1)
+    };
+    const nodes = { grid: new FakeElement(), monthLabel: new FakeElement() };
+    applyJumpToToday(state, nodes, new Date(2026, 1, 15));
+    assert.ok(nodes.grid.children.length > 0);
+
+    global.document = originalDocument;
   });
 });

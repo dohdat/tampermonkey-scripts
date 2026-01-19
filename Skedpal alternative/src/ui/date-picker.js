@@ -107,6 +107,7 @@ function resolveNodes() {
   return {
     modal,
     subtitle: modal.querySelector("#date-picker-subtitle"),
+    summaryValue: modal.querySelector("#date-picker-summary-value"),
     monthLabel: modal.querySelector("#date-picker-month"),
     grid: modal.querySelector("#date-picker-grid"),
     quickSuggested: modal.querySelector("#date-picker-quick-suggested"),
@@ -117,7 +118,9 @@ function resolveNodes() {
     prevBtn: modal.querySelector("[data-date-picker-prev]"),
     nextBtn: modal.querySelector("[data-date-picker-next]"),
     jumpBtn: modal.querySelector("#date-picker-jump"),
-    closeBtn: modal.querySelector("[data-date-picker-close]")
+    closeBtn: modal.querySelector("[data-date-picker-close]"),
+    cancelBtn: modal.querySelector("[data-date-picker-cancel]"),
+    applyBtn: modal.querySelector("[data-date-picker-apply]")
   };
 }
 
@@ -125,7 +128,8 @@ function createDatePickerState() {
   return {
     activeInput: null,
     selectedDate: null,
-    viewDate: new Date()
+    viewDate: new Date(),
+    autoApply: true
   };
 }
 
@@ -135,6 +139,15 @@ function updateSubtitle(state, nodes) {
     return;
   }
   setNodeText(nodes.subtitle, formatLongDateLabel(state.selectedDate));
+}
+
+function updateSummary(state, nodes) {
+  if (!nodes.summaryValue) {return;}
+  if (!state.selectedDate) {
+    setNodeText(nodes.summaryValue, "Pick a date");
+    return;
+  }
+  setNodeText(nodes.summaryValue, formatLongDateLabel(state.selectedDate));
 }
 
 function updateInputValue(state, date) {
@@ -252,12 +265,14 @@ export function applyJumpToToday(state, nodes, now = new Date()) {
 function openDatePicker(state, nodes, quickPickMap, input) {
   if (!input) {return;}
   state.activeInput = input;
+  state.autoApply = input.dataset.datePickerManual !== "true";
   state.selectedDate = parseDateInputValue(input.value) || new Date();
   state.viewDate = new Date(state.selectedDate.getFullYear(), state.selectedDate.getMonth(), 1);
   renderQuickPicks(nodes, quickPickMap);
   renderSuggestedQuickPicks(state, nodes);
   renderCalendar(state, nodes);
   updateSubtitle(state, nodes);
+  updateSummary(state, nodes);
   nodes.modal.classList.remove("hidden");
   nodes.modal.setAttribute("aria-hidden", "false");
 }
@@ -269,6 +284,70 @@ function closeDatePicker(state, nodes) {
     state.activeInput.dataset.reportDelayTask = "";
   }
   state.activeInput = null;
+  state.autoApply = true;
+}
+
+function selectDate(state, nodes, date) {
+  if (!date) {return;}
+  state.selectedDate = date;
+  state.viewDate = new Date(date.getFullYear(), date.getMonth(), 1);
+  renderCalendar(state, nodes);
+  updateSubtitle(state, nodes);
+  updateSummary(state, nodes);
+}
+
+function applySelectedDate(state, nodes) {
+  if (!state.selectedDate) {return;}
+  updateInputValue(state, state.selectedDate);
+  closeDatePicker(state, nodes);
+}
+
+function createCancelHandler(state, nodes) {
+  function onCancelClick() {
+    closeDatePicker(state, nodes);
+  }
+  return onCancelClick;
+}
+
+function createApplyHandler(state, nodes) {
+  function onApplyClick() {
+    applySelectedDate(state, nodes);
+  }
+  return onApplyClick;
+}
+
+function createQuickPickHandler(state, nodes) {
+  function onQuickClick(event) {
+    const btn = event.target.closest("[data-date-picker-quick]");
+    if (!btn) {return;}
+    const date = parseDateInputValue(btn.dataset.datePickerQuick);
+    if (!date) {return;}
+    if (state.autoApply) {
+      state.selectedDate = date;
+      updateInputValue(state, date);
+      closeDatePicker(state, nodes);
+      return;
+    }
+    selectDate(state, nodes, date);
+  }
+  return onQuickClick;
+}
+
+function createDayGridHandler(state, nodes) {
+  function onDayGridClick(event) {
+    const btn = event.target.closest("[data-date-picker-day]");
+    if (!btn) {return;}
+    const date = parseDateInputValue(btn.dataset.datePickerDay);
+    if (!date) {return;}
+    if (state.autoApply) {
+      state.selectedDate = date;
+      updateInputValue(state, date);
+      closeDatePicker(state, nodes);
+      return;
+    }
+    selectDate(state, nodes, date);
+  }
+  return onDayGridClick;
 }
 
 function bindInputListeners(inputs, handlers, cleanupFns) {
@@ -307,9 +386,22 @@ function bindCalendarListeners(nodes, handlers, cleanupFns) {
 }
 
 function bindModalListeners(nodes, handlers, cleanupFns) {
-  const { onCloseClick, onOverlayClick, onKeydown, onPageHide } = handlers;
+  const {
+    onCloseClick,
+    onCancelClick,
+    onApplyClick,
+    onOverlayClick,
+    onKeydown,
+    onPageHide
+  } = handlers;
   nodes.closeBtn?.addEventListener("click", onCloseClick);
   cleanupFns.push(() => nodes.closeBtn?.removeEventListener("click", onCloseClick));
+
+  nodes.cancelBtn?.addEventListener("click", onCancelClick);
+  cleanupFns.push(() => nodes.cancelBtn?.removeEventListener("click", onCancelClick));
+
+  nodes.applyBtn?.addEventListener("click", onApplyClick);
+  cleanupFns.push(() => nodes.applyBtn?.removeEventListener("click", onApplyClick));
 
   nodes.modal.addEventListener("click", onOverlayClick);
   cleanupFns.push(() => nodes.modal.removeEventListener("click", onOverlayClick));
@@ -342,25 +434,10 @@ function buildHandlers(state, nodes, quickPickMap, cleanup) {
     closeDatePicker(state, nodes);
   }
 
-  function onQuickClick(event) {
-    const btn = event.target.closest("[data-date-picker-quick]");
-    if (!btn) {return;}
-    const date = parseDateInputValue(btn.dataset.datePickerQuick);
-    if (!date) {return;}
-    state.selectedDate = date;
-    updateInputValue(state, date);
-    closeDatePicker(state, nodes);
-  }
-
-  function onDayGridClick(event) {
-    const btn = event.target.closest("[data-date-picker-day]");
-    if (!btn) {return;}
-    const date = parseDateInputValue(btn.dataset.datePickerDay);
-    if (!date) {return;}
-    state.selectedDate = date;
-    updateInputValue(state, date);
-    closeDatePicker(state, nodes);
-  }
+  const onCancelClick = createCancelHandler(state, nodes);
+  const onApplyClick = createApplyHandler(state, nodes);
+  const onQuickClick = createQuickPickHandler(state, nodes);
+  const onDayGridClick = createDayGridHandler(state, nodes);
 
   function onPrevClick() {
     state.viewDate = addMonths(state.viewDate, PREV_MONTH_OFFSET);
@@ -391,6 +468,8 @@ function buildHandlers(state, nodes, quickPickMap, cleanup) {
     onInputKeydown,
     onOverlayClick,
     onCloseClick,
+    onCancelClick,
+    onApplyClick,
     onQuickClick,
     onDayGridClick,
     onPrevClick,

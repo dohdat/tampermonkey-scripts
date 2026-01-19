@@ -45,15 +45,15 @@ body.modal-open{overflow:hidden}
 .date-picker-header__icon svg{width:var(--size-18px);height:var(--size-18px)}
 .date-picker-title{font-size:var(--font-size-lg);font-weight:var(--font-weight-bold);color:var(--color-slate-100)}
 .date-picker-subtitle{font-size:var(--font-size-sm);color:var(--color-slate-400)}
-.date-picker-body{display:grid;gap:var(--space-1);padding:var(--space-1)}
-.date-picker-quick{display:flex;flex-direction:column;gap:var(--space-1)}
-.date-picker-card{border:var(--size-1px) solid rgba(var(--color-slate-700-rgb),.6);border-radius:var(--size-16px);background:rgba(var(--color-slate-800-rgb),.55);padding:var(--space-0-85)}
-.date-picker-card-title{display:flex;align-items:center;gap:var(--space-0-35);margin-bottom:var(--space-0-6);font-size:var(--font-size-xxs);text-transform:uppercase;letter-spacing:var(--letter-spacing-wide);color:var(--color-slate-400)}
-.date-picker-quick-list{display:flex;flex-direction:column;gap:var(--space-0-5)}
-.date-picker-quick-option{display:flex;align-items:center;justify-content:space-between;gap:var(--space-0-75);padding:var(--space-0-65) var(--space-0-85);border-radius:var(--size-12px);border:var(--size-1px) solid transparent;background:rgba(var(--color-slate-800-rgb),.7);color:var(--color-slate-100);font-size:var(--font-size-sm);transition:background-color var(--motion-base) ease,border-color var(--motion-base) ease,color var(--motion-base) ease}
+.date-picker-body{display:grid;gap:var(--space-0-85);padding:var(--space-0-85);align-items:start}
+.date-picker-quick{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-0-75);align-content:start}
+.date-picker-card{border:var(--size-1px) solid rgba(var(--color-slate-700-rgb),.6);border-radius:var(--size-14px);background:rgba(var(--color-slate-800-rgb),.55);padding:var(--space-0-6)}
+.date-picker-card-title{display:flex;align-items:center;gap:var(--space-0-35);margin-bottom:var(--space-0-5);font-size:var(--font-size-xxs);text-transform:uppercase;letter-spacing:var(--letter-spacing-wide);color:var(--color-slate-400)}
+.date-picker-quick-list{display:flex;flex-direction:column;gap:var(--space-0-35)}
+.date-picker-quick-option{display:flex;align-items:center;justify-content:space-between;gap:var(--space-0-75);padding:var(--space-0-5) var(--space-0-75);border-radius:var(--size-10px);border:var(--size-1px) solid transparent;background:rgba(var(--color-slate-800-rgb),.7);color:var(--color-slate-100);font-size:var(--font-size-xs);transition:background-color var(--motion-base) ease,border-color var(--motion-base) ease,color var(--motion-base) ease}
 .date-picker-quick-option:hover{border-color:var(--color-lime-400);background:rgba(var(--color-slate-800-rgb),.9);color:var(--color-lime-200)}
-.date-picker-quick-date{font-size:var(--font-size-xs);color:var(--color-slate-400)}
-.date-picker-calendar{display:flex;flex-direction:column;gap:var(--space-0-75);border:var(--size-1px) solid rgba(var(--color-slate-700-rgb),.6);border-radius:var(--size-16px);background:rgba(var(--color-slate-800-rgb),.65);padding:var(--space-0-85)}
+.date-picker-quick-date{font-size:var(--font-size-xxs);color:var(--color-slate-400)}
+.date-picker-calendar{display:flex;flex-direction:column;gap:var(--space-0-75);border:var(--size-1px) solid rgba(var(--color-slate-700-rgb),.6);border-radius:var(--size-16px);background:rgba(var(--color-slate-800-rgb),.65);padding:var(--space-0-75);align-self:start}
 .date-picker-calendar-header{display:flex;align-items:center;justify-content:space-between;gap:var(--space-0-75)}
 .date-picker-nav-btn{height:var(--size-30px);width:var(--size-30px);border-radius:var(--size-9999px);border:var(--size-1px) solid rgba(var(--color-slate-600-rgb),.7);background:rgba(var(--color-slate-800-rgb),.7);color:var(--color-slate-200);display:flex;align-items:center;justify-content:center;transition:background-color var(--motion-base) ease,border-color var(--motion-base) ease,color var(--motion-base) ease}
 .date-picker-nav-btn svg{width:var(--size-14px);height:var(--size-14px)}
@@ -61,14 +61,20 @@ body.modal-open{overflow:hidden}
 .date-picker-month{font-size:var(--font-size-sm-plus);font-weight:var(--font-weight-semibold);color:var(--color-slate-100)}
 .date-picker-weekdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:var(--space-0-35);text-align:center;font-size:var(--font-size-xxs);text-transform:uppercase;letter-spacing:var(--letter-spacing-wide);color:var(--color-slate-500)}
 .date-picker-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:var(--space-0-35)}
+.date-picker-summary{margin-top:var(--space-0-75);display:flex;flex-direction:column;gap:var(--space-0-25);border-radius:var(--size-12px);border:var(--size-1px) solid rgba(var(--color-slate-700-rgb),.5);background:rgba(var(--color-slate-900-rgb),.55);padding:var(--space-0-65)}
+.date-picker-summary-label{font-size:var(--font-size-xxs);text-transform:uppercase;letter-spacing:var(--letter-spacing-wide);color:var(--color-slate-400)}
+.date-picker-summary-value{font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-slate-100)}
+.date-picker-summary-hint{font-size:var(--font-size-xs);color:var(--color-slate-500)}
 .date-picker-day{height:var(--size-30px);border-radius:var(--size-999px);border:var(--size-1px) solid transparent;background:transparent;color:var(--color-slate-200);font-size:var(--font-size-xs);display:flex;align-items:center;justify-content:center;transition:background-color var(--motion-base) ease,border-color var(--motion-base) ease}
 .date-picker-day:hover{border-color:rgba(var(--color-slate-500-rgb),.7);background:rgba(var(--color-slate-800-rgb),.65)}
 .date-picker-day--today{border-color:rgba(var(--color-lime-400-rgb),.7);color:var(--color-lime-200)}
 .date-picker-day--selected{border-color:var(--color-lime-400);background:rgba(var(--color-lime-400-rgb),.2);color:var(--color-lime-200);box-shadow:0 0 0 var(--size-1px) rgba(var(--color-lime-400-rgb),.35)}
 .date-picker-day--empty{visibility:hidden}
-.date-picker-jump{margin-top:var(--space-0-75);padding:var(--space-0-55) var(--space-1);border-radius:var(--size-999px);border:var(--size-1px) solid rgba(var(--color-slate-600-rgb),.6);background:rgba(var(--color-slate-800-rgb),.7);color:var(--color-slate-200);font-size:var(--font-size-xs);font-weight:var(--font-weight-semibold);transition:background-color var(--motion-base) ease,border-color var(--motion-base) ease,color var(--motion-base) ease}
+.date-picker-jump{margin-top:var(--space-0-55);padding:var(--space-0-55) var(--space-1);border-radius:var(--size-999px);border:var(--size-1px) solid rgba(var(--color-slate-600-rgb),.6);background:rgba(var(--color-slate-800-rgb),.7);color:var(--color-slate-200);font-size:var(--font-size-xs);font-weight:var(--font-weight-semibold);transition:background-color var(--motion-base) ease,border-color var(--motion-base) ease,color var(--motion-base) ease}
 .date-picker-jump:hover{border-color:var(--color-lime-400);color:var(--color-lime-200);background:rgba(var(--color-slate-800-rgb),.9)}
 .date-picker-close{margin-left:auto}
+.date-picker-footer{display:flex;align-items:center;justify-content:flex-end;gap:var(--space-0-75);padding:0 var(--space-1) var(--space-1)}
+.date-picker-actions{display:flex;align-items:center;gap:var(--space-0-5)}
 @media (min-width:768px){.date-picker-body{grid-template-columns:minmax(0,1fr) minmax(0,1.1fr)}}
 .task-modal__panel--task{width:min(var(--space-45),100%);max-height:calc(100vh - var(--space-6))}
 .calendar-create-modal{justify-content:flex-end;align-items:stretch}

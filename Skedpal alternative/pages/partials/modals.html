@@ -1031,6 +1031,7 @@
             type="text"
             class="calendar-event-modal__defer-input"
             data-date-picker="true"
+            data-date-picker-manual="true"
             data-test-skedpal="calendar-event-modal-defer-date"
           />
         </div>
@@ -1204,6 +1205,19 @@
           class="date-picker-grid"
           data-test-skedpal="date-picker-grid"
         ></div>
+        <div class="date-picker-summary" data-test-skedpal="date-picker-summary">
+          <span class="date-picker-summary-label" data-test-skedpal="date-picker-summary-label">
+            Selected
+          </span>
+          <span
+            id="date-picker-summary-value"
+            class="date-picker-summary-value"
+            data-test-skedpal="date-picker-summary-value"
+          ></span>
+          <span class="date-picker-summary-hint" data-test-skedpal="date-picker-summary-hint">
+            Apply to confirm.
+          </span>
+        </div>
         <button
           type="button"
           id="date-picker-jump"
@@ -1211,6 +1225,26 @@
           data-test-skedpal="date-picker-jump"
         >
           Jump to Today
+        </button>
+      </div>
+    </div>
+    <div class="date-picker-footer" data-test-skedpal="date-picker-footer">
+      <div class="date-picker-actions" data-test-skedpal="date-picker-actions">
+        <button
+          type="button"
+          class="btn muted"
+          data-date-picker-cancel
+          data-test-skedpal="date-picker-cancel"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="btn primary"
+          data-date-picker-apply
+          data-test-skedpal="date-picker-apply"
+        >
+          Apply
         </button>
       </div>
     </div>

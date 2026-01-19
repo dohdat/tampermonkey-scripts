@@ -343,6 +343,7 @@ export function invalidateExternalEventsCache() {
   state.calendarExternalCacheBustedAt = "";
   memoryCache.clear();
   pendingFetches.clear();
+  fetchChain = Promise.resolve();
   if (prefetchTimeoutId) {
     clearTimeout(prefetchTimeoutId);
     prefetchTimeoutId = null;

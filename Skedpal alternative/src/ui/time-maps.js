@@ -207,7 +207,7 @@ export function renderTimeMaps(timeMaps) {
     const editBtnBorder = tm.color || themeColors.slate500;
     const editBtnColor = tm.color ? themeColors.slate800 : themeColors.slate100;
     const card = document.createElement("div");
-    card.className = "rounded-2xl border-slate-800 bg-slate-900/70 p-4 shadow";
+    card.className = "rounded-xl border-slate-800 bg-slate-900/60 px-3 py-2 shadow";
     card.setAttribute("data-test-skedpal", "timemap-card");
     if (tm.color) {
       card.style.borderColor = tm.color;
@@ -221,15 +221,25 @@ export function renderTimeMaps(timeMaps) {
         )
         .join("; ") || "";
     card.innerHTML = `
-      <h3 class="text-base font-semibold flex flex-wrap items-center gap-2">
-        <span>${tm.name}</span>
-        ${isDefault ? '<span class="rounded-full border-lime-400/60 bg-lime-400/10 px-2 py-1 text-xs font-semibold text-lime-300">Default</span>' : ""}
-        <span class="rounded-full border-slate-700 bg-slate-800/70 px-2 py-1 text-xs font-semibold text-slate-200" data-test-skedpal="timemap-task-count">${taskCount}</span>
-      </h3>
-      <div class="mt-1 flex flex-wrap gap-2 text-xs text-slate-400">${rulesText}</div>
-      <div class="mt-3 flex gap-2">
-        <button style="background:${editBtnBackground};border-color:${editBtnBorder};color:${editBtnColor}" class="rounded-lg px-3 py-1 text-xs font-semibold" data-edit="${tm.id}">Edit</button>
-        <button class="rounded-lg bg-orange-500/90 px-3 py-1 text-xs font-semibold text-slate-900 hover:bg-orange-400" data-delete="${tm.id}" data-test-skedpal="timemap-delete">Delete</button>
+      <div class="flex items-start justify-between gap-3" data-test-skedpal="timemap-card-header">
+        <div class="min-w-0" data-test-skedpal="timemap-title-block">
+          <div class="flex flex-wrap items-center gap-1.5" data-test-skedpal="timemap-title-row">
+            <span class="truncate text-sm font-semibold text-slate-100" data-test-skedpal="timemap-name">${tm.name}</span>
+            ${
+              isDefault
+                ? '<span class="rounded-full border-lime-400/60 bg-lime-400/10 px-2 py-0.5 text-[10px] font-semibold text-lime-300" data-test-skedpal="timemap-default">Default</span>'
+                : ""
+            }
+            <span class="rounded-full border-slate-700 bg-slate-800/70 px-2 py-0.5 text-[10px] font-semibold text-slate-200" data-test-skedpal="timemap-task-count">${taskCount}</span>
+          </div>
+        </div>
+        <div class="flex shrink-0 items-center gap-1" data-test-skedpal="timemap-actions">
+          <button style="background:${editBtnBackground};border-color:${editBtnBorder};color:${editBtnColor}" class="rounded-md px-2 py-0.5 text-[11px] font-semibold" data-edit="${tm.id}" data-test-skedpal="timemap-edit">Edit</button>
+          <button class="rounded-md border border-orange-400/60 px-2 py-0.5 text-[11px] font-semibold text-orange-300 hover:border-orange-400" data-delete="${tm.id}" data-test-skedpal="timemap-delete">Delete</button>
+        </div>
+      </div>
+      <div class="mt-1 truncate text-[11px] text-slate-400" data-test-skedpal="timemap-rules">
+        ${rulesText || "No time ranges yet."}
       </div>
     `;
     timeMapList.appendChild(card);

@@ -244,6 +244,11 @@ function renderCalendar(state, nodes) {
   }
 }
 
+export function applyJumpToToday(state, nodes, now = new Date()) {
+  state.viewDate = new Date(now.getFullYear(), now.getMonth(), 1);
+  renderCalendar(state, nodes);
+}
+
 function openDatePicker(state, nodes, quickPickMap, input) {
   if (!input) {return;}
   state.activeInput = input;
@@ -368,13 +373,7 @@ function buildHandlers(state, nodes, quickPickMap, cleanup) {
   }
 
   function onJumpClick() {
-    const today = new Date();
-    state.selectedDate = today;
-    state.viewDate = new Date(today.getFullYear(), today.getMonth(), 1);
-    renderCalendar(state, nodes);
-    updateSubtitle(state, nodes);
-    updateInputValue(state, today);
-    closeDatePicker(state, nodes);
+    applyJumpToToday(state, nodes);
   }
 
   function onKeydown(event) {

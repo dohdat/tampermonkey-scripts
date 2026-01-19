@@ -1,6 +1,7 @@
 import assert from "assert";
 import { describe, it } from "mocha";
 import {
+  applyJumpToToday,
   buildReportDelaySuggestions,
   buildSuggestedQuickOptions
 } from "../src/ui/date-picker.js";
@@ -55,5 +56,21 @@ describe("date picker suggested quick picks", () => {
     );
     assert.ok(labels.length > 0);
     assert.ok(hasNextWeekend);
+  });
+
+  it("jumps to today without changing the active input value", () => {
+    const state = {
+      activeInput: { value: "2026-01-10" },
+      selectedDate: new Date(2026, 0, 10),
+      viewDate: new Date(2026, 6, 1)
+    };
+    const now = new Date(2026, 2, 15, 10, 30, 0);
+    applyJumpToToday(state, {}, now);
+
+    assert.strictEqual(state.viewDate.getFullYear(), 2026);
+    assert.strictEqual(state.viewDate.getMonth(), 2);
+    assert.strictEqual(state.viewDate.getDate(), 1);
+    assert.strictEqual(state.activeInput.value, "2026-01-10");
+    assert.strictEqual(state.selectedDate.getMonth(), 0);
   });
 });

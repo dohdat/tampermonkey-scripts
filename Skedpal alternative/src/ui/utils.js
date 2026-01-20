@@ -258,7 +258,7 @@ export function isStartFromNotToday(startFrom, now) {
   if (!startKey) {return false;}
   const todayKey = getLocalDateKey(now || new Date());
   if (!todayKey) {return false;}
-  return startKey !== todayKey;
+  return startKey > todayKey;
 }
 
 export function parseLocalDateInput(value) {

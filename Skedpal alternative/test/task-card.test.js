@@ -149,7 +149,7 @@ describe("task card", () => {
     assert.strictEqual(completeBtn.classList.contains("task-complete-btn--checked"), true);
   });
 
-  it("dims tasks when start-from is not today", () => {
+  it("dims tasks when start-from is in the future", () => {
     const task = {
       id: "t-start",
       title: "Future task",
@@ -173,6 +173,32 @@ describe("task card", () => {
 
     const card = renderTaskCard(task, context);
     assert.strictEqual(card.classList.contains("task-card--start-from-not-today"), true);
+  });
+
+  it("does not dim tasks with past start-from dates", () => {
+    const task = {
+      id: "t-past",
+      title: "Past task",
+      durationMin: 30,
+      minBlockMin: 30,
+      timeMapIds: ["tm-1"],
+      completed: false,
+      scheduleStatus: "unscheduled",
+      startFrom: parseLocalDateInput("2000-01-01")
+    };
+    const context = {
+      tasks: [task],
+      timeMapById: new Map([["tm-1", { id: "tm-1", name: "Focus" }]]),
+      collapsedTasks: new Set(),
+      expandedTaskDetails: new Set(),
+      computeTotalDuration: () => 0,
+      getTaskDepthById: () => 0,
+      getSectionName: () => "",
+      getSubsectionName: () => ""
+    };
+
+    const card = renderTaskCard(task, context);
+    assert.strictEqual(card.classList.contains("task-card--start-from-not-today"), false);
   });
 
   it("does not dim tasks with invalid start-from", () => {

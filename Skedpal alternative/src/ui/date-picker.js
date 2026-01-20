@@ -120,7 +120,9 @@ function resolveNodes() {
     jumpBtn: modal.querySelector("#date-picker-jump"),
     closeBtn: modal.querySelector("[data-date-picker-close]"),
     cancelBtn: modal.querySelector("[data-date-picker-cancel]"),
-    applyBtn: modal.querySelector("[data-date-picker-apply]")
+    applyBtn: modal.querySelector("[data-date-picker-apply]"),
+    footer: modal.querySelector("[data-test-skedpal='date-picker-footer']"),
+    summaryHint: modal.querySelector("[data-test-skedpal='date-picker-summary-hint']")
   };
 }
 
@@ -148,6 +150,22 @@ function updateSummary(state, nodes) {
     return;
   }
   setNodeText(nodes.summaryValue, formatLongDateLabel(state.selectedDate));
+}
+
+function setFooterVisibility(nodes, visible) {
+  if (!nodes.footer) {return;}
+  nodes.footer.classList.toggle("hidden", !visible);
+  nodes.footer.hidden = !visible;
+  if (nodes.footer.style) {
+    nodes.footer.style.display = visible ? "" : "none";
+  }
+}
+
+function setSummaryHintVisibility(nodes, visible) {
+  if (!nodes.summaryHint) {return;}
+  nodes.summaryHint.classList.toggle("hidden", !visible);
+  nodes.summaryHint.hidden = !visible;
+  nodes.summaryHint.setAttribute("aria-hidden", visible ? "false" : "true");
 }
 
 function updateInputValue(state, date) {
@@ -273,6 +291,8 @@ function openDatePicker(state, nodes, quickPickMap, input) {
   renderCalendar(state, nodes);
   updateSubtitle(state, nodes);
   updateSummary(state, nodes);
+  setFooterVisibility(nodes, !state.autoApply);
+  setSummaryHintVisibility(nodes, !state.autoApply);
   nodes.modal.classList.remove("hidden");
   nodes.modal.setAttribute("aria-hidden", "false");
 }
@@ -280,6 +300,8 @@ function openDatePicker(state, nodes, quickPickMap, input) {
 function closeDatePicker(state, nodes) {
   nodes.modal.classList.add("hidden");
   nodes.modal.setAttribute("aria-hidden", "true");
+  setFooterVisibility(nodes, true);
+  setSummaryHintVisibility(nodes, true);
   if (state.activeInput?.dataset?.reportDelayTask) {
     state.activeInput.dataset.reportDelayTask = "";
   }

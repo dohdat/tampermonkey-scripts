@@ -130,6 +130,21 @@ function resolveSubtaskScheduleMode(existingTask, defaults) {
   );
 }
 
+function resolveCalendarTaskTitle(existingTask, eventTitle) {
+  const resolvedEventTitle = eventTitle || "Calendar task";
+  if (!existingTask) {
+    return { title: resolvedEventTitle, externalTitle: resolvedEventTitle };
+  }
+  const hasStoredExternalTitle = typeof existingTask.externalTitle === "string";
+  const isOverride = hasStoredExternalTitle
+    ? existingTask.title !== existingTask.externalTitle
+    : existingTask.title !== resolvedEventTitle;
+  return {
+    title: isOverride ? existingTask.title || resolvedEventTitle : resolvedEventTitle,
+    externalTitle: resolvedEventTitle
+  };
+}
+
 function isValidCalendarEvent(event) {
   return Boolean(event?.id && event?.calendarId && event?.start && event?.end);
 }
@@ -178,10 +193,12 @@ export function buildCalendarTaskPayload({
   const repeat = resolveRepeat(existingTask, defaults);
   const subtaskScheduleMode = resolveSubtaskScheduleMode(existingTask, defaults);
   const schedule = resolveScheduleFields(existingTask);
+  const { title, externalTitle } = resolveCalendarTaskTitle(existingTask, event.title);
 
   return {
     id: taskId,
-    title: event.title || "Calendar task",
+    title,
+    externalTitle,
     durationMin,
     minBlockMin,
     priority,
@@ -214,6 +231,7 @@ function hasCalendarTaskChanged(existingTask, nextTask) {
   if (!existingTask || !nextTask) {return true;}
   const fields = [
     "title",
+    "externalTitle",
     "durationMin",
     "minBlockMin",
     "priority",

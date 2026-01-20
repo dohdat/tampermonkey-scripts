@@ -75,6 +75,7 @@ describe("calendar task import", () => {
     assert.strictEqual(task.subsection, "sub-1");
     assert.deepStrictEqual(task.timeMapIds, ["tm-template"]);
     assert.strictEqual(task.title, "Planning");
+    assert.strictEqual(task.externalTitle, "Planning");
     assert.strictEqual(task.durationMin, 45);
   });
 
@@ -232,5 +233,37 @@ describe("calendar task import", () => {
     });
     assert.strictEqual(tasksToSave.length, 1);
     assert.deepStrictEqual(tasksToSave[0].timeMapIds, ["tm-default"]);
+  });
+
+  it("preserves user title overrides for calendar tasks", () => {
+    const start = new Date("2026-01-16T09:00:00Z");
+    const end = new Date("2026-01-16T10:00:00Z");
+    const taskId = buildGoogleCalendarTaskId("cal-7", "evt-8");
+    const existingTask = {
+      id: taskId,
+      title: "My override",
+      externalTitle: "Original title",
+      timeMapIds: ["tm-default"],
+      scheduleStatus: "unscheduled"
+    };
+    const { tasksToSave } = buildCalendarTaskUpdates({
+      events: [
+        {
+          id: "evt-8",
+          calendarId: "cal-7",
+          title: "External updated",
+          link: "",
+          start,
+          end
+        }
+      ],
+      settings: {
+        googleCalendarTaskSettings: { "cal-7": { treatAsTasks: true } }
+      },
+      tasks: [existingTask]
+    });
+    assert.strictEqual(tasksToSave.length, 1);
+    assert.strictEqual(tasksToSave[0].title, "My override");
+    assert.strictEqual(tasksToSave[0].externalTitle, "External updated");
   });
 });

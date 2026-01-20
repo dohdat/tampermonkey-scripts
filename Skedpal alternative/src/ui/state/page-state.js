@@ -35,6 +35,7 @@ export const state = {
   calendarExternalRangeKey: "",
   calendarExternalPendingKey: "",
   calendarExternalCacheBustedAt: "",
+  calendarExternalLastSyncedAt: "",
   calendarExternalAllowFetch: false,
   bulkEditActive: false,
   bulkEditCleanup: null,

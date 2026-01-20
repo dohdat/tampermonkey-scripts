@@ -109,12 +109,8 @@ function isCacheFresh(entry) {
   if (!entry?.updatedAt) {return false;}
   const updatedAt = new Date(entry.updatedAt);
   if (Number.isNaN(updatedAt.getTime())) {return false;}
-  const bustedAt = state.calendarExternalCacheBustedAt
-    ? new Date(state.calendarExternalCacheBustedAt)
-    : null;
-  if (bustedAt && !Number.isNaN(bustedAt.getTime()) && updatedAt <= bustedAt) {
-    return false;
-  }
+  if (isStaleAgainstLastSynced(updatedAt)) {return false;}
+  if (isStaleAgainstCacheBust(updatedAt)) {return false;}
   return Date.now() - updatedAt.getTime() < CALENDAR_EXTERNAL_CACHE_TTL_MS;
 }
 
@@ -122,6 +118,36 @@ function setExternalRange(range) {
   state.calendarExternalRange = range
     ? { start: new Date(range.start), end: new Date(range.end), days: range.days }
     : null;
+}
+
+function isStaleAgainstLastSynced(updatedAt) {
+  if (!updatedAt) {return false;}
+  const lastSyncedAt = state.calendarExternalLastSyncedAt
+    ? new Date(state.calendarExternalLastSyncedAt)
+    : null;
+  if (!lastSyncedAt || Number.isNaN(lastSyncedAt.getTime())) {return false;}
+  return updatedAt < lastSyncedAt;
+}
+
+function isStaleAgainstCacheBust(updatedAt) {
+  if (!updatedAt) {return false;}
+  const bustedAt = state.calendarExternalCacheBustedAt
+    ? new Date(state.calendarExternalCacheBustedAt)
+    : null;
+  if (!bustedAt || Number.isNaN(bustedAt.getTime())) {return false;}
+  return updatedAt <= bustedAt;
+}
+
+function updateExternalLastSyncedAt(updatedAt) {
+  if (!updatedAt) {return;}
+  const next = updatedAt instanceof Date ? updatedAt : new Date(updatedAt);
+  if (Number.isNaN(next.getTime())) {return;}
+  const current = state.calendarExternalLastSyncedAt
+    ? new Date(state.calendarExternalLastSyncedAt)
+    : null;
+  if (!current || Number.isNaN(current.getTime()) || next > current) {
+    state.calendarExternalLastSyncedAt = next.toISOString();
+  }
 }
 
 function setExternalStateFromCache(entry) {
@@ -133,6 +159,7 @@ function setExternalStateFromCache(entry) {
   );
   setExternalRange(entry.range);
   state.calendarExternalRangeKey = entry.key;
+  updateExternalLastSyncedAt(entry.updatedAt);
 }
 
 function setEmptyExternalState(range, key) {
@@ -341,6 +368,7 @@ export function invalidateExternalEventsCache() {
   state.calendarExternalEvents = [];
   state.calendarExternalRange = null;
   state.calendarExternalCacheBustedAt = "";
+  state.calendarExternalLastSyncedAt = "";
   memoryCache.clear();
   pendingFetches.clear();
   fetchChain = Promise.resolve();
@@ -365,6 +393,7 @@ export async function syncExternalEventsCache(events) {
     updatedAt: new Date().toISOString()
   };
   await saveCacheEntry(entry);
+  updateExternalLastSyncedAt(entry.updatedAt);
   return true;
 }
 
@@ -412,6 +441,7 @@ async function applyExternalEventsUpdate({
     updatedAt
   };
   await saveCacheEntry(entry);
+  updateExternalLastSyncedAt(updatedAt);
   if (allowStateUpdate && state.calendarExternalRangeKey === entry.key) {
     setExternalStateFromCache(entry);
   }

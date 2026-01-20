@@ -48,6 +48,7 @@ describe("calendar external events", () => {
     state.calendarExternalRangeKey = "";
     state.calendarExternalRange = null;
     state.calendarExternalPendingKey = "";
+    state.calendarExternalLastSyncedAt = "";
     state.settingsCache = {
       ...state.settingsCache,
       googleCalendarIds: [],
@@ -324,11 +325,13 @@ describe("calendar external events", () => {
     state.calendarExternalRange = range;
     state.calendarExternalPendingKey = "pending";
     state.calendarExternalEvents = [{ id: "evt-1" }];
+    state.calendarExternalLastSyncedAt = new Date().toISOString();
     invalidateExternalEventsCache();
     assert.strictEqual(state.calendarExternalRangeKey, "");
     assert.strictEqual(state.calendarExternalRange, null);
     assert.strictEqual(state.calendarExternalPendingKey, "");
     assert.strictEqual(state.calendarExternalEvents.length, 0);
+    assert.strictEqual(state.calendarExternalLastSyncedAt, "");
   });
 
   it("primes external events once on load", async () => {
@@ -394,6 +397,109 @@ describe("calendar external events", () => {
     const updated = await ensureExternalEvents(range, viewMode);
     assert.strictEqual(updated, true);
     assert.strictEqual(called, 0);
+  });
+
+  it("refreshes when a newer cache timestamp is recorded", async () => {
+    state.settingsCache = {
+      ...state.settingsCache,
+      googleCalendarIds: ["calendar-1"]
+    };
+    const cacheKey = buildKey(bufferedRange, viewMode, state.settingsCache.googleCalendarIds);
+    const updatedAt = new Date("2026-01-01T00:00:00Z").toISOString();
+    state.calendarExternalLastSyncedAt = new Date("2026-01-02T00:00:00Z").toISOString();
+    await saveCalendarCacheEntry({
+      key: cacheKey,
+      viewMode,
+      calendarIdsKey: "calendar-1",
+      range: {
+        start: bufferedRange.start.toISOString(),
+        end: bufferedRange.end.toISOString()
+      },
+      events: [],
+      syncTokensByCalendar: { "calendar-1": "sync-1" },
+      updatedAt
+    });
+    let called = 0;
+    globalThis.chrome = {
+      runtime: {
+        lastError: null,
+        sendMessage: (_msg, cb) => {
+          called += 1;
+          cb({ ok: true, events: [] });
+        }
+      }
+    };
+    const updated = await ensureExternalEvents(range, viewMode);
+    assert.strictEqual(updated, true);
+    assert.strictEqual(called, 1);
+  });
+
+  it("ignores invalid last synced timestamps", async () => {
+    state.settingsCache = {
+      ...state.settingsCache,
+      googleCalendarIds: ["calendar-1"]
+    };
+    const cacheKey = buildKey(bufferedRange, viewMode, state.settingsCache.googleCalendarIds);
+    state.calendarExternalLastSyncedAt = "bad-timestamp";
+    await saveCalendarCacheEntry({
+      key: cacheKey,
+      viewMode,
+      calendarIdsKey: "calendar-1",
+      range: {
+        start: bufferedRange.start.toISOString(),
+        end: bufferedRange.end.toISOString()
+      },
+      events: [],
+      syncTokensByCalendar: { "calendar-1": "sync-1" },
+      updatedAt: new Date().toISOString()
+    });
+    let called = 0;
+    globalThis.chrome = {
+      runtime: {
+        lastError: null,
+        sendMessage: () => {
+          called += 1;
+        }
+      }
+    };
+    const updated = await ensureExternalEvents(range, viewMode);
+    assert.strictEqual(updated, true);
+    assert.strictEqual(called, 0);
+  });
+
+  it("refreshes when cache was busted after the entry was saved", async () => {
+    state.settingsCache = {
+      ...state.settingsCache,
+      googleCalendarIds: ["calendar-1"]
+    };
+    const cacheKey = buildKey(bufferedRange, viewMode, state.settingsCache.googleCalendarIds);
+    const updatedAt = new Date("2026-01-01T00:00:00Z").toISOString();
+    state.calendarExternalCacheBustedAt = new Date("2026-01-02T00:00:00Z").toISOString();
+    await saveCalendarCacheEntry({
+      key: cacheKey,
+      viewMode,
+      calendarIdsKey: "calendar-1",
+      range: {
+        start: bufferedRange.start.toISOString(),
+        end: bufferedRange.end.toISOString()
+      },
+      events: [],
+      syncTokensByCalendar: { "calendar-1": "sync-1" },
+      updatedAt
+    });
+    let called = 0;
+    globalThis.chrome = {
+      runtime: {
+        lastError: null,
+        sendMessage: (_msg, cb) => {
+          called += 1;
+          cb({ ok: true, events: [] });
+        }
+      }
+    };
+    const updated = await ensureExternalEvents(range, viewMode);
+    assert.strictEqual(updated, true);
+    assert.strictEqual(called, 1);
   });
 
   it("forces a refresh even when cache is fresh", async () => {

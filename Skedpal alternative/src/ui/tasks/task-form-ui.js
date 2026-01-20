@@ -156,6 +156,12 @@ function setTaskFormCopy(copy) {
   if (taskModalSubmit) {taskModalSubmit.textContent = copy.submit;}
 }
 
+function resetTaskTemplateSelect() {
+  if (taskTemplateSelect) {
+    taskTemplateSelect.value = "";
+  }
+}
+
 function setTaskFormSectionsVisible(visible) {
   if (taskSectionField) {taskSectionField.classList.toggle("hidden", !visible);}
   if (taskSubsectionField) {taskSubsectionField.classList.toggle("hidden", !visible);}
@@ -223,9 +229,7 @@ export function resetTaskForm(shouldClose = false) {
   repeatStore.repeatTarget = "task";
   document.getElementById("task-id").value = "";
   taskParentIdInput.value = "";
-  if (taskTemplateSelect) {
-    taskTemplateSelect.value = "";
-  }
+  resetTaskTemplateSelect();
   setTaskTitleValue("");
   taskLinkInput.value = "";
   syncTaskLinkClear();
@@ -263,6 +267,7 @@ function setTaskFormBasics({
   startFrom = "",
   repeat = { ...DEFAULT_TASK_REPEAT }
 }) {
+  resetTaskTemplateSelect();
   document.getElementById("task-id").value = id;
   taskParentIdInput.value = parentId;
   setTaskTitleValue(title);
@@ -338,6 +343,7 @@ export function startSubtaskFromTask(task, options = {}) {
 export function openTaskEdit(task, options = {}) {
   if (!task) {return;}
   resetTaskFormMode();
+  resetTaskTemplateSelect();
   const { switchView: shouldSwitchView = true } = options;
   const isParentTask = state.tasksCache.some((t) => t.subtaskParentId === task.id);
   document.getElementById("task-id").value = task.id;

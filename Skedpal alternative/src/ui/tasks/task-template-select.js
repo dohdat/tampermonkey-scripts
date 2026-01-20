@@ -30,7 +30,6 @@ function buildPlaceholderOption() {
   placeholder.value = "";
   placeholder.textContent = "Choose a template...";
   placeholder.selected = true;
-  placeholder.disabled = true;
   placeholder.setAttribute("data-test-skedpal", "task-template-select-placeholder");
   return placeholder;
 }

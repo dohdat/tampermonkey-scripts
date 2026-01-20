@@ -122,6 +122,44 @@ function getFirstScheduledInstanceAnchor(scheduledInstances) {
   return null;
 }
 
+function parseScheduledInstanceDates(instance) {
+  if (!instance?.start || !instance?.end) {return null;}
+  const start = new Date(instance.start);
+  const end = new Date(instance.end);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {return null;}
+  return { start, end };
+}
+
+function buildPinnedPlacements(tasks, now, horizonEnd) {
+  const placements = [];
+  const occurrenceIds = new Set();
+  const taskIds = new Set();
+  (tasks || []).forEach((task) => {
+    if (!task?.id) {return;}
+    const instances = Array.isArray(task.scheduledInstances) ? task.scheduledInstances : [];
+    instances.forEach((instance) => {
+      if (!instance?.pinned) {return;}
+      const dates = parseScheduledInstanceDates(instance);
+      if (!dates) {return;}
+      if (dates.end <= now || dates.start >= horizonEnd) {return;}
+      placements.push({
+        taskId: task.id,
+        occurrenceId: instance.occurrenceId || "",
+        timeMapId: instance.timeMapId || "",
+        start: dates.start,
+        end: dates.end,
+        pinned: true
+      });
+      if (instance.occurrenceId) {
+        occurrenceIds.add(instance.occurrenceId);
+      } else {
+        taskIds.add(task.id);
+      }
+    });
+  });
+  return { placements, occurrenceIds, taskIds };
+}
+
 function ensureRepeatAnchorForTask(task, now) {
   const repeat = task?.repeat;
   if (!repeat || repeat.type === TASK_REPEAT_NONE || repeat.unit === TASK_REPEAT_NONE) {
@@ -174,7 +212,8 @@ async function persistSchedule(tasks, placements, unscheduled, ignored, deferred
       start: p.start.toISOString(),
       end: p.end.toISOString(),
       timeMapId: p.timeMapId,
-      occurrenceId: p.occurrenceId || null
+      occurrenceId: p.occurrenceId || null,
+      pinned: Boolean(p.pinned)
     }));
     task.scheduledStart = taskPlacements[0]?.start?.toISOString() || null;
     task.scheduledEnd = taskPlacements[taskPlacements.length - 1]?.end?.toISOString() || null;
@@ -322,12 +361,16 @@ async function runReschedule() {
     }
   }
 
+  const pinnedInfo = buildPinnedPlacements(tasks, now, horizonEnd);
   const { scheduled, unscheduled, ignored, deferred } = scheduleTasks({
     tasks,
     timeMaps,
     busy,
     schedulingHorizonDays: horizonDays,
-    now
+    now,
+    pinnedPlacements: pinnedInfo.placements,
+    pinnedTaskIds: pinnedInfo.taskIds,
+    pinnedOccurrenceIds: pinnedInfo.occurrenceIds
   });
 
   await persistSchedule(

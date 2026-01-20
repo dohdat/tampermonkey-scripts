@@ -12,7 +12,8 @@ import {
   TWENTY,
   TWO,
   TWO_FIFTY_FIVE,
-  removeIconSvg
+  removeIconSvg,
+  pinIconSvg
 } from "./constants.js";
 import { themeColors } from "./theme.js";
 import { state } from "./state/page-state.js";
@@ -199,9 +200,11 @@ function applyEventDataset(block, item) {
     block.dataset.eventStart = item.event.start.toISOString();
     block.dataset.eventEnd = item.event.end.toISOString();
     block.dataset.eventInstanceIndex = String(item.event.instanceIndex);
+    block.dataset.eventPinned = item.event.pinned ? "true" : "false";
     return source;
   }
   block.classList.add("calendar-event--external");
+  block.dataset.eventPinned = "false";
   block.dataset.eventExternalId = item.event.id || "";
   block.dataset.eventCalendarId = item.event.calendarId || "";
   block.dataset.eventTitle = item.event.title || "";
@@ -252,6 +255,21 @@ function buildExternalDeleteButton(event) {
   return deleteBtn;
 }
 
+function buildPinButton(event) {
+  const pinBtn = document.createElement("button");
+  pinBtn.type = "button";
+  pinBtn.className = "calendar-event-pin";
+  pinBtn.innerHTML = pinIconSvg;
+  pinBtn.title = event?.pinned ? "Unpin task" : "Pin task";
+  pinBtn.dataset.calendarEventPin = "true";
+  pinBtn.setAttribute("aria-pressed", event?.pinned ? "true" : "false");
+  pinBtn.setAttribute("data-test-skedpal", "calendar-event-pin");
+  if (event?.pinned) {
+    pinBtn.classList.add("calendar-event-pin--active");
+  }
+  return pinBtn;
+}
+
 function buildResizeHandle() {
   const handle = document.createElement("div");
   handle.className = "calendar-event-resize-handle";
@@ -286,6 +304,12 @@ function buildCalendarEventBlock(item, timeMapColorById) {
     block.style.backgroundColor = styles.backgroundColor;
     block.style.borderColor = styles.borderColor;
   }
+  if (source === "task") {
+    block.classList.add("calendar-event--pinnable");
+    if (item.event.pinned) {
+      block.classList.add("calendar-event--pinned");
+    }
+  }
   if (source === "external" && item.eventEnd < new Date()) {
     block.classList.add("calendar-event--past");
   }
@@ -302,6 +326,8 @@ function buildCalendarEventBlock(item, timeMapColorById) {
   block.appendChild(title);
   if (source === "external") {
     block.appendChild(buildExternalDeleteButton(item.event));
+  } else {
+    block.appendChild(buildPinButton(item.event));
   }
   block.appendChild(time);
   block.appendChild(buildResizeHandle());

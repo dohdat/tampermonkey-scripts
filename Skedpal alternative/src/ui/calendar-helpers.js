@@ -55,6 +55,7 @@ export function buildScheduledEvent(task, instance, index, completedOccurrences)
     title: task.title || "Untitled task",
     link: task.link || "",
     priority: Number(task.priority) || 0,
+    pinned: Boolean(instance?.pinned),
     start: dates.start,
     end: dates.end,
     timeMapId: instance.timeMapId || "",
@@ -149,6 +150,24 @@ export function buildUpdatedTaskForDrag(task, eventMeta, newStart, newEnd) {
   };
 }
 
+export function buildUpdatedTaskForPin(task, eventMeta, pinned) {
+  if (!task || !eventMeta) {return null;}
+  const instances = Array.isArray(task.scheduledInstances)
+    ? task.scheduledInstances.map((instance) => ({ ...instance }))
+    : [];
+  if (!instances.length) {return null;}
+  const targetIndex = resolveInstanceIndex(instances, eventMeta);
+  if (targetIndex < 0 || !instances[targetIndex]) {return null;}
+  instances[targetIndex] = {
+    ...instances[targetIndex],
+    pinned: Boolean(pinned)
+  };
+  return {
+    ...task,
+    scheduledInstances: instances
+  };
+}
+
 export function formatRescheduledMessage(startDate) {
   if (!(startDate instanceof Date)) {return "Event rescheduled.";}
   const dateLabel = startDate.toLocaleDateString(undefined, {
@@ -192,6 +211,7 @@ export function buildEventMetaFromDataset(dataset) {
     occurrenceId: safeDatasetString(dataset.eventOccurrenceId),
     instanceIndex: resolvedInstanceIndex,
     timeMapId: safeDatasetString(dataset.eventTimeMapId),
+    pinned: dataset.eventPinned === "true",
     start,
     end
   };

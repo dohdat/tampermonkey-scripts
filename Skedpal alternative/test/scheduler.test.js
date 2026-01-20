@@ -63,6 +63,60 @@ describe("scheduler", () => {
     assert.strictEqual(result.scheduled[1].start.getMinutes(), 0);
   });
 
+  it("keeps pinned placements and avoids rescheduling them", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 1);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "11:00" }] }
+    ];
+    const pinnedStart = shiftDate(now, 0, 9, 0);
+    const pinnedEnd = shiftDate(now, 0, 10, 0);
+    const tasks = [
+      {
+        id: "pinned",
+        title: "Pinned task",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59)
+      },
+      {
+        id: "other",
+        title: "Other task",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59)
+      }
+    ];
+    const pinnedPlacements = [
+      {
+        taskId: "pinned",
+        occurrenceId: "pinned-occ-0",
+        timeMapId: "tm-1",
+        start: pinnedStart,
+        end: pinnedEnd,
+        pinned: true
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 1,
+      now,
+      pinnedPlacements
+    });
+
+    const pinnedSlots = result.scheduled.filter((slot) => slot.taskId === "pinned");
+    assert.strictEqual(pinnedSlots.length, 1);
+    assert.strictEqual(pinnedSlots[0].start.getHours(), 9);
+    assert.strictEqual(pinnedSlots[0].end.getHours(), 10);
+    const other = result.scheduled.find((slot) => slot.taskId === "other");
+    assert.ok(other);
+    assert.strictEqual(other.start.getHours(), 10);
+  });
+
   it("schedules daily and weekly repeats across days", () => {
     const now = nextWeekday(new Date(2026, 0, 1), 1);
     const timeMaps = [
@@ -974,6 +1028,65 @@ describe("scheduler", () => {
     assert.strictEqual(placements[1].taskId, "child-2");
     assert.strictEqual(placements[0].start.getHours(), 9);
     assert.strictEqual(placements[1].start.getHours(), 10);
+  });
+
+  it("respects pinned placements inside sequential chains", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 4);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "12:00" }] }
+    ];
+    const tasks = [
+      {
+        id: "parent",
+        title: "Parent",
+        completed: true,
+        subtaskScheduleMode: "sequential"
+      },
+      {
+        id: "child-1",
+        title: "Pinned",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59),
+        subtaskParentId: "parent",
+        order: 1
+      },
+      {
+        id: "child-2",
+        title: "Next",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59),
+        subtaskParentId: "parent",
+        order: 2
+      }
+    ];
+    const pinnedPlacements = [
+      {
+        taskId: "child-1",
+        occurrenceId: "child-1-occ-0",
+        timeMapId: "tm-1",
+        start: shiftDate(now, 0, 9, 0),
+        end: shiftDate(now, 0, 10, 0),
+        pinned: true
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 1,
+      now,
+      pinnedPlacements
+    });
+
+    const placements = [...result.scheduled].sort((a, b) => a.start - b.start);
+    const child2 = placements.find((slot) => slot.taskId === "child-2");
+    assert.ok(child2);
+    assert.strictEqual(child2.start.getHours(), 10);
   });
 
   it("treats null subtask order as unordered for sequential groups", () => {

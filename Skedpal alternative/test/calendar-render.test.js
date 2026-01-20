@@ -181,6 +181,38 @@ describe("calendar render", () => {
     assert.strictEqual(links[0].target, "_blank");
   });
 
+  it("renders pin actions for task events", async () => {
+    const { domRefs, renderCalendar } = testRefs;
+    const start = new Date(2026, 0, 6, 11, 0, 0);
+    const end = new Date(2026, 0, 6, 12, 0, 0);
+    const tasks = [
+      {
+        id: "task-1",
+        title: "Pinned block",
+        scheduleStatus: "scheduled",
+        scheduledInstances: [
+          {
+            start: start.toISOString(),
+            end: end.toISOString(),
+            timeMapId: "tm-1",
+            occurrenceId: "occ-1",
+            pinned: true
+          }
+        ]
+      }
+    ];
+    state.tasksTimeMapsCache = [{ id: "tm-1", color: "#22c55e" }];
+
+    await renderCalendar(tasks);
+
+    const events = findByTestId(domRefs.calendarGrid, "calendar-event");
+    assert.strictEqual(events.length, 1);
+    const pins = findByTestId(events[0], "calendar-event-pin");
+    assert.strictEqual(pins.length, 1);
+    assert.strictEqual(pins[0].attributes["aria-pressed"], "true");
+    assert.ok(events[0].className.includes("calendar-event--pinned"));
+  });
+
   it("renders an empty state when no events are in range", async () => {
     const { domRefs, renderCalendar } = testRefs;
     state.tasksTimeMapsCache = [];

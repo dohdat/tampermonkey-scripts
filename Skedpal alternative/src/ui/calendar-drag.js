@@ -213,10 +213,17 @@ function beginCalendarResize(event, handle) {
   }
 }
 
+function shouldIgnoreCalendarDrag(event) {
+  if (!event?.target) {return true;}
+  if (event.target.closest?.("a")) {return true;}
+  if (event.target.closest?.("[data-calendar-event-delete]")) {return true;}
+  if (event.target.closest?.("[data-calendar-event-pin]")) {return true;}
+  if (event.target.closest?.("[data-calendar-event-resize]")) {return true;}
+  return false;
+}
+
 function scheduleCalendarDrag(event) {
-  if (event.target?.closest?.("a")) {return;}
-  if (event.target?.closest?.("[data-calendar-event-delete]")) {return;}
-  if (event.target?.closest?.("[data-calendar-event-resize]")) {return;}
+  if (shouldIgnoreCalendarDrag(event)) {return;}
   const target = event.target.closest?.(".calendar-event");
   if (!target || event.button !== 0) {return;}
   const dayCol = target.closest?.(".calendar-day-col");

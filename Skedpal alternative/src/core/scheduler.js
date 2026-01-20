@@ -19,6 +19,8 @@ import {
   removeBlockFromSlots,
   subtractBusy
 } from "./scheduler/slots-utils.js";
+import { buildPinnedSchedulingState } from "./scheduler/pinned-utils.js";
+import { runSchedulingLoop } from "./scheduler/schedule-loop.js";
 import {
   FLEXIBLE_REPEAT_WINDOW_DAYS,
   INDEX_NOT_FOUND,
@@ -212,7 +214,8 @@ function shouldPreferPriorityOrder(a, b) {
   return false;
 }
 
-function buildScheduleCandidates(tasks, now, horizonEnd) {
+function buildScheduleCandidates(tasks, now, horizonEnd, options = {}) {
+  const pinnedTaskIds = options.pinnedTaskIds || new Set();
   const ignored = new Set();
   const immediatelyUnscheduled = new Set();
   const parentIds = new Set(
@@ -224,6 +227,7 @@ function buildScheduleCandidates(tasks, now, horizonEnd) {
   tasks
     .filter((task) => !task.completed)
     .forEach((task) => {
+      if (pinnedTaskIds.has(task.id)) {return;}
       if (parentIds.has(task.id)) {
         return;
       }
@@ -520,11 +524,20 @@ export function scheduleTasks({
   timeMaps,
   busy,
   schedulingHorizonDays,
-  now = new Date()
+  now = new Date(),
+  pinnedPlacements = [],
+  pinnedTaskIds = [],
+  pinnedOccurrenceIds = []
 }) {
   const horizonEnd = endOfDay(addDays(now, schedulingHorizonDays));
   const windows = buildWindows(timeMaps, now, horizonEnd);
   const freeSlots = subtractBusy(windows, busy);
+  const pinnedState = buildPinnedSchedulingState({
+    pinnedPlacements,
+    pinnedOccurrenceIds,
+    pinnedTaskIds,
+    windows
+  });
   const tasksById = buildTaskMap(tasks);
   const parentModeById = buildParentModeMap(tasks);
   const subtaskOrderById = buildSubtaskOrderMap(tasks);
@@ -537,7 +550,8 @@ export function scheduleTasks({
   const { sorted: candidates, ignored, immediatelyUnscheduled } = buildScheduleCandidates(
     tasks,
     now,
-    horizonEnd
+    horizonEnd,
+    { pinnedTaskIds: pinnedState.pinnedTaskIdSet }
   );
 
   const sortedCandidates = sortCandidates(
@@ -547,44 +561,19 @@ export function scheduleTasks({
     sequentialInfoById
   );
 
-  let slots = windows;
-  const scheduled = [];
-  const unscheduled = new Set(immediatelyUnscheduled);
-  const deferred = new Set();
-  const parentState = new Map();
-
-  sortedCandidates.forEach((task) => {
-    const sequentialResult = handleSequentialTask(task, {
-      parentState,
-      slots,
-      now,
-      busy,
-      sequentialInfoById
-    });
-    if (sequentialResult?.handled) {
-      if (sequentialResult.success) {
-        scheduled.push(...sequentialResult.placements);
-        slots = sequentialResult.nextSlots;
-      } else {
-        if (sequentialResult.blocked) {
-          deferred.add(task.id);
-        } else {
-          unscheduled.add(task.id);
-        }
-      }
-      sequentialResult.nextStates?.forEach(({ ancestorId, state }) => {
-        parentState.set(ancestorId, state);
-      });
-      return;
-    }
-    const availableSlots = getAvailableSlotsForTask(slots, busy, task);
-    const { success, placements } = placeTaskInSlots(task, availableSlots, now);
-    if (success) {
-      scheduled.push(...placements);
-      slots = applyPlacementsToSlots(slots, placements);
-    } else {
-      unscheduled.add(task.id);
-    }
+  const { scheduled, unscheduled, deferred } = runSchedulingLoop({
+    sortedCandidates,
+    slots: pinnedState.slots,
+    now,
+    busy,
+    sequentialInfoById,
+    pinnedState,
+    initialUnscheduled: immediatelyUnscheduled,
+    handleSequentialTask,
+    placeTaskInSlots,
+    getAvailableSlotsForTask,
+    applyPlacementsToSlots,
+    buildSequentialState
   });
 
   return {

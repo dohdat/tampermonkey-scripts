@@ -17,6 +17,7 @@ import {
 import { parseCalendarViewFromUrl, updateUrlWithCalendarView } from "./utils.js";
 import {
   buildEventMetaFromDataset,
+  buildUpdatedTaskForPin,
   getScheduledEvents
 } from "./calendar-helpers.js";
 export { buildUpdatedTaskForDrag, formatRescheduledMessage } from "./calendar-helpers.js";
@@ -48,6 +49,7 @@ import {
   buildExternalEventMeta,
   sendExternalDeleteRequest
 } from "./calendar-external-events.js";
+import { saveTask } from "../data/db.js";
 import {
   HOUR_HEIGHT,
   buildEmptyState,
@@ -94,6 +96,17 @@ function removeExternalEvent(payload) {
   state.calendarExternalEvents = (state.calendarExternalEvents || []).filter(
     (event) => !(event.id === payload.eventId && event.calendarId === payload.calendarId)
   );
+}
+
+async function togglePinnedTaskEvent(eventMeta) {
+  const task = state.tasksCache.find((candidate) => candidate.id === eventMeta.taskId);
+  if (!task) {return;}
+  const nextPinned = !eventMeta.pinned;
+  const updated = buildUpdatedTaskForPin(task, eventMeta, nextPinned);
+  if (!updated) {return;}
+  await saveTask(updated);
+  state.tasksCache = state.tasksCache.map((item) => (item.id === updated.id ? updated : item));
+  renderCalendar();
 }
 
 async function deleteExternalEvent(deleteBtn) {
@@ -170,6 +183,17 @@ function handleCalendarEventClick(event) {
     event.preventDefault();
     event.stopPropagation();
     deleteExternalEvent(deleteBtn);
+    return;
+  }
+  const pinBtn = event.target.closest?.("[data-calendar-event-pin]");
+  if (pinBtn) {
+    event.preventDefault();
+    event.stopPropagation();
+    const block = pinBtn.closest?.(".calendar-event");
+    if (!block) {return;}
+    const eventMeta = getEventMetaFromBlock(block);
+    if (!eventMeta || eventMeta.source === "external") {return;}
+    togglePinnedTaskEvent(eventMeta);
     return;
   }
   const block = event.target.closest?.(".calendar-event");

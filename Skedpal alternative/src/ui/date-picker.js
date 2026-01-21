@@ -34,9 +34,29 @@ function setNodeText(node, value) {
 
 function clearNode(node) {
   if (!node) {return;}
+  if (node.replaceChildren) {
+    node.replaceChildren();
+    return;
+  }
   while (node.firstChild) {
     node.removeChild(node.firstChild);
   }
+}
+
+function replaceNodeChildren(node, fragment) {
+  if (!node) {return;}
+  if (node.replaceChildren) {
+    node.replaceChildren(fragment);
+    return;
+  }
+  clearNode(node);
+  node.appendChild(fragment);
+}
+
+function createFragment(node) {
+  const doc = node?.ownerDocument || (typeof document !== "undefined" ? document : null);
+  if (!doc?.createDocumentFragment) {return null;}
+  return doc.createDocumentFragment();
 }
 
 function isSameDate(a, b) {
@@ -190,6 +210,14 @@ function renderQuickPicks(nodes, quickPickMap) {
   sections.forEach((section) => {
     const wrap = quickPickMap.get(section.id);
     if (!wrap) {return;}
+    const fragment = createFragment(wrap);
+    if (fragment) {
+      section.options.forEach((option) => {
+        fragment.appendChild(createQuickOption(option));
+      });
+      replaceNodeChildren(wrap, fragment);
+      return;
+    }
     clearNode(wrap);
     section.options.forEach((option) => {
       wrap.appendChild(createQuickOption(option));
@@ -262,6 +290,14 @@ function renderSuggestedQuickPicks(state, nodes) {
     return;
   }
   nodes.suggestedCard.classList.remove("hidden");
+  const fragment = createFragment(nodes.quickSuggested);
+  if (fragment) {
+    options.forEach((option) => {
+      fragment.appendChild(createQuickOption(option));
+    });
+    replaceNodeChildren(nodes.quickSuggested, fragment);
+    return;
+  }
   clearNode(nodes.quickSuggested);
   options.forEach((option) => {
     nodes.quickSuggested.appendChild(createQuickOption(option));
@@ -272,15 +308,25 @@ function renderCalendar(state, nodes) {
   if (!nodes.grid || !nodes.monthLabel) {return;}
   const { year, monthIndex, daysInMonth, startWeekday } = getMonthData(state.viewDate);
   setNodeText(nodes.monthLabel, getMonthLabel(state.viewDate));
-  clearNode(nodes.grid);
+  const fragment = createFragment(nodes.grid);
   for (let i = 0; i < startWeekday; i += 1) {
-    nodes.grid.appendChild(createDayPlaceholder());
+    if (fragment) {
+      fragment.appendChild(createDayPlaceholder());
+    } else {
+      nodes.grid.appendChild(createDayPlaceholder());
+    }
   }
   const today = new Date();
   for (let day = 1; day <= daysInMonth; day += 1) {
     const date = new Date(year, monthIndex, day);
-    nodes.grid.appendChild(createDayButton(date, { selectedDate: state.selectedDate, today }));
+    if (fragment) {
+      fragment.appendChild(createDayButton(date, { selectedDate: state.selectedDate, today }));
+    } else {
+      nodes.grid.appendChild(createDayButton(date, { selectedDate: state.selectedDate, today }));
+    }
   }
+  if (!fragment) {return;}
+  replaceNodeChildren(nodes.grid, fragment);
 }
 
 export function applyJumpToToday(state, nodes, now = new Date()) {

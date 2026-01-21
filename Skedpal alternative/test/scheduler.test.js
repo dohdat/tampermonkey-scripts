@@ -63,6 +63,41 @@ describe("scheduler", () => {
     assert.strictEqual(result.scheduled[1].start.getMinutes(), 0);
   });
 
+  it("rounds placements to the 15-minute grid after odd busy end times", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 1);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "12:00" }] }
+    ];
+    const busy = [
+      { start: shiftDate(now, 0, 9, 2), end: shiftDate(now, 0, 9, 17) }
+    ];
+    const tasks = [
+      {
+        id: "t1",
+        title: "Round me",
+        durationMin: 30,
+        minBlockMin: 15,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59)
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy,
+      schedulingHorizonDays: 1,
+      now
+    });
+
+    const slot = result.scheduled.find((placement) => placement.taskId === "t1");
+    assert.ok(slot);
+    assert.strictEqual(slot.start.getHours(), 9);
+    assert.strictEqual(slot.start.getMinutes(), 30);
+    assert.strictEqual(slot.end.getHours(), 10);
+    assert.strictEqual(slot.end.getMinutes(), 0);
+  });
+
   it("keeps pinned placements and avoids rescheduling them", () => {
     const now = nextWeekday(new Date(2026, 0, 1), 1);
     const timeMaps = [

@@ -22,9 +22,11 @@ import {
 import { buildPinnedSchedulingState } from "./scheduler/pinned-utils.js";
 import { runSchedulingLoop } from "./scheduler/schedule-loop.js";
 import {
+  DEFAULT_TASK_MIN_BLOCK_MIN,
   FLEXIBLE_REPEAT_WINDOW_DAYS,
   INDEX_NOT_FOUND,
   MS_PER_DAY,
+  MS_PER_MINUTE,
   THREE
 } from "../constants.js";
 
@@ -180,6 +182,15 @@ function computeRepeatWindowDays(start, end) {
   return Math.ceil(diff / MS_PER_DAY);
 }
 
+const SCHEDULING_STEP_MS = DEFAULT_TASK_MIN_BLOCK_MIN * MS_PER_MINUTE;
+
+function alignStartToSchedulingStep(startMs) {
+  if (!Number.isFinite(startMs) || !Number.isFinite(SCHEDULING_STEP_MS) || SCHEDULING_STEP_MS <= 0) {
+    return startMs;
+  }
+  return Math.ceil(startMs / SCHEDULING_STEP_MS) * SCHEDULING_STEP_MS;
+}
+
 function isFlexibleRepeat(candidate) {
   return candidate.isRepeating && candidate.repeatWindowDays >= FLEXIBLE_REPEAT_WINDOW_DAYS;
 }
@@ -310,7 +321,8 @@ function placeTaskInSingleSlot(task, freeSlots, now) {
   for (let i = 0; i < slots.length; i += 1) {
     const slot = slots[i];
     if (!task.timeMapIds.includes(slot.timeMapId)) {continue;}
-    const slotStartMs = Math.max(slot.start.getTime(), now.getTime(), task.startFrom.getTime());
+    const rawStartMs = Math.max(slot.start.getTime(), now.getTime(), task.startFrom.getTime());
+    const slotStartMs = alignStartToSchedulingStep(rawStartMs);
     const slotEndLimitMs = Math.min(slot.end.getTime(), deadlineMs);
     if (slotEndLimitMs - slotStartMs < task.durationMs) {continue;}
     const placement = {
@@ -346,7 +358,8 @@ function placeTaskInMultipleSlots(task, freeSlots, now) {
   for (let i = 0; i < slots.length && remaining > 0; i += 1) {
     const slot = slots[i];
     if (!task.timeMapIds.includes(slot.timeMapId)) {continue;}
-    const slotStartMs = Math.max(slot.start.getTime(), now.getTime(), task.startFrom.getTime());
+    const rawStartMs = Math.max(slot.start.getTime(), now.getTime(), task.startFrom.getTime());
+    const slotStartMs = alignStartToSchedulingStep(rawStartMs);
     const slotEndLimitMs = Math.min(slot.end.getTime(), deadlineMs);
     if (slotEndLimitMs - slotStartMs < minRequired) {continue;}
 

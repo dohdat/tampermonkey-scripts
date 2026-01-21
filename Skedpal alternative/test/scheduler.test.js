@@ -1470,6 +1470,172 @@ describe("scheduler", () => {
     assert.strictEqual(child2.start.getHours(), 11);
   });
 
+  it("keeps sequential order even when priorities differ", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 4);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "12:00" }] }
+    ];
+    const tasks = [
+      {
+        id: "parent",
+        title: "Parent",
+        completed: true,
+        subtaskScheduleMode: "sequential"
+      },
+      {
+        id: "child-1",
+        title: "Lower priority",
+        durationMin: 60,
+        minBlockMin: 60,
+        priority: 1,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59),
+        subtaskParentId: "parent",
+        order: 1
+      },
+      {
+        id: "child-2",
+        title: "Higher priority",
+        durationMin: 60,
+        minBlockMin: 60,
+        priority: 5,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59),
+        subtaskParentId: "parent",
+        order: 2
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 1,
+      now
+    });
+
+    const ordered = result.scheduled
+      .filter((slot) => slot.taskId === "child-1" || slot.taskId === "child-2")
+      .sort((a, b) => a.start - b.start)
+      .map((slot) => slot.taskId);
+
+    assert.deepStrictEqual(ordered, ["child-1", "child-2"]);
+  });
+
+  it("keeps sequential ordering around a pinned middle subtask", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 4);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "12:00" }] }
+    ];
+    const tasks = [
+      {
+        id: "parent",
+        title: "Parent",
+        completed: true,
+        subtaskScheduleMode: "sequential"
+      },
+      {
+        id: "child-1",
+        title: "First",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59),
+        subtaskParentId: "parent",
+        order: 1
+      },
+      {
+        id: "child-2",
+        title: "Pinned",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59),
+        subtaskParentId: "parent",
+        order: 2
+      },
+      {
+        id: "child-3",
+        title: "Third",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59),
+        subtaskParentId: "parent",
+        order: 3
+      }
+    ];
+    const pinnedPlacements = [
+      {
+        taskId: "child-2",
+        occurrenceId: "child-2-occ-0",
+        timeMapId: "tm-1",
+        start: shiftDate(now, 0, 10, 0),
+        end: shiftDate(now, 0, 11, 0),
+        pinned: true
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 1,
+      now,
+      pinnedPlacements
+    });
+
+    const byTaskId = new Map(result.scheduled.map((slot) => [slot.taskId, slot]));
+    assert.strictEqual(byTaskId.get("child-1").start.getHours(), 9);
+    assert.strictEqual(byTaskId.get("child-3").start.getHours(), 11);
+  });
+
+  it("defers later sequential subtasks when an earlier one cannot be scheduled", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 4);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "10:00" }] }
+    ];
+    const tasks = [
+      {
+        id: "parent",
+        title: "Parent",
+        completed: true,
+        subtaskScheduleMode: "sequential"
+      },
+      {
+        id: "child-1",
+        title: "Too long",
+        durationMin: 90,
+        minBlockMin: 30,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59),
+        subtaskParentId: "parent",
+        order: 1
+      },
+      {
+        id: "child-2",
+        title: "Later",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59),
+        subtaskParentId: "parent",
+        order: 2
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 1,
+      now
+    });
+
+    assert.ok(result.unscheduled.includes("child-1"));
+    assert.ok(result.deferred.includes("child-2"));
+  });
+
   it("treats null subtask order as unordered for sequential groups", () => {
     const now = nextWeekday(new Date(2026, 0, 1), 4);
     const timeMaps = [

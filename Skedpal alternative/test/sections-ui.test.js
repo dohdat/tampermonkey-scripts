@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto.js";
 import assert from "assert";
-import { beforeEach, describe, it } from "mocha";
+import { afterEach, beforeEach, describe, it } from "mocha";
 
 class FakeElement {
   constructor(tagName = "div") {
@@ -15,6 +15,7 @@ class FakeElement {
     this.value = "";
     this.disabled = false;
     this.checked = false;
+    this._handlers = {};
     this._classSet = new Set();
     this.classList = {
       add: (...names) => names.forEach((n) => this._classSet.add(n)),
@@ -30,6 +31,7 @@ class FakeElement {
       },
       contains: (name) => this._classSet.has(name)
     };
+    this.setAttribute("data-test-skedpal", `test-${this.tagName.toLowerCase()}`);
   }
 
   get innerHTML() {
@@ -47,6 +49,30 @@ class FakeElement {
       this.value = child.value || "";
     }
     return child;
+  }
+
+  addEventListener(type, handler) {
+    this._handlers[type] = handler;
+  }
+
+  removeEventListener(type, handler) {
+    if (this._handlers[type] === handler) {
+      delete this._handlers[type];
+    }
+  }
+
+  querySelectorAll(selector) {
+    if (selector !== "input[type='checkbox']:checked") {return [];}
+    const matches = [];
+    const walk = (node) => {
+      if (!node) {return;}
+      if (node.tagName === "INPUT" && node.type === "checkbox" && node.checked) {
+        matches.push(node);
+      }
+      (node.children || []).forEach(walk);
+    };
+    walk(this);
+    return matches;
   }
 
   setAttribute(name, value) {
@@ -132,6 +158,8 @@ function resetElements() {
     el._classSet = new Set();
     el._focused = false;
     el._selected = false;
+    el._handlers = {};
+    el.setAttribute("data-test-skedpal", `test-${el.tagName.toLowerCase()}`);
   }
 }
 
@@ -151,6 +179,7 @@ installDomStubs();
 const { state } = await import("../src/ui/state/page-state.js");
 const { domRefs } = await import("../src/ui/constants.js");
 const { repeatStore } = await import("../src/ui/repeat.js");
+const { getAllTasks, saveTask } = await import("../src/data/db.js");
 
 function wireDomRefs() {
   domRefs.sectionList = elementMap.get("section-list");
@@ -184,15 +213,26 @@ const favoritesModule = await import("../src/ui/sections-favorites.js");
 const sectionsDataModule = await import("../src/ui/sections-data.js");
 
 describe("sections ui", () => {
+  const originalLoadTasks = globalThis.__skedpalTestLoadTasks;
+
   beforeEach(() => {
     installDomStubs();
     resetElements();
     wireDomRefs();
+    globalThis.__skedpalTestLoadTasks = async () => {};
     state.settingsCache = {
       ...state.settingsCache,
       sections: [],
       subsections: {}
     };
+  });
+
+  afterEach(() => {
+    if (originalLoadTasks === undefined) {
+      delete globalThis.__skedpalTestLoadTasks;
+    } else {
+      globalThis.__skedpalTestLoadTasks = originalLoadTasks;
+    }
   });
 
   it("resolves default and custom section names", () => {
@@ -574,5 +614,372 @@ describe("sections ui", () => {
     const nameById = new Map(sections.map((s) => [s.id, s.name]));
     assert.strictEqual(nameById.get("section-work-default"), "My Work");
     assert.strictEqual(nameById.get("section-personal-default"), "My Personal");
+  });
+
+  it("fills missing defaults and subsection arrays", async () => {
+    state.settingsCache = {
+      ...state.settingsCache,
+      sections: [{ id: "section-work-default", name: "" }],
+      subsections: {}
+    };
+
+    const sections = await sectionsModule.ensureDefaultSectionsPresent();
+    const byId = new Map(sections.map((s) => [s.id, s]));
+    assert.strictEqual(byId.get("section-work-default").name, "Work");
+    assert.ok(byId.has("section-personal-default"));
+    assert.ok(Array.isArray(state.settingsCache.subsections["section-work-default"]));
+    assert.ok(Array.isArray(state.settingsCache.subsections["section-personal-default"]));
+  });
+
+  it("selects the empty section option when no match exists", () => {
+    state.settingsCache.sections = [
+      { id: "s1", name: "Work" },
+      { id: "s2", name: "Personal" }
+    ];
+
+    sectionsModule.renderTaskSectionOptions("missing");
+    const sectionSelect = elementMap.get("task-section");
+    assert.strictEqual(sectionSelect.children[0].selected, true);
+  });
+
+  it("selects task section by name when a matching id is not provided", () => {
+    state.settingsCache.sections = [
+      { id: "s1", name: "Work" },
+      { id: "s2", name: "Personal" }
+    ];
+
+    sectionsModule.renderTaskSectionOptions("Personal");
+
+    const sectionSelect = elementMap.get("task-section");
+    assert.strictEqual(sectionSelect.value, "s2");
+  });
+
+  it("renders no subsections when no section is selected", () => {
+    state.settingsCache.sections = [{ id: "s1", name: "Work" }];
+    state.settingsCache.subsections = { s1: [{ id: "sub1", name: "Deep" }] };
+    elementMap.get("task-section").value = "";
+
+    sectionsModule.renderTaskSubsectionOptions();
+
+    const subsectionSelect = elementMap.get("task-subsection");
+    assert.strictEqual(subsectionSelect.children.length, 0);
+    assert.strictEqual(subsectionSelect.value, "");
+  });
+
+  it("selects task subsections by name when available", () => {
+    state.settingsCache.sections = [{ id: "s1", name: "Work" }];
+    state.settingsCache.subsections = { s1: [{ id: "sub1", name: "Deep" }] };
+    elementMap.get("task-section").value = "s1";
+
+    sectionsModule.renderTaskSubsectionOptions("Deep");
+
+    const subsectionSelect = elementMap.get("task-subsection");
+    assert.strictEqual(subsectionSelect.value, "sub1");
+  });
+
+  it("returns early when subsection modal refs are missing", () => {
+    const originalWrap = domRefs.subsectionFormWrap;
+    const originalNameInput = domRefs.subsectionNameInput;
+    domRefs.subsectionFormWrap = null;
+    domRefs.subsectionNameInput = null;
+
+    assert.doesNotThrow(() => sectionsModule.openSubsectionModal("s1"));
+
+    domRefs.subsectionFormWrap = originalWrap;
+    domRefs.subsectionNameInput = originalNameInput;
+  });
+
+  it("rejects blank subsection renames", async () => {
+    state.settingsCache.subsections = {
+      s1: [{ id: "sub1", name: "Deep" }]
+    };
+    global.prompt = () => "   ";
+
+    await sectionsModule.handleRenameSubsection("s1", "sub1");
+
+    const list = state.settingsCache.subsections.s1;
+    assert.strictEqual(list[0].name, "Deep");
+  });
+
+  it("adds a new section and refreshes tasks", async () => {
+    let loadCalls = 0;
+    globalThis.__skedpalTestLoadTasks = async () => {
+      loadCalls += 1;
+    };
+    const sectionInput = elementMap.get("section-new-name");
+    const formRow = elementMap.get("section-form-row");
+    sectionInput.value = "Focus";
+
+    await sectionsModule.handleAddSection();
+
+    assert.strictEqual(state.settingsCache.sections.length, 1);
+    assert.strictEqual(sectionInput.value, "");
+    assert.strictEqual(formRow.classList.contains("hidden"), true);
+    assert.strictEqual(loadCalls, 1);
+  });
+
+  it("removes a section and clears task section fields", async () => {
+    state.settingsCache.sections = [{ id: "s1", name: "Work" }];
+    state.settingsCache.subsections = { s1: [] };
+    await saveTask({ id: "task-1", section: "s1", subsection: "sub1" });
+
+    await sectionsModule.handleRemoveSection("s1");
+
+    assert.strictEqual(state.settingsCache.sections.length, 0);
+    const tasks = await getAllTasks();
+    const updated = tasks.find((task) => task.id === "task-1");
+    assert.strictEqual(updated.section, "");
+    assert.strictEqual(updated.subsection, "");
+  });
+
+  it("renames sections and subsections with valid input", async () => {
+    state.settingsCache.sections = [{ id: "s1", name: "Work" }];
+    state.settingsCache.subsections = {
+      s1: [{ id: "sub1", name: "Deep", parentId: "" }]
+    };
+    global.prompt = () => "Projects";
+
+    await sectionsModule.handleRenameSection("s1");
+
+    assert.strictEqual(state.settingsCache.sections[0].name, "Projects");
+
+    global.prompt = () => "Focus";
+    await sectionsModule.handleRenameSubsection("s1", "sub1");
+
+    assert.strictEqual(state.settingsCache.subsections.s1[0].name, "Focus");
+  });
+
+  it("saves edits when submitting an existing subsection form", async () => {
+    state.settingsCache.sections = [{ id: "s1", name: "Work" }];
+    state.settingsCache.subsections = {
+      s1: [{ id: "sub1", name: "Deep", parentId: "" }]
+    };
+    sectionsModule.openSubsectionModal("s1", "", "sub1");
+
+    domRefs.subsectionNameInput.value = "Deep Work";
+
+    await sectionsModule.handleSubsectionFormSubmit();
+
+    assert.strictEqual(state.settingsCache.subsections.s1[0].name, "Deep Work");
+  });
+
+  it("adds a new subsection when the form is not editing", async () => {
+    state.settingsCache.sections = [{ id: "s1", name: "Work" }];
+    state.settingsCache.subsections = { s1: [] };
+    domRefs.subsectionSectionIdInput.value = "s1";
+    domRefs.subsectionNameInput.value = "Inbox";
+
+    await sectionsModule.handleSubsectionFormSubmit();
+
+    assert.strictEqual(state.settingsCache.subsections.s1.length, 1);
+    assert.strictEqual(state.settingsCache.subsections.s1[0].name, "Inbox");
+  });
+
+  it("removes a subsection and moves tasks to the parent", async () => {
+    state.settingsCache.sections = [{ id: "s1", name: "Work" }];
+    state.settingsCache.subsections = {
+      s1: [
+        { id: "parent", name: "Parent", parentId: "" },
+        { id: "child", name: "Child", parentId: "parent" }
+      ]
+    };
+    await saveTask({ id: "task-2", section: "s1", subsection: "child" });
+
+    await sectionsModule.handleRemoveSubsection("s1", "child");
+
+    assert.strictEqual(state.settingsCache.subsections.s1.length, 1);
+    const tasks = await getAllTasks();
+    const updated = tasks.find((task) => task.id === "task-2");
+    assert.strictEqual(updated.subsection, "parent");
+  });
+
+  it("toggles section and subsection favorites", async () => {
+    state.settingsCache.sections = [{ id: "s1", name: "Work", favorite: false }];
+    state.settingsCache.subsections = { s1: [{ id: "sub1", name: "Deep", favorite: false }] };
+
+    await sectionsModule.handleToggleSectionFavorite("s1");
+
+    assert.strictEqual(state.settingsCache.sections[0].favorite, true);
+    assert.strictEqual(state.settingsCache.sections[0].favoriteOrder, 1);
+
+    await sectionsModule.handleToggleSubsectionFavorite("s1", "sub1");
+
+    assert.strictEqual(state.settingsCache.subsections.s1[0].favorite, true);
+    assert.strictEqual(state.settingsCache.subsections.s1[0].favoriteOrder, 2);
+  });
+
+  it("updates favorite order and toggles favorites expansion states", async () => {
+    state.settingsCache.sections = [
+      { id: "s1", name: "Work", favorite: true, favoriteOrder: 1 },
+      { id: "s2", name: "Personal", favorite: true, favoriteOrder: 2 }
+    ];
+    state.settingsCache.subsections = {
+      s1: [{ id: "sub1", name: "Deep", favorite: true, favoriteOrder: 3 }]
+    };
+    state.settingsCache.favoriteGroupExpanded = {};
+    state.settingsCache.favoriteSubsectionExpanded = {};
+
+    await favoritesModule.updateFavoriteOrder(["section:s2", "section:s1", "subsection:s1:sub1"]);
+
+    assert.strictEqual(state.settingsCache.sections[0].favoriteOrder, 2);
+    assert.strictEqual(state.settingsCache.sections[1].favoriteOrder, 1);
+    assert.strictEqual(state.settingsCache.subsections.s1[0].favoriteOrder, 3);
+    assert.ok(elementMap.get("sidebar-favorites").children.length > 0);
+
+    await favoritesModule.toggleFavoriteGroup("s1");
+    await favoritesModule.toggleFavoriteSubsection("sub1");
+
+    assert.strictEqual(state.settingsCache.favoriteGroupExpanded.s1, true);
+    assert.strictEqual(state.settingsCache.favoriteSubsectionExpanded.sub1, true);
+  });
+
+  it("returns subsection templates when available", () => {
+    state.settingsCache.sections = [{ id: "s1", name: "Work" }];
+    state.settingsCache.subsections = {
+      s1: [{ id: "sub1", name: "Deep", template: { title: "Focus" } }]
+    };
+
+    const template = sectionsModule.getSubsectionTemplate("s1", "sub1");
+
+    assert.strictEqual(template.title, "Focus");
+    assert.strictEqual(sectionsModule.getSubsectionTemplate("s1", "missing"), null);
+  });
+
+  it("sorts favorite groups and subsections by label when orders match", () => {
+    state.settingsCache.sections = [
+      { id: "s1", name: "Beta", favorite: true, favoriteOrder: 1 },
+      { id: "s2", name: "Alpha", favorite: true, favoriteOrder: 1 }
+    ];
+    state.settingsCache.subsections = {
+      s1: [
+        { id: "sub-b", name: "Beta Sub", favorite: true, favoriteOrder: 1 },
+        { id: "sub-a", name: "Alpha Sub", favorite: true, favoriteOrder: 1 }
+      ],
+      s2: []
+    };
+    state.tasksCache = [];
+
+    favoritesModule.renderFavoriteShortcuts();
+
+    const sidebar = elementMap.get("sidebar-favorites");
+    assert.strictEqual(sidebar.children[0].dataset.favGroup, "s2");
+    assert.strictEqual(sidebar.children[1].dataset.favGroup, "s1");
+
+    const list = findByDataset(sidebar.children[1], "favGroupList", "s1");
+    const subsectionRows = (list.children || []).filter((child) =>
+      child.dataset?.favKey?.startsWith("subsection:")
+    );
+    assert.strictEqual(subsectionRows[0].dataset.favKey, "subsection:s1:sub-a");
+    assert.strictEqual(subsectionRows[1].dataset.favKey, "subsection:s1:sub-b");
+  });
+
+  it("handles section and subsection early exits", async () => {
+    state.settingsCache.sections = [];
+    sectionsModule.renderTaskSectionOptions();
+    const sectionSelect = elementMap.get("task-section");
+    assert.strictEqual(sectionSelect.children[0].selected, true);
+
+    state.settingsCache.sections = [{ id: "s1", name: "Work" }];
+    state.settingsCache.subsections = {
+      s1: [{ id: "sub1", name: "Dup" }]
+    };
+    await sectionsModule.handleAddSubsection("s1", "Dup");
+    assert.strictEqual(state.settingsCache.subsections.s1.length, 1);
+
+    await sectionsModule.handleRemoveSubsection("s1", "missing");
+    assert.strictEqual(state.settingsCache.subsections.s1.length, 1);
+
+    await sectionsModule.handleToggleSubsectionFavorite("", "");
+    assert.strictEqual(state.settingsCache.subsections.s1.length, 1);
+
+    const originalWrap = domRefs.subsectionFormWrap;
+    domRefs.subsectionFormWrap = null;
+    sectionsModule.closeSubsectionModal();
+    domRefs.subsectionFormWrap = originalWrap;
+  });
+
+  it("returns early when subsection edits cannot be resolved", async () => {
+    state.settingsCache.sections = [{ id: "s1", name: "Work" }];
+    state.settingsCache.subsections = {
+      s1: [{ id: "sub1", name: "Deep", parentId: "" }]
+    };
+    sectionsModule.openSubsectionModal("s1", "", "sub1");
+
+    state.settingsCache.subsections.s1 = [];
+    await sectionsModule.handleSubsectionFormSubmit();
+
+    assert.strictEqual(state.settingsCache.subsections.s1.length, 0);
+  });
+
+  it("skips subsection submit when required fields are missing", async () => {
+    domRefs.subsectionSectionIdInput.value = "";
+    domRefs.subsectionNameInput.value = "";
+
+    await sectionsModule.handleSubsectionFormSubmit();
+
+    assert.strictEqual(state.settingsCache.subsections?.s1?.length || 0, 0);
+  });
+
+  it("returns early when the favorites sidebar is missing", () => {
+    const originalSidebar = domRefs.sidebarFavorites;
+    domRefs.sidebarFavorites = null;
+
+    assert.doesNotThrow(() => favoritesModule.renderFavoriteShortcuts());
+
+    domRefs.sidebarFavorites = originalSidebar;
+  });
+
+  it("honors saved favorite group expansion states", () => {
+    state.settingsCache.sections = [
+      { id: "s1", name: "Alpha", favorite: true, favoriteOrder: 1 }
+    ];
+    state.settingsCache.subsections = { s1: [] };
+    state.settingsCache.favoriteGroupExpanded = { s1: false };
+
+    favoritesModule.renderFavoriteShortcuts();
+
+    const sidebar = elementMap.get("sidebar-favorites");
+    const list = findByDataset(sidebar, "favGroupList", "s1");
+    assert.strictEqual(list.classList.contains("hidden"), true);
+  });
+
+  it("renders subsection favorites with counts and untitled labels", () => {
+    state.settingsCache.sections = [
+      { id: "s1", name: "", favorite: true, favoriteOrder: 1 }
+    ];
+    state.settingsCache.subsections = {
+      s1: [
+        { id: "sub1", name: "Parent", favorite: true, favoriteOrder: 1 },
+        { id: "sub2", name: "Child", favorite: true, favoriteOrder: 2, parentId: "sub1" }
+      ]
+    };
+    state.tasksCache = [
+      { id: "t1", section: "s1", subsection: "sub1", completed: false },
+      { id: "t2", section: "s1", subsection: "sub2", completed: false }
+    ];
+
+    favoritesModule.renderFavoriteShortcuts();
+
+    const sidebar = elementMap.get("sidebar-favorites");
+    const header = sidebar.children[0].children[0];
+    assert.ok(header.innerHTML.includes("No section"));
+    const row = findByDataset(sidebar, "favKey", "subsection:s1:sub1");
+    const button = findByTestAttr(row, "sidebar-fav-button");
+    assert.ok(button.innerHTML.includes(">2<"));
+  });
+
+  it("treats missing task caches as empty counts", () => {
+    state.settingsCache.sections = [
+      { id: "s1", name: "Work", favorite: true, favoriteOrder: 1 }
+    ];
+    state.settingsCache.subsections = { s1: [] };
+    state.tasksCache = null;
+
+    favoritesModule.renderFavoriteShortcuts();
+
+    const sidebar = elementMap.get("sidebar-favorites");
+    const row = findByDataset(sidebar, "favKey", "section:s1");
+    const button = findByTestAttr(row, "sidebar-fav-button");
+    assert.ok(button.innerHTML.includes("sidebar-fav-count--empty"));
   });
 });

@@ -228,6 +228,95 @@ describe("today view", () => {
     assert.strictEqual(findByTestAttr(todayList, "today-external-title-link"), null);
   });
 
+  it("uses scheduled start when no instance is in range", () => {
+    const now = new Date(2026, 0, 6, 9, 0);
+    const tasks = [
+      {
+        id: "t3",
+        title: "Fallback",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-1"],
+        scheduleStatus: "scheduled",
+        scheduledInstances: [{ start: new Date(2026, 0, 7, 10, 0).toISOString() }],
+        scheduledStart: new Date(2026, 0, 6, 12, 0).toISOString()
+      }
+    ];
+
+    renderTodayView(tasks, [{ id: "tm-1", name: "Focus" }], { now });
+
+    assert.ok(findByTestAttr(todayList, "task-card"));
+  });
+
+  it("uses URLs in titles and strips UIDs for external events", () => {
+    const now = new Date(2026, 0, 6, 9, 0);
+    const dayStart = new Date(2026, 0, 6, 0, 0);
+    const dayEnd = new Date(2026, 0, 6, 23, 59, 59, 999);
+    const bufferedRange = {
+      start: new Date(dayStart.getTime() - CALENDAR_EXTERNAL_BUFFER_HOURS * MS_PER_HOUR),
+      end: new Date(dayEnd.getTime() + CALENDAR_EXTERNAL_BUFFER_HOURS * MS_PER_HOUR),
+      days: 1
+    };
+    state.calendarExternalRange = bufferedRange;
+    state.calendarExternalRangeKey = buildRangeKey(
+      bufferedRange,
+      "day",
+      state.settingsCache.googleCalendarIds
+    );
+    state.calendarExternalEvents = [
+      {
+        id: "evt-3",
+        calendarId: "cal-1",
+        title: "Sync https://example.com #UID:abc",
+        link: "",
+        start: new Date(2026, 0, 6, 10, 0),
+        end: new Date(2026, 0, 6, 10, 30),
+        source: "external"
+      }
+    ];
+
+    renderTodayView([], [], { now });
+
+    const link = findByTestAttr(todayList, "today-external-title-link");
+    assert.ok(link);
+    assert.strictEqual(link.textContent, "Sync");
+  });
+
+  it("applies external badge colors when provided", () => {
+    const now = new Date(2026, 0, 6, 9, 0);
+    const dayStart = new Date(2026, 0, 6, 0, 0);
+    const dayEnd = new Date(2026, 0, 6, 23, 59, 59, 999);
+    const bufferedRange = {
+      start: new Date(dayStart.getTime() - CALENDAR_EXTERNAL_BUFFER_HOURS * MS_PER_HOUR),
+      end: new Date(dayEnd.getTime() + CALENDAR_EXTERNAL_BUFFER_HOURS * MS_PER_HOUR),
+      days: 1
+    };
+    state.calendarExternalRange = bufferedRange;
+    state.calendarExternalRangeKey = buildRangeKey(
+      bufferedRange,
+      "day",
+      state.settingsCache.googleCalendarIds
+    );
+    state.calendarExternalEvents = [
+      {
+        id: "evt-4",
+        calendarId: "cal-2",
+        title: "Color",
+        link: "",
+        colorHex: "#ff0000",
+        start: new Date(2026, 0, 6, 14, 0),
+        end: new Date(2026, 0, 6, 14, 30),
+        source: "external"
+      }
+    ];
+
+    renderTodayView([], [], { now });
+
+    const badge = findByTestAttr(todayList, "today-external-badge");
+    assert.ok(badge);
+    assert.strictEqual(badge.style.borderColor, "#ff0000");
+  });
+
   it("refreshes today view external events on demand", async () => {
     const now = new Date(2026, 0, 6, 9, 0);
     const previousChrome = global.chrome;
@@ -264,6 +353,106 @@ describe("today view", () => {
         global.chrome = previousChrome;
       }
     }
+  });
+
+  it("handles null task lists and missing list containers", () => {
+    const now = new Date(2026, 0, 6, 9, 0);
+    const originalList = domRefs.todayList;
+    domRefs.todayList = null;
+    assert.doesNotThrow(() => renderTodayView(null, [], { now }));
+    domRefs.todayList = originalList;
+
+    renderTodayView(null, [], { now });
+    assert.ok(findByTestAttr(todayList, "today-empty"));
+  });
+
+  it("filters invalid scheduled instances and falls back to scheduled start", () => {
+    const now = new Date(2026, 0, 6, 9, 0);
+    const tasks = [
+      {
+        id: "t4",
+        title: "Fallback",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-1"],
+        scheduleStatus: "scheduled",
+        scheduledInstances: [{ start: "" }, {}],
+        scheduledStart: new Date(2026, 0, 6, 12, 0).toISOString()
+      }
+    ];
+
+    renderTodayView(tasks, [{ id: "tm-1", name: "Focus" }], { now });
+
+    assert.ok(findByTestAttr(todayList, "task-card"));
+  });
+
+  it("renders nested tasks with computed depths", () => {
+    const now = new Date(2026, 0, 6, 9, 0);
+    const parentStart = new Date(2026, 0, 6, 9, 30).toISOString();
+    const childStart = new Date(2026, 0, 6, 9, 0).toISOString();
+    const tasks = [
+      {
+        id: "parent",
+        title: "Parent",
+        durationMin: 60,
+        minBlockMin: 30,
+        timeMapIds: ["tm-1"],
+        scheduleStatus: "scheduled",
+        scheduledStart: parentStart
+      },
+      {
+        id: "child",
+        title: "Child",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-1"],
+        scheduleStatus: "scheduled",
+        scheduledStart: childStart,
+        subtaskParentId: "parent"
+      }
+    ];
+
+    renderTodayView(tasks, [{ id: "tm-1", name: "Focus" }], { now });
+
+    const cards = todayList.children.filter(
+      (child) => child.attributes?.["data-test-skedpal"] === "task-card"
+    );
+    assert.strictEqual(cards.length, 2);
+  });
+
+  it("uses fallback titles and dataset defaults for external events", () => {
+    const now = new Date(2026, 0, 6, 9, 0);
+    const dayStart = new Date(2026, 0, 6, 0, 0);
+    const dayEnd = new Date(2026, 0, 6, 23, 59, 59, 999);
+    const bufferedRange = {
+      start: new Date(dayStart.getTime() - CALENDAR_EXTERNAL_BUFFER_HOURS * MS_PER_HOUR),
+      end: new Date(dayEnd.getTime() + CALENDAR_EXTERNAL_BUFFER_HOURS * MS_PER_HOUR),
+      days: 1
+    };
+    state.calendarExternalRange = bufferedRange;
+    state.calendarExternalRangeKey = buildRangeKey(
+      bufferedRange,
+      "day",
+      state.settingsCache.googleCalendarIds
+    );
+    state.calendarExternalEvents = [
+      {
+        title: "",
+        link: "",
+        start: new Date(2026, 0, 6, 22, 30),
+        end: new Date(2026, 0, 7, 1, 0),
+        source: "external"
+      }
+    ];
+
+    renderTodayView([], [], { now });
+
+    const card = findByTestAttr(todayList, "today-external-card");
+    const title = findByTestAttr(todayList, "today-external-title");
+    assert.ok(card);
+    assert.strictEqual(card.dataset.eventId, "");
+    assert.strictEqual(card.dataset.calendarId, "");
+    assert.strictEqual(title.textContent, "(No title)");
   });
 
   it("honors expanded task details state", () => {

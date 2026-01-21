@@ -44,4 +44,9 @@ describe("sections sortable", () => {
     assert.deepStrictEqual(addCollapsedId(["a"], "b"), ["a", "b"]);
     assert.deepStrictEqual(addCollapsedId([], ""), []);
   });
+
+  it("handles non-array inputs when adding collapsed ids", () => {
+    assert.deepStrictEqual(addCollapsedId(null, "a"), ["a"]);
+    assert.deepStrictEqual(addCollapsedId(undefined, ""), []);
+  });
 });

@@ -128,6 +128,8 @@ describe("calendar event modal", () => {
   let openCalendarEventModal = null;
   let openExternalEventModal = null;
   let initCalendarEventModal = null;
+  let closeCalendarEventModal = null;
+  let isCalendarEventModalOpen = null;
   let formatCalendarEventWindow = null;
   let state = null;
   let domRefs = null;
@@ -178,8 +180,14 @@ describe("calendar event modal", () => {
 
     ({ domRefs } = await import("../src/ui/constants.js"));
     ({ state } = await import("../src/ui/state/page-state.js"));
-    ({ openCalendarEventModal, openExternalEventModal, initCalendarEventModal, formatCalendarEventWindow } =
-      await import("../src/ui/calendar-event-modal.js"));
+    ({
+      openCalendarEventModal,
+      openExternalEventModal,
+      initCalendarEventModal,
+      closeCalendarEventModal,
+      isCalendarEventModalOpen,
+      formatCalendarEventWindow
+    } = await import("../src/ui/calendar-event-modal.js"));
 
     domRefs.calendarEventModal = refs.modal;
     domRefs.calendarEventModalEyebrow = refs.eyebrow;
@@ -601,6 +609,96 @@ describe("calendar event modal", () => {
     assert.strictEqual(refs.actions[4].className.includes("hidden"), false);
     assert.strictEqual(refs.title.textContent, "External meeting");
     assert.ok(refs.details.children.length > 0);
+  });
+
+  it("returns early when modal refs are missing", () => {
+    const originalModal = domRefs.calendarEventModal;
+    domRefs.calendarEventModal = null;
+    assert.doesNotThrow(() => initCalendarEventModal());
+    assert.doesNotThrow(() => closeCalendarEventModal());
+    domRefs.calendarEventModal = originalModal;
+  });
+
+  it("uses modal fallback refs when domRefs are empty", () => {
+    const originalModal = domRefs.calendarEventModal;
+    domRefs.calendarEventModal = null;
+    const eventMeta = {
+      taskId: "task-1",
+      timeMapId: "tm-1",
+      start: new Date(2026, 0, 6, 9, 0, 0),
+      end: new Date(2026, 0, 6, 10, 30, 0)
+    };
+
+    openCalendarEventModal(eventMeta);
+
+    assert.strictEqual(refs.modal.classList.contains("hidden"), false);
+    domRefs.calendarEventModal = originalModal;
+  });
+
+  it("returns false when modal lacks a classList", () => {
+    const originalModal = domRefs.calendarEventModal;
+    domRefs.calendarEventModal = {};
+    assert.strictEqual(isCalendarEventModalOpen(), false);
+    domRefs.calendarEventModal = originalModal;
+  });
+
+  it("uses action handlers without an explicit event object", () => {
+    domRefs.calendarEventModalActionButtons = refs.actions;
+    initCalendarEventModal();
+    assert.doesNotThrow(() => refs.actions[0].listeners.click.call(refs.actions[0]));
+  });
+
+  it("skips defer action when the input is unavailable", () => {
+    const originalGetElementById = document.getElementById;
+    const originalDeferInput = domRefs.calendarEventModalDeferInput;
+    document.getElementById = (id) =>
+      id === "calendar-event-modal-defer-date" ? null : originalGetElementById(id);
+    domRefs.calendarEventModalDeferInput = null;
+    const eventMeta = {
+      taskId: "task-1",
+      timeMapId: "tm-1",
+      start: new Date(2026, 0, 6, 9, 0, 0),
+      end: new Date(2026, 0, 6, 10, 30, 0)
+    };
+
+    initCalendarEventModal();
+    openCalendarEventModal(eventMeta);
+    refs.actions[2].listeners.click({ currentTarget: refs.actions[2] });
+
+    assert.strictEqual(refs.defer.lastDispatched, undefined);
+    document.getElementById = originalGetElementById;
+    domRefs.calendarEventModalDeferInput = originalDeferInput;
+  });
+
+  it("ignores outside clicks when the modal is closed", () => {
+    initCalendarEventModal();
+    refs.documentListeners.click({ target: new FakeElement("div") });
+    assert.strictEqual(refs.modal.classList.contains("hidden"), true);
+  });
+
+  it("keeps the modal open when clicking inside the panel without closest", () => {
+    const panel = { className: "calendar-event-modal__panel", style: {} };
+    refs.modal.querySelector = (selector) =>
+      selector === ".calendar-event-modal__panel" ? panel : null;
+    const eventMeta = {
+      taskId: "task-1",
+      timeMapId: "tm-1",
+      start: new Date(2026, 0, 6, 9, 0, 0),
+      end: new Date(2026, 0, 6, 10, 30, 0)
+    };
+
+    initCalendarEventModal();
+    openCalendarEventModal(eventMeta);
+    refs.documentListeners.click({ target: panel });
+
+    assert.strictEqual(refs.modal.classList.contains("hidden"), false);
+  });
+
+  it("returns early for external modal with missing references", () => {
+    const originalModal = domRefs.calendarEventModal;
+    domRefs.calendarEventModal = null;
+    assert.doesNotThrow(() => openExternalEventModal(null));
+    domRefs.calendarEventModal = originalModal;
   });
 
   it("closes the modal when clicking outside the panel", () => {

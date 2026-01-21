@@ -40,9 +40,12 @@ const {
   taskRepeatEndDate,
   taskRepeatEndCount,
   repeatModalCloseBtns,
-  repeatModalSaveBtn,
-  subsectionTaskRepeatSelect
+  repeatModalSaveBtn
 } = domRefs;
+
+function getSubsectionRepeatSelect() {
+  return domRefs.subsectionTaskRepeatSelect;
+}
 
 function handleTaskRepeatSelectChange() {
   const value = taskRepeatSelect.value;
@@ -71,6 +74,8 @@ function handleTaskRepeatSelectChange() {
 }
 
 function handleSubsectionRepeatSelectChange() {
+  const subsectionTaskRepeatSelect = getSubsectionRepeatSelect();
+  if (!subsectionTaskRepeatSelect) {return;}
   const value = subsectionTaskRepeatSelect.value;
   const baseSelection =
     repeatStore.subsectionRepeatSelection?.type === "custom"
@@ -287,7 +292,10 @@ function handleRepeatModalCloseClick() {
   if (repeatStore.repeatTarget === "subsection") {
     setRepeatFromSelection(repeatStore.subsectionRepeatBeforeModal || { ...DEFAULT_TASK_REPEAT }, "subsection");
     const prev = repeatStore.subsectionRepeatBeforeModal || { ...DEFAULT_TASK_REPEAT };
-    subsectionTaskRepeatSelect.value = prev.type === "custom" ? "custom" : TASK_REPEAT_NONE;
+    const subsectionTaskRepeatSelect = getSubsectionRepeatSelect();
+    if (subsectionTaskRepeatSelect) {
+      subsectionTaskRepeatSelect.value = prev.type === "custom" ? "custom" : TASK_REPEAT_NONE;
+    }
     syncSubsectionRepeatLabel();
   } else {
     setRepeatFromSelection(repeatStore.repeatSelectionBeforeModal || { ...DEFAULT_TASK_REPEAT }, "task");
@@ -303,7 +311,10 @@ function handleRepeatModalSaveClick() {
   if (repeatStore.repeatTarget === "subsection") {
     repeatStore.subsectionRepeatSelection = repeat;
     setRepeatFromSelection(repeat, "subsection");
-    subsectionTaskRepeatSelect.value = "custom";
+    const subsectionTaskRepeatSelect = getSubsectionRepeatSelect();
+    if (subsectionTaskRepeatSelect) {
+      subsectionTaskRepeatSelect.value = "custom";
+    }
     syncSubsectionRepeatLabel();
   } else {
     repeatStore.lastRepeatSelection = repeat;
@@ -334,6 +345,7 @@ function registerRepeatSelectHandlers() {
       taskRepeatSelect.removeEventListener("change", handleTaskRepeatSelectChange)
     );
   }
+  const subsectionTaskRepeatSelect = getSubsectionRepeatSelect();
   if (subsectionTaskRepeatSelect) {
     subsectionTaskRepeatSelect.addEventListener("change", handleSubsectionRepeatSelectChange);
     cleanupFns.push(() =>

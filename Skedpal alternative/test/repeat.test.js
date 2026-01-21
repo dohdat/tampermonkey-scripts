@@ -31,6 +31,7 @@ class FakeElement {
       },
       contains: (name) => this._classSet.has(name)
     };
+    this.setAttribute("data-test-skedpal", `test-${this.tagName.toLowerCase()}`);
   }
 
   appendChild(child) {
@@ -46,6 +47,12 @@ class FakeElement {
     this._handlers[type] = handler;
   }
 
+  removeEventListener(type, handler) {
+    if (this._handlers[type] === handler) {
+      delete this._handlers[type];
+    }
+  }
+
   querySelector(selector) {
     if (selector?.startsWith('option[value="')) {
       const value = selector.slice(15, -2);
@@ -56,6 +63,10 @@ class FakeElement {
 
   querySelectorAll() {
     return [];
+  }
+
+  focus() {
+    this._focused = true;
   }
 }
 
@@ -114,7 +125,8 @@ const {
   repeatStore,
   renderRepeatUI,
   setRepeatFromSelection,
-  registerRepeatEventHandlers
+  registerRepeatEventHandlers,
+  enableDeadlinePicker
 } = repeat;
 
 describe("repeat utils", () => {
@@ -623,5 +635,195 @@ describe("repeat utils", () => {
     assert.strictEqual(repeatStore.repeatState.monthlyRangeEnd, 7);
     assert.strictEqual(repeatStore.repeatState.monthlyRangeStartDate, "2026-01-05");
     assert.strictEqual(repeatStore.repeatState.monthlyRangeEndDate, "2026-01-07");
+  });
+
+  it("updates repeat unit and interval inputs", () => {
+    domRefs.taskDeadlineInput.value = "2026-01-07";
+    registerRepeatEventHandlers();
+    const expectedDay = new Date(domRefs.taskDeadlineInput.value).getDate();
+
+    repeatStore.repeatState.weeklyDays = [];
+    domRefs.taskRepeatUnit.value = "week";
+    domRefs.taskRepeatUnit._handlers.change();
+    assert.strictEqual(repeatStore.repeatState.weeklyDays.length, 1);
+
+    domRefs.taskRepeatUnit.value = "month";
+    domRefs.taskRepeatUnit._handlers.change();
+    assert.strictEqual(repeatStore.repeatState.monthlyDay, expectedDay);
+    assert.strictEqual(repeatStore.repeatState.monthlyRangeStart, expectedDay);
+
+    domRefs.taskRepeatInterval.value = 0;
+    domRefs.taskRepeatInterval._handlers.input();
+    assert.strictEqual(repeatStore.repeatState.interval, 1);
+    assert.strictEqual(domRefs.taskRepeatInterval.value, 1);
+  });
+
+  it("updates monthly inputs and yearly range start", () => {
+    domRefs.taskDeadlineInput.value = "2026-01-07";
+    registerRepeatEventHandlers();
+
+    domRefs.taskRepeatMonthlyMode.value = "range";
+    domRefs.taskRepeatMonthlyMode._handlers.change();
+    assert.strictEqual(repeatStore.repeatState.monthlyMode, "range");
+
+    domRefs.taskRepeatMonthlyDay.value = "40";
+    domRefs.taskRepeatMonthlyDay._handlers.input();
+    assert.strictEqual(repeatStore.repeatState.monthlyDay, 31);
+    assert.strictEqual(domRefs.taskRepeatMonthlyDay.value, 31);
+
+    domRefs.taskRepeatMonthlyNth.value = "2";
+    domRefs.taskRepeatMonthlyNth._handlers.change();
+    assert.strictEqual(repeatStore.repeatState.monthlyNth, 2);
+
+    domRefs.taskRepeatMonthlyWeekday.value = "4";
+    domRefs.taskRepeatMonthlyWeekday._handlers.change();
+    assert.strictEqual(repeatStore.repeatState.monthlyWeekday, 4);
+
+    domRefs.taskRepeatYearlyRangeStart.value = "2026-02-01";
+    domRefs.taskRepeatYearlyRangeStart._handlers.input();
+    assert.strictEqual(repeatStore.repeatState.yearlyRangeStartDate, "2026-02-01");
+  });
+
+  it("ignores weekday clicks without matching buttons", () => {
+    registerRepeatEventHandlers();
+    repeatStore.repeatState.weeklyDays = [1];
+
+    domRefs.taskRepeatWeekdays._handlers.click({
+      target: {
+        closest: () => null
+      }
+    });
+
+    assert.deepStrictEqual(repeatStore.repeatState.weeklyDays, [1]);
+  });
+
+  it("updates repeat end from date input and cleans up handlers", () => {
+    domRefs.taskDeadlineInput.value = "2026-01-07";
+    const cleanup = registerRepeatEventHandlers();
+
+    domRefs.taskRepeatEndOn.checked = true;
+    domRefs.taskRepeatEndDate.value = "2026-03-03";
+    domRefs.taskRepeatEndDate._handlers.input();
+    assert.strictEqual(repeatStore.repeatState.end.type, "on");
+
+    cleanup();
+    assert.strictEqual(domRefs.taskRepeatSelect._handlers.change, undefined);
+    assert.strictEqual(domRefs.taskRepeatEndDate._handlers.input, undefined);
+  });
+
+  it("handles repeat end count changes", () => {
+    registerRepeatEventHandlers();
+
+    domRefs.taskRepeatEndAfter.checked = true;
+    domRefs.taskRepeatEndCount.value = 0;
+    domRefs.taskRepeatEndCount._handlers.input();
+    assert.strictEqual(domRefs.taskRepeatEndCount.value, 1);
+    assert.strictEqual(repeatStore.repeatState.end.type, "after");
+  });
+
+  it("adds weekly days on repeat weekday clicks", () => {
+    registerRepeatEventHandlers();
+    repeatStore.repeatState.weeklyDays = [1];
+
+    domRefs.taskRepeatWeekdays._handlers.click({
+      target: {
+        closest: () => ({ dataset: { dayValue: "2" } })
+      }
+    });
+
+    assert.ok(repeatStore.repeatState.weeklyDays.includes(2));
+  });
+
+  it("handles subsection repeat selection changes", () => {
+    registerRepeatEventHandlers();
+
+    domRefs.subsectionTaskRepeatSelect.value = "custom-new";
+    domRefs.subsectionTaskRepeatSelect._handlers.change();
+    assert.strictEqual(repeatStore.repeatTarget, "subsection");
+    assert.strictEqual(domRefs.repeatModal.classList.contains("hidden"), false);
+
+    domRefs.subsectionTaskRepeatSelect.value = "none";
+    domRefs.subsectionTaskRepeatSelect._handlers.change();
+    assert.strictEqual(repeatStore.subsectionRepeatSelection.type, "none");
+  });
+
+  it("syncs subsection modal close and save actions", () => {
+    registerRepeatEventHandlers();
+    repeatStore.repeatTarget = "subsection";
+    repeatStore.subsectionRepeatBeforeModal = {
+      type: "custom",
+      unit: "week",
+      interval: 1,
+      weeklyDays: [1],
+      end: { type: "never" }
+    };
+    domRefs.subsectionTaskRepeatSelect.value = "none";
+    domRefs.repeatModalCloseBtns[0]._handlers.click();
+    assert.strictEqual(domRefs.subsectionTaskRepeatSelect.value, "custom");
+    assert.strictEqual(repeatStore.repeatTarget, "task");
+
+    repeatStore.repeatTarget = "subsection";
+    domRefs.subsectionTaskRepeatSelect.value = "none";
+    domRefs.repeatModalSaveBtn._handlers.click();
+    assert.strictEqual(domRefs.subsectionTaskRepeatSelect.value, "custom");
+  });
+
+  it("restores task repeat selections on modal close", () => {
+    registerRepeatEventHandlers();
+    repeatStore.repeatTarget = "task";
+    repeatStore.repeatSelectionBeforeModal = {
+      type: "custom",
+      unit: "week",
+      interval: 1,
+      weeklyDays: [1],
+      end: { type: "never" }
+    };
+    domRefs.taskRepeatSelect.value = "none";
+    domRefs.repeatModalCloseBtns[0]._handlers.click();
+    assert.strictEqual(domRefs.taskRepeatSelect.value, "custom");
+  });
+
+  it("updates repeat end count from the after toggle", () => {
+    registerRepeatEventHandlers();
+    domRefs.taskRepeatEndAfter.checked = true;
+    domRefs.taskRepeatEndCount.value = 5;
+    domRefs.taskRepeatEndAfter._handlers.change();
+    assert.strictEqual(repeatStore.repeatState.end.count, 5);
+  });
+
+  it("updates yearly range inputs with fallbacks", () => {
+    domRefs.taskDeadlineInput.value = "2026-01-07";
+    registerRepeatEventHandlers();
+
+    domRefs.taskRepeatYearlyRangeStart.value = "";
+    domRefs.taskRepeatYearlyRangeStart._handlers.input();
+    assert.ok(repeatStore.repeatState.yearlyRangeStartDate);
+
+    domRefs.taskRepeatYearlyRangeEnd.value = "";
+    domRefs.taskRepeatYearlyRangeEnd._handlers.input();
+    assert.ok(repeatStore.repeatState.yearlyRangeEndDate);
+  });
+
+  it("enables the deadline picker with showPicker and focus fallbacks", () => {
+    let showPickerCalled = 0;
+    let focusCalled = 0;
+    domRefs.taskDeadlineInput.showPicker = () => {
+      showPickerCalled += 1;
+    };
+    domRefs.taskDeadlineInput.focus = () => {
+      focusCalled += 1;
+    };
+
+    const cleanup = enableDeadlinePicker();
+    domRefs.taskDeadlineInput._handlers.click({ isTrusted: true });
+    assert.strictEqual(showPickerCalled, 1);
+
+    domRefs.taskDeadlineInput.showPicker = null;
+    domRefs.taskDeadlineInput._handlers.keydown({ key: "Enter", isTrusted: true });
+    assert.strictEqual(focusCalled, 1);
+
+    cleanup();
+    assert.strictEqual(domRefs.taskDeadlineInput._handlers.click, undefined);
+    assert.strictEqual(domRefs.taskDeadlineInput._handlers.keydown, undefined);
   });
 });

@@ -52,6 +52,16 @@ const {
 let editingSubsectionId = "";
 let editingSectionId = "";
 
+async function runLoadTasks() {
+  const testOverride = globalThis?.__skedpalTestLoadTasks;
+  if (typeof testOverride === "function") {
+    await testOverride();
+    return;
+  }
+  const { loadTasks } = await import("./tasks/tasks-actions.js");
+  await loadTasks();
+}
+
 export async function ensureDefaultSectionsPresent() {
   const defaults = [
     { id: "section-work-default", name: "Work", favorite: false },
@@ -316,8 +326,7 @@ export async function handleAddSection() {
   renderTaskSectionOptions(newSection.id);
   sectionInput.value = "";
   closeSectionForm();
-  const { loadTasks } = await import("./tasks/tasks-actions.js");
-  await loadTasks();
+  await runLoadTasks();
 }
 
 export async function handleRemoveSection(id) {
@@ -344,8 +353,7 @@ export async function handleRemoveSection(id) {
   renderSections();
   renderFavoriteShortcuts();
   renderTaskSectionOptions();
-  const { loadTasks } = await import("./tasks/tasks-actions.js");
-  await loadTasks();
+  await runLoadTasks();
 }
 
 export async function handleAddSubsection(sectionId, value, parentSubsectionId = "") {
@@ -367,8 +375,7 @@ export async function handleAddSubsection(sectionId, value, parentSubsectionId =
   state.settingsCache = { ...state.settingsCache, subsections };
   await saveSettings(state.settingsCache);
   renderTaskSectionOptions(sectionId);
-  const { loadTasks } = await import("./tasks/tasks-actions.js");
-  await loadTasks();
+  await runLoadTasks();
 }
 
 export async function handleRenameSection(sectionId) {
@@ -385,8 +392,7 @@ export async function handleRenameSection(sectionId) {
   await saveSettings(state.settingsCache);
   renderSections();
   renderTaskSectionOptions(sectionId);
-  const { loadTasks } = await import("./tasks/tasks-actions.js");
-  await loadTasks();
+  await runLoadTasks();
 }
 
 export async function handleRenameSubsection(sectionId, subsectionId) {
@@ -403,8 +409,7 @@ export async function handleRenameSubsection(sectionId, subsectionId) {
   state.settingsCache = { ...state.settingsCache, subsections };
   await saveSettings(state.settingsCache);
   renderTaskSectionOptions(sectionId);
-  const { loadTasks } = await import("./tasks/tasks-actions.js");
-  await loadTasks();
+  await runLoadTasks();
 }
 
 export async function handleRemoveSubsection(sectionId, subsectionId) {
@@ -428,8 +433,7 @@ export async function handleRemoveSubsection(sectionId, subsectionId) {
   }
   renderTaskSectionOptions(sectionId);
   renderFavoriteShortcuts();
-  const { loadTasks } = await import("./tasks/tasks-actions.js");
-  await loadTasks();
+  await runLoadTasks();
 }
 
 function buildSubsectionRemoval(sectionId, subsectionId) {
@@ -454,8 +458,7 @@ export async function handleToggleSectionFavorite(sectionId) {
   await saveSettings(state.settingsCache);
   renderSections();
   renderFavoriteShortcuts();
-  const { loadTasks } = await import("./tasks/tasks-actions.js");
-  await loadTasks();
+  await runLoadTasks();
 }
 
 export async function handleToggleSubsectionFavorite(sectionId, subsectionId) {
@@ -469,8 +472,7 @@ export async function handleToggleSubsectionFavorite(sectionId, subsectionId) {
   await saveSettings(state.settingsCache);
   renderTaskSectionOptions(sectionId);
   renderFavoriteShortcuts();
-  const { loadTasks } = await import("./tasks/tasks-actions.js");
-  await loadTasks();
+  await runLoadTasks();
 }
 
 export function closeSubsectionModal() {
@@ -520,7 +522,6 @@ async function saveEditedSubsection(sectionId, subsectionId, name, parentId) {
   await saveSettings(state.settingsCache);
   renderTaskSectionOptions(sectionId);
   renderFavoriteShortcuts();
-  const { loadTasks } = await import("./tasks/tasks-actions.js");
-  await loadTasks();
+  await runLoadTasks();
 }
 

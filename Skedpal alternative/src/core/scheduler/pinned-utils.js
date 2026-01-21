@@ -41,6 +41,21 @@ export function buildPinnedPlacementMap(placements = []) {
   return byOccurrence;
 }
 
+export function buildPinnedTaskPlacementMap(placements = []) {
+  const byTask = new Map();
+  placements.forEach((placement) => {
+    if (!placement?.taskId) {return;}
+    if (!byTask.has(placement.taskId)) {
+      byTask.set(placement.taskId, []);
+    }
+    byTask.get(placement.taskId).push(placement);
+  });
+  byTask.forEach((list) => {
+    list.sort((a, b) => a.start - b.start);
+  });
+  return byTask;
+}
+
 export function buildPinnedSchedulingState({
   pinnedPlacements,
   pinnedOccurrenceIds,
@@ -49,6 +64,7 @@ export function buildPinnedSchedulingState({
 }) {
   const pinnedPlacementList = normalizePinnedPlacements(pinnedPlacements);
   const pinnedByOccurrence = buildPinnedPlacementMap(pinnedPlacementList);
+  const pinnedByTaskId = buildPinnedTaskPlacementMap(pinnedPlacementList);
   const pinnedOccurrenceSet = normalizeIdSet(pinnedOccurrenceIds);
   pinnedByOccurrence.forEach((_placements, occurrenceId) => {
     pinnedOccurrenceSet.add(occurrenceId);
@@ -59,6 +75,7 @@ export function buildPinnedSchedulingState({
   return {
     pinnedPlacementList,
     pinnedByOccurrence,
+    pinnedByTaskId,
     pinnedOccurrenceSet,
     pinnedTaskIdSet,
     slots,

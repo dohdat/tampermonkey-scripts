@@ -60,7 +60,8 @@ function buildSubtaskOrderMap(tasks) {
     groups.get(parentId).push({
       id: task.id,
       order: parseOrderValue(task.order),
-      index
+      index,
+      title: task.title || ""
     });
   });
   const orderMap = new Map();
@@ -69,6 +70,7 @@ function buildSubtaskOrderMap(tasks) {
       const aOrder = Number.isFinite(a.order) ? a.order : Number.MAX_SAFE_INTEGER;
       const bOrder = Number.isFinite(b.order) ? b.order : Number.MAX_SAFE_INTEGER;
       if (aOrder !== bOrder) {return aOrder - bOrder;}
+      if (a.title !== b.title) {return a.title.localeCompare(b.title);}
       return a.index - b.index;
     });
     items.forEach((item, position) => {
@@ -430,15 +432,42 @@ function compareCandidateOrder(a, b) {
 }
 
 function sortCandidates(candidates, parentModeById, subtaskOrderById, sequentialInfoById) {
-  return [...candidates].sort((a, b) => {
-    const aInfo = sequentialInfoById.get(a.id);
-    const bInfo = sequentialInfoById.get(b.id);
-    if (aInfo?.groupId && aInfo.groupId === bInfo?.groupId) {
-      const indexResult = compareSequentialIndex(aInfo.flatIndex, bInfo.flatIndex);
-      if (indexResult !== 0) {return indexResult;}
+  const baseOrder = [...candidates].sort(compareCandidateOrder);
+  return applySequentialCandidateOrdering(baseOrder, sequentialInfoById);
+}
+
+function applySequentialCandidateOrdering(sortedCandidates, sequentialInfoById) {
+  const groups = new Map();
+  sortedCandidates.forEach((candidate) => {
+    const info = sequentialInfoById.get(candidate.id);
+    if (!info?.groupId || !Number.isFinite(info.flatIndex)) {return;}
+    if (!groups.has(info.groupId)) {
+      groups.set(info.groupId, []);
     }
-    return compareCandidateOrder(a, b);
+    groups.get(info.groupId).push({ candidate, flatIndex: info.flatIndex });
   });
+  groups.forEach((group, groupId) => {
+    group.sort((a, b) => compareSequentialIndex(a.flatIndex, b.flatIndex));
+    groups.set(
+      groupId,
+      {
+        queue: group.map((entry) => entry.candidate),
+        cursor: 0
+      }
+    );
+  });
+  const ordered = [...sortedCandidates];
+  ordered.forEach((candidate, index) => {
+    const info = sequentialInfoById.get(candidate.id);
+    if (!info?.groupId || !Number.isFinite(info.flatIndex)) {return;}
+    const group = groups.get(info.groupId);
+    if (!group) {return;}
+    const replacement = group.queue[group.cursor];
+    if (!replacement) {return;}
+    ordered[index] = replacement;
+    group.cursor += 1;
+  });
+  return ordered;
 }
 
 function isSequentialBlocked(state, mode) {

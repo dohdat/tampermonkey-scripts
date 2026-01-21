@@ -14,6 +14,25 @@ function updateSequentialStateForPinned(task, placements, parentState, sequentia
   });
 }
 
+function seedSequentialStateForPinnedTasks(
+  parentState,
+  pinnedState,
+  sequentialInfoById,
+  buildSequentialState
+) {
+  if (!pinnedState?.pinnedTaskIdSet?.size) {return;}
+  pinnedState.pinnedTaskIdSet.forEach((taskId) => {
+    const placements = pinnedState.pinnedByTaskId?.get(taskId) || [];
+    updateSequentialStateForPinned(
+      { id: taskId },
+      placements,
+      parentState,
+      sequentialInfoById,
+      buildSequentialState
+    );
+  });
+}
+
 export function runSchedulingLoop({
   sortedCandidates,
   slots,
@@ -33,6 +52,13 @@ export function runSchedulingLoop({
   const deferred = new Set();
   const parentState = new Map();
   let workingSlots = slots;
+
+  seedSequentialStateForPinnedTasks(
+    parentState,
+    pinnedState,
+    sequentialInfoById,
+    buildSequentialState
+  );
 
   sortedCandidates.forEach((task) => {
     if (pinnedState.pinnedOccurrenceSet.has(task.occurrenceId)) {

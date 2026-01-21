@@ -1030,6 +1030,328 @@ describe("scheduler", () => {
     assert.strictEqual(placements[1].start.getHours(), 10);
   });
 
+  it("keeps sequential ordering stable with mixed candidate sorting", () => {
+    const now = new Date("2026-01-21T19:22:31.471Z");
+    const timeMaps = [
+      {
+        id: "tm-work",
+        rules: [
+          { day: 1, startTime: "07:30", endTime: "18:00" },
+          { day: 2, startTime: "07:30", endTime: "18:00" },
+          { day: 3, startTime: "07:30", endTime: "18:00" },
+          { day: 4, startTime: "07:30", endTime: "18:00" },
+          { day: 5, startTime: "07:30", endTime: "18:00" }
+        ]
+      },
+      {
+        id: "tm-off",
+        rules: [
+          { day: 0, startTime: "07:00", endTime: "23:00" },
+          { day: 1, startTime: "18:00", endTime: "23:00" },
+          { day: 2, startTime: "18:00", endTime: "23:00" },
+          { day: 3, startTime: "18:00", endTime: "23:00" },
+          { day: 4, startTime: "18:00", endTime: "23:00" },
+          { day: 5, startTime: "18:00", endTime: "23:00" },
+          { day: 6, startTime: "07:00", endTime: "23:00" }
+        ]
+      },
+      {
+        id: "tm-standup",
+        rules: [
+          { day: 1, startTime: "09:00", endTime: "18:00" },
+          { day: 2, startTime: "09:00", endTime: "18:00" },
+          { day: 3, startTime: "09:00", endTime: "18:00" },
+          { day: 4, startTime: "09:00", endTime: "18:00" },
+          { day: 5, startTime: "09:00", endTime: "18:00" }
+        ]
+      }
+    ];
+    const tasks = [
+      {
+        id: "parent",
+        title: "Parent",
+        durationMin: 30,
+        minBlockMin: 15,
+        priority: 4,
+        deadline: null,
+        startFrom: null,
+        timeMapIds: ["tm-work"],
+        order: 18,
+        subtaskParentId: null,
+        subtaskScheduleMode: "sequential",
+        repeat: { type: "none" },
+        completed: false
+      },
+      {
+        id: "mr-tasks",
+        title: "MR tasks",
+        durationMin: 30,
+        minBlockMin: 15,
+        priority: 4,
+        deadline: null,
+        startFrom: null,
+        timeMapIds: ["tm-work"],
+        order: 28,
+        subtaskParentId: "parent",
+        subtaskScheduleMode: "sequential",
+        repeat: { type: "none" },
+        completed: true,
+        completedOccurrences: []
+      },
+      {
+        id: "test-1",
+        title: "Test 1",
+        durationMin: 30,
+        minBlockMin: 15,
+        priority: 4,
+        deadline: null,
+        startFrom: null,
+        timeMapIds: ["tm-work"],
+        order: 34,
+        subtaskParentId: "parent",
+        subtaskScheduleMode: "sequential",
+        repeat: { type: "none" },
+        completed: false
+      },
+      {
+        id: "test-2",
+        title: "Test 2",
+        durationMin: 30,
+        minBlockMin: 15,
+        priority: 4,
+        deadline: null,
+        startFrom: null,
+        timeMapIds: ["tm-work"],
+        order: 35,
+        subtaskParentId: "parent",
+        subtaskScheduleMode: "sequential",
+        repeat: { type: "none" },
+        completed: false
+      },
+      {
+        id: "test-3",
+        title: "Test 3",
+        durationMin: 30,
+        minBlockMin: 15,
+        priority: 4,
+        deadline: null,
+        startFrom: null,
+        timeMapIds: ["tm-work"],
+        order: 36,
+        subtaskParentId: "parent",
+        subtaskScheduleMode: "sequential",
+        repeat: { type: "none" },
+        completed: false
+      },
+      {
+        id: "standup",
+        title: "Standup notes",
+        durationMin: 15,
+        minBlockMin: 15,
+        priority: 3,
+        deadline: null,
+        startFrom: null,
+        timeMapIds: ["tm-standup"],
+        order: 3,
+        subtaskParentId: null,
+        subtaskScheduleMode: "parallel",
+        repeat: {
+          type: "custom",
+          unit: "week",
+          interval: 1,
+          weeklyDays: [4, 1, 2, 3, 5],
+          weeklyMode: "all",
+          monthlyMode: "day",
+          monthlyDay: 15,
+          monthlyNth: 3,
+          monthlyWeekday: 4,
+          monthlyRangeStart: 14,
+          monthlyRangeEnd: 14,
+          monthlyRangeStartDate: "2026-01-15",
+          monthlyRangeEndDate: "2026-01-15",
+          yearlyMonth: 1,
+          yearlyDay: 15,
+          yearlyRangeStartDate: "",
+          yearlyRangeEndDate: "",
+          end: { type: "never", date: "", count: 1 },
+          rrule: "FREQ=WEEKLY;INTERVAL=1;BYDAY=TH,MO,TU,WE,FR"
+        },
+        completed: false,
+        completedOccurrences: [
+          "2026-01-16T07:59:59.999Z",
+          "2026-01-17T07:59:59.999Z",
+          "2026-01-20T07:59:59.999Z",
+          "2026-01-21T07:59:59.999Z",
+          "2026-01-22T07:59:59.999Z"
+        ]
+      },
+      {
+        id: "redeem",
+        title: "Redeem connected awards",
+        durationMin: 30,
+        minBlockMin: 15,
+        priority: 3,
+        deadline: null,
+        startFrom: null,
+        timeMapIds: ["tm-work"],
+        order: 1,
+        subtaskParentId: null,
+        subtaskScheduleMode: "parallel",
+        repeat: { type: "none" },
+        completed: false,
+        completedOccurrences: []
+      },
+      {
+        id: "cleanup-yard",
+        title: "Clean the backyard storage",
+        durationMin: 30,
+        minBlockMin: 15,
+        priority: 2,
+        deadline: null,
+        startFrom: null,
+        timeMapIds: ["tm-off"],
+        order: 1,
+        subtaskParentId: null,
+        subtaskScheduleMode: "parallel",
+        repeat: {
+          type: "custom",
+          interval: 3,
+          unit: "week",
+          weeklyDays: [0, 1, 2, 3, 4, 5, 6],
+          weeklyMode: "any",
+          monthlyMode: "day",
+          monthlyDay: 19,
+          yearlyMonth: 1,
+          yearlyDay: 19,
+          end: { type: "never", date: "", count: 1 }
+        },
+        completed: false,
+        completedOccurrences: [
+          "2026-01-13T07:59:59.999Z",
+          "2026-01-18T07:59:59.999Z"
+        ]
+      },
+      {
+        id: "leave-request",
+        title: "Request for leave",
+        durationMin: 30,
+        minBlockMin: 15,
+        priority: 4,
+        deadline: null,
+        startFrom: "2026-01-23T08:00:00.000Z",
+        timeMapIds: ["tm-work"],
+        order: 6,
+        subtaskParentId: null,
+        subtaskScheduleMode: "parallel",
+        repeat: { type: "none" },
+        completed: false
+      },
+      {
+        id: "lasik",
+        title: "Lasik surgery for wifey",
+        durationMin: 30,
+        minBlockMin: 15,
+        priority: 3,
+        deadline: null,
+        startFrom: "2027-06-01T07:00:00.000Z",
+        timeMapIds: ["tm-off"],
+        order: 3,
+        subtaskParentId: null,
+        subtaskScheduleMode: "parallel",
+        repeat: { type: "none" },
+        completed: false
+      },
+      {
+        id: "clean-plants",
+        title: "Clean up the plants on top of aquarium (remove dirts)",
+        durationMin: 30,
+        minBlockMin: 15,
+        priority: 3,
+        deadline: null,
+        startFrom: null,
+        timeMapIds: ["tm-off"],
+        order: 75,
+        subtaskParentId: null,
+        subtaskScheduleMode: "parallel",
+        repeat: { type: "none" },
+        completed: false
+      },
+      {
+        id: "sharpen-knives",
+        title: "Sharpen knives",
+        durationMin: 30,
+        minBlockMin: 15,
+        priority: 2,
+        deadline: null,
+        startFrom: null,
+        timeMapIds: ["tm-off"],
+        order: 2,
+        subtaskParentId: null,
+        subtaskScheduleMode: "parallel",
+        repeat: {
+          type: "custom",
+          interval: 3,
+          unit: "week",
+          weeklyDays: [0, 1, 2, 3, 4, 5, 6],
+          weeklyMode: "any",
+          monthlyMode: "day",
+          monthlyDay: 19,
+          yearlyMonth: 1,
+          yearlyDay: 19,
+          end: { type: "never", date: "", count: 1 }
+        },
+        completed: false,
+        completedOccurrences: ["2026-01-20T07:59:59.999Z"]
+      },
+      {
+        id: "toothbrush",
+        title: "Clean the toothbrush wallmount upstairs",
+        durationMin: 15,
+        minBlockMin: 15,
+        priority: 2,
+        deadline: null,
+        startFrom: null,
+        timeMapIds: ["tm-off"],
+        order: 4,
+        subtaskParentId: null,
+        subtaskScheduleMode: "parallel",
+        repeat: {
+          type: "custom",
+          interval: 3,
+          unit: "week",
+          weeklyDays: [0, 1, 2, 3, 4, 5, 6],
+          weeklyMode: "any",
+          monthlyMode: "day",
+          monthlyDay: 14,
+          yearlyMonth: 1,
+          yearlyDay: 14,
+          end: { type: "never", date: "", count: 1 }
+        },
+        completed: false,
+        completedOccurrences: [
+          "2026-01-13T07:59:59.999Z",
+          "2026-01-17T07:59:59.999Z",
+          "2026-01-16T07:59:59.999Z"
+        ]
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 14,
+      now
+    });
+
+    const ordered = result.scheduled
+      .filter((slot) => slot.taskId === "test-1" || slot.taskId === "test-2" || slot.taskId === "test-3")
+      .sort((a, b) => a.start - b.start)
+      .map((slot) => slot.taskId);
+
+    assert.deepStrictEqual(ordered, ["test-1", "test-2", "test-3"]);
+  });
+
   it("respects pinned placements inside sequential chains", () => {
     const now = nextWeekday(new Date(2026, 0, 1), 4);
     const timeMaps = [
@@ -1089,6 +1411,65 @@ describe("scheduler", () => {
     assert.strictEqual(child2.start.getHours(), 10);
   });
 
+  it("respects pinned task ids inside sequential chains", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 4);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "08:00", endTime: "12:00" }] }
+    ];
+    const tasks = [
+      {
+        id: "parent",
+        title: "Parent",
+        completed: true,
+        subtaskScheduleMode: "sequential"
+      },
+      {
+        id: "child-1",
+        title: "Pinned",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59),
+        subtaskParentId: "parent",
+        order: 1
+      },
+      {
+        id: "child-2",
+        title: "Next",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59),
+        subtaskParentId: "parent",
+        order: 2
+      }
+    ];
+    const pinnedPlacements = [
+      {
+        taskId: "child-1",
+        occurrenceId: null,
+        timeMapId: "tm-1",
+        start: shiftDate(now, 0, 10, 0),
+        end: shiftDate(now, 0, 11, 0),
+        pinned: true
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 1,
+      now,
+      pinnedPlacements,
+      pinnedTaskIds: ["child-1"]
+    });
+
+    const child2 = result.scheduled.find((slot) => slot.taskId === "child-2");
+    assert.ok(child2);
+    assert.strictEqual(child2.start.getHours(), 11);
+  });
+
   it("treats null subtask order as unordered for sequential groups", () => {
     const now = nextWeekday(new Date(2026, 0, 1), 4);
     const timeMaps = [
@@ -1135,6 +1516,54 @@ describe("scheduler", () => {
     assert.strictEqual(placements.length, 2);
     assert.strictEqual(placements[0].taskId, "child-1");
     assert.strictEqual(placements[1].taskId, "child-2");
+  });
+
+  it("orders sequential subtasks by title when order is missing", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 4);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "12:00" }] }
+    ];
+    const tasks = [
+      {
+        id: "parent",
+        title: "Parent",
+        completed: true,
+        subtaskScheduleMode: "sequential"
+      },
+      {
+        id: "child-b",
+        title: "B task",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59),
+        subtaskParentId: "parent",
+        order: null
+      },
+      {
+        id: "child-a",
+        title: "A task",
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59),
+        subtaskParentId: "parent",
+        order: null
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 1,
+      now
+    });
+
+    const placements = [...result.scheduled].sort((a, b) => a.start - b.start);
+    assert.strictEqual(placements.length, 2);
+    assert.strictEqual(placements[0].taskId, "child-a");
+    assert.strictEqual(placements[1].taskId, "child-b");
   });
 
   it("orders nested subtasks under sequential parents by order values", () => {

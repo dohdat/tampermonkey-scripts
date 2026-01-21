@@ -310,7 +310,7 @@ function buildCalendarEventBlock(item, timeMapColorById) {
       block.classList.add("calendar-event--pinned");
     }
   }
-  if (source === "external" && item.eventEnd < new Date()) {
+  if (item.eventEnd < new Date()) {
     block.classList.add("calendar-event--past");
   }
   block.setAttribute("data-test-skedpal", "calendar-event");

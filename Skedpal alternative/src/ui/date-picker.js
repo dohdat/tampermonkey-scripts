@@ -74,6 +74,8 @@ function createDayPlaceholder() {
   const placeholder = document.createElement("div");
   placeholder.className = "date-picker-day date-picker-day--empty";
   placeholder.setAttribute("data-test-skedpal", "date-picker-day-empty");
+  placeholder.setAttribute("aria-hidden", "true");
+  placeholder.setAttribute("role", "presentation");
   return placeholder;
 }
 
@@ -83,12 +85,18 @@ function createDayButton(date, { selectedDate, today }) {
   button.className = "date-picker-day";
   button.setAttribute("data-date-picker-day", toDateInputValue(date));
   button.setAttribute("data-test-skedpal", "date-picker-day");
+  button.setAttribute("role", "gridcell");
+  button.setAttribute("aria-label", formatLongDateLabel(date));
   button.textContent = `${date.getDate()}`;
   if (isSameDate(date, today)) {
     button.classList.add("date-picker-day--today");
+    button.setAttribute("aria-current", "date");
   }
   if (isSameDate(date, selectedDate)) {
     button.classList.add("date-picker-day--selected");
+    button.setAttribute("aria-selected", "true");
+  } else {
+    button.setAttribute("aria-selected", "false");
   }
   return button;
 }

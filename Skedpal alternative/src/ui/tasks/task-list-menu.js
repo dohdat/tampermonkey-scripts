@@ -78,12 +78,15 @@ function setupTaskMenuListeners(taskId, options = {}) {
 function toggleTaskActionMenu(taskId, options = {}) {
   if (!taskId) {return;}
   const menu = options.menu || document.querySelector?.(`[data-task-menu="${taskId}"]`);
+  const toggleBtn =
+    options.toggleBtn || document.querySelector?.(`[data-task-menu-toggle="${taskId}"]`);
   if (!menu) {return;}
   const actionsWrap = menu.closest?.(".task-actions-wrap");
   const willShow = menu.classList.contains("hidden");
   closeTaskActionMenus(taskId);
   menu.classList.toggle("hidden", !willShow);
   actionsWrap?.classList.toggle("task-actions-menu-open", willShow);
+  toggleBtn?.setAttribute("aria-expanded", willShow ? "true" : "false");
   if (willShow) {
     setupTaskMenuListeners(taskId, options);
   } else {
@@ -97,6 +100,8 @@ export function closeTaskActionMenus(exceptTaskId = "") {
     if (exceptTaskId && menu.dataset.taskMenu === exceptTaskId) {return;}
     menu.classList.add("hidden");
     menu.closest?.(".task-actions-wrap")?.classList.remove("task-actions-menu-open");
+    const toggleBtn = document.querySelector?.(`[data-task-menu-toggle="${menu.dataset.taskMenu}"]`);
+    toggleBtn?.setAttribute("aria-expanded", "false");
   });
   if (!exceptTaskId || state.taskMenuOpenId !== exceptTaskId) {
     cleanupTaskMenuListeners();

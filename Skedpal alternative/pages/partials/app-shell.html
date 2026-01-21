@@ -100,7 +100,14 @@
       </button>
     </div>
   </aside>
-  <div class="sidebar-backdrop" id="sidebar-backdrop" data-test-skedpal="sidebar-backdrop"></div>
+  <div
+    class="sidebar-backdrop"
+    id="sidebar-backdrop"
+    data-test-skedpal="sidebar-backdrop"
+    role="button"
+    tabindex="0"
+    aria-label="Close sidebar"
+  ></div>
   <div class="app-main flex-1 pb-10" data-test-skedpal="app-main">
     <header class="mx-auto w-full max-w-6xl px-6 pt-6 pb-3 space-y-2" data-test-skedpal="app-header">
       <div class="flex flex-wrap items-center gap-3">
@@ -324,6 +331,7 @@
                   type="button"
                   class="rounded-lg border-slate-700 px-2 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400"
                   data-test-skedpal="calendar-prev"
+                  aria-label="Previous period"
                 >
                   ‹
                 </button>
@@ -332,6 +340,7 @@
                   type="button"
                   class="rounded-lg border-slate-700 px-2 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400"
                   data-test-skedpal="calendar-next"
+                  aria-label="Next period"
                 >
                   ›
                 </button>
@@ -431,6 +440,7 @@
                   placeholder="Add new section"
                   class="w-full rounded-lg border-slate-800 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none"
                   data-test-skedpal="section-new-name"
+                  aria-label="New section name"
                 />
                 <button
                   id="section-add"
@@ -589,6 +599,7 @@
                           class="rounded-lg border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-lime-400"
                           id="timemap-day-add"
                           data-test-skedpal="timemap-day-add"
+                          aria-label="Add day"
                         >
                           +
                         </button>

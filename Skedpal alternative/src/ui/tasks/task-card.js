@@ -101,7 +101,9 @@ function buildTaskCollapseButton(task, isCollapsed) {
   collapseTaskBtn.type = "button";
   collapseTaskBtn.dataset.toggleTaskCollapse = task.id;
   collapseTaskBtn.className = "title-icon-btn task-collapse-btn";
-  collapseTaskBtn.title = "Expand/collapse subtasks";
+  collapseTaskBtn.title = isCollapsed ? "Expand subtasks" : "Collapse subtasks";
+  collapseTaskBtn.setAttribute("aria-label", isCollapsed ? "Expand subtasks" : "Collapse subtasks");
+  collapseTaskBtn.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
   collapseTaskBtn.setAttribute("data-test-skedpal", "task-collapse-btn");
   collapseTaskBtn.innerHTML = isCollapsed ? caretRightIconSvg : caretDownIconSvg;
   return collapseTaskBtn;
@@ -113,6 +115,8 @@ function buildTaskCompleteButton(task) {
   completeBtn.className = "title-icon-btn task-complete-btn";
   completeBtn.setAttribute("data-test-skedpal", "task-complete-btn");
   completeBtn.title = task.completed ? "Mark incomplete" : "Mark completed";
+  completeBtn.setAttribute("aria-label", task.completed ? "Mark incomplete" : "Mark completed");
+  completeBtn.setAttribute("aria-pressed", task.completed ? "true" : "false");
   completeBtn.innerHTML = task.completed ? checkboxCheckedIconSvg : checkboxIconSvg;
   if (task.completed) {
     completeBtn.classList.add("task-complete-btn--checked");
@@ -142,13 +146,18 @@ function buildTitleWrap(task, options) {
   return { titleWrap, displayDurationMin, detailsOpen };
 }
 
-function buildMenuToggleButton(taskId) {
+function buildMenuToggleButton(taskId, menuId) {
   const menuToggleBtn = document.createElement("button");
   menuToggleBtn.type = "button";
   menuToggleBtn.dataset.taskMenuToggle = taskId;
   menuToggleBtn.className = "title-icon-btn";
   menuToggleBtn.title = "More actions";
   menuToggleBtn.setAttribute("aria-label", "More actions");
+  menuToggleBtn.setAttribute("aria-haspopup", "menu");
+  menuToggleBtn.setAttribute("aria-expanded", "false");
+  if (menuId) {
+    menuToggleBtn.setAttribute("aria-controls", menuId);
+  }
   menuToggleBtn.setAttribute("data-test-skedpal", "task-actions-menu-toggle");
   menuToggleBtn.innerHTML = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><circle cx="4" cy="10" r="1.6"></circle><circle cx="10" cy="10" r="1.6"></circle><circle cx="16" cy="10" r="1.6"></circle></svg>`;
   return menuToggleBtn;
@@ -160,6 +169,7 @@ function buildTaskActionButton({ label, dataset, iconSvg, testAttr, color }) {
   Object.entries(dataset || {}).forEach(([key, value]) => {
     btn.dataset[key] = value;
   });
+  btn.setAttribute("role", "menuitem");
   btn.className =
     "flex w-full items-center gap-2 rounded-lg border-slate-800 px-2 py-1 text-left text-xs text-slate-200 hover:border-lime-400";
   btn.title = label;
@@ -177,6 +187,8 @@ function buildTaskActionsMenu(task) {
   menu.className =
     "task-actions-menu absolute left-0 top-full z-20 mt-2 hidden w-44 rounded-xl border-slate-800 bg-slate-950/90 p-2 text-xs text-slate-200 shadow-lg";
   menu.dataset.taskMenu = task.id;
+  menu.id = `task-actions-menu-${task.id}`;
+  menu.setAttribute("role", "menu");
   menu.setAttribute("data-test-skedpal", "task-actions-menu");
   const menuItems = [
     buildTaskActionButton({
@@ -238,6 +250,7 @@ function buildDetailsToggleButton(taskId, detailsOpen) {
   detailsToggleBtn.className = "title-icon-btn";
   detailsToggleBtn.title = detailsOpen ? "Hide details" : "Show details";
   detailsToggleBtn.setAttribute("aria-label", detailsOpen ? "Hide details" : "Show details");
+  detailsToggleBtn.setAttribute("aria-pressed", detailsOpen ? "true" : "false");
   detailsToggleBtn.setAttribute("data-test-skedpal", "task-details-toggle");
   detailsToggleBtn.innerHTML = detailsOpen ? eyeOffIconSvg : eyeIconSvg;
   return detailsToggleBtn;
@@ -253,9 +266,9 @@ function buildTaskTitleActions(task, detailsOpen) {
   const menuWrap = document.createElement("div");
   menuWrap.className = "relative inline-flex";
   menuWrap.setAttribute("data-test-skedpal", "task-actions-menu-wrap");
-  const menuToggleBtn = buildMenuToggleButton(task.id);
-  const detailsToggleBtn = buildDetailsToggleButton(task.id, detailsOpen);
   const menu = buildTaskActionsMenu(task);
+  const menuToggleBtn = buildMenuToggleButton(task.id, menu.id);
+  const detailsToggleBtn = buildDetailsToggleButton(task.id, detailsOpen);
   menuWrap.appendChild(menuToggleBtn);
   menuWrap.appendChild(menu);
   titleActions.appendChild(menuWrap);

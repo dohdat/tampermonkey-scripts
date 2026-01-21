@@ -1,3 +1,4 @@
+import { ENTER_KEY, ESC_KEY, SPACE_KEY } from "../constants.js";
 import { domRefs } from "./constants.js";
 
 function setSidebarExpanded(appShell, toggleBtn, isExpanded) {
@@ -32,16 +33,23 @@ export function initSidebarToggle({
   function onBackdropClick() {
     handleSidebarToggleClick(appShell, sidebarToggleBtn, false);
   }
+  function onBackdropKeydown(event) {
+    if (event.key !== ENTER_KEY && event.key !== SPACE_KEY && event.key !== ESC_KEY) {return;}
+    event.preventDefault();
+    handleSidebarToggleClick(appShell, sidebarToggleBtn, false);
+  }
   function onSidebarClick() {
     handleSidebarToggleClick(appShell, sidebarToggleBtn, false);
   }
   sidebarToggleBtn.addEventListener("click", onToggleClick);
   sidebarBackdrop?.addEventListener("click", onBackdropClick);
+  sidebarBackdrop?.addEventListener("keydown", onBackdropKeydown);
   sidebar?.addEventListener("click", onSidebarClick);
   setSidebarExpanded(appShell, sidebarToggleBtn, appShell.dataset.sidebarExpanded === "true");
   return () => {
     sidebarToggleBtn.removeEventListener("click", onToggleClick);
     sidebarBackdrop?.removeEventListener("click", onBackdropClick);
+    sidebarBackdrop?.removeEventListener("keydown", onBackdropKeydown);
     sidebar?.removeEventListener("click", onSidebarClick);
   };
 }

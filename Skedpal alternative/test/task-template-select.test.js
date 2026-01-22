@@ -72,6 +72,13 @@ describe("task template select", () => {
     state.taskFormMode = null;
   });
 
+  it("no-ops when the select ref is missing", () => {
+    domRefs.taskTemplateSelect = null;
+    const cleanup = initTaskTemplateSelect();
+    assert.strictEqual(typeof cleanup, "function");
+    cleanup();
+  });
+
   it("keeps the placeholder selectable so templates can be cleared", () => {
     const cleanup = initTaskTemplateSelect();
     const select = domRefs.taskTemplateSelect;
@@ -119,6 +126,19 @@ describe("task template select", () => {
     select._listeners.change();
 
     assert.strictEqual(select.value, "");
+
+    cleanup();
+  });
+
+  it("keeps selection when not editing templates", () => {
+    const cleanup = initTaskTemplateSelect();
+    const select = domRefs.taskTemplateSelect;
+
+    select.value = "t1";
+    state.taskFormMode = null;
+    select._listeners.change();
+
+    assert.strictEqual(select.value, "t1");
 
     cleanup();
   });

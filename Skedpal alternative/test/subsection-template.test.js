@@ -11,7 +11,11 @@ function installDomStubs() {
 installDomStubs();
 
 const { state } = await import("../src/ui/state/page-state.js");
-const { getSubsectionsFor } = await import("../src/ui/sections-data.js");
+const {
+  getSectionById,
+  getSectionName,
+  getSubsectionsFor
+} = await import("../src/ui/sections-data.js");
 
 describe("subsection templates", () => {
   beforeEach(() => {
@@ -65,5 +69,16 @@ describe("subsection templates", () => {
     };
     const result = getSubsectionsFor("s1");
     assert.strictEqual(result[0].name, "Home");
+  });
+
+  it("returns empty strings and lists when identifiers are missing", () => {
+    state.settingsCache = {
+      ...state.settingsCache,
+      sections: undefined,
+      subsections: null
+    };
+    assert.strictEqual(getSubsectionsFor("missing").length, 0);
+    assert.strictEqual(getSectionById("missing"), undefined);
+    assert.strictEqual(getSectionName(""), "");
   });
 });

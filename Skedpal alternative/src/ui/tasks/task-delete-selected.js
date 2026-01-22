@@ -9,7 +9,9 @@ export async function deleteSelectedTasks(options = {}) {
     await options.deleteTasks(rootTaskIds);
     return true;
   }
-  const { deleteTasksWithUndo } = await import("./task-list-actions.js");
+  const deleteTasksWithUndo =
+    options.deleteTasksWithUndo ||
+    (await import("./task-list-actions.js")).deleteTasksWithUndo;
   await deleteTasksWithUndo(rootTaskIds);
   return true;
 }

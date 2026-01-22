@@ -45,7 +45,7 @@ const timeMapColorPalette = [
   themeColors.slate800
 ].filter(Boolean);
 
-function hashSeed(value) {
+export function hashSeed(value) {
   if (!value) {return 0;}
   let hash = 0;
   for (let i = 0; i < value.length; i += 1) {

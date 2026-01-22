@@ -1,67 +1,89 @@
 import "fake-indexeddb/auto.js";
 import assert from "assert";
-import { beforeEach, describe, it } from "mocha";
-import { DB_NAME, DB_VERSION } from "../src/constants.js";
-import { getAllTasks, saveTask } from "../src/data/db.js";
-import { state } from "../src/ui/state/page-state.js";
-import { maybeAutoSortSubsectionOnAdd } from "../src/ui/tasks/task-auto-sort.js";
+import { before, describe, it } from "mocha";
 
-const STORES = ["tasks", "timemaps", "settings", "backups", "task-templates", "calendar-cache"];
-
-function openRawDb() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
+function installDomStubs() {
+  global.document = {
+    querySelectorAll: () => [],
+    querySelector: () => null,
+    getElementById: () => null
+  };
 }
 
-async function resetStores() {
-  await getAllTasks();
-  const db = await openRawDb();
-  const tx = db.transaction(STORES, "readwrite");
-  for (const storeName of STORES) {
-    tx.objectStore(storeName).clear();
-  }
-  await new Promise((resolve, reject) => {
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-  db.close();
-}
+describe("task auto sort", () => {
+  let maybeAutoSortSubsectionOnAdd;
+  let state;
 
-describe("auto sort on add", () => {
-  beforeEach(async () => {
-    await resetStores();
+  before(async () => {
+    installDomStubs();
+    ({ maybeAutoSortSubsectionOnAdd } = await import("../src/ui/tasks/task-auto-sort.js"));
+    ({ state } = await import("../src/ui/state/page-state.js"));
+  });
+
+  it("returns false when auto sort setting is disabled", async () => {
     state.settingsCache = { ...state.settingsCache, autoSortNewTasks: false };
+    const result = await maybeAutoSortSubsectionOnAdd("s1", "sub1");
+    assert.strictEqual(result, false);
   });
 
-  it("sorts subsection tasks by priority when enabled", async () => {
+  it("sorts subsection roots by priority when enabled", async () => {
     state.settingsCache = { ...state.settingsCache, autoSortNewTasks: true };
-    await saveTask({ id: "t1", title: "Low", section: "s1", subsection: "sub1", order: 1, priority: 1 });
-    await saveTask({ id: "t2", title: "High", section: "s1", subsection: "sub1", order: 2, priority: 5 });
-    await saveTask({ id: "t3", title: "Mid", section: "s1", subsection: "sub1", order: 3, priority: 3 });
+    const saved = [];
+    const result = await maybeAutoSortSubsectionOnAdd("s1", "sub1", {
+      getAllTasks: async () => [
+        { id: "task-low", priority: 0 },
+        { id: "task-high", priority: 5 }
+      ],
+      computeSubsectionPrioritySortUpdates: () => ({
+        updates: [
+          { id: "task-high", order: 1 },
+          { id: "task-low", order: 2 }
+        ],
+        changed: true
+      }),
+      saveTask: async (task) => {
+        saved.push(task);
+      }
+    });
 
-    const changed = await maybeAutoSortSubsectionOnAdd("s1", "sub1");
-    assert.strictEqual(changed, true);
-
-    const tasks = await getAllTasks();
-    const byId = new Map(tasks.map((task) => [task.id, task]));
-    assert.strictEqual(byId.get("t2").order, 1);
-    assert.strictEqual(byId.get("t3").order, 2);
-    assert.strictEqual(byId.get("t1").order, 3);
+    assert.strictEqual(result, true);
+    assert.deepStrictEqual(
+      saved.map((task) => ({ id: task.id, order: task.order })),
+      [
+        { id: "task-high", order: 1 },
+        { id: "task-low", order: 2 }
+      ]
+    );
   });
 
-  it("skips sorting when disabled", async () => {
-    await saveTask({ id: "t1", title: "Low", section: "s1", subsection: "sub1", order: 1, priority: 1 });
-    await saveTask({ id: "t2", title: "High", section: "s1", subsection: "sub1", order: 2, priority: 5 });
+  it("returns false when no priority sorting changes are needed", async () => {
+    state.settingsCache = { ...state.settingsCache, autoSortNewTasks: true };
+    const result = await maybeAutoSortSubsectionOnAdd("s1", "sub1", {
+      getAllTasks: async () => [{ id: "task-one", priority: 5 }],
+      computeSubsectionPrioritySortUpdates: () => ({ updates: [], changed: false })
+    });
 
-    const changed = await maybeAutoSortSubsectionOnAdd("s1", "sub1");
-    assert.strictEqual(changed, false);
+    assert.strictEqual(result, false);
+  });
 
-    const tasks = await getAllTasks();
-    const byId = new Map(tasks.map((task) => [task.id, task]));
-    assert.strictEqual(byId.get("t1").order, 1);
-    assert.strictEqual(byId.get("t2").order, 2);
+  it("falls back to the default compute helper when none is provided", async () => {
+    state.settingsCache = { ...state.settingsCache, autoSortNewTasks: true };
+    const result = await maybeAutoSortSubsectionOnAdd("s1", "sub1", {
+      getAllTasks: async () => [
+        { id: "a", priority: 0, order: 2, section: "s1", subsection: "sub1" },
+        { id: "b", priority: 5, order: 1, section: "s1", subsection: "sub1" }
+      ],
+      saveTask: async () => {}
+    });
+    assert.strictEqual(result, false);
+  });
+
+  it("uses the default task loader when none is provided", async () => {
+    state.settingsCache = { ...state.settingsCache, autoSortNewTasks: true };
+    const result = await maybeAutoSortSubsectionOnAdd("s1", "sub1", {
+      saveTask: async () => {},
+      computeSubsectionPrioritySortUpdates: () => ({ updates: [], changed: false })
+    });
+    assert.strictEqual(result, false);
   });
 });

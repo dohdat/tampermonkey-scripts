@@ -1,6 +1,7 @@
 import assert from "assert";
 import { describe, it, before } from "mocha";
 import {
+  DEFAULT_TASK_REPEAT,
   SUBTASK_SCHEDULE_SEQUENTIAL,
   SUBTASK_SCHEDULE_SEQUENTIAL_SINGLE
 } from "../src/constants.js";
@@ -69,6 +70,27 @@ describe("task template payload helpers", () => {
     });
 
     assert.strictEqual(payload.order, 9);
+  });
+
+  it("uses default repeat selection when none is stored", () => {
+    repeatStore.lastRepeatSelection = null;
+    const values = {
+      id: "t2-default",
+      title: "Default repeat",
+      link: "",
+      durationMin: 20,
+      minBlockMin: 10,
+      priority: 1,
+      deadline: "",
+      startFrom: "",
+      timeMapIds: []
+    };
+    const payload = buildTemplatePayload(values, null, {
+      nextOrder: 3,
+      subtaskScheduleMode: "parallel"
+    });
+
+    assert.deepStrictEqual(payload.repeat, DEFAULT_TASK_REPEAT);
   });
 
   it("builds template subtasks with parent fallback and schedule mode", () => {
@@ -157,6 +179,26 @@ describe("task template payload helpers", () => {
     };
     const payload = buildTemplateSubtaskPayload(values, "s3", null, null, "invalid");
 
+    assert.strictEqual(payload.subtaskParentId, null);
+  });
+
+  it("falls back to value ids and default repeat for subtasks", () => {
+    repeatStore.lastRepeatSelection = null;
+    const values = {
+      id: "s4",
+      title: "Loose",
+      link: "",
+      durationMin: 10,
+      minBlockMin: 5,
+      priority: 1,
+      deadline: "",
+      startFrom: "",
+      timeMapIds: []
+    };
+    const payload = buildTemplateSubtaskPayload(values, "", undefined, null, null);
+
+    assert.strictEqual(payload.id, "s4");
+    assert.deepStrictEqual(payload.repeat, DEFAULT_TASK_REPEAT);
     assert.strictEqual(payload.subtaskParentId, null);
   });
 

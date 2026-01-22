@@ -28,4 +28,38 @@ describe("deferred utils", () => {
     const deferred = buildSequentialSingleDeferredIds(tasks, []);
     assert.strictEqual(deferred.size, 0);
   });
+
+  it("ignores parents that are not sequential-single", () => {
+    const tasks = [
+      { id: "parent", subtaskScheduleMode: "parallel" },
+      { id: "child-1", subtaskParentId: "parent" }
+    ];
+    const placements = [{ taskId: "child-1" }];
+    const deferred = buildSequentialSingleDeferredIds(tasks, placements);
+    assert.strictEqual(deferred.size, 0);
+  });
+
+  it("handles missing inputs without throwing", () => {
+    const deferred = buildSequentialSingleDeferredIds();
+    assert.strictEqual(deferred.size, 0);
+  });
+
+  it("treats null tasks and placements as empty collections", () => {
+    const deferred = buildSequentialSingleDeferredIds(null, null);
+    assert.strictEqual(deferred.size, 0);
+  });
+
+  it("skips tasks without ids and falls back to empty mode", () => {
+    const tasks = [
+      { id: "parent", subtaskScheduleMode: "sequential-single" },
+      { subtaskScheduleMode: "parallel" },
+      { id: "child-1", subtaskParentId: "parent" },
+      { id: "child-2", subtaskParentId: "parent" },
+      { id: "no-mode-parent" }
+    ];
+    const placements = [{ taskId: "child-1" }];
+    const deferred = buildSequentialSingleDeferredIds(tasks, placements);
+    assert.deepStrictEqual(Array.from(deferred), ["child-2"]);
+    assert.strictEqual(deferred.size, 1);
+  });
 });

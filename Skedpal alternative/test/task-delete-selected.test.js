@@ -47,4 +47,20 @@ describe("task delete selected", () => {
     assert.strictEqual(result, true);
     assert.deepStrictEqual(deletedIds, ["task-c"]);
   });
+
+  it("uses deleteTasksWithUndo fallback when no handler is provided", async () => {
+    const card = { dataset: { taskId: "task-d" } };
+    domRefs.taskList = new FakeTaskList([card]);
+    state.tasksCache = [{ id: "task-d" }];
+    let receivedIds = null;
+
+    const result = await deleteSelectedTasks({
+      deleteTasksWithUndo: async (ids) => {
+        receivedIds = ids;
+      }
+    });
+
+    assert.strictEqual(result, true);
+    assert.deepStrictEqual(receivedIds, ["task-d"]);
+  });
 });

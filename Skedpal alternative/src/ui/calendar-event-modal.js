@@ -3,7 +3,6 @@ import {
   TASK_STATUS_COMPLETED,
   TASK_STATUS_UNSCHEDULED,
   CALENDAR_EVENT_MODAL_EXTERNAL_EYEBROW,
-  CALENDAR_EVENT_MODAL_TASK_EYEBROW,
   END_OF_DAY_HOUR,
   END_OF_DAY_MINUTE,
   END_OF_DAY_MS,
@@ -219,7 +218,13 @@ function setModalChecked(ref, fallbackId, checked) {
 function setModalEyebrow(text) {
   const node = resolveRef(domRefs.calendarEventModalEyebrow, "calendar-event-modal-eyebrow");
   if (node) {
-    node.textContent = text;
+    const shouldShow = Boolean(text);
+    node.textContent = text || "";
+    node.classList.toggle("hidden", !shouldShow);
+    node.hidden = !shouldShow;
+    if (node.style) {
+      node.style.display = shouldShow ? "" : "none";
+    }
   }
 }
 
@@ -337,7 +342,7 @@ export function openCalendarEventModal(eventMeta, anchorEl = null) {
   activeEventMeta = eventMeta;
   activeExternalEvent = null;
   activeExternalAnchor = null;
-  setModalEyebrow(CALENDAR_EVENT_MODAL_TASK_EYEBROW);
+  setModalEyebrow("");
   setModalToolbarVisibility(true);
   const actionButtons = getCalendarEventActionButtons(calendarEventModal);
   setActionButtonVisibility(actionButtons, {

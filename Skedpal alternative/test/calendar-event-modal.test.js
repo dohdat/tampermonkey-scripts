@@ -270,6 +270,8 @@ describe("calendar event modal", () => {
     openCalendarEventModal(eventMeta);
 
     assert.strictEqual(refs.modal.classList.contains("hidden"), false);
+    assert.strictEqual(refs.eyebrow.className.includes("hidden"), true);
+    assert.strictEqual(refs.eyebrow.hidden, true);
     assert.strictEqual(refs.title.textContent, "Prep for interview");
     assert.ok(refs.details.children.length > 0);
     const timeMapRow = refs.details.children.find((child) => {
@@ -597,6 +599,8 @@ describe("calendar event modal", () => {
     openExternalEventModal(externalEvent);
 
     assert.strictEqual(refs.eyebrow.textContent, "Google Calendar");
+    assert.strictEqual(refs.eyebrow.className.includes("hidden"), false);
+    assert.strictEqual(refs.eyebrow.hidden, false);
     assert.strictEqual(refs.toolbar.className.includes("hidden"), true);
     assert.strictEqual(refs.toolbar.hidden, true);
     assert.ok(refs.actions[0].className.includes("hidden"));

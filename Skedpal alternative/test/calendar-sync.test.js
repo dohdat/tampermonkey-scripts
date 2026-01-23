@@ -87,6 +87,7 @@ describe("calendar sync planning", () => {
         [
           {
             id: "evt-1",
+            title: "Deep work",
             start: new Date("2026-01-07T10:00:00Z"),
             end: new Date("2026-01-07T11:00:00Z"),
             extendedProperties: {
@@ -108,6 +109,59 @@ describe("calendar sync planning", () => {
     assert.strictEqual(plan[0].eventId, "evt-1");
     assert.strictEqual(plan[0].action, "update");
     assert.strictEqual(plan[0].skip, true);
+  });
+
+  it("updates event titles when they change but timing stays the same", () => {
+    const now = new Date("2026-01-07T00:00:00Z");
+    const settings = {
+      schedulingHorizonDays: 3,
+      googleCalendarTaskSettings: {
+        "cal-1": { syncScheduledEvents: true, syncDays: 2 }
+      }
+    };
+    const tasks = [
+      {
+        id: "task-1",
+        title: "Deep work v2",
+        completed: false,
+        scheduleStatus: "scheduled",
+        scheduledInstances: [
+          {
+            start: "2026-01-07T10:00:00Z",
+            end: "2026-01-07T11:00:00Z",
+            occurrenceId: "occ-1"
+          }
+        ]
+      }
+    ];
+    const existingEventsByCalendar = new Map([
+      [
+        "cal-1",
+        [
+          {
+            id: "evt-1",
+            title: "Deep work",
+            start: new Date("2026-01-07T10:00:00Z"),
+            end: new Date("2026-01-07T11:00:00Z"),
+            extendedProperties: {
+              private: {
+                skedpalInstanceId: "task-1:occ-1"
+              }
+            }
+          }
+        ]
+      ]
+    ]);
+    const plan = buildCalendarSyncPlan({
+      tasks,
+      settings,
+      now,
+      existingEventsByCalendar
+    });
+    assert.strictEqual(plan.length, 1);
+    assert.strictEqual(plan[0].eventId, "evt-1");
+    assert.strictEqual(plan[0].skip, false);
+    assert.strictEqual(plan[0].title, "Deep work v2");
   });
 
   it("adds color ids based on timemap colors", () => {
@@ -142,6 +196,7 @@ describe("calendar sync planning", () => {
         [
           {
             id: "evt-6",
+            title: "Color sync",
             start: new Date("2026-01-07T10:00:00Z"),
             end: new Date("2026-01-07T11:00:00Z"),
             colorId: "1",

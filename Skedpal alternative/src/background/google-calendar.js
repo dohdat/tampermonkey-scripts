@@ -322,18 +322,25 @@ export async function deleteCalendarEvent(calendarId, eventId) {
   return true;
 }
 
-export async function updateCalendarEvent(calendarId, eventId, start, end, options = {}) {
-  if (!calendarId || !eventId || !start || !end) {
-    throw new Error("Missing calendar update data");
-  }
-  const colorId = options?.colorId || "";
+function buildUpdateEventPayload(start, end, options = {}) {
   const payload = {
     start: { dateTime: start },
     end: { dateTime: end }
   };
-  if (colorId) {
-    payload.colorId = colorId;
+  if (Object.prototype.hasOwnProperty.call(options, "title")) {
+    payload.summary = options.title || "";
   }
+  if (options?.colorId) {
+    payload.colorId = options.colorId;
+  }
+  return payload;
+}
+
+export async function updateCalendarEvent(calendarId, eventId, start, end, options = {}) {
+  if (!calendarId || !eventId || !start || !end) {
+    throw new Error("Missing calendar update data");
+  }
+  const payload = buildUpdateEventPayload(start, end, options);
   const url = `${GOOGLE_API_BASE}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`;
   const response = await fetchWithAuth(url, {
     method: "PATCH",

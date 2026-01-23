@@ -209,17 +209,22 @@ function isInstanceInRange(instance, range) {
   return instance.end > range.start && instance.start < range.end;
 }
 
-function isExistingEventMatching(existing, startIso, endIso, colorId) {
+function isExistingEventMatching(existing, startIso, endIso, colorId, title) {
   if (!existing?.start || !existing?.end) {return false;}
-  if (!(existing.start instanceof Date) || !(existing.end instanceof Date)) {return false;}
-  if (existing.start.toISOString() !== startIso) {return false;}
-  if (existing.end.toISOString() !== endIso) {return false;}
-  return (existing.colorId || "") === colorId;
+  return [
+    existing.start instanceof Date,
+    existing.end instanceof Date,
+    existing.start.toISOString() === startIso,
+    existing.end.toISOString() === endIso,
+    (existing.colorId || "") === colorId,
+    (existing.title || "") === (title || "")
+  ].every(Boolean);
 }
 
 function buildSyncItemPayload({
   existing,
-  task,
+  taskId,
+  title,
   instance,
   calendarId,
   startIso,
@@ -232,10 +237,10 @@ function buildSyncItemPayload({
     action: existing?.id ? "update" : "create",
     calendarId,
     eventId: existing?.id || "",
-    title: task.title || "Scheduled task",
+    title,
     start: startIso,
     end: endIso,
-    taskId: task.id,
+    taskId,
     occurrenceId: instance.occurrenceId || "",
     instanceId,
     colorId,
@@ -257,6 +262,7 @@ function buildSyncItemFromInstance({
   const existing = existingByInstance.get(instanceId);
   const startIso = instance.start.toISOString();
   const endIso = instance.end.toISOString();
+  const title = task.title || "Scheduled task";
   const colorHex = resolveTaskEventColorHex({
     task,
     instance,
@@ -264,12 +270,13 @@ function buildSyncItemFromInstance({
     timeMapColorById
   });
   const colorId = resolveGoogleColorId(colorHex);
-  const skip = isExistingEventMatching(existing, startIso, endIso, colorId);
+  const skip = isExistingEventMatching(existing, startIso, endIso, colorId, title);
   return {
     instanceId,
     item: buildSyncItemPayload({
       existing,
-      task,
+      taskId: task.id,
+      title,
       instance,
       calendarId,
       startIso,
@@ -426,7 +433,8 @@ async function processCalendarSyncItem(item) {
     }
     if (item.eventId) {
       await updateCalendarEvent(item.calendarId, item.eventId, item.start, item.end, {
-        colorId: item.colorId
+        colorId: item.colorId,
+        title: item.title
       });
       return;
     }

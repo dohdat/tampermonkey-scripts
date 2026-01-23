@@ -448,6 +448,24 @@ describe("google calendar helpers", () => {
     assert.ok(capturedBody.includes("\"dateTime\":\"2026-01-07T10:00:00Z\""));
   });
 
+  it("includes updated summaries when patching calendar events", async () => {
+    installChrome();
+    let capturedBody = "";
+    globalThis.fetch = async (_url, options) => {
+      capturedBody = options?.body || "";
+      return { ok: true, status: 200, text: async () => "" };
+    };
+    await updateCalendarEvent(
+      "cal-1",
+      "evt-1",
+      "2026-01-07T10:00:00Z",
+      "2026-01-07T11:00:00Z",
+      { title: "New summary" }
+    );
+    const parsed = JSON.parse(capturedBody);
+    assert.strictEqual(parsed.summary, "New summary");
+  });
+
   it("includes colorId when updating calendar events", async () => {
     installChrome();
     let capturedBody = "";

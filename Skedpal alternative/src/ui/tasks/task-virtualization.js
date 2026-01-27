@@ -88,9 +88,10 @@ function buildMeasureContainer(listWidth, rowGap) {
 
 function measureTaskHeights(tasks, context, listWidth, rowGap) {
   if (!tasks.length) {return;}
+  const measureContext = { ...context, disableTaskDetailInteractions: true };
   const wrap = buildMeasureContainer(listWidth, rowGap);
   const nodes = tasks.map((task) => {
-    const node = renderTaskCard(task, context);
+    const node = renderTaskCard(task, measureContext);
     wrap.appendChild(node);
     return node;
   });

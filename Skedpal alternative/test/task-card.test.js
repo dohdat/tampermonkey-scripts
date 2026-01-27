@@ -297,6 +297,51 @@ describe("task card", () => {
     assert.ok(findByTestAttr(card, "task-repeat-clear"));
   });
 
+  it("keeps detail listeners intact when rendering in measurement mode", () => {
+    const task = {
+      id: "t-detail-measure",
+      title: "Measurement safe",
+      durationMin: 30,
+      minBlockMin: 15,
+      timeMapIds: ["tm-1"],
+      completed: false,
+      priority: 2,
+      deadline: new Date(2026, 0, 2, 12, 0).toISOString(),
+      startFrom: new Date(2026, 0, 1, 8, 0).toISOString()
+    };
+    state.expandedTaskDetails = new Set([task.id]);
+    state.taskDetailCleanup = new Map();
+    const baseContext = {
+      tasks: [task],
+      timeMapById: new Map([["tm-1", { id: "tm-1", name: "Focus", color: "#22c55e" }]]),
+      collapsedTasks: new Set(),
+      expandedTaskDetails: state.expandedTaskDetails,
+      computeTotalDuration: () => 0,
+      getTaskDepthById: () => 0,
+      getSectionName: () => "",
+      getSubsectionName: () => ""
+    };
+
+    const card = renderTaskCard(task, baseContext);
+    const prioritySelect = findByTestAttr(card, "task-detail-priority-select");
+    assert.ok(prioritySelect.listeners.change);
+
+    const changeHandler = prioritySelect.listeners.change;
+    let cleanupCalled = false;
+    const cleanupSpy = () => {
+      cleanupCalled = true;
+      prioritySelect.removeEventListener("change", changeHandler);
+    };
+    state.taskDetailCleanup.set(task.id, cleanupSpy);
+
+    const measureContext = { ...baseContext, disableTaskDetailInteractions: true };
+    renderTaskCard(task, measureContext);
+
+    assert.strictEqual(cleanupCalled, false);
+    assert.strictEqual(state.taskDetailCleanup.get(task.id), cleanupSpy);
+    assert.ok(prioritySelect.listeners.change);
+  });
+
   it("clears inherited start-from values for child tasks", async () => {
     const parent = {
       id: "t-clear-parent",

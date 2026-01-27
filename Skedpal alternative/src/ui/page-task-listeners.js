@@ -73,6 +73,49 @@ function handleTaskToggleClick() {
   startTaskInSection();
 }
 
+function handleTaskDetailsChange(event) {
+  const select = event.target;
+  if (!(select instanceof HTMLSelectElement)) {return;}
+  const testId = select.getAttribute("data-test-skedpal") || "";
+  if (
+    testId !== "task-detail-priority-select" &&
+    testId !== "task-detail-duration-select" &&
+    testId !== "task-detail-timemap-select"
+  ) {
+    return;
+  }
+  const card = select.closest?.('[data-test-skedpal="task-card"]');
+  const taskId = card?.dataset?.taskId || "";
+  if (!taskId) {return;}
+  const task = state.tasksCache.find((t) => t.id === taskId);
+  if (!task) {return;}
+
+  const handlers = {
+    "task-detail-priority-select": () => {
+      const nextPriority = Number(select.value);
+      if (Number.isFinite(nextPriority) && nextPriority !== Number(task.priority)) {
+        updateTaskDetailField(task, { priority: nextPriority });
+      }
+    },
+    "task-detail-duration-select": () => {
+      const nextDuration = Number(select.value);
+      if (Number.isFinite(nextDuration) && nextDuration !== Number(task.durationMin)) {
+        updateTaskDetailField(task, { durationMin: nextDuration });
+      }
+    },
+    "task-detail-timemap-select": () => {
+      if (select.value === "__multiple__") {return;}
+      const nextIds = select.value ? [select.value] : [];
+      const current = Array.isArray(task.timeMapIds) ? task.timeMapIds : [];
+      if (current.length !== nextIds.length || current[0] !== nextIds[0]) {
+        updateTaskDetailField(task, { timeMapIds: nextIds });
+      }
+    }
+  };
+
+  handlers[testId]?.();
+}
+
 async function handleTaskListClickEvent(event) {
   if (handleTaskTitleClick(event)) {return;}
   if (handleAddTaskLiteralClick(event)) {return;}
@@ -248,11 +291,13 @@ function setupTaskLists(cleanupFns) {
     taskList.addEventListener("click", handleTaskListClickEvent);
     taskList.addEventListener("dblclick", handleTaskListDoubleClickEvent);
     taskList.addEventListener("input", handleAddTaskInputConversion);
+    taskList.addEventListener("change", handleTaskDetailsChange);
     cleanupFns.push(() => taskList.removeEventListener("click", handleTaskListClickEvent));
     cleanupFns.push(() =>
       taskList.removeEventListener("dblclick", handleTaskListDoubleClickEvent)
     );
     cleanupFns.push(() => taskList.removeEventListener("input", handleAddTaskInputConversion));
+    cleanupFns.push(() => taskList.removeEventListener("change", handleTaskDetailsChange));
   }
   if (todayList) {
     todayList.addEventListener("click", handleTodayListClickEvent);

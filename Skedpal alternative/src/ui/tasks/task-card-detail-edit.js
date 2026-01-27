@@ -33,7 +33,8 @@ export function buildPriorityDetailItem({
   buildDetailItemElement,
   iconSvg,
   applyPrioritySelectColor,
-  onUpdate
+  onUpdate,
+  disableInteractions = false
 }) {
   const { item, valueEl } = buildDetailItemElement({
     key: "priority",
@@ -58,20 +59,33 @@ export function buildPriorityDetailItem({
   valueEl.textContent = "";
   valueEl.appendChild(select);
 
-  function handlePriorityChange() {
+  async function handlePriorityChange() {
     const nextPriority = Number(select.value);
     if (!Number.isFinite(nextPriority)) {return;}
     if (nextPriority === Number(task.priority)) {return;}
-    onUpdate({ priority: nextPriority });
-    applyPrioritySelectColor(select);
+    try {
+      await onUpdate({ priority: nextPriority });
+      applyPrioritySelectColor(select);
+    } catch (error) {
+      // revert on failure to avoid stale UI
+      select.value = String(task.priority || PRIORITY_MIN);
+      applyPrioritySelectColor(select);
+      console.error("Failed to update task priority", error);
+    }
   }
 
-  select.addEventListener("change", handlePriorityChange);
+  if (!disableInteractions) {
+    select.addEventListener("change", handlePriorityChange);
+    // Some browsers fire only 'input' when options are programmatically set; listen to both.
+    select.addEventListener("input", handlePriorityChange);
+  }
 
   return {
     item,
     cleanup: () => {
+      if (disableInteractions) {return;}
       select.removeEventListener("change", handlePriorityChange);
+      select.removeEventListener("input", handlePriorityChange);
     }
   };
 }
@@ -80,7 +94,8 @@ export function buildDurationDetailItem({
   task,
   buildDetailItemElement,
   iconSvg,
-  onUpdate
+  onUpdate,
+  disableInteractions = false
 }) {
   const { item, valueEl } = buildDetailItemElement({
     key: "duration",
@@ -116,19 +131,29 @@ export function buildDurationDetailItem({
   valueEl.textContent = "";
   valueEl.appendChild(select);
 
-  function handleDurationChange() {
+  async function handleDurationChange() {
     const nextDuration = Number(select.value);
     if (!Number.isFinite(nextDuration)) {return;}
     if (nextDuration === Number(task.durationMin)) {return;}
-    onUpdate({ durationMin: nextDuration });
+    try {
+      await onUpdate({ durationMin: nextDuration });
+    } catch (error) {
+      select.value = String(task.durationMin || durationOptions[1].value);
+      console.error("Failed to update task duration", error);
+    }
   }
 
-  select.addEventListener("change", handleDurationChange);
+  if (!disableInteractions) {
+    select.addEventListener("change", handleDurationChange);
+    select.addEventListener("input", handleDurationChange);
+  }
 
   return {
     item,
     cleanup: () => {
+      if (disableInteractions) {return;}
       select.removeEventListener("change", handleDurationChange);
+      select.removeEventListener("input", handleDurationChange);
     }
   };
 }
@@ -138,7 +163,8 @@ export function buildTimeMapDetailItem({
   buildDetailItemElement,
   iconSvg,
   timeMapOptions,
-  onUpdate
+  onUpdate,
+  disableInteractions = false
 }) {
   const { item, valueEl } = buildDetailItemElement({
     key: "timemaps",
@@ -185,7 +211,7 @@ export function buildTimeMapDetailItem({
   valueEl.textContent = "";
   valueEl.appendChild(select);
 
-  function handleTimeMapChange() {
+  async function handleTimeMapChange() {
     const nextValue = select.value;
     if (nextValue === "__multiple__") {return;}
     const nextIds = nextValue ? [nextValue] : [];
@@ -196,15 +222,25 @@ export function buildTimeMapDetailItem({
     ) {
       return;
     }
-    onUpdate({ timeMapIds: nextIds });
+    try {
+      await onUpdate({ timeMapIds: nextIds });
+    } catch (error) {
+      select.value = currentIds[0] || "";
+      console.error("Failed to update task timemap", error);
+    }
   }
 
-  select.addEventListener("change", handleTimeMapChange);
+  if (!disableInteractions) {
+    select.addEventListener("change", handleTimeMapChange);
+    select.addEventListener("input", handleTimeMapChange);
+  }
 
   return {
     item,
     cleanup: () => {
+      if (disableInteractions) {return;}
       select.removeEventListener("change", handleTimeMapChange);
+      select.removeEventListener("input", handleTimeMapChange);
     }
   };
 }
@@ -214,7 +250,8 @@ export function buildStartFromDetailItem({
   buildDetailItemElement,
   iconSvg,
   formatDateTime,
-  onClear
+  onClear,
+  disableInteractions = false
 }) {
   if (!task.startFrom) {return { item: null, cleanup: () => {} };}
   const { item, valueEl } = buildDetailItemElement({
@@ -242,11 +279,14 @@ export function buildStartFromDetailItem({
     onClear();
   }
 
-  clearBtn.addEventListener("click", handleClearClick);
+  if (!disableInteractions) {
+    clearBtn.addEventListener("click", handleClearClick);
+  }
 
   return {
     item,
     cleanup: () => {
+      if (disableInteractions) {return;}
       clearBtn.removeEventListener("click", handleClearClick);
     }
   };
@@ -257,7 +297,8 @@ export function buildDeadlineDetailItem({
   buildDetailItemElement,
   iconSvg,
   formatDateTime,
-  onClear
+  onClear,
+  disableInteractions = false
 }) {
   if (!task.deadline) {return { item: null, cleanup: () => {} };}
   const { item, valueEl } = buildDetailItemElement({
@@ -285,11 +326,14 @@ export function buildDeadlineDetailItem({
     onClear();
   }
 
-  clearBtn.addEventListener("click", handleClearClick);
+  if (!disableInteractions) {
+    clearBtn.addEventListener("click", handleClearClick);
+  }
 
   return {
     item,
     cleanup: () => {
+      if (disableInteractions) {return;}
       clearBtn.removeEventListener("click", handleClearClick);
     }
   };
@@ -300,7 +344,8 @@ export function buildRepeatDetailItem({
   iconSvg,
   repeatSummary,
   isRepeating,
-  onClear
+  onClear,
+  disableInteractions = false
 }) {
   const { item, valueEl } = buildDetailItemElement({
     key: "repeat",
@@ -330,11 +375,14 @@ export function buildRepeatDetailItem({
     onClear();
   }
 
-  clearBtn.addEventListener("click", handleClearClick);
+  if (!disableInteractions) {
+    clearBtn.addEventListener("click", handleClearClick);
+  }
 
   return {
     item,
     cleanup: () => {
+      if (disableInteractions) {return;}
       clearBtn.removeEventListener("click", handleClearClick);
     }
   };

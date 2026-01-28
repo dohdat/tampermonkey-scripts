@@ -470,6 +470,10 @@ body.modal-open{overflow:hidden}
 .calendar-event-delete{position:absolute;top:var(--space-0-35);right:var(--space-0-35);display:inline-flex;align-items:center;justify-content:center;width:var(--size-20px);height:var(--size-20px);border-radius:var(--size-9999px);border:var(--size-1px) solid rgba(var(--color-slate-700-rgb), .7);background:rgba(var(--color-slate-900-rgb), .6);color:inherit;opacity:.7;transition:border-color var(--motion-base) ease,opacity var(--motion-base) ease}
 .calendar-event-delete svg{width:var(--size-12px);height:var(--size-12px)}
 .calendar-event-delete:hover{opacity:1;border-color:currentColor}
+.calendar-event-complete{position:absolute;top:var(--space-0-35);left:var(--space-0-35);display:inline-flex;align-items:center;justify-content:center;width:var(--size-20px);height:var(--size-20px);border-radius:var(--size-9999px);border:var(--size-1px) solid rgba(var(--color-slate-700-rgb), .7);background:rgba(var(--color-slate-900-rgb), .6);color:var(--color-lime-300);opacity:0;pointer-events:none;transition:border-color var(--motion-base) ease,opacity var(--motion-base) ease,color var(--motion-base) ease}
+.calendar-event-complete svg{width:var(--size-12px);height:var(--size-12px)}
+.calendar-event:hover .calendar-event-complete{opacity:.85;pointer-events:auto}
+.calendar-event-complete:hover{opacity:1;border-color:rgba(var(--color-lime-400-rgb), .9);color:var(--color-lime-200)}
 .calendar-event-pin{position:absolute;top:var(--space-0-35);right:var(--space-0-35);display:inline-flex;align-items:center;justify-content:center;width:var(--size-20px);height:var(--size-20px);border-radius:var(--size-9999px);border:var(--size-1px) solid rgba(var(--color-slate-700-rgb), .7);background:rgba(var(--color-slate-900-rgb), .6);color:inherit;opacity:0;pointer-events:none;transition:border-color var(--motion-base) ease,opacity var(--motion-base) ease,color var(--motion-base) ease}
 .calendar-event:hover .calendar-event-pin{opacity:.85;pointer-events:auto}
 .calendar-event--pinned .calendar-event-pin{opacity:1;pointer-events:auto}
@@ -477,6 +481,7 @@ body.modal-open{overflow:hidden}
 .calendar-event-pin:hover{opacity:1;border-color:currentColor}
 .calendar-event-pin--active{opacity:1;border-color:rgba(var(--color-lime-400-rgb), .85);color:var(--color-lime-300)}
 .calendar-event-title{font-size:var(--font-size-xs);font-weight:var(--font-weight-semibold);line-height:var(--line-height-snug)}
+.calendar-event--task .calendar-event-title,.calendar-event--task .calendar-event-time{padding-right:calc(var(--size-20px) * 2 + var(--space-0-35));padding-left:calc(var(--size-20px) + var(--space-0-15))}
 .calendar-event-icon{display:inline-flex;align-items:center;justify-content:center;width:var(--size-12px);height:var(--size-12px);margin-right:var(--space-0-35);opacity:.85;flex:0 0 auto}
 .calendar-event-icon svg{width:100%;height:100%}
 .calendar-event-title-link{color:var(--color-blue-400);text-decoration:underline;text-underline-offset:var(--size-2px)}

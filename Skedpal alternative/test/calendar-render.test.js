@@ -181,6 +181,35 @@ describe("calendar render", () => {
     assert.strictEqual(links[0].target, "_blank");
   });
 
+  it("renders a hover-only complete control for task events", async () => {
+    const { domRefs, renderCalendar } = testRefs;
+    const start = new Date(2026, 0, 6, 11, 0, 0);
+    const end = new Date(2026, 0, 6, 12, 0, 0);
+    const tasks = [
+      {
+        id: "task-complete",
+        title: "Finish report",
+        scheduleStatus: "scheduled",
+        scheduledInstances: [
+          {
+            start: start.toISOString(),
+            end: end.toISOString(),
+            timeMapId: "tm-quick"
+          }
+        ]
+      }
+    ];
+    state.tasksTimeMapsCache = [{ id: "tm-quick", color: "#22c55e" }];
+
+    await renderCalendar(tasks);
+
+    const events = findByTestId(domRefs.calendarGrid, "calendar-event");
+    assert.strictEqual(events.length, 1);
+    const completes = findByTestId(events[0], "calendar-event-complete");
+    assert.strictEqual(completes.length, 1);
+    assert.ok(events[0].className.includes("calendar-event--task"));
+  });
+
   it("renders pin actions for task events", async () => {
     const { domRefs, renderCalendar } = testRefs;
     const start = new Date(2026, 0, 6, 11, 0, 0);

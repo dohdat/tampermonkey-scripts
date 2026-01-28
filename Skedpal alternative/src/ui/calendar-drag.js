@@ -218,6 +218,7 @@ function shouldIgnoreCalendarDrag(event) {
   if (event.target.closest?.("a")) {return true;}
   if (event.target.closest?.("[data-calendar-event-delete]")) {return true;}
   if (event.target.closest?.("[data-calendar-event-pin]")) {return true;}
+  if (event.target.closest?.("[data-calendar-event-complete]")) {return true;}
   if (event.target.closest?.("[data-calendar-event-resize]")) {return true;}
   return false;
 }

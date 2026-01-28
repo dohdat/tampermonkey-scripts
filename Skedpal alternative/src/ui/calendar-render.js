@@ -13,7 +13,8 @@ import {
   TWO,
   TWO_FIFTY_FIVE,
   removeIconSvg,
-  pinIconSvg
+  pinIconSvg,
+  checkboxIconSvg
 } from "./constants.js";
 import { themeColors } from "./theme.js";
 import { state } from "./state/page-state.js";
@@ -255,6 +256,18 @@ function buildExternalDeleteButton(event) {
   return deleteBtn;
 }
 
+function buildCompleteButton(event) {
+  const completeBtn = document.createElement("button");
+  completeBtn.type = "button";
+  completeBtn.className = "calendar-event-complete";
+  completeBtn.innerHTML = checkboxIconSvg;
+  completeBtn.title = "Mark completed";
+  completeBtn.dataset.calendarEventComplete = "true";
+  completeBtn.setAttribute("aria-label", `Complete ${event?.title || "task"}`);
+  completeBtn.setAttribute("data-test-skedpal", "calendar-event-complete");
+  return completeBtn;
+}
+
 function buildPinButton(event) {
   const pinBtn = document.createElement("button");
   pinBtn.type = "button";
@@ -305,6 +318,7 @@ function buildCalendarEventBlock(item, timeMapColorById) {
     block.style.borderColor = styles.borderColor;
   }
   if (source === "task") {
+    block.classList.add("calendar-event--task");
     block.classList.add("calendar-event--pinnable");
     if (item.event.pinned) {
       block.classList.add("calendar-event--pinned");
@@ -327,6 +341,7 @@ function buildCalendarEventBlock(item, timeMapColorById) {
   if (source === "external") {
     block.appendChild(buildExternalDeleteButton(item.event));
   } else {
+    block.appendChild(buildCompleteButton(item.event));
     block.appendChild(buildPinButton(item.event));
   }
   block.appendChild(time);

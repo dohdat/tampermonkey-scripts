@@ -5,6 +5,13 @@ import {
   SPLIT_VIEW_FOCUS_OFFSET_PX,
   SPLIT_VIEW_FOCUS_PADDING_PX,
   THREE,
+  END_OF_DAY_HOUR,
+  END_OF_DAY_MINUTE,
+  END_OF_DAY_MS,
+  END_OF_DAY_SECOND,
+  TASK_REPEAT_NONE,
+  TASK_STATUS_COMPLETED,
+  TASK_STATUS_UNSCHEDULED,
   domRefs
 } from "./constants.js";
 import { state } from "./state/page-state.js";
@@ -50,6 +57,8 @@ import {
   sendExternalDeleteRequest
 } from "./calendar-external-events.js";
 import { saveTask } from "../data/db.js";
+import { getTaskAndDescendants } from "./utils.js";
+import { showUndoBanner } from "./notifications.js";
 import {
   HOUR_HEIGHT,
   buildEmptyState,
@@ -84,6 +93,90 @@ function getExternalDeletePayload(deleteBtn) {
 function confirmExternalDelete(title) {
   if (typeof window === "undefined") {return true;}
   return window.confirm(`Delete "${title}" from Google Calendar?`);
+}
+
+function emitTasksUpdated() {
+  window.dispatchEvent(new Event("skedpal:tasks-updated"));
+}
+
+function getOccurrenceIsoFromMeta(eventMeta) {
+  if (!eventMeta?.start) {return null;}
+  const occurrenceDate = new Date(eventMeta.start);
+  if (Number.isNaN(occurrenceDate.getTime())) {return null;}
+  occurrenceDate.setHours(END_OF_DAY_HOUR, END_OF_DAY_MINUTE, END_OF_DAY_SECOND, END_OF_DAY_MS);
+  return occurrenceDate.toISOString();
+}
+
+export async function completeScheduledTask(eventMeta) {
+  const task = state.tasksCache.find((candidate) => candidate.id === eventMeta.taskId);
+  if (!task) {return;}
+  if (task.repeat?.type && task.repeat.type !== TASK_REPEAT_NONE) {
+    const occurrenceIso = getOccurrenceIsoFromMeta(eventMeta);
+    if (!occurrenceIso) {return;}
+    window.dispatchEvent(
+      new CustomEvent("skedpal:repeat-occurrence-complete", {
+        detail: { taskId: task.id, occurrenceIso }
+      })
+    );
+    return;
+  }
+  const affected = getTaskAndDescendants(task.id, state.tasksCache);
+  if (!affected.length) {return;}
+  const snapshots = affected.map((t) => JSON.parse(JSON.stringify(t)));
+  const timestamp = new Date().toISOString();
+  const updates = affected.map((entry) => {
+    const currentStatus = entry.scheduleStatus || TASK_STATUS_UNSCHEDULED;
+    const scheduleStatus =
+      currentStatus === TASK_STATUS_COMPLETED ? currentStatus : TASK_STATUS_COMPLETED;
+    return {
+      ...entry,
+      completed: true,
+      completedAt: timestamp,
+      scheduleStatus
+    };
+  });
+  await Promise.all(updates.map((item) => saveTask(item)));
+  emitTasksUpdated();
+  const name = task.title || "Untitled task";
+  showUndoBanner(`Completed "${name}".`, async () => {
+    await Promise.all(snapshots.map((snap) => saveTask(snap)));
+    emitTasksUpdated();
+  });
+}
+
+function handleCalendarActionButtons(event) {
+  const target = event?.target;
+  if (!target) {return false;}
+  const deleteBtn = target.closest?.("[data-calendar-event-delete]");
+  if (deleteBtn) {
+    event.preventDefault();
+    event.stopPropagation();
+    deleteExternalEvent(deleteBtn);
+    return true;
+  }
+  const pinBtn = target.closest?.("[data-calendar-event-pin]");
+  if (pinBtn) {
+    event.preventDefault();
+    event.stopPropagation();
+    const block = pinBtn.closest?.(".calendar-event");
+    if (!block) {return true;}
+    const eventMeta = getEventMetaFromBlock(block);
+    if (!eventMeta || eventMeta.source === "external") {return true;}
+    togglePinnedTaskEvent(eventMeta);
+    return true;
+  }
+  const completeBtn = target.closest?.("[data-calendar-event-complete]");
+  if (completeBtn) {
+    event.preventDefault();
+    event.stopPropagation();
+    const block = completeBtn.closest?.(".calendar-event");
+    if (!block) {return true;}
+    const eventMeta = getEventMetaFromBlock(block);
+    if (!eventMeta) {return true;}
+    completeScheduledTask(eventMeta);
+    return true;
+  }
+  return false;
 }
 
 function setDeleteButtonState(button, disabled) {
@@ -178,24 +271,7 @@ function updateNowIndicator() {
 
 function handleCalendarEventClick(event) {
   if (event.target?.closest?.("a")) {return;}
-  const deleteBtn = event.target.closest?.("[data-calendar-event-delete]");
-  if (deleteBtn) {
-    event.preventDefault();
-    event.stopPropagation();
-    deleteExternalEvent(deleteBtn);
-    return;
-  }
-  const pinBtn = event.target.closest?.("[data-calendar-event-pin]");
-  if (pinBtn) {
-    event.preventDefault();
-    event.stopPropagation();
-    const block = pinBtn.closest?.(".calendar-event");
-    if (!block) {return;}
-    const eventMeta = getEventMetaFromBlock(block);
-    if (!eventMeta || eventMeta.source === "external") {return;}
-    togglePinnedTaskEvent(eventMeta);
-    return;
-  }
+  if (handleCalendarActionButtons(event)) {return;}
   const block = event.target.closest?.(".calendar-event");
   if (!block) {return;}
   const eventMeta = getEventMetaFromBlock(block);

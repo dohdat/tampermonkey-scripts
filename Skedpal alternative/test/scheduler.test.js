@@ -1833,6 +1833,66 @@ describe("scheduler", () => {
     assert.strictEqual(placements[2].taskId, "grandchild-1");
   });
 
+  it("keeps subtree order ahead of later siblings when nested orders clash", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 4);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "12:00" }] }
+    ];
+    const tasks = [
+      {
+        id: "parent",
+        title: "Parent",
+        completed: true,
+        subtaskScheduleMode: "sequential"
+      },
+      {
+        id: "child-a",
+        title: "Child A",
+        subtaskParentId: "parent",
+        order: 1
+      },
+      {
+        id: "child-b",
+        title: "Child B",
+        subtaskParentId: "parent",
+        order: 2
+      },
+      {
+        id: "leaf-a",
+        title: "Leaf A",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59),
+        subtaskParentId: "child-a",
+        order: 10
+      },
+      {
+        id: "leaf-b",
+        title: "Leaf B",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59),
+        subtaskParentId: "child-b",
+        order: 2
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 1,
+      now
+    });
+
+    const placements = [...result.scheduled].sort((a, b) => a.start - b.start);
+    assert.strictEqual(placements.length, 2);
+    assert.strictEqual(placements[0].taskId, "leaf-a");
+    assert.strictEqual(placements[1].taskId, "leaf-b");
+  });
+
   it("keeps higher-order nested subtasks after later siblings", () => {
     const now = nextWeekday(new Date(2026, 0, 1), 4);
     const timeMaps = [
@@ -1895,8 +1955,8 @@ describe("scheduler", () => {
     const placements = [...result.scheduled].sort((a, b) => a.start - b.start);
     assert.strictEqual(placements.length, 3);
     assert.strictEqual(placements[0].taskId, "child-1");
-    assert.strictEqual(placements[1].taskId, "child-3");
-    assert.strictEqual(placements[2].taskId, "grandchild-1");
+    assert.strictEqual(placements[1].taskId, "grandchild-1");
+    assert.strictEqual(placements[2].taskId, "child-3");
   });
 
   it("requires single blocks for sequential one-at-a-time subtasks", () => {

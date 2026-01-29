@@ -79,21 +79,6 @@ function parseOrderValue(value) {
   return Number.isFinite(numeric) ? numeric : Number.NaN;
 }
 
-function sortChildrenByOrder(children, subtaskOrderById) {
-  return [...children].sort((a, b) => {
-    const aOrder = subtaskOrderById.has(a.id)
-      ? subtaskOrderById.get(a.id)
-      : Number.MAX_SAFE_INTEGER;
-    const bOrder = subtaskOrderById.has(b.id)
-      ? subtaskOrderById.get(b.id)
-      : Number.MAX_SAFE_INTEGER;
-    if (aOrder !== bOrder) {
-      return aOrder - bOrder;
-    }
-    return (a.title || "").localeCompare(b.title || "");
-  });
-}
-
 function buildIndexById(tasks) {
   const map = new Map();
   tasks.forEach((task, index) => {
@@ -142,11 +127,27 @@ function compareSequentialGroupItems(aId, bId, tasksById, subtaskOrderById, inde
   return (aTask?.title || "").localeCompare(bTask?.title || "");
 }
 
-function buildFlatOrderForParent(parentId, childrenByParent, subtaskOrderById, list) {
-  const children = sortChildrenByOrder(childrenByParent.get(parentId) || [], subtaskOrderById);
+function buildFlatOrderForParent({
+  parentId,
+  childrenByParent,
+  subtaskOrderById,
+  tasksById,
+  indexById,
+  list
+}) {
+  const children = [...(childrenByParent.get(parentId) || [])].sort((a, b) =>
+    compareSequentialGroupItems(a.id, b.id, tasksById, subtaskOrderById, indexById)
+  );
   children.forEach((child) => {
     list.push(child.id);
-    buildFlatOrderForParent(child.id, childrenByParent, subtaskOrderById, list);
+    buildFlatOrderForParent({
+      parentId: child.id,
+      childrenByParent,
+      subtaskOrderById,
+      tasksById,
+      indexById,
+      list
+    });
   });
 }
 
@@ -161,10 +162,14 @@ function buildSequentialOrderIndexMap(tasks, tasksById, parentModeById, subtaskO
     const groupId = ancestors[0].id;
     if (byGroup.has(groupId)) {return;}
     const list = [];
-    buildFlatOrderForParent(groupId, childrenByParent, subtaskOrderById, list);
-    list.sort((aId, bId) =>
-      compareSequentialGroupItems(aId, bId, tasksById, subtaskOrderById, indexById)
-    );
+    buildFlatOrderForParent({
+      parentId: groupId,
+      childrenByParent,
+      subtaskOrderById,
+      tasksById,
+      indexById,
+      list
+    });
     const indexMap = new Map();
     list.forEach((id, index) => {
       indexMap.set(id, index);

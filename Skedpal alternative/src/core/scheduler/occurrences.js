@@ -3,11 +3,14 @@ import {
   endOfDay,
   nthWeekdayOfMonth,
   startOfDay,
-  startOfWeek,
-  getLocalDateKey
+  startOfWeek
 } from "./date-utils.js";
 import { normalizeTask } from "./task-utils.js";
 import { DAYS_PER_WEEK, DAYS_PER_YEAR, TEN, THREE } from "../../constants.js";
+import {
+  buildCompletedOccurrenceStore,
+  isOccurrenceCompleted
+} from "./completion-utils.js";
 
 function buildNonRepeatOccurrences(task, now, horizonEnd) {
   if (task.deadline >= now && task.deadline <= horizonEnd) {
@@ -292,30 +295,6 @@ function resolveRepeatHandler(unit) {
   return handlers[unit] || null;
 }
 
-function buildCompletedOccurrenceSet(values) {
-  const completed = new Set();
-  (values || []).forEach((value) => {
-    if (!value) {return;}
-    if (typeof value === "string" && value.trim()) {
-      completed.add(value);
-    }
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {return;}
-    completed.add(date.toISOString());
-    const localKey = getLocalDateKey(date);
-    if (localKey) {completed.add(localKey);}
-  });
-  return completed;
-}
-
-function isOccurrenceCompleted(completedOccurrences, date) {
-  if (!completedOccurrences?.size || !date) {return false;}
-  return (
-    completedOccurrences.has(date.toISOString()) ||
-    completedOccurrences.has(getLocalDateKey(date))
-  );
-}
-
 export function buildOccurrenceDates(task, now, horizonEnd) {
   const repeat = task.repeat || { type: "none" };
   if (isNonRepeating(repeat)) {
@@ -336,12 +315,12 @@ export function getUpcomingOccurrences(
   const horizonEnd = endOfDay(addDays(now, horizonDays));
   const normalized = normalizeTask(task, now, horizonEnd);
   const occurrences = buildOccurrenceDates(normalized, now, horizonEnd);
-  const completedOccurrences = buildCompletedOccurrenceSet(task.completedOccurrences);
+  const completedOccurrences = buildCompletedOccurrenceStore(task.completedOccurrences);
   return occurrences
     .map((date, index) => ({
       date,
       occurrenceId: `${normalized.id || normalized.taskId || task.id}-occ-${index}`
     }))
-    .filter((entry) => !isOccurrenceCompleted(completedOccurrences, entry.date))
+    .filter((entry) => !isOccurrenceCompleted(completedOccurrences, entry.date, normalized.repeat))
     .slice(0, count);
 }

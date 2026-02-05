@@ -2,8 +2,7 @@ import {
   addDays,
   endOfDay,
   startOfDay,
-  startOfWeek,
-  getLocalDateKey
+  startOfWeek
 } from "./scheduler/date-utils.js";
 import { buildOccurrenceDates, getUpcomingOccurrences } from "./scheduler/occurrences.js";
 import { normalizeTask } from "./scheduler/task-utils.js";
@@ -29,6 +28,10 @@ import {
   MS_PER_MINUTE,
   THREE
 } from "../constants.js";
+import {
+  buildCompletedOccurrenceStore,
+  isOccurrenceCompleted
+} from "./scheduler/completion-utils.js";
 
 export { getUpcomingOccurrences };
 
@@ -195,30 +198,6 @@ function isFlexibleRepeat(candidate) {
   return candidate.isRepeating && candidate.repeatWindowDays >= FLEXIBLE_REPEAT_WINDOW_DAYS;
 }
 
-function buildCompletedOccurrenceSet(values) {
-  const completed = new Set();
-  (values || []).forEach((value) => {
-    if (!value) {return;}
-    if (typeof value === "string" && value.trim()) {
-      completed.add(value);
-    }
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {return;}
-    completed.add(date.toISOString());
-    const localKey = getLocalDateKey(date);
-    if (localKey) {completed.add(localKey);}
-  });
-  return completed;
-}
-
-function isOccurrenceCompleted(completedOccurrences, date) {
-  if (!completedOccurrences?.size || !date) {return false;}
-  return (
-    completedOccurrences.has(date.toISOString()) ||
-    completedOccurrences.has(getLocalDateKey(date))
-  );
-}
-
 function shouldPreferPriorityOrder(a, b) {
   if (a.hasExplicitDeadline || b.hasExplicitDeadline) {return false;}
   if (!a.isRepeating && !b.isRepeating) {return true;}
@@ -246,7 +225,7 @@ function buildScheduleCandidates(tasks, now, horizonEnd, options = {}) {
       }
       const normalized = normalizeTask(task, now, horizonEnd);
       const occurrenceDates = buildOccurrenceDates(normalized, now, horizonEnd);
-      const completedOccurrences = buildCompletedOccurrenceSet(task.completedOccurrences);
+      const completedOccurrences = buildCompletedOccurrenceStore(task.completedOccurrences);
       if (!occurrenceDates || occurrenceDates.length === 0) {
         if (normalized.deadline < now) {
           immediatelyUnscheduled.add(task.id);
@@ -259,7 +238,7 @@ function buildScheduleCandidates(tasks, now, horizonEnd, options = {}) {
       const hasExplicitDeadline = Boolean(task.deadline);
       occurrenceDates.forEach((deadline, index) => {
         const occurrenceDate = deadline;
-        if (isOccurrenceCompleted(completedOccurrences, occurrenceDate)) {
+        if (isOccurrenceCompleted(completedOccurrences, occurrenceDate, normalized.repeat)) {
           return;
         }
         const occurrenceStart = isRepeating

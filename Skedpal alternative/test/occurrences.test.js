@@ -225,6 +225,57 @@ describe("scheduler occurrences", () => {
     assert.deepStrictEqual(second, []);
   });
 
+  it("treats monthly range completions within the window as completed", () => {
+    const localNow = new Date(2026, 1, 5);
+    const task = {
+      id: "t5-range",
+      repeatAnchor: new Date(2026, 0, 22),
+      repeat: {
+        type: "custom",
+        unit: "month",
+        interval: 1,
+        monthlyMode: "range",
+        monthlyRangeStart: 1,
+        monthlyRangeEnd: 10
+      }
+    };
+    const first = getUpcomingOccurrences(task, localNow, 1, 60);
+    assert.strictEqual(first.length, 1);
+    const second = getUpcomingOccurrences(
+      { ...task, completedOccurrences: ["2026-02-02"] },
+      localNow,
+      1,
+      60
+    );
+    assert.strictEqual(second.length, 1);
+    assert.strictEqual(second[0].date.getMonth(), 2);
+  });
+
+  it("treats yearly range completions within the window as completed", () => {
+    const localNow = new Date(2026, 0, 5);
+    const task = {
+      id: "t5-year-range",
+      repeatAnchor: new Date(2025, 10, 20),
+      repeat: {
+        type: "custom",
+        unit: "year",
+        interval: 1,
+        yearlyRangeStartDate: "2025-11-15",
+        yearlyRangeEndDate: "2026-02-10"
+      }
+    };
+    const first = getUpcomingOccurrences(task, localNow, 1, 800);
+    assert.strictEqual(first.length, 1);
+    const second = getUpcomingOccurrences(
+      { ...task, completedOccurrences: ["2025-12-01"] },
+      localNow,
+      1,
+      800
+    );
+    assert.strictEqual(second.length, 1);
+    assert.strictEqual(second[0].date.getFullYear(), 2027);
+  });
+
   it("keeps occurrences when completed dates are invalid", () => {
     const task = {
       id: "t5b",

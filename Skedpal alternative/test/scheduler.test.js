@@ -372,6 +372,47 @@ describe("scheduler", () => {
     assert.strictEqual(result.scheduled[0].taskId, "weekly-local");
   });
 
+  it("skips monthly range occurrences completed inside the window", () => {
+    const now = new Date(2026, 1, 5, 8, 0, 0, 0);
+    const timeMaps = [
+      {
+        id: "tm-all",
+        days: [now.getDay()],
+        startTime: "09:00",
+        endTime: "11:00"
+      }
+    ];
+    const tasks = [
+      {
+        id: "monthly-range",
+        title: "Monthly range",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-all"],
+        repeatAnchor: new Date(2026, 0, 22),
+        repeat: {
+          type: "custom",
+          unit: "month",
+          interval: 1,
+          monthlyMode: "range",
+          monthlyRangeStart: 1,
+          monthlyRangeEnd: 10
+        },
+        completedOccurrences: ["2026-02-02"]
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 10,
+      now
+    });
+
+    assert.strictEqual(result.scheduled.length, 0);
+  });
+
   it("schedules monthly and yearly repeats and honors startFrom", () => {
     const now = nextWeekday(new Date(2026, 0, 1), 1);
     const startFrom = shiftDate(now, 0, 10, 0);

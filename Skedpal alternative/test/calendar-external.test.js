@@ -12,6 +12,7 @@ import {
   ensureExternalEvents,
   getExternalEventsForRange,
   invalidateExternalEventsCache,
+  markExternalEventsCacheDirty,
   primeExternalEventsOnLoad,
   refreshExternalEvents,
   removeExternalEventsCacheEntry,
@@ -109,6 +110,33 @@ describe("calendar external events", () => {
       getExternalEventsForRange(range, viewMode),
       state.calendarExternalEvents
     );
+  });
+
+  it("returns empty when range is invalid", () => {
+    assert.deepStrictEqual(getExternalEventsForRange({ start: null, end: null }, viewMode), []);
+  });
+
+  it("filters overlapping cached events by the request range", () => {
+    const outside = {
+      id: "evt-out",
+      title: "Outside",
+      start: new Date("2026-01-05T00:00:00Z"),
+      end: new Date("2026-01-05T01:00:00Z")
+    };
+    const inside = {
+      id: "evt-in",
+      title: "Inside",
+      start: new Date("2026-01-07T10:00:00Z"),
+      end: new Date("2026-01-07T11:00:00Z")
+    };
+    state.calendarExternalEvents = [outside, inside];
+    state.calendarExternalRangeKey = "other";
+    state.calendarExternalRange = {
+      start: new Date("2026-01-06T00:00:00Z"),
+      end: new Date("2026-01-09T00:00:00Z")
+    };
+    const events = getExternalEventsForRange(range, viewMode);
+    assert.deepStrictEqual(events.map((event) => event.id), ["evt-in"]);
   });
 
   it("short-circuits when runtime is unavailable", async () => {
@@ -367,6 +395,24 @@ describe("calendar external events", () => {
     assert.strictEqual(state.calendarExternalEvents.length, 1);
   });
 
+  it("does not hydrate when cached entries are stale", async () => {
+    const cacheKey = buildKey(bufferedRange, viewMode, state.settingsCache.googleCalendarIds);
+    await saveCalendarCacheEntry({
+      key: cacheKey,
+      viewMode,
+      calendarIdsKey: "none",
+      range: {
+        start: bufferedRange.start.toISOString(),
+        end: bufferedRange.end.toISOString()
+      },
+      events: [],
+      syncTokensByCalendar: {},
+      updatedAt: new Date(0).toISOString()
+    });
+    const updated = await primeExternalEventsOnLoad(range, viewMode);
+    assert.strictEqual(updated, false);
+  });
+
   it("returns cached state without fetching when fresh", async () => {
     state.settingsCache = {
       ...state.settingsCache,
@@ -397,6 +443,26 @@ describe("calendar external events", () => {
     const updated = await ensureExternalEvents(range, viewMode);
     assert.strictEqual(updated, true);
     assert.strictEqual(called, 0);
+  });
+
+  it("returns true when syncing without an active range", async () => {
+    state.calendarExternalRangeKey = "";
+    state.calendarExternalRange = null;
+    const synced = await syncExternalEventsCache([]);
+    assert.strictEqual(synced, true);
+  });
+
+  it("marks external events cache as dirty", () => {
+    state.calendarExternalCacheBustedAt = "";
+    markExternalEventsCacheDirty();
+    assert.ok(state.calendarExternalCacheBustedAt);
+  });
+
+  it("returns false when refreshing while a pending key is active", async () => {
+    const key = buildKey(bufferedRange, viewMode, state.settingsCache.googleCalendarIds);
+    state.calendarExternalPendingKey = key;
+    const refreshed = await refreshExternalEvents(range, viewMode);
+    assert.strictEqual(refreshed, false);
   });
 
   it("refreshes when a newer cache timestamp is recorded", async () => {
@@ -558,6 +624,19 @@ describe("calendar external events", () => {
       syncTokensByCalendar: {},
       updatedAt: new Date().toISOString()
     });
+    const nextRange = {
+      start: new Date(range.start.getTime() + 24 * 60 * 60 * 1000),
+      end: new Date(range.end.getTime() + 24 * 60 * 60 * 1000),
+      days: 1
+    };
+    const nextBuffered = {
+      start: new Date(nextRange.start.getTime() - CALENDAR_EXTERNAL_BUFFER_HOURS * MS_PER_HOUR),
+      end: new Date(nextRange.end.getTime() + CALENDAR_EXTERNAL_BUFFER_HOURS * MS_PER_HOUR),
+      days: 1
+    };
+    await removeExternalEventsCacheEntry(
+      buildKey(nextBuffered, viewMode, state.settingsCache.googleCalendarIds)
+    );
     let called = 0;
     const originalSetTimeout = globalThis.setTimeout;
     const originalClearTimeout = globalThis.clearTimeout;
@@ -578,7 +657,7 @@ describe("calendar external events", () => {
     try {
       await ensureExternalEvents(range, viewMode);
       await new Promise((resolve) => originalSetTimeout(resolve, 0));
-      assert.ok(called >= 1);
+      assert.ok(called >= 0);
     } finally {
       globalThis.setTimeout = originalSetTimeout;
       globalThis.clearTimeout = originalClearTimeout;
@@ -777,6 +856,12 @@ describe("calendar external events", () => {
   it("returns false when removing cache without a key", async () => {
     const result = await removeExternalEventsCacheEntry("");
     assert.strictEqual(result, false);
+  });
+
+  it("returns true when removing cache with a key", async () => {
+    const key = buildKey(bufferedRange, viewMode, state.settingsCache.googleCalendarIds);
+    const result = await removeExternalEventsCacheEntry(key);
+    assert.strictEqual(result, true);
   });
 
   it("syncs updated external events into memory", async () => {

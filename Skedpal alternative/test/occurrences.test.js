@@ -56,7 +56,7 @@ describe("scheduler occurrences", () => {
     assert.ok(dates.length > 0);
   });
 
-  it("anchors weekly any repeats to the start day when all weekdays are selected", () => {
+  it("uses the earliest weekday in the week when all weekdays are selected", () => {
     const startFrom = new Date("2026-01-01T00:00:00Z");
     const task = {
       id: "t6b",
@@ -71,10 +71,11 @@ describe("scheduler occurrences", () => {
     };
     const dates = buildOccurrenceDates(task, now, horizonEnd);
     assert.ok(dates.length > 0);
-    assert.strictEqual(dates[0].getDay(), startFrom.getDay());
+    assert.ok(dates.length > 1);
+    assert.strictEqual(dates[1].getDay(), 0);
   });
 
-  it("uses repeatAnchor when resolving the weekly any anchor", () => {
+  it("uses repeatAnchor when resolving weekly any occurrences", () => {
     const anchor = new Date(2026, 0, 1);
     const localNow = new Date(2026, 0, 10);
     const localHorizon = new Date(2026, 1, 1, 23, 59, 59);
@@ -92,7 +93,7 @@ describe("scheduler occurrences", () => {
     };
     const dates = buildOccurrenceDates(task, localNow, localHorizon);
     assert.ok(dates.length > 0);
-    assert.strictEqual(dates[0].getDay(), anchor.getDay());
+    assert.strictEqual(dates[0].getDay(), 0);
   });
 
   it("uses the monthly range end day for range repeats", () => {

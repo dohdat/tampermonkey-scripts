@@ -146,6 +146,16 @@ describe("notifications", () => {
     assert.strictEqual(banner.classList.contains("hidden"), true);
   });
 
+  it("closes the undo banner when the close button is clicked", () => {
+    showUndoBanner("Saved!", () => {});
+    const banner = elements.get("notification-banner");
+    const closeButton = elements.get("notification-close");
+
+    assert.strictEqual(banner.classList.contains("hidden"), false);
+    closeButton.onclick();
+    assert.strictEqual(banner.classList.contains("hidden"), true);
+  });
+
   it("shows a status banner without undo", () => {
     showNotificationBanner("Saving...", { autoHideMs: 2000 });
 

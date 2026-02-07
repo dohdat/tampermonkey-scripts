@@ -6,6 +6,7 @@ import {
   deleteTask,
   deleteTimeMap,
   getAllTasks,
+  getAllTaskTemplates,
   getAllTimeMaps,
   getLatestBackup,
   getSettings,
@@ -13,7 +14,9 @@ import {
   saveBackup,
   saveSettings,
   saveTask,
+  saveTaskTemplate,
   saveTimeMap,
+  deleteTaskTemplate,
   trimTaskCollection
 } from "../src/data/db.js";
 
@@ -68,6 +71,15 @@ describe("db", () => {
     assert.deepStrictEqual(await getAllTimeMaps(), [timeMap]);
     await deleteTimeMap(timeMap.id);
     assert.deepStrictEqual(await getAllTimeMaps(), []);
+  });
+
+  it("saveTaskTemplate and deleteTaskTemplate round trip", async () => {
+    const template = { id: "tpl-1", title: "Template task" };
+    const saved = await saveTaskTemplate(template);
+    assert.deepStrictEqual(saved, template);
+    assert.deepStrictEqual(await getAllTaskTemplates(), [template]);
+    await deleteTaskTemplate(template.id);
+    assert.deepStrictEqual(await getAllTaskTemplates(), []);
   });
 
   it("getSettings returns defaults when empty", async () => {
@@ -164,5 +176,24 @@ describe("db", () => {
     assert.ok(!ids.has("deleted-1"));
     const settings = await getSettings();
     assert.deepStrictEqual(settings.collapsedTasks, ["active-1"]);
+  });
+
+  it("rejects when indexedDB open fails", async () => {
+    const originalIndexedDB = global.indexedDB;
+    try {
+      global.indexedDB = {
+        open: () => {
+          const request = {};
+          setTimeout(() => {
+            request.error = new Error("open failed");
+            request.onerror?.();
+          }, 0);
+          return request;
+        }
+      };
+      await assert.rejects(() => getAllTasks());
+    } finally {
+      global.indexedDB = originalIndexedDB;
+    }
   });
 });

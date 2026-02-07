@@ -94,7 +94,12 @@ function installDomStubs(elements) {
   };
   global.window = {
     addEventListener: () => {},
-    removeEventListener: () => {}
+    removeEventListener: () => {},
+    setTimeout: (fn) => {
+      fn();
+      return 1;
+    },
+    clearTimeout: () => {}
   };
   global.requestAnimationFrame = (cb) => cb();
 }

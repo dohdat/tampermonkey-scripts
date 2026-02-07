@@ -7,7 +7,7 @@
     "build:css": "npx tailwindcss -i styles/tailwind.input.css -o styles/tailwind.css --content pages/index.html,pages/partials/app-shell.html,pages/partials/modals.html,src/ui/**/*.js --minify",
     "lint": "eslint .",
     "test": "mocha \"test/**/*.test.js\" --exit",
-    "test:coverage": "npm run lint && c8 --check-coverage --lines 90 --statements 90 --functions 87 --branches 84 --reporter=text --reporter=lcov mocha \"test/**/*.test.js\" --reporter=min --exit",
+    "test:coverage": "npm run lint && c8 --check-coverage --lines 90 --statements 90 --functions 90 --branches 84 --reporter=text --reporter=lcov mocha \"test/**/*.test.js\" --reporter=min --exit",
     "coverage": "nyc mocha \"test/**/*.test.js\""
   },
   "devDependencies": {

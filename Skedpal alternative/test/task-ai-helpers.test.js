@@ -94,4 +94,25 @@ describe("task ai helpers", () => {
     const result = buildTasksFromAiList("not-array", parentTask, []);
     assert.deepStrictEqual(result, []);
   });
+
+  it("falls back to defaults when parent fields are missing", () => {
+    const parentTask = {
+      id: "",
+      durationMin: undefined,
+      minBlockMin: undefined,
+      priority: undefined,
+      timeMapIds: "not-array"
+    };
+    const list = [{ title: "Fallback", subtasks: "not-array" }];
+    const result = buildTasksFromAiList(list, parentTask, []);
+    assert.strictEqual(result.length, 1);
+    const task = result[0];
+    assert.strictEqual(task.subtaskParentId, null);
+    assert.strictEqual(task.section, "");
+    assert.strictEqual(task.subsection, "");
+    assert.deepStrictEqual(task.timeMapIds, []);
+    assert.ok(Number.isFinite(task.durationMin));
+    assert.ok(Number.isFinite(task.minBlockMin));
+    assert.ok(Number.isFinite(task.priority));
+  });
 });

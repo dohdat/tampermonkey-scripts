@@ -103,4 +103,10 @@ describe("task form ui", () => {
     assert.strictEqual(wrap.classList.contains("hidden"), true);
     assert.strictEqual(toggle.textContent, "Add task");
   });
+
+  it("no-ops when task form wrap is missing", () => {
+    domRefs.taskFormWrap = null;
+    assert.doesNotThrow(() => openTaskForm());
+    assert.doesNotThrow(() => closeTaskForm());
+  });
 });

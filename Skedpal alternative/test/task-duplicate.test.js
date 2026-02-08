@@ -92,4 +92,19 @@ describe("task duplication", () => {
     assert.strictEqual(duplicates.length, 1);
     assert.strictEqual(duplicates[0].subtaskParentId, "parent");
   });
+
+  it("falls back to root mapping when parents are missing", () => {
+    const tasks = [
+      { id: "root", title: "Root", order: 1, completed: false },
+      { id: "unrelated", title: "Loose", order: 2, completed: false }
+    ];
+    const duplicates = buildDuplicateTasks([tasks[0], tasks[1]], null);
+    const dupRoot = duplicates.find((task) => task.title === "Root");
+    const dupLoose = duplicates.find((task) => task.title === "Loose");
+    assert.ok(dupRoot);
+    assert.ok(dupLoose);
+    assert.strictEqual(dupLoose.subtaskParentId, dupRoot.id);
+    assert.strictEqual(dupLoose.section, "");
+    assert.strictEqual(dupLoose.subsection, "");
+  });
 });

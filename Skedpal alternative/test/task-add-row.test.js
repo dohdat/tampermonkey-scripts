@@ -12,6 +12,7 @@ import {
   parseClipboardTaskTitles
 } from "../src/ui/tasks/task-add-row.js";
 import { parseLocalDateInput } from "../src/ui/utils.js";
+import { state } from "../src/ui/state/page-state.js";
 
 describe("task add row helpers", () => {
   it("builds a quick-add payload with defaults and ordering", () => {
@@ -75,6 +76,10 @@ describe("task add row helpers", () => {
     assert.deepStrictEqual(titles, ["Alpha", "Beta", "Gamma"]);
   });
 
+  it("returns an empty list for empty clipboard text", () => {
+    assert.deepStrictEqual(parseClipboardTaskTitles(""), []);
+  });
+
   it("builds sequential quick-add payloads for multiple titles", () => {
     const payloads = buildQuickAddTaskPayloadsFromTitles({
       titles: ["First", "Second"],
@@ -86,5 +91,69 @@ describe("task add row helpers", () => {
     assert.strictEqual(payloads.length, 2);
     assert.strictEqual(payloads[0].order, 3);
     assert.strictEqual(payloads[1].order, 4);
+  });
+
+  it("uses subsection templates when available", () => {
+    const previousSettings = state.settingsCache;
+    state.settingsCache = {
+      ...state.settingsCache,
+      subsections: {
+        sectionX: [
+          {
+            id: "subX",
+            name: "Sub",
+            template: {
+              durationMin: 50,
+              minBlockMin: 20,
+              priority: 4,
+              timeMapIds: ["tm-template"],
+              deadline: "2026-01-20"
+            }
+          }
+        ]
+      }
+    };
+    const payload = buildQuickAddTaskPayload({
+      id: "task-from-template",
+      title: "Template-based",
+      sectionId: "sectionX",
+      subsectionId: "subX",
+      tasks: []
+    });
+    assert.strictEqual(payload.durationMin, 50);
+    assert.strictEqual(payload.minBlockMin, 20);
+    assert.strictEqual(payload.priority, 4);
+    assert.deepStrictEqual(payload.timeMapIds, ["tm-template"]);
+    assert.strictEqual(payload.deadline, parseLocalDateInput("2026-01-20"));
+    state.settingsCache = previousSettings;
+  });
+
+  it("builds payloads for parent tasks", () => {
+    const parentTask = {
+      id: "parent-task",
+      section: "sec-parent",
+      subsection: "sub-parent",
+      order: 1,
+      repeatAnchor: "2026-01-01"
+    };
+    const payload = buildQuickAddTaskPayload({
+      id: "child-task",
+      title: "Follow up soon",
+      parentTask,
+      tasks: [parentTask]
+    });
+    assert.strictEqual(payload.subtaskParentId, parentTask.id);
+    assert.strictEqual(payload.section, "sec-parent");
+    assert.strictEqual(payload.subsection, "sub-parent");
+  });
+
+  it("handles non-array task lists when building payloads", () => {
+    const payloads = buildQuickAddTaskPayloadsFromTitles({
+      titles: ["One", "", "Two"],
+      tasks: null
+    });
+    assert.strictEqual(payloads.length, 2);
+    assert.strictEqual(payloads[0].order, 1);
+    assert.strictEqual(payloads[1].order, 2);
   });
 });

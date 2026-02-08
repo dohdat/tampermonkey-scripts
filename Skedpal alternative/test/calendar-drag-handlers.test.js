@@ -81,4 +81,29 @@ describe("calendar drag handlers", () => {
     cleanupCalendarDragHandlers();
     assert.strictEqual(calendarGrid.dataset.dragReady, "false");
   });
+
+  it("returns null payloads for invalid day keys", async () => {
+    const { buildExternalUpdatePayload } = await import(
+      "../src/ui/calendar-drag.js?ui=calendar-drag-invalid"
+    );
+    const payload = buildExternalUpdatePayload(
+      { eventId: "evt-2", calendarId: "cal-2" },
+      "bad-key",
+      60,
+      30
+    );
+    assert.strictEqual(payload, null);
+  });
+
+  it("no-ops when drag handlers are already cleaned up or missing grid", async () => {
+    const { domRefs } = await import("../src/ui/constants.js");
+    domRefs.calendarGrid = null;
+    const {
+      ensureCalendarDragHandlers,
+      cleanupCalendarDragHandlers
+    } = await import("../src/ui/calendar-drag.js?ui=calendar-drag-noop");
+
+    assert.doesNotThrow(() => ensureCalendarDragHandlers());
+    assert.doesNotThrow(() => cleanupCalendarDragHandlers());
+  });
 });

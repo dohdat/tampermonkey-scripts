@@ -25,6 +25,9 @@ describe("inline edit parsing guard", () => {
         this.style = {};
         this.className = "";
         this._textContent = "";
+        this.value = "";
+        this.scrollLeft = 0;
+        this._selection = null;
         this.innerHTML = "";
         this.parentElement = null;
         this.listeners = {};
@@ -102,7 +105,9 @@ describe("inline edit parsing guard", () => {
         return { left: 0, width: 0 };
       }
 
-      setSelectionRange() {}
+      setSelectionRange(start, end) {
+        this._selection = { start, end };
+      }
 
       closest(selector) {
         let current = this;
@@ -610,5 +615,213 @@ describe("inline edit parsing guard", () => {
       stopPropagation: () => {}
     });
     assert.strictEqual(handledNoTitle, false);
+  });
+
+  it("no-ops when inline updates are not saveable", async () => {
+    const { applyInlineTitleUpdate } = await import(
+      "../src/ui/tasks/task-inline-edit.js"
+    );
+    const result = await applyInlineTitleUpdate(null, { shouldSave: true }, {});
+    assert.strictEqual(result, null);
+    const task = { id: "t-nosave", reminders: ["r1"] };
+    const noSave = await applyInlineTitleUpdate(task, { shouldSave: false }, {});
+    assert.strictEqual(noSave, null);
+  });
+
+  it("keeps existing reminders when update reminders are invalid", async () => {
+    const { applyInlineTitleUpdate } = await import(
+      "../src/ui/tasks/task-inline-edit.js"
+    );
+    const task = {
+      id: "t-reminders",
+      title: "Task",
+      reminders: ["keep"],
+      deadline: null,
+      startFrom: null,
+      repeat: { type: "none" }
+    };
+    const update = {
+      shouldSave: true,
+      nextTitle: "Task",
+      nextDeadline: null,
+      nextStartFrom: null,
+      nextRepeat: { type: "none" },
+      nextReminders: "not-array"
+    };
+    const saved = [];
+    const updated = await applyInlineTitleUpdate(task, update, {
+      saveTaskFn: async (next) => saved.push(next)
+    });
+    assert.strictEqual(saved.length, 1);
+    assert.deepStrictEqual(updated.reminders, ["keep"]);
+  });
+
+  it("updates reminders when provided as arrays", async () => {
+    const { applyInlineTitleUpdate } = await import(
+      "../src/ui/tasks/task-inline-edit.js"
+    );
+    const task = {
+      id: "t-reminders-array",
+      title: "Task",
+      reminders: ["old"],
+      deadline: null,
+      startFrom: null,
+      repeat: { type: "none" }
+    };
+    const update = {
+      shouldSave: true,
+      nextTitle: "Task",
+      nextDeadline: null,
+      nextStartFrom: null,
+      nextRepeat: { type: "none" },
+      nextReminders: ["new"]
+    };
+    const updated = await applyInlineTitleUpdate(task, update, {
+      saveTaskFn: async () => {}
+    });
+    assert.deepStrictEqual(updated.reminders, ["new"]);
+  });
+
+  it("falls back to the end of the title when caret context is invalid", async () => {
+    const { handleTaskTitleDoubleClick } = await import(
+      "../src/ui/tasks/task-inline-edit.js"
+    );
+    const { state } = await import("../src/ui/state/page-state.js");
+    const originalCreateElement = global.document.createElement;
+    global.document.createElement = (tag) => {
+      if (tag === "canvas") {
+        return { getContext: () => null };
+      }
+      return originalCreateElement(tag);
+    };
+    const task = { id: "t-caret", title: "Caret test" };
+    state.tasksCache = [task];
+
+    const card = document.createElement("div");
+    card.dataset.taskId = task.id;
+    const row = document.createElement("div");
+    row.classList.add("task-title-row");
+    const titleEl = document.createElement("div");
+    titleEl.setAttribute("data-test-skedpal", "task-title");
+    const span = document.createElement("span");
+    titleEl.appendChild(span);
+    row.appendChild(titleEl);
+    card.appendChild(row);
+
+    handleTaskTitleDoubleClick({
+      target: span,
+      clientX: 0,
+      preventDefault: () => {},
+      stopPropagation: () => {}
+    });
+
+    const input = findByTestAttr(titleEl, "task-title-inline-input");
+    assert.ok(input);
+    input.dispatchEvent({ type: "pointerdown", target: input, clientX: NaN });
+    assert.strictEqual(input._selection.start, input.value.length);
+    global.document.createElement = originalCreateElement;
+  });
+
+  it("sets caret when clicking inside input text", async () => {
+    const { handleTaskTitleDoubleClick } = await import(
+      "../src/ui/tasks/task-inline-edit.js"
+    );
+    const { state } = await import("../src/ui/state/page-state.js");
+    const originalCreateElement = global.document.createElement;
+    global.document.createElement = (tag) => {
+      if (tag === "canvas") {
+        return {
+          getContext: () => ({
+            measureText: () => ({ width: 10 })
+          })
+        };
+      }
+      return originalCreateElement(tag);
+    };
+    const task = { id: "t-caret-2", title: "Hello" };
+    state.tasksCache = [task];
+
+    const card = document.createElement("div");
+    card.dataset.taskId = task.id;
+    const titleEl = document.createElement("div");
+    titleEl.setAttribute("data-test-skedpal", "task-title");
+    card.appendChild(titleEl);
+
+    handleTaskTitleDoubleClick({
+      target: titleEl,
+      clientX: 5,
+      preventDefault: () => {},
+      stopPropagation: () => {}
+    });
+
+    const input = findByTestAttr(titleEl, "task-title-inline-input");
+    input.getBoundingClientRect = () => ({ left: 0, width: 100 });
+    global.window.getComputedStyle = () => ({
+      paddingLeft: "0",
+      font: "12px sans-serif",
+      fontStyle: "normal",
+      fontVariant: "normal",
+      fontWeight: "400",
+      fontSize: "12px",
+      fontFamily: "sans-serif"
+    });
+    input.dispatchEvent({ type: "pointerdown", target: input, clientX: 1 });
+    assert.strictEqual(input._selection.start, 0);
+    global.document.createElement = originalCreateElement;
+  });
+
+  it("skips pointer handling when clicking outside the input", async () => {
+    const { handleTaskTitleDoubleClick } = await import(
+      "../src/ui/tasks/task-inline-edit.js"
+    );
+    const { state } = await import("../src/ui/state/page-state.js");
+    const task = { id: "t-pointer-skip", title: "Skip" };
+    state.tasksCache = [task];
+
+    const card = document.createElement("div");
+    card.dataset.taskId = task.id;
+    const row = document.createElement("div");
+    row.classList.add("task-title-row");
+    const titleEl = document.createElement("div");
+    titleEl.setAttribute("data-test-skedpal", "task-title");
+    row.appendChild(titleEl);
+    card.appendChild(row);
+
+    handleTaskTitleDoubleClick({
+      target: titleEl,
+      clientX: 0,
+      preventDefault: () => {},
+      stopPropagation: () => {}
+    });
+
+    const input = findByTestAttr(titleEl, "task-title-inline-input");
+    const initialSelection = input._selection;
+    input.dispatchEvent({ type: "pointerdown", target: row, clientX: 0 });
+    assert.deepStrictEqual(input._selection, initialSelection);
+  });
+
+  it("allows inline edits even without a title row", async () => {
+    const { handleTaskTitleDoubleClick } = await import(
+      "../src/ui/tasks/task-inline-edit.js"
+    );
+    const { state } = await import("../src/ui/state/page-state.js");
+    const task = { id: "t-no-row", title: "No row" };
+    state.tasksCache = [task];
+
+    const card = document.createElement("div");
+    card.dataset.taskId = task.id;
+    const titleEl = document.createElement("div");
+    titleEl.setAttribute("data-test-skedpal", "task-title");
+    card.appendChild(titleEl);
+
+    handleTaskTitleDoubleClick({
+      target: titleEl,
+      clientX: 0,
+      preventDefault: () => {},
+      stopPropagation: () => {}
+    });
+
+    const input = findByTestAttr(titleEl, "task-title-inline-input");
+    assert.ok(input);
   });
 });

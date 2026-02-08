@@ -9,6 +9,7 @@ import {
   buildDeadlineDetailItem,
   buildRepeatDetailItem
 } from "../src/ui/tasks/task-card-detail-edit.js";
+import { PRIORITY_MIN } from "../src/ui/constants.js";
 
 class FakeElement {
   constructor(tagName = "div") {
@@ -140,6 +141,28 @@ describe("task card detail edit builders", () => {
     console.error = originalError;
   });
 
+  it("falls back to minimum priority when priority is missing", async () => {
+    const originalError = console.error;
+    console.error = () => {};
+    const task = { priority: 0 };
+    const result = buildPriorityDetailItem({
+      task,
+      buildDetailItemElement,
+      iconSvg: "<svg />",
+      applyPrioritySelectColor: () => {},
+      onUpdate: async () => {
+        throw new Error("fail");
+      }
+    });
+    const select = result.item.valueEl.children[0];
+    select.value = "2";
+    const handlers = [...(select._handlers.get("change") || [])];
+    await handlers[0]();
+    assert.strictEqual(select.value, String(PRIORITY_MIN));
+    result.cleanup();
+    console.error = originalError;
+  });
+
   it("builds duration detail items", async () => {
     let updateCalls = 0;
     const task = { durationMin: 30 };
@@ -158,6 +181,84 @@ describe("task card detail edit builders", () => {
     await handlers[0]();
     assert.strictEqual(updateCalls, 1);
     result.cleanup();
+  });
+
+  it("adds a custom duration option when missing", () => {
+    const task = { durationMin: 75 };
+    const result = buildDurationDetailItem({
+      task,
+      buildDetailItemElement,
+      iconSvg: "<svg />",
+      onUpdate: async () => {}
+    });
+    const select = result.item.valueEl.children[0];
+    const customOption = select.children.find?.(
+      (child) => child.value === "75"
+    );
+    assert.ok(customOption);
+    assert.strictEqual(customOption.textContent, "1h15");
+    result.cleanup();
+  });
+
+  it("skips invalid duration updates and restores on failure", async () => {
+    const originalError = console.error;
+    console.error = () => {};
+    const task = { durationMin: 30 };
+    const result = buildDurationDetailItem({
+      task,
+      buildDetailItemElement,
+      iconSvg: "<svg />",
+      onUpdate: async () => {
+        throw new Error("fail");
+      }
+    });
+    const select = result.item.valueEl.children[0];
+    select.value = "bad";
+    const handlers = [...(select._handlers.get("change") || [])];
+    await handlers[0]();
+    select.value = "45";
+    await handlers[0]();
+    assert.strictEqual(select.value, "30");
+    result.cleanup();
+    console.error = originalError;
+  });
+
+  it("skips updates when values are unchanged or invalid", async () => {
+    let updateCalls = 0;
+    const task = { priority: 2, durationMin: 30 };
+    const priorityResult = buildPriorityDetailItem({
+      task,
+      buildDetailItemElement,
+      iconSvg: "<svg />",
+      applyPrioritySelectColor: () => {},
+      onUpdate: async () => {
+        updateCalls += 1;
+      }
+    });
+    const prioritySelect = priorityResult.item.valueEl.children[0];
+    prioritySelect.value = "2";
+    const priorityHandlers = [...(prioritySelect._handlers.get("change") || [])];
+    await priorityHandlers[0]();
+
+    prioritySelect.value = "nope";
+    await priorityHandlers[0]();
+    assert.strictEqual(updateCalls, 0);
+    priorityResult.cleanup();
+
+    const durationResult = buildDurationDetailItem({
+      task,
+      buildDetailItemElement,
+      iconSvg: "<svg />",
+      onUpdate: async () => {
+        updateCalls += 1;
+      }
+    });
+    const durationSelect = durationResult.item.valueEl.children[0];
+    durationSelect.value = "30";
+    const durationHandlers = [...(durationSelect._handlers.get("change") || [])];
+    await durationHandlers[0]();
+    assert.strictEqual(updateCalls, 0);
+    durationResult.cleanup();
   });
 
   it("builds timemap detail items", async () => {
@@ -182,6 +283,117 @@ describe("task card detail edit builders", () => {
     await handlers[0]();
     assert.strictEqual(updateCalls, 1);
     result.cleanup();
+  });
+
+  it("handles multiple timemap selections and update failures", async () => {
+    let updateCalls = 0;
+    const originalError = console.error;
+    console.error = () => {};
+    const task = { timeMapIds: ["tm-1", "tm-2"] };
+    const result = buildTimeMapDetailItem({
+      task,
+      buildDetailItemElement,
+      iconSvg: "<svg />",
+      timeMapOptions: [
+        { id: "tm-1", label: "Focus" },
+        { id: "tm-2", label: "Deep work" }
+      ],
+      onUpdate: async () => {
+        updateCalls += 1;
+        throw new Error("fail");
+      }
+    });
+    const select = result.item.valueEl.children[0];
+    assert.strictEqual(select.value, "__multiple__");
+    const handlers = [...(select._handlers.get("change") || [])];
+    await handlers[0]();
+    assert.strictEqual(updateCalls, 0);
+
+    select.value = "tm-1";
+    await handlers[0]();
+    assert.strictEqual(select.value, "tm-1");
+    result.cleanup();
+    console.error = originalError;
+  });
+
+  it("handles empty timemap options and empty selections", async () => {
+    let updateCalls = 0;
+    const task = { timeMapIds: "nope" };
+    const result = buildTimeMapDetailItem({
+      task,
+      buildDetailItemElement,
+      iconSvg: "<svg />",
+      timeMapOptions: null,
+      onUpdate: async () => {
+        updateCalls += 1;
+      }
+    });
+    const select = result.item.valueEl.children[0];
+    select.value = "";
+    const handlers = [...(select._handlers.get("change") || [])];
+    await handlers[0]();
+    assert.strictEqual(updateCalls, 0);
+    result.cleanup();
+  });
+
+  it("creates timemap options with empty ids", () => {
+    const task = { timeMapIds: [] };
+    const result = buildTimeMapDetailItem({
+      task,
+      buildDetailItemElement,
+      iconSvg: "<svg />",
+      timeMapOptions: [{ id: "", label: "Empty" }],
+      onUpdate: async () => {}
+    });
+    const select = result.item.valueEl.children[0];
+    const option = select.children.find?.(
+      (child) => child.attributes?.["data-test-skedpal"] === "task-detail-timemap-option-"
+    );
+    assert.ok(option);
+    result.cleanup();
+  });
+
+  it("falls back to default duration when missing", async () => {
+    const originalError = console.error;
+    console.error = () => {};
+    const task = { durationMin: 0 };
+    const result = buildDurationDetailItem({
+      task,
+      buildDetailItemElement,
+      iconSvg: "<svg />",
+      onUpdate: async () => {
+        throw new Error("fail");
+      }
+    });
+    const select = result.item.valueEl.children[0];
+    select.value = "45";
+    const handlers = [...(select._handlers.get("change") || [])];
+    await handlers[0]();
+    assert.strictEqual(select.value, "30");
+    result.cleanup();
+    console.error = originalError;
+  });
+
+  it("restores timemap selections after failed updates", async () => {
+    const originalError = console.error;
+    console.error = () => {};
+    const task = { timeMapIds: [] };
+    const result = buildTimeMapDetailItem({
+      task,
+      buildDetailItemElement,
+      iconSvg: "<svg />",
+      timeMapOptions: [{ id: "tm-1", label: "Focus" }],
+      onUpdate: async () => {
+        throw new Error("fail");
+      }
+    });
+    const select = result.item.valueEl.children[0];
+    select.value = "tm-1";
+    const handlers = [...(select._handlers.get("change") || [])];
+    await handlers[0]();
+    assert.strictEqual(select.value, "");
+    result.cleanup();
+    console.error = originalError;
   });
 
   it("builds start and deadline detail items", () => {
@@ -218,6 +430,26 @@ describe("task card detail edit builders", () => {
     assert.strictEqual(cleared, 2);
   });
 
+  it("returns empty detail items when values are missing", () => {
+    const task = { startFrom: "", deadline: "" };
+    const startResult = buildStartFromDetailItem({
+      task,
+      buildDetailItemElement,
+      iconSvg: "<svg />",
+      formatDateTime: (value) => value,
+      onClear: () => {}
+    });
+    const deadlineResult = buildDeadlineDetailItem({
+      task,
+      buildDetailItemElement,
+      iconSvg: "<svg />",
+      formatDateTime: (value) => value,
+      onClear: () => {}
+    });
+    assert.strictEqual(startResult.item, null);
+    assert.strictEqual(deadlineResult.item, null);
+  });
+
   it("builds repeat detail items when repeating", () => {
     let cleared = 0;
     const result = buildRepeatDetailItem({
@@ -234,5 +466,87 @@ describe("task card detail edit builders", () => {
     handlers[0]({ preventDefault: () => {} });
     result.cleanup();
     assert.strictEqual(cleared, 1);
+  });
+
+  it("skips clear actions when not repeating", () => {
+    const result = buildRepeatDetailItem({
+      buildDetailItemElement,
+      iconSvg: "<svg />",
+      repeatSummary: "Does not repeat",
+      isRepeating: false,
+      onClear: () => {}
+    });
+    assert.strictEqual(result.item.valueEl.children.length, 1);
+    result.cleanup();
+  });
+
+  it("skips cleanup work when interactions are disabled", () => {
+    const task = {
+      startFrom: "2026-02-01T09:00:00.000Z",
+      deadline: "2026-02-02T10:00:00.000Z"
+    };
+    const startResult = buildStartFromDetailItem({
+      task,
+      buildDetailItemElement,
+      iconSvg: "<svg />",
+      formatDateTime: (value) => value,
+      onClear: () => {},
+      disableInteractions: true
+    });
+    const deadlineResult = buildDeadlineDetailItem({
+      task,
+      buildDetailItemElement,
+      iconSvg: "<svg />",
+      formatDateTime: (value) => value,
+      onClear: () => {},
+      disableInteractions: true
+    });
+    const repeatResult = buildRepeatDetailItem({
+      buildDetailItemElement,
+      iconSvg: "<svg />",
+      repeatSummary: "Every week",
+      isRepeating: true,
+      onClear: () => {},
+      disableInteractions: true
+    });
+    startResult.cleanup();
+    deadlineResult.cleanup();
+    repeatResult.cleanup();
+  });
+
+  it("skips listeners when interactions are disabled", () => {
+    const task = { priority: 1, durationMin: 30, timeMapIds: [] };
+    const priorityResult = buildPriorityDetailItem({
+      task,
+      buildDetailItemElement,
+      iconSvg: "<svg />",
+      applyPrioritySelectColor: () => {},
+      onUpdate: async () => {},
+      disableInteractions: true
+    });
+    const durationResult = buildDurationDetailItem({
+      task,
+      buildDetailItemElement,
+      iconSvg: "<svg />",
+      onUpdate: async () => {},
+      disableInteractions: true
+    });
+    const timeMapResult = buildTimeMapDetailItem({
+      task,
+      buildDetailItemElement,
+      iconSvg: "<svg />",
+      timeMapOptions: [],
+      onUpdate: async () => {},
+      disableInteractions: true
+    });
+    const prioritySelect = priorityResult.item.valueEl.children[0];
+    const durationSelect = durationResult.item.valueEl.children[0];
+    const timeMapSelect = timeMapResult.item.valueEl.children[0];
+    assert.strictEqual(prioritySelect._handlers.size, 0);
+    assert.strictEqual(durationSelect._handlers.size, 0);
+    assert.strictEqual(timeMapSelect._handlers.size, 0);
+    priorityResult.cleanup();
+    durationResult.cleanup();
+    timeMapResult.cleanup();
   });
 });

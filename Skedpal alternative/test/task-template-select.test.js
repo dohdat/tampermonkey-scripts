@@ -117,6 +117,32 @@ describe("task template select", () => {
     cleanup();
   });
 
+  it("sorts ordered templates ahead of unordered ones", () => {
+    state.taskTemplatesCache = [
+      { id: "t1", title: "Unordered" },
+      { id: "t2", title: "Ordered", order: 1 }
+    ];
+    const cleanup = initTaskTemplateSelect();
+    const select = domRefs.taskTemplateSelect;
+
+    const optionValues = select.children.slice(1).map((opt) => opt.value);
+    assert.deepStrictEqual(optionValues, ["t2", "t1"]);
+
+    cleanup();
+  });
+
+  it("falls back to default titles and ids when missing", () => {
+    state.taskTemplatesCache = [{ title: "" }];
+    const cleanup = initTaskTemplateSelect();
+    const select = domRefs.taskTemplateSelect;
+
+    const option = select.children[1];
+    assert.strictEqual(option.value, "");
+    assert.strictEqual(option.textContent, "Untitled template");
+
+    cleanup();
+  });
+
   it("clears selections on change while editing templates", () => {
     const cleanup = initTaskTemplateSelect();
     const select = domRefs.taskTemplateSelect;
@@ -153,6 +179,31 @@ describe("task template select", () => {
     const optionValues = select.children.slice(1).map((opt) => opt.value);
     assert.deepStrictEqual(optionValues, ["t2"]);
 
+    cleanup();
+  });
+
+  it("rerenders when templates are loaded", () => {
+    const cleanup = initTaskTemplateSelect();
+    const select = domRefs.taskTemplateSelect;
+
+    state.taskTemplatesCache = [{ id: "t3", title: "Loaded" }];
+    global.window._listeners["skedpal:templates-loaded"]();
+
+    const optionValues = select.children.slice(1).map((opt) => opt.value);
+    assert.deepStrictEqual(optionValues, ["t3"]);
+
+    cleanup();
+  });
+
+  it("handles null template caches on updates", () => {
+    state.taskTemplatesCache = null;
+    const cleanup = initTaskTemplateSelect();
+    const select = domRefs.taskTemplateSelect;
+
+    global.window._listeners["skedpal:templates-updated"]();
+    global.window._listeners["skedpal:templates-loaded"]();
+
+    assert.strictEqual(select.children.length, 2);
     cleanup();
   });
 });

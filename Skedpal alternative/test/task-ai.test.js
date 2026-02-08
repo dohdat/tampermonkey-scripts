@@ -283,6 +283,287 @@ describe("task ai parser", () => {
     cleanup();
   });
 
+  it("handles empty titles and missing API keys", async () => {
+    const { initTaskListAssistant } = await import(`../src/ui/tasks/task-ai.js?ui=3`);
+    const cleanup = initTaskListAssistant();
+    const taskAiButton = elements.get("task-ai-generate");
+    const clickHandlers = [...(taskAiButton._handlers.get("click") || [])];
+    const click = clickHandlers[0];
+
+    const taskTitleInput = elements.get("task-title");
+    taskTitleInput.value = "   ";
+    await click();
+    assert.ok(elements.get("task-ai-status").textContent.includes("Add a task title"));
+
+    taskTitleInput.value = "Plan";
+    global.window.prompt = () => "   ";
+    await click();
+    assert.ok(elements.get("task-ai-status").textContent.includes("Groq API key required"));
+
+    cleanup();
+  });
+
+  it("renders raw output when Groq returns no JSON", async () => {
+    state.settingsCache = { groqApiKey: "raw-key" };
+    const taskTitleInput = elements.get("task-title");
+    taskTitleInput.value = "Draft";
+    global.fetch = async () => ({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: ""
+            }
+          }
+        ]
+      })
+    });
+
+    const { initTaskListAssistant } = await import(`../src/ui/tasks/task-ai.js?ui=4`);
+    const cleanup = initTaskListAssistant();
+    const taskAiButton = elements.get("task-ai-generate");
+    const clickHandlers = [...(taskAiButton._handlers.get("click") || [])];
+    await clickHandlers[0]();
+
+    const output = elements.get("task-ai-output");
+    const raw = output.children.find(
+      (child) => child.attributes?.["data-test-skedpal"] === "task-ai-raw"
+    );
+    assert.ok(raw);
+    assert.strictEqual(raw.textContent, "No response");
+
+    cleanup();
+  });
+
+  it("handles Groq error responses and invalid removals", async () => {
+    state.settingsCache = { groqApiKey: "bad-key" };
+    const taskTitleInput = elements.get("task-title");
+    taskTitleInput.value = "Fix";
+    global.fetch = async () => ({
+      ok: false,
+      status: 401,
+      statusText: "Unauthorized",
+      json: async () => {
+        throw new Error("no-json");
+      }
+    });
+
+    const { initTaskListAssistant } = await import(`../src/ui/tasks/task-ai.js?ui=5`);
+    const cleanup = initTaskListAssistant();
+    const taskAiButton = elements.get("task-ai-generate");
+    const clickHandlers = [...(taskAiButton._handlers.get("click") || [])];
+    await clickHandlers[0]();
+    assert.ok(elements.get("task-ai-status").textContent.includes("Groq request failed"));
+
+    state.taskAiList = [{ title: "One", subtasks: [] }];
+    const output = elements.get("task-ai-output");
+    const outputHandlers = [...(output._handlers.get("click") || [])];
+    const outputClick = outputHandlers[0];
+    outputClick({ target: {} });
+    assert.strictEqual(state.taskAiList.length, 1);
+
+    const badRemove = new FakeElement("button");
+    badRemove.dataset.taskAiRemove = "nope";
+    outputClick({ target: badRemove });
+    assert.strictEqual(state.taskAiList.length, 1);
+
+    const removeButton = new FakeElement("button");
+    removeButton.dataset.taskAiRemove = "0";
+    outputClick({ target: removeButton });
+    assert.strictEqual(state.taskAiList.length, 0);
+    assert.ok(elements.get("task-ai-status").textContent.includes("No suggestions left"));
+
+    cleanup();
+  });
+
+  it("handles empty prompt entries and Groq error details", async () => {
+    state.settingsCache = { groqApiKey: "" };
+    const taskTitleInput = elements.get("task-title");
+    taskTitleInput.value = "Draft";
+    global.window.prompt = () => "";
+
+    const { initTaskListAssistant } = await import(`../src/ui/tasks/task-ai.js?ui=6`);
+    const cleanup = initTaskListAssistant();
+    const taskAiButton = elements.get("task-ai-generate");
+    const clickHandlers = [...(taskAiButton._handlers.get("click") || [])];
+    await clickHandlers[0]();
+    assert.ok(elements.get("task-ai-status").textContent.includes("Groq API key required"));
+
+    global.window.prompt = () => "key";
+    global.fetch = async () => ({
+      ok: false,
+      status: 400,
+      statusText: "Bad Request",
+      json: async () => ({ error: { message: "Invalid" } })
+    });
+    await clickHandlers[0]();
+    assert.ok(elements.get("task-ai-status").textContent.includes("Groq request failed"));
+
+    cleanup();
+  });
+
+  it("surfaces Groq error details when JSON is returned", async () => {
+    state.settingsCache = { groqApiKey: "detail-key" };
+    const taskTitleInput = elements.get("task-title");
+    taskTitleInput.value = "Detail";
+    global.fetch = async () => ({
+      ok: false,
+      status: 500,
+      statusText: "Server",
+      json: async () => ({ detail: "Unavailable" })
+    });
+
+    const { initTaskListAssistant } = await import(`../src/ui/tasks/task-ai.js?ui=10`);
+    const cleanup = initTaskListAssistant();
+    const taskAiButton = elements.get("task-ai-generate");
+    const clickHandlers = [...(taskAiButton._handlers.get("click") || [])];
+    await clickHandlers[0]();
+    assert.ok(elements.get("task-ai-status").textContent.includes("Groq request failed"));
+    cleanup();
+  });
+
+  it("normalizes mixed task list payloads", () => {
+    const input = "{\"tasks\":[{\"title\":123,\"subtasks\":[\" Keep \",42]},{\"title\":\"Ship\",\"subtasks\":\"nope\"}]}";
+    const result = parseTaskListResponse(input);
+    assert.deepStrictEqual(result, [{ title: "Ship", subtasks: [] }]);
+  });
+
+  it("returns empty lists when tasks payload is not an array", () => {
+    const input = "{\"tasks\":\"nope\"}";
+    const result = parseTaskListResponse(input);
+    assert.deepStrictEqual(result, []);
+  });
+
+  it("recovers loose task lists from truncated text", () => {
+    const input = "\"title\":\"One\",\"subtasks\":[\"A\",\"B\" \"title\":\"Two\"";
+    const result = parseTaskListResponse(input);
+    assert.deepStrictEqual(result, [
+      { title: "One", subtasks: ["A", "B"] },
+      { title: "Two", subtasks: [] }
+    ]);
+  });
+
+  it("returns empty lists when loose parsing has no closing title quote", () => {
+    const input = "\"title\":\"Broken";
+    const result = parseTaskListResponse(input);
+    assert.deepStrictEqual(result, []);
+  });
+
+  it("parses loose tasks with open subtasks blocks", () => {
+    const input = "\"title\":\"One\",\"subtasks\":[A,B";
+    const result = parseTaskListResponse(input);
+    assert.deepStrictEqual(result, [{ title: "One", subtasks: [] }]);
+  });
+
+  it("uses loose parsing status when JSON is truncated", async () => {
+    state.settingsCache = { groqApiKey: "loose-key" };
+    const taskTitleInput = elements.get("task-title");
+    taskTitleInput.value = "Draft";
+    global.fetch = async () => ({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: "\"title\":\"Loose\",\"subtasks\":[\"A\"]"
+            }
+          }
+        ]
+      })
+    });
+
+    const { initTaskListAssistant } = await import(`../src/ui/tasks/task-ai.js?ui=7`);
+    const cleanup = initTaskListAssistant();
+    const taskAiButton = elements.get("task-ai-generate");
+    const clickHandlers = [...(taskAiButton._handlers.get("click") || [])];
+    await clickHandlers[0]();
+    assert.ok(elements.get("task-ai-status").textContent.includes("truncated"));
+    cleanup();
+  });
+
+  it("ignores invalid subtask removals", async () => {
+    state.taskAiList = [{ title: "One", subtasks: ["Sub"] }];
+    const { initTaskListAssistant } = await import(`../src/ui/tasks/task-ai.js?ui=8`);
+    const cleanup = initTaskListAssistant();
+    const output = elements.get("task-ai-output");
+    const outputHandlers = [...(output._handlers.get("click") || [])];
+    const outputClick = outputHandlers[0];
+
+    const invalid = new FakeElement("button");
+    invalid.dataset.taskAiSubremove = "bad";
+    outputClick({ target: invalid });
+    assert.strictEqual(state.taskAiList[0].subtasks.length, 1);
+
+    const invalidParts = new FakeElement("button");
+    invalidParts.dataset.taskAiSubremove = "1:two";
+    outputClick({ target: invalidParts });
+    assert.strictEqual(state.taskAiList[0].subtasks.length, 1);
+
+    cleanup();
+  });
+
+  it("ignores subtask removals for missing task entries", async () => {
+    state.taskAiList = [];
+    const { initTaskListAssistant } = await import(`../src/ui/tasks/task-ai.js?ui=11`);
+    const cleanup = initTaskListAssistant();
+    const output = elements.get("task-ai-output");
+    const outputHandlers = [...(output._handlers.get("click") || [])];
+    const outputClick = outputHandlers[0];
+
+    const missingTaskRemove = new FakeElement("button");
+    missingTaskRemove.dataset.taskAiSubremove = "1:0";
+    outputClick({ target: missingTaskRemove });
+    assert.strictEqual(state.taskAiList.length, 0);
+
+    cleanup();
+  });
+
+  it("short-circuits button clicks when outputs are missing", async () => {
+    domRefs.taskAiButton = elements.get("task-ai-generate");
+    domRefs.taskAiStatus = elements.get("task-ai-status");
+    domRefs.taskAiOutput = null;
+    domRefs.taskTitleInput = elements.get("task-title");
+    const taskTitleInput = elements.get("task-title");
+    taskTitleInput.value = "No output";
+
+    const { initTaskListAssistant } = await import(`../src/ui/tasks/task-ai.js?ui=12`);
+    const cleanup = initTaskListAssistant();
+    const taskAiButton = elements.get("task-ai-generate");
+    const clickHandlers = [...(taskAiButton._handlers.get("click") || [])];
+    await clickHandlers[0]();
+    assert.strictEqual(elements.get("task-ai-status").textContent, "");
+    cleanup();
+  });
+
+  it("no-ops status and loading updates when elements are missing", async () => {
+    domRefs.taskAiButton = null;
+    domRefs.taskAiStatus = null;
+    domRefs.taskAiOutput = null;
+    domRefs.taskTitleInput = null;
+    const { resetTaskListAssistant, initTaskListAssistant } =
+      await import(`../src/ui/tasks/task-ai.js?ui=13`);
+    assert.doesNotThrow(() => resetTaskListAssistant());
+    const cleanup = initTaskListAssistant();
+    cleanup();
+  });
+
+  it("no-ops when task ai elements are missing", async () => {
+    const originalDocument = global.document;
+    global.document = {
+      querySelectorAll: () => [],
+      querySelector: () => null,
+      getElementById: (id) => (id === "task-ai-generate" ? null : null),
+      createElement: (tagName) => new FakeElement(tagName)
+    };
+    const { initTaskListAssistant, resetTaskListAssistant } =
+      await import(`../src/ui/tasks/task-ai.js?ui=9`);
+    assert.doesNotThrow(() => resetTaskListAssistant());
+    const cleanup = initTaskListAssistant();
+    cleanup();
+    global.document = originalDocument;
+  });
+
   afterEach(() => {
     global.document = originalDocument;
     global.window = originalWindow;

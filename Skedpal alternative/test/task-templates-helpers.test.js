@@ -247,4 +247,113 @@ describe("task template helpers", () => {
     assert.strictEqual(tasks[0].subtaskScheduleMode, "sequential");
     assert.deepStrictEqual(tasks[0].repeat, { type: "weekly", interval: 1 });
   });
+
+  it("returns empty when templates or parents are missing", () => {
+    assert.deepStrictEqual(buildTasksFromTemplate(null, "sec", "sub"), []);
+    assert.deepStrictEqual(buildSubtasksFromTemplateForParent(null, null), []);
+  });
+
+  it("skips duplicate template ids and preserves explicit timemap ids", () => {
+    let counter = 0;
+    const nextId = () => {
+      counter += 1;
+      return `t-${counter}`;
+    };
+    const template = {
+      title: "Parent template",
+      durationMin: 0,
+      minBlockMin: 0,
+      priority: 0,
+      timeMapIds: ["tm-parent"],
+      subtasks: [
+        { id: "dup", title: "Child A", timeMapIds: ["tm-child"] },
+        { id: "dup", title: "Child B", timeMapIds: [] }
+      ]
+    };
+
+    const tasks = buildTasksFromTemplate(template, "sec-1", "sub-1", [], nextId);
+    const childTasks = tasks.filter((task) => task.title.startsWith("Child"));
+    assert.strictEqual(childTasks.length, 1);
+    assert.deepStrictEqual(childTasks[0].timeMapIds, ["tm-child"]);
+  });
+
+  it("normalizes empty template values and null subtasks", () => {
+    let counter = 0;
+    const nextId = () => {
+      counter += 1;
+      return `t-${counter}`;
+    };
+    const template = {
+      title: "",
+      timeMapIds: "bad",
+      subtasks: [
+        null,
+        { title: "", timeMapIds: [] }
+      ]
+    };
+    const tasks = buildTasksFromTemplate(template, "", "", [], nextId);
+    assert.ok(tasks.length >= 2);
+    assert.strictEqual(tasks[0].title, "Untitled task");
+    const child = tasks.find((task) => task.id !== tasks[0].id);
+    assert.ok(child);
+    assert.deepStrictEqual(child.timeMapIds, []);
+    assert.strictEqual(child.section, "");
+    assert.strictEqual(child.subsection, "");
+  });
+
+  it("fills missing timemap ids from parents when child time maps are invalid", () => {
+    let counter = 0;
+    const nextId = () => {
+      counter += 1;
+      return `t-${counter}`;
+    };
+    const template = {
+      title: "Parent template",
+      timeMapIds: ["tm-parent"],
+      subtasks: [
+        { title: "Child template", timeMapIds: "bad" }
+      ]
+    };
+    const tasks = buildTasksFromTemplate(template, "sec-1", "sub-1", [], nextId);
+    const child = tasks.find((task) => task.title === "Child template");
+    assert.ok(child);
+    assert.deepStrictEqual(child.timeMapIds, ["tm-parent"]);
+  });
+
+  it("uses explicit repeat and defaults time maps when template ids are invalid", () => {
+    let counter = 0;
+    const nextId = () => {
+      counter += 1;
+      return `t-${counter}`;
+    };
+    const template = {
+      title: "Parent template",
+      repeat: { type: "daily", interval: 1 },
+      timeMapIds: "nope",
+      subtasks: []
+    };
+    const tasks = buildTasksFromTemplate(template, "sec-1", "sub-1", [], nextId);
+    assert.strictEqual(tasks.length, 1);
+    assert.deepStrictEqual(tasks[0].repeat, { type: "daily", interval: 1 });
+    assert.deepStrictEqual(tasks[0].timeMapIds, []);
+  });
+
+  it("builds subtasks even when parent fields are missing", () => {
+    let counter = 0;
+    const nextId = () => {
+      counter += 1;
+      return `t-${counter}`;
+    };
+    const template = {
+      title: "Template",
+      subtasks: [{ title: "Child" }]
+    };
+    const parentTask = { id: "parent-task" };
+    const tasks = buildSubtasksFromTemplateForParent(template, parentTask, [], nextId);
+    assert.strictEqual(tasks.length, 1);
+    assert.strictEqual(tasks[0].subtaskParentId, "parent-task");
+    assert.strictEqual(tasks[0].section, "");
+    assert.strictEqual(tasks[0].subsection, "");
+    assert.deepStrictEqual(tasks[0].timeMapIds, []);
+  });
 });

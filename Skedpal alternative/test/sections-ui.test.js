@@ -982,4 +982,112 @@ describe("sections ui", () => {
     const button = findByTestAttr(row, "sidebar-fav-button");
     assert.ok(button.innerHTML.includes("sidebar-fav-count--empty"));
   });
+
+  it("fills defaults when sections and subsections are missing", async () => {
+    state.settingsCache = {
+      ...state.settingsCache,
+      sections: null,
+      subsections: null
+    };
+    const sections = await sectionsModule.ensureDefaultSectionsPresent();
+    assert.ok(sections.find((section) => section.id === "section-work-default"));
+    assert.ok(sections.find((section) => section.id === "section-personal-default"));
+  });
+
+  it("renders default section names when missing", () => {
+    state.settingsCache.sections = [
+      { id: "section-work-default", name: "" }
+    ];
+    sectionsModule.renderSections();
+    const sectionList = elementMap.get("section-list");
+    const label = findByTestAttr(sectionList.children[0], "section-chip-name");
+    assert.strictEqual(label.textContent, "Work");
+  });
+
+  it("adds a new subsection via the direct handler", async () => {
+    state.settingsCache.sections = [{ id: "s1", name: "Work" }];
+    state.settingsCache.subsections = { s1: [] };
+    await sectionsModule.handleAddSubsection("s1", "Child");
+    assert.strictEqual(state.settingsCache.subsections.s1.length, 1);
+    assert.strictEqual(state.settingsCache.subsections.s1[0].name, "Child");
+  });
+
+  it("removes sections when confirmed", async () => {
+    state.settingsCache.sections = [{ id: "s1", name: "Work" }];
+    state.settingsCache.subsections = { s1: [] };
+    global.confirm = () => true;
+    await sectionsModule.handleRemoveSection("s1");
+    assert.strictEqual(state.settingsCache.sections.length, 0);
+  });
+
+  it("renames sections when prompts return new values", async () => {
+    state.settingsCache.sections = [{ id: "s1", name: "Work" }];
+    global.prompt = () => "New Name";
+    await sectionsModule.handleRenameSection("s1");
+    assert.strictEqual(state.settingsCache.sections[0].name, "New Name");
+  });
+
+  it("renames subsections when prompts return new values", async () => {
+    state.settingsCache.subsections = {
+      s1: [{ id: "sub1", name: "Deep", parentId: "" }]
+    };
+    global.prompt = () => "Renamed";
+    await sectionsModule.handleRenameSubsection("s1", "sub1");
+    assert.strictEqual(state.settingsCache.subsections.s1[0].name, "Renamed");
+  });
+
+  it("adds subsections arrays for new sections", async () => {
+    const sectionInput = elementMap.get("section-new-name");
+    sectionInput.value = "Focus";
+    await sectionsModule.handleAddSection();
+    const created = state.settingsCache.sections.find((section) => section.name === "Focus");
+    assert.ok(created);
+    assert.ok(Array.isArray(state.settingsCache.subsections[created.id]));
+  });
+
+  it("skips adding duplicate section names", async () => {
+    state.settingsCache.sections = [{ id: "s1", name: "Work" }];
+    const sectionInput = elementMap.get("section-new-name");
+    sectionInput.value = "work";
+    await sectionsModule.handleAddSection();
+    assert.strictEqual(state.settingsCache.sections.length, 1);
+    assert.strictEqual(sectionInput.value, "");
+  });
+
+  it("skips adding duplicate subsections", async () => {
+    state.settingsCache.sections = [{ id: "s1", name: "Work" }];
+    state.settingsCache.subsections = { s1: [{ id: "sub1", name: "Inbox", parentId: "" }] };
+    await sectionsModule.handleAddSubsection("s1", "Inbox");
+    assert.strictEqual(state.settingsCache.subsections.s1.length, 1);
+  });
+
+  it("skips renaming sections to duplicates", async () => {
+    state.settingsCache.sections = [
+      { id: "s1", name: "Work" },
+      { id: "s2", name: "Personal" }
+    ];
+    global.prompt = () => "Personal";
+    await sectionsModule.handleRenameSection("s1");
+    assert.strictEqual(state.settingsCache.sections[0].name, "Work");
+  });
+
+  it("skips renaming subsections when names collide", async () => {
+    state.settingsCache.subsections = {
+      s1: [
+        { id: "sub1", name: "Alpha", parentId: "" },
+        { id: "sub2", name: "Beta", parentId: "" }
+      ]
+    };
+    global.prompt = () => "Beta";
+    await sectionsModule.handleRenameSubsection("s1", "sub1");
+    assert.strictEqual(state.settingsCache.subsections.s1[0].name, "Alpha");
+  });
+
+  it("skips removing subsections when not confirmed", async () => {
+    state.settingsCache.sections = [{ id: "s1", name: "Work" }];
+    state.settingsCache.subsections = { s1: [{ id: "sub1", name: "Deep", parentId: "" }] };
+    global.confirm = () => false;
+    await sectionsModule.handleRemoveSubsection("s1", "sub1");
+    assert.strictEqual(state.settingsCache.subsections.s1.length, 1);
+  });
 });

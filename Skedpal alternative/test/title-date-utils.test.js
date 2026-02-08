@@ -123,6 +123,70 @@ describe("title date utils", () => {
     assert.strictEqual(parsed.title, "");
   });
 
+  it("handles non-string titles and empty conversion previews", () => {
+    assert.deepStrictEqual(getTitleConversionRanges(null), []);
+    const preview = buildTitleConversionPreviewHtml("Just text", {
+      referenceDate: new Date(2026, 0, 6)
+    });
+    assert.strictEqual(preview.hasRanges, false);
+    assert.strictEqual(preview.html, "");
+    const highlights = buildTitleConversionHighlightsHtml(123, {
+      referenceDate: new Date(2026, 0, 6)
+    });
+    assert.strictEqual(highlights.hasRanges, false);
+    assert.strictEqual(highlights.html, "");
+  });
+
+  it("preserves literal tokens and skips missing literal entries", () => {
+    const parsed = parseTitleDates("Meet on Friday", {
+      literals: ["Friday", "Missing", ""],
+      referenceDate: new Date(2026, 0, 6)
+    });
+    assert.strictEqual(parsed.hasDate, false);
+    assert.strictEqual(parsed.title, "Meet on Friday");
+  });
+
+  it("parses chrono reminders from titles", () => {
+    const parsed = parseTitleDates("Remind me tomorrow about billing", {
+      referenceDate: new Date(2026, 0, 6)
+    });
+    assert.strictEqual(parsed.hasReminder, true);
+    assert.deepStrictEqual(parsed.reminderDays, [1]);
+  });
+
+  it("parses a start and deadline range", () => {
+    const parsed = parseTitleDates("Project from Jan 10 to Jan 12", {
+      referenceDate: new Date(2026, 0, 6)
+    });
+    assert.strictEqual(parsed.hasDate, true);
+    assert.ok(parsed.startFrom);
+    assert.ok(parsed.deadline);
+  });
+
+  it("uses fallback titles when parsing strips everything", () => {
+    const task = {
+      deadline: null,
+      startFrom: null,
+      repeat: null,
+      reminders: [2]
+    };
+    const update = buildTitleUpdateFromInput({
+      task,
+      inputValue: "by Jan 10",
+      originalTitle: "Old title",
+      parsingActive: true,
+      literals: [],
+      maxLength: 120
+    });
+    assert.strictEqual(update.nextTitle, "by Jan 10");
+    assert.deepStrictEqual(update.nextReminders, [2]);
+  });
+
+  it("parses literal lists from json arrays", () => {
+    assert.deepStrictEqual(parseTitleLiteralList("[\"a\",\"\",null]"), ["a"]);
+    assert.deepStrictEqual(parseTitleLiteralList("1"), []);
+  });
+
   it("saves title updates when reminders are added", () => {
     const task = {
       deadline: null,

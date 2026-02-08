@@ -139,6 +139,29 @@ describe("url helpers", () => {
     assert.strictEqual(parseZoomFromUrl(), null);
   });
 
+  it("falls back to task zoom params for unknown types", () => {
+    updateUrlWithZoom({ type: "unknown", taskId: "t1", sectionId: "s1", subsectionId: "sub1" });
+    const url = new URL(global.window.location.href);
+    assert.ok(url.searchParams.get("zoom").startsWith("task:"));
+  });
+
+  it("fills missing zoom ids with empty strings", () => {
+    updateUrlWithZoom({ type: "section" });
+    let url = new URL(global.window.location.href);
+    assert.strictEqual(url.searchParams.get("zoom"), "section:");
+
+    setUrl("https://example.com/?zoom=subsection:s1");
+    const parsed = parseZoomFromUrl();
+    assert.strictEqual(parsed.sectionId, "s1");
+    assert.strictEqual(parsed.subsectionId, "");
+
+    setUrl("https://example.com/?zoom=task:t1");
+    const parsedTask = parseZoomFromUrl();
+    assert.strictEqual(parsedTask.taskId, "t1");
+    assert.strictEqual(parsedTask.sectionId, "");
+    assert.strictEqual(parsedTask.subsectionId, "");
+  });
+
   it("updates view params and parses them", () => {
     setUrl("https://example.com/?zoom=section:s1");
     updateUrlWithView("calendar", { replace: false });
@@ -161,11 +184,22 @@ describe("url helpers", () => {
     assert.strictEqual(parseNewTaskFromUrl(), null);
   });
 
+  it("falls back to empty values for missing new task params", () => {
+    setUrl("https://example.com/?newTask=1&title=");
+    assert.deepStrictEqual(parseNewTaskFromUrl(), { title: "", link: "" });
+  });
+
   it("updates calendar view params", () => {
     updateUrlWithCalendarView("week");
     assert.strictEqual(parseCalendarViewFromUrl("day"), "week");
     updateUrlWithCalendarView(null);
     assert.strictEqual(parseCalendarViewFromUrl("day"), "day");
+  });
+
+  it("pushes calendar view updates when replace is false", () => {
+    updateUrlWithCalendarView("three", { replace: false });
+    const url = new URL(global.window.location.href);
+    assert.strictEqual(url.searchParams.get("calendarView"), "three");
   });
 
   it("returns default calendar view for unsupported values", () => {
@@ -216,11 +250,18 @@ describe("ids, formatting, and time maps", () => {
     assert.strictEqual(formatDateTime(dateValue), new Date(dateValue).toLocaleString());
     assert.strictEqual(formatDate("2026-01-06"), new Date(2026, 0, 6).toLocaleDateString());
     assert.strictEqual(formatDate("not-a-date"), "Invalid Date");
+    assert.strictEqual(formatDate(null), "");
     assert.strictEqual(formatDurationShort(0), "1m");
     assert.strictEqual(formatDurationShort(90), "1.5h");
     assert.strictEqual(formatDurationLong(0), "0m");
     assert.strictEqual(formatDurationLong(60), "1h");
     assert.strictEqual(formatDurationLong(75), "1h 15m");
+  });
+
+  it("returns empty time map splits for non-array inputs", () => {
+    const { timeMapIds, externalCalendarIds } = splitTimeMapIds(null);
+    assert.deepStrictEqual(timeMapIds, []);
+    assert.deepStrictEqual(externalCalendarIds, []);
   });
 
   it("formats ordinals and rrule dates", () => {
@@ -257,11 +298,16 @@ describe("date parsing helpers", () => {
     const iso = parseLocalDateInput("2026-01-06");
     assert.strictEqual(typeof iso, "string");
     assert.strictEqual(parseLocalDateInput("2026-02-30"), null);
+    assert.strictEqual(parseLocalDateInput("2026-01"), null);
   });
 
   it("detects start dates after deadlines", () => {
     assert.strictEqual(isStartAfterDeadline("2026-01-10", "2026-01-09"), true);
     assert.strictEqual(isStartAfterDeadline("invalid", "2026-01-09"), false);
+  });
+
+  it("returns false when today keys cannot be parsed", () => {
+    assert.strictEqual(isStartFromNotToday("2026-01-10", "not-a-date"), false);
   });
 });
 
@@ -386,6 +432,10 @@ describe("applyPrioritySelectColor", () => {
     applyPrioritySelectColor(select);
     assert.strictEqual(select.dataset.priority, "");
   });
+
+  it("ignores missing priority selects", () => {
+    applyPrioritySelectColor(null);
+  });
 });
 
 describe("renderInBatches", () => {
@@ -437,6 +487,24 @@ describe("renderInBatches", () => {
       items: [],
       renderBatch: () => {},
       onComplete: done
+    });
+  });
+
+  it("uses requestAnimationFrame when available", (done) => {
+    const originalRaf = global.requestAnimationFrame;
+    global.requestAnimationFrame = (cb) => {
+      cb();
+      return 1;
+    };
+    const items = [1];
+    renderInBatches({
+      items,
+      batchSize: 1,
+      renderBatch: () => {},
+      onComplete: () => {
+        global.requestAnimationFrame = originalRaf;
+        done();
+      }
     });
   });
 });
@@ -495,6 +563,22 @@ describe("repeat anchors and schedule modes", () => {
     assert.strictEqual(resolveRepeatAnchor({ repeat: { type: TASK_REPEAT_NONE, unit: TASK_REPEAT_NONE } }), null);
   });
 
+  it("returns a fallback anchor when none is provided", () => {
+    const anchor = resolveRepeatAnchor({ repeat: { type: "custom", unit: "week" } });
+    assert.strictEqual(typeof anchor, "string");
+    assert.ok(anchor.length > 0);
+  });
+
+  it("ignores invalid anchors when resolving repeat anchors", () => {
+    const anchor = resolveRepeatAnchor({
+      repeat: { type: "custom", unit: "week" },
+      existingAnchor: "bad",
+      startFrom: "bad",
+      deadline: "bad"
+    });
+    assert.strictEqual(typeof anchor, "string");
+  });
+
   it("normalizes subtask schedule modes", () => {
     assert.strictEqual(normalizeSubtaskScheduleMode(SUBTASK_SCHEDULE_PARALLEL), SUBTASK_SCHEDULE_PARALLEL);
     assert.strictEqual(normalizeSubtaskScheduleMode(SUBTASK_SCHEDULE_SEQUENTIAL), SUBTASK_SCHEDULE_SEQUENTIAL);
@@ -547,6 +631,11 @@ describe("task ordering helpers", () => {
     const sorted = sortTasksByHierarchy(tasks);
     assert.deepStrictEqual(sorted, tasks);
   });
+
+  it("returns empty hierarchy for non-arrays", () => {
+    const sorted = sortTasksByHierarchy(null);
+    assert.deepStrictEqual(sorted, []);
+  });
 });
 
 describe("task order helpers", () => {
@@ -591,6 +680,15 @@ describe("task tree helpers", () => {
     assert.deepStrictEqual(result.map((task) => task.id), ["p1", "c1", "c2"]);
     assert.deepStrictEqual(getTaskAndDescendants("", tasks), []);
   });
+
+  it("returns descendants when the root task is missing", () => {
+    const tasks = [
+      { id: "c1", subtaskParentId: "missing" },
+      { id: "c2", subtaskParentId: "c1" }
+    ];
+    const result = getTaskAndDescendants("missing", tasks);
+    assert.deepStrictEqual(result.map((task) => task.id), ["c1", "c2"]);
+  });
 });
 
 describe("subsection and weekday helpers", () => {
@@ -612,6 +710,17 @@ describe("subsection and weekday helpers", () => {
     const fifthWeek = getNthWeekday(new Date(2026, 7, 29));
     assert.strictEqual(fifthWeek.nth, INDEX_NOT_FOUND);
   });
+
+  it("skips already visited subsection ids", () => {
+    const subs = [
+      { id: "root", parentId: "" },
+      { id: "child", parentId: "root" },
+      { id: "root", parentId: "child" }
+    ];
+    const ids = getSubsectionDescendantIds(subs, "root");
+    assert.strictEqual(ids.has("root"), true);
+    assert.strictEqual(ids.has("child"), true);
+  });
 });
 
 describe("section color mapping", () => {
@@ -626,6 +735,16 @@ describe("section color mapping", () => {
   it("retries hues when seeds collide", () => {
     const map = getSectionColorMap([{ id: "dup" }, { id: "dup" }]);
     assert.ok(map.has("dup"));
+  });
+
+  it("uses section names when ids are missing", () => {
+    const map = getSectionColorMap([{ name: "Work" }]);
+    assert.strictEqual(map.size, 1);
+  });
+
+  it("uses index values when ids and names are missing", () => {
+    const map = getSectionColorMap([{}]);
+    assert.strictEqual(map.size, 1);
   });
 });
 
@@ -662,5 +781,16 @@ describe("resolveTimeMapIdsAfterDelete", () => {
     const task = { timeMapIds: [externalId] };
     const resolved = resolveTimeMapIdsAfterDelete(task, {}, [], "");
     assert.deepStrictEqual(resolved, [externalId]);
+  });
+
+  it("handles missing task time map arrays", () => {
+    const resolved = resolveTimeMapIdsAfterDelete({ timeMapIds: null }, {}, [], "");
+    assert.deepStrictEqual(resolved, []);
+  });
+
+  it("drops deleted time map ids when none remain", () => {
+    const task = { timeMapIds: ["tm-1", "tm-2"] };
+    const resolved = resolveTimeMapIdsAfterDelete(task, {}, [], "tm-1");
+    assert.deepStrictEqual(resolved, []);
   });
 });

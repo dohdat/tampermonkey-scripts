@@ -126,7 +126,9 @@ const {
   renderRepeatUI,
   setRepeatFromSelection,
   registerRepeatEventHandlers,
-  enableDeadlinePicker
+  enableDeadlinePicker,
+  syncRepeatSelectLabel,
+  syncSubsectionRepeatLabel
 } = repeat;
 
 describe("repeat utils", () => {
@@ -303,6 +305,11 @@ describe("repeat utils", () => {
     assert.ok(yearlySummary.includes("on 12/31"));
     assert.ok(yearlySummary.includes("until"));
     assert.ok(yearlyRangeSummary.includes("between"));
+  });
+
+  it("summarizes repeats with implicit defaults", () => {
+    const summary = getRepeatSummary({ type: "custom", interval: 0 });
+    assert.ok(summary.includes("Every 1 week"));
   });
 
   it("builds rrule strings from state", () => {
@@ -825,5 +832,115 @@ describe("repeat utils", () => {
     cleanup();
     assert.strictEqual(domRefs.taskDeadlineInput._handlers.click, undefined);
     assert.strictEqual(domRefs.taskDeadlineInput._handlers.keydown, undefined);
+  });
+
+  it("ignores untrusted picker events and handles space keydown", () => {
+    let showPickerCalled = 0;
+    domRefs.taskDeadlineInput.showPicker = () => {
+      showPickerCalled += 1;
+    };
+    const cleanup = enableDeadlinePicker();
+    domRefs.taskDeadlineInput._handlers.click({ isTrusted: false });
+    assert.strictEqual(showPickerCalled, 0);
+    domRefs.taskDeadlineInput._handlers.keydown({ key: " ", isTrusted: true });
+    assert.strictEqual(showPickerCalled, 1);
+    cleanup();
+  });
+
+  it("renders safely when repeat UI refs are missing", () => {
+    const originalUnit = domRefs.taskRepeatUnit;
+    domRefs.taskRepeatUnit = null;
+    assert.doesNotThrow(() => renderRepeatUI("task"));
+    domRefs.taskRepeatUnit = originalUnit;
+  });
+
+  it("skips label sync when selects are missing", () => {
+    const originalSelect = domRefs.taskRepeatSelect;
+    const originalSubSelect = domRefs.subsectionTaskRepeatSelect;
+    domRefs.taskRepeatSelect = null;
+    domRefs.subsectionTaskRepeatSelect = null;
+    assert.doesNotThrow(() => syncRepeatSelectLabel());
+    assert.doesNotThrow(() => syncSubsectionRepeatLabel());
+    domRefs.taskRepeatSelect = originalSelect;
+    domRefs.subsectionTaskRepeatSelect = originalSubSelect;
+  });
+
+  it("builds weekly rules using start date fallbacks and handles unknown units", () => {
+    domRefs.taskDeadlineInput.value = "2026-01-07";
+    repeatStore.repeatState = {
+      unit: "week",
+      interval: 1,
+      weeklyDays: null,
+      end: { type: "never" }
+    };
+    const weekly = buildRepeatFromState();
+    assert.ok(weekly.rrule.includes("BYDAY="));
+
+    repeatStore.repeatState = { unit: "unknown", interval: 1 };
+    const unknown = buildRepeatFromState();
+    assert.strictEqual(unknown.rrule, "");
+  });
+
+  it("falls back to start dates when yearly fields are missing", () => {
+    domRefs.taskDeadlineInput.value = "2026-01-07";
+    repeatStore.repeatState = {
+      unit: "year",
+      interval: 1,
+      yearlyMonth: 0,
+      yearlyDay: 0,
+      yearlyRangeEndDate: "",
+      end: { type: "never" }
+    };
+    const yearly = buildRepeatFromState();
+    assert.ok(yearly.rrule.includes("BYMONTH=1"));
+  });
+
+  it("syncs subsection labels for custom repeats", () => {
+    repeatStore.subsectionRepeatSelection = {
+      type: "custom",
+      unit: "week",
+      interval: 1,
+      weeklyDays: [1],
+      end: { type: "never" }
+    };
+    syncSubsectionRepeatLabel();
+    const customOpt = domRefs.subsectionTaskRepeatSelect.querySelector('option[value="custom"]');
+    assert.ok(customOpt);
+  });
+
+  it("uses yearly range end dates when setting repeats", () => {
+    setRepeatFromSelection({
+      type: "custom",
+      unit: "year",
+      interval: 1,
+      yearlyRangeEndDate: "2026-03-14",
+      end: { type: "never" }
+    });
+    assert.strictEqual(repeatStore.repeatState.yearlyMonth, 3);
+    assert.strictEqual(repeatStore.repeatState.yearlyDay, 14);
+  });
+
+  it("syncs repeat end controls when dates are set", () => {
+    repeatStore.repeatState = {
+      unit: "week",
+      interval: 1,
+      weeklyDays: [1],
+      end: { type: "on", date: "2026-04-01", count: 2 }
+    };
+    renderRepeatUI("task");
+    assert.strictEqual(domRefs.taskRepeatEndDate.value, "2026-04-01");
+    assert.strictEqual(domRefs.taskRepeatEndCount.value, 2);
+  });
+
+  it("handles showPicker errors without crashing", () => {
+    let throws = 0;
+    domRefs.taskDeadlineInput.showPicker = () => {
+      throws += 1;
+      throw new Error("blocked");
+    };
+    const cleanup = enableDeadlinePicker();
+    assert.doesNotThrow(() => domRefs.taskDeadlineInput._handlers.click({ isTrusted: true }));
+    assert.strictEqual(throws, 1);
+    cleanup();
   });
 });

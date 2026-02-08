@@ -883,4 +883,118 @@ describe("calendar external events", () => {
     assert.strictEqual(state.calendarExternalEvents.length, 1);
     assert.ok(state.calendarExternalEvents[0].start instanceof Date);
   });
+
+  it("uses the default view mode when none is provided", async () => {
+    state.settingsCache = {
+      ...state.settingsCache,
+      googleCalendarIds: ["calendar-1"]
+    };
+    globalThis.chrome = {
+      runtime: {
+        lastError: null,
+        sendMessage: (_msg, cb) => {
+          cb({ ok: true, events: [] });
+        }
+      }
+    };
+    await ensureExternalEvents(range);
+    assert.ok(state.calendarExternalRangeKey.includes(":week:"));
+  });
+
+  it("returns false for ranges with invalid dates", async () => {
+    const updated = await ensureExternalEvents({ start: "bad", end: "bad" }, viewMode);
+    assert.strictEqual(updated, false);
+  });
+
+  it("ignores invalid cached entries", async () => {
+    const cacheKey = buildKey(bufferedRange, viewMode, state.settingsCache.googleCalendarIds);
+    await saveCalendarCacheEntry({
+      key: cacheKey,
+      viewMode,
+      calendarIdsKey: "none",
+      range: { start: "", end: "" },
+      events: [],
+      syncTokensByCalendar: {},
+      updatedAt: new Date().toISOString()
+    });
+    const updated = await primeExternalEventsOnLoad(range, viewMode);
+    assert.strictEqual(updated, false);
+  });
+
+  it("treats invalid cache timestamps as stale", async () => {
+    const cacheKey = buildKey(bufferedRange, viewMode, state.settingsCache.googleCalendarIds);
+    await saveCalendarCacheEntry({
+      key: cacheKey,
+      viewMode,
+      calendarIdsKey: "none",
+      range: {
+        start: bufferedRange.start.toISOString(),
+        end: bufferedRange.end.toISOString()
+      },
+      events: [],
+      syncTokensByCalendar: {},
+      updatedAt: "bad"
+    });
+    const updated = await primeExternalEventsOnLoad(range, viewMode);
+    assert.strictEqual(updated, false);
+  });
+
+  it("filters invalid event payloads during sync", async () => {
+    state.calendarExternalRangeKey = buildKey(
+      bufferedRange,
+      viewMode,
+      state.settingsCache.googleCalendarIds
+    );
+    state.calendarExternalRange = bufferedRange;
+    const synced = await syncExternalEventsCache([
+      { id: "evt-bad", title: "Bad", start: "bad", end: "bad" }
+    ]);
+    assert.strictEqual(synced, true);
+    assert.strictEqual(state.calendarExternalEvents.length, 0);
+  });
+
+  it("skips invalid incremental updates", async () => {
+    state.settingsCache = {
+      ...state.settingsCache,
+      googleCalendarIds: ["calendar-1"]
+    };
+    const cacheKey = buildKey(bufferedRange, viewMode, state.settingsCache.googleCalendarIds);
+    await saveCalendarCacheEntry({
+      key: cacheKey,
+      viewMode,
+      calendarIdsKey: "calendar-1",
+      range: {
+        start: bufferedRange.start.toISOString(),
+        end: bufferedRange.end.toISOString()
+      },
+      events: [
+        {
+          id: "evt-keep",
+          calendarId: "calendar-1",
+          title: "Keep",
+          start: range.start.toISOString(),
+          end: range.end.toISOString()
+        }
+      ],
+      syncTokensByCalendar: { "calendar-1": "sync-1" },
+      updatedAt: new Date(0).toISOString()
+    });
+    globalThis.chrome = {
+      runtime: {
+        lastError: null,
+        sendMessage: (_msg, cb) => {
+          cb({
+            ok: true,
+            isIncremental: true,
+            events: [{ id: "", calendarId: "", title: "Bad", start: "", end: "" }],
+            deletedEvents: [{ id: "", calendarId: "" }],
+            syncTokensByCalendar: { "calendar-1": "sync-2" }
+          });
+        }
+      }
+    };
+    const updated = await ensureExternalEvents(range, viewMode);
+    assert.strictEqual(updated, true);
+    assert.strictEqual(state.calendarExternalEvents.length, 1);
+  });
 });

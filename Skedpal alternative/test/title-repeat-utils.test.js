@@ -132,4 +132,22 @@ describe("title repeat utils", () => {
     assert.strictEqual(parsed.hasRepeat, false);
     assert.strictEqual(parsed.repeat, null);
   });
+
+  it("returns empty repeats for empty titles", () => {
+    const parsed = parseTitleRepeat("", new Date(2026, 0, 6));
+    assert.strictEqual(parsed.hasRepeat, false);
+    assert.strictEqual(parsed.title, "");
+  });
+
+  it("parses repeats with non-date reference values", () => {
+    const parsed = parseTitleRepeat("repeat daily", "2026-01-06");
+    assert.strictEqual(parsed.hasRepeat, true);
+    assert.strictEqual(parsed.repeat.unit, "day");
+  });
+
+  it("falls back to simple monthly repeats for incomplete ranges", () => {
+    const parsed = parseTitleRepeat("Repeat monthly between", new Date(2026, 0, 6));
+    assert.strictEqual(parsed.hasRepeat, true);
+    assert.strictEqual(parsed.repeat.unit, "month");
+  });
 });

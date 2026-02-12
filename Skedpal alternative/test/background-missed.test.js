@@ -77,4 +77,32 @@ describe("background missed metrics", () => {
     });
     assert.strictEqual(shouldIncrement, false);
   });
+
+  it("does not increment repeating tasks with no due occurrences", () => {
+    const task = { id: "repeat-task", completed: false, repeat: { type: "custom" } };
+    const parentIds = new Set();
+    const shouldIncrement = shouldIncrementMissedCount({
+      task,
+      status: "unscheduled",
+      parentIds,
+      missedOccurrences: 0,
+      expectedCount: 5,
+      dueCount: 0
+    });
+    assert.strictEqual(shouldIncrement, false);
+  });
+
+  it("increments repeating tasks with due occurrences", () => {
+    const task = { id: "repeat-task", completed: false, repeat: { type: "custom" } };
+    const parentIds = new Set();
+    const shouldIncrement = shouldIncrementMissedCount({
+      task,
+      status: "unscheduled",
+      parentIds,
+      missedOccurrences: 2,
+      expectedCount: 5,
+      dueCount: 2
+    });
+    assert.strictEqual(shouldIncrement, true);
+  });
 });

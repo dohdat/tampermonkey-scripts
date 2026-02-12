@@ -8,7 +8,7 @@ import {
   DEFAULT_SCHEDULING_HORIZON_DAYS
 } from "../data/db.js";
 import { scheduleTasks } from "../core/scheduler.js";
-import { getExpectedOccurrenceCount } from "./schedule-helpers.js";
+import { getDueOccurrenceCount, getExpectedOccurrenceCount } from "./schedule-helpers.js";
 import { shouldIncrementMissedCount } from "./schedule-metrics.js";
 import {
   CREATE_TASK_MENU_ID,
@@ -83,6 +83,44 @@ function getScheduledOccurrenceCount(taskPlacements) {
     return new Set(occurrenceIds).size;
   }
   return 1;
+}
+
+function computeTaskScheduleMetrics({
+  task,
+  taskPlacements,
+  parentIds,
+  deferredIds,
+  now,
+  horizonDays
+}) {
+  const expectedOccurrences = getExpectedOccurrenceCount(task, now, horizonDays);
+  const dueOccurrences = getDueOccurrenceCount(task, now, horizonDays);
+  const scheduledOccurrences = getScheduledOccurrenceCount(taskPlacements);
+  const isDeferred = deferredIds.has(task.id);
+  const isRepeating = task?.repeat && task.repeat.type !== TASK_REPEAT_NONE;
+  const missedOccurrences = getMissedOccurrences(
+    isRepeating ? dueOccurrences : expectedOccurrences,
+    isRepeating ? 0 : scheduledOccurrences,
+    isDeferred
+  );
+  const shouldIncrement = shouldIncrementMissedCount({
+    task,
+    status: task.scheduleStatus,
+    parentIds,
+    missedOccurrences,
+    expectedCount: expectedOccurrences,
+    dueCount: dueOccurrences,
+    deferredIds,
+    now
+  });
+  return {
+    expectedOccurrences,
+    dueOccurrences,
+    scheduledOccurrences,
+    missedOccurrences,
+    shouldIncrement,
+    isDeferred
+  };
 }
 
 function parseAnchorDate(value) {
@@ -219,32 +257,23 @@ async function persistSchedule(tasks, placements, unscheduled, ignored, deferred
     task.scheduledEnd = taskPlacements[taskPlacements.length - 1]?.end?.toISOString() || null;
     task.scheduledTimeMapId = taskPlacements[0]?.timeMapId || null;
     task.scheduleStatus = resolveScheduleStatus(task, parentIds, ignored, taskPlacements);
-    const expectedOccurrences = getExpectedOccurrenceCount(task, now, horizonDays);
-    const scheduledOccurrences = getScheduledOccurrenceCount(taskPlacements);
-    const isDeferred = deferredIds.has(task.id);
-    const missedOccurrences = getMissedOccurrences(
-      expectedOccurrences,
-      scheduledOccurrences,
-      isDeferred
-    );
-    applyDeferredMissReset(task, isDeferred);
-    if (
-      shouldIncrementMissedCount({
-        task,
-        status: task.scheduleStatus,
-        parentIds,
-        missedOccurrences,
-        expectedCount: expectedOccurrences,
-        deferredIds,
-        now
-      })
-    ) {
-      task.missedCount = (Number(task.missedCount) || 0) + Math.max(1, missedOccurrences);
+    const metrics = computeTaskScheduleMetrics({
+      task,
+      taskPlacements,
+      parentIds,
+      deferredIds,
+      now,
+      horizonDays
+    });
+    applyDeferredMissReset(task, metrics.isDeferred);
+    if (metrics.shouldIncrement) {
+      task.missedCount =
+        (Number(task.missedCount) || 0) + Math.max(1, metrics.missedOccurrences);
       task.lastMissedAt = timestamp;
     }
-    task.expectedCount = expectedOccurrences;
-    task.scheduledCount = scheduledOccurrences;
-    task.missedLastRun = missedOccurrences;
+    task.expectedCount = metrics.expectedOccurrences;
+    task.scheduledCount = metrics.scheduledOccurrences;
+    task.missedLastRun = metrics.missedOccurrences;
     task.lastScheduledRun = timestamp;
     await saveTask(task);
   }

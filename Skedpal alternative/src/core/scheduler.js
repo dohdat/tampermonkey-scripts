@@ -4,7 +4,11 @@ import {
   startOfDay,
   startOfWeek
 } from "./scheduler/date-utils.js";
-import { buildOccurrenceDates, getUpcomingOccurrences } from "./scheduler/occurrences.js";
+import {
+  buildOccurrenceDates,
+  buildOccurrenceId,
+  getUpcomingOccurrences
+} from "./scheduler/occurrences.js";
 import { normalizeTask } from "./scheduler/task-utils.js";
 import {
   buildSequentialInfoMap,
@@ -262,7 +266,11 @@ function buildScheduleCandidates(tasks, now, horizonEnd, options = {}) {
           hasExplicitDeadline,
           isRepeating,
           repeatWindowDays,
-          occurrenceId: `${normalized.id || normalized.taskId || task.id}-occ-${index}`,
+          occurrenceId: buildOccurrenceId(
+            normalized.id || normalized.taskId || task.id,
+            occurrenceDate,
+            index
+          ),
           deadline: schedulingDeadline,
           startFrom: earliestStart
         });

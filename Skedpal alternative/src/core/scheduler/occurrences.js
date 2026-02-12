@@ -1,6 +1,7 @@
 import {
   addDays,
   endOfDay,
+  getLocalDateKey,
   nthWeekdayOfMonth,
   startOfDay,
   startOfWeek
@@ -318,8 +319,15 @@ export function getUpcomingOccurrences(
   return occurrences
     .map((date, index) => ({
       date,
-      occurrenceId: `${normalized.id || normalized.taskId || task.id}-occ-${index}`
+      occurrenceId: buildOccurrenceId(normalized.id || normalized.taskId || task.id, date, index)
     }))
     .filter((entry) => !isOccurrenceCompleted(completedOccurrences, entry.date, normalized.repeat))
     .slice(0, count);
+}
+
+export function buildOccurrenceId(baseId, date, index) {
+  const id = baseId || "";
+  const isValidDate = date instanceof Date && !Number.isNaN(date.getTime());
+  const key = getLocalDateKey(date) || (isValidDate ? date.toISOString() : "") || String(index);
+  return id ? `${id}-${key}` : key;
 }

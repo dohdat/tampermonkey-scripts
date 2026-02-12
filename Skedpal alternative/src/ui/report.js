@@ -17,6 +17,10 @@ import {
   domRefs
 } from "./constants.js";
 import { DEFAULT_SCHEDULING_HORIZON_DAYS } from "../data/db.js";
+import {
+  getDueOccurrenceCount,
+  getExpectedOccurrenceCount
+} from "../background/schedule-helpers.js";
 import { state } from "./state/page-state.js";
 import { formatDateTime, normalizeTimeMap, renderInBatches } from "./utils.js";
 import { renderTaskCard } from "./tasks/task-card.js";
@@ -120,6 +124,9 @@ function shouldIncludeMissedByStatus(task) {
   const expectedCount = Number(task.expectedCount) || 0;
   const missedLastRun = Number(task.missedLastRun) || 0;
   const missedCount = Number(task.missedCount) || 0;
+  if (isOutOfRangeRepeatTask(task, expectedCount)) {
+    return false;
+  }
   if (task.scheduleStatus === TASK_STATUS_IGNORED) {
     return missedCount > 0;
   }
@@ -130,6 +137,18 @@ function shouldIncludeMissedByStatus(task) {
     return missedLastRun > 0;
   }
   return missedCount > 0;
+}
+
+function getReportHorizonDays(settings) {
+  const horizonDays = Number(settings?.schedulingHorizonDays);
+  return Number.isFinite(horizonDays) && horizonDays > 0
+    ? horizonDays
+    : DEFAULT_SCHEDULING_HORIZON_DAYS;
+}
+
+function isOutOfRangeRepeatTask(task, expectedCount) {
+  const isRepeating = Boolean(task?.repeat && task.repeat.type !== TASK_REPEAT_NONE);
+  return isRepeating && expectedCount === 0;
 }
 
 function isRepeatOutsideHorizon(task) {
@@ -186,6 +205,21 @@ function getTaskSubsection(task) {
 
 function getTaskTimeMapIds(task) {
   return Array.isArray(task.timeMapIds) ? task.timeMapIds : [];
+}
+
+function buildTaskReportMetrics(task, now, settings) {
+  const isRepeating = Boolean(task?.repeat && task.repeat.type !== TASK_REPEAT_NONE);
+  if (!isRepeating) {
+    return {
+      expectedCount: Number(task.expectedCount) || 0,
+      missedLastRun: Number(task.missedLastRun) || 0
+    };
+  }
+  const horizonDays = getReportHorizonDays(settings);
+  return {
+    expectedCount: getExpectedOccurrenceCount(task, now, horizonDays),
+    missedLastRun: getDueOccurrenceCount(task, now, horizonDays)
+  };
 }
 
 function getMissedFillPercent(row) {
@@ -285,11 +319,19 @@ export function getMissedTaskRows(
   settings = state.settingsCache,
   now = new Date()
 ) {
+  const tasksWithMetrics = (tasks || []).map((task) => {
+    const metrics = buildTaskReportMetrics(task, now, settings);
+    return {
+      ...task,
+      expectedCount: metrics.expectedCount,
+      missedLastRun: metrics.missedLastRun
+    };
+  });
   const parentIds = new Set(
-    (tasks || []).filter((task) => task.subtaskParentId).map((task) => task.subtaskParentId)
+    tasksWithMetrics.filter((task) => task.subtaskParentId).map((task) => task.subtaskParentId)
   );
-  const nextChildByParent = buildSequentialSingleNextChildMap(tasks);
-  return (tasks || [])
+  const nextChildByParent = buildSequentialSingleNextChildMap(tasksWithMetrics);
+  return tasksWithMetrics
     .filter((task) => shouldIncludeMissedTask(task, parentIds, nextChildByParent, now))
     .map((task) => {
       const missedCount = getTaskNumber(task.missedCount);

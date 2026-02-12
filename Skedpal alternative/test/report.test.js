@@ -272,6 +272,7 @@ describe("report", () => {
           scheduleStatus: "unscheduled",
           expectedCount: 0,
           missedCount: 10,
+          startFrom: "2035-01-01T00:00:00.000Z",
           repeat: { type: "custom", unit: "year", interval: 1 }
         },
         {
@@ -318,6 +319,28 @@ describe("report", () => {
 
     assert.strictEqual(rows.length, 1);
     assert.strictEqual(rows[0].id, "child-1");
+  });
+
+  it("recomputes repeat missed metrics client-side instead of stale stored values", () => {
+    const now = new Date(2026, 1, 13, 12, 0, 0);
+    const tasks = [
+      {
+        id: "repeat-stale",
+        title: "Repeat task",
+        scheduleStatus: "scheduled",
+        repeat: { type: "custom", unit: "day", interval: 1 },
+        repeatAnchor: new Date(2026, 1, 12, 0, 0, 0).toISOString(),
+        completedOccurrences: ["2026-02-12"],
+        expectedCount: 99,
+        missedLastRun: 99,
+        missedCount: 99
+      }
+    ];
+    const settings = { schedulingHorizonDays: 14 };
+
+    const rows = getMissedTaskRows(tasks, settings, now);
+
+    assert.strictEqual(rows.length, 0);
   });
 
   it("builds timemap usage rows from scheduled instances", () => {

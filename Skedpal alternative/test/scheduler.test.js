@@ -126,7 +126,7 @@ describe("scheduler", () => {
     const pinnedPlacements = [
       {
         taskId: "pinned",
-        occurrenceId: "pinned-occ-0",
+        occurrenceId: `pinned-${toLocalDateKey(shiftDate(now, 0, 23, 59))}`,
         timeMapId: "tm-1",
         start: pinnedStart,
         end: pinnedEnd,
@@ -1464,7 +1464,7 @@ describe("scheduler", () => {
     const pinnedPlacements = [
       {
         taskId: "child-1",
-        occurrenceId: "child-1-occ-0",
+        occurrenceId: `child-1-${toLocalDateKey(shiftDate(now, 0, 23, 59))}`,
         timeMapId: "tm-1",
         start: shiftDate(now, 0, 9, 0),
         end: shiftDate(now, 0, 10, 0),
@@ -1644,7 +1644,7 @@ describe("scheduler", () => {
     const pinnedPlacements = [
       {
         taskId: "child-2",
-        occurrenceId: "child-2-occ-0",
+        occurrenceId: `child-2-${toLocalDateKey(shiftDate(now, 0, 23, 59))}`,
         timeMapId: "tm-1",
         start: shiftDate(now, 0, 10, 0),
         end: shiftDate(now, 0, 11, 0),

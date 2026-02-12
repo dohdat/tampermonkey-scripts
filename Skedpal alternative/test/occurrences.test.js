@@ -371,6 +371,6 @@ describe("scheduler occurrences", () => {
       repeat: { type: "none" }
     };
     const upcoming = getUpcomingOccurrences(task, now, 1, 7);
-    assert.ok(upcoming[0].occurrenceId.startsWith("legacy-1"));
+    assert.strictEqual(upcoming[0].occurrenceId, "legacy-1-2026-01-05");
   });
 });

@@ -23,6 +23,7 @@ import {
   subtractBusy
 } from "./scheduler/slots-utils.js";
 import { buildPinnedSchedulingState } from "./scheduler/pinned-utils.js";
+import { filterPinnedInputs } from "./scheduler/pinned-filter-utils.js";
 import { runSchedulingLoop } from "./scheduler/schedule-loop.js";
 import {
   DEFAULT_TASK_MIN_BLOCK_MIN,
@@ -559,12 +560,17 @@ export function scheduleTasks({
   pinnedOccurrenceIds = []
 }) {
   const horizonEnd = endOfDay(addDays(now, schedulingHorizonDays));
+  const {
+    filteredPlacements,
+    filteredOccurrenceIds,
+    filteredTaskIds
+  } = filterPinnedInputs(tasks, pinnedPlacements, pinnedOccurrenceIds, pinnedTaskIds);
   const windows = buildWindows(timeMaps, now, horizonEnd);
   const freeSlots = subtractBusy(windows, busy);
   const pinnedState = buildPinnedSchedulingState({
-    pinnedPlacements,
-    pinnedOccurrenceIds,
-    pinnedTaskIds,
+    pinnedPlacements: filteredPlacements,
+    pinnedOccurrenceIds: filteredOccurrenceIds,
+    pinnedTaskIds: filteredTaskIds,
     windows
   });
   const tasksById = buildTaskMap(tasks);

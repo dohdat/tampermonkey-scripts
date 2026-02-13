@@ -152,6 +152,62 @@ describe("scheduler", () => {
     assert.strictEqual(other.start.getHours(), 10);
   });
 
+  it("drops pinned placements for completed tasks", () => {
+    const now = nextWeekday(new Date(2026, 0, 1), 1);
+    const timeMaps = [
+      { id: "tm-1", rules: [{ day: now.getDay(), startTime: "09:00", endTime: "11:00" }] }
+    ];
+    const pinnedStart = shiftDate(now, 0, 9, 0);
+    const pinnedEnd = shiftDate(now, 0, 10, 0);
+    const tasks = [
+      {
+        id: "done-task",
+        title: "Done task",
+        completed: true,
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59)
+      },
+      {
+        id: "active",
+        title: "Active task",
+        completed: false,
+        durationMin: 60,
+        minBlockMin: 60,
+        timeMapIds: ["tm-1"],
+        deadline: shiftDate(now, 0, 23, 59)
+      }
+    ];
+    const pinnedPlacements = [
+      {
+        taskId: "done-task",
+        occurrenceId: `done-task-${toLocalDateKey(shiftDate(now, 0, 23, 59))}`,
+        timeMapId: "tm-1",
+        start: pinnedStart,
+        end: pinnedEnd,
+        pinned: true
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 1,
+      now,
+      pinnedPlacements
+    });
+
+    assert.strictEqual(
+      result.scheduled.some((placement) => placement.taskId === "done-task"),
+      false
+    );
+    assert.strictEqual(result.scheduled.length, 1);
+    assert.strictEqual(result.scheduled[0].taskId, "active");
+    assert.strictEqual(result.scheduled[0].start.getHours(), 9);
+  });
+
   it("schedules daily and weekly repeats across days", () => {
     const now = nextWeekday(new Date(2026, 0, 1), 1);
     const timeMaps = [

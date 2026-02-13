@@ -1,7 +1,8 @@
-import { endOfDay, getLocalDateKey, startOfDay } from "./date-utils.js";
+import { addDays, endOfDay, getLocalDateKey, startOfDay, startOfWeek } from "./date-utils.js";
 import { THREE } from "../../constants.js";
 
 const LOCAL_DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const WEEKDAY_MAX_INDEX = 6;
 
 function clampDayInMonth(year, monthIndex, day) {
   const lastDay = new Date(year, monthIndex + 1, 0).getDate();
@@ -78,6 +79,22 @@ function getYearlyRangeWindow(repeat, occurrenceDate) {
   return { start: startOfDay(start), end: endOfDay(end) };
 }
 
+function getWeeklyAnyWindow(repeat, occurrenceDate) {
+  if (!repeat || repeat.unit !== "week" || repeat.weeklyMode !== "any") {return null;}
+  if (!occurrenceDate) {return null;}
+  const days = Array.isArray(repeat.weeklyDays)
+    ? repeat.weeklyDays
+      .map((day) => Number(day))
+      .filter((day) => Number.isFinite(day) && day >= 0 && day <= WEEKDAY_MAX_INDEX)
+    : [];
+  const uniqueDays = Array.from(new Set(days)).sort((a, b) => a - b);
+  const activeDays = uniqueDays.length ? uniqueDays : [occurrenceDate.getDay()];
+  const weekStart = startOfWeek(occurrenceDate);
+  const start = addDays(weekStart, activeDays[0]);
+  const end = addDays(weekStart, activeDays[activeDays.length - 1]);
+  return { start: startOfDay(start), end: endOfDay(end) };
+}
+
 export function buildCompletedOccurrenceStore(values) {
   const set = new Set();
   const dates = [];
@@ -107,6 +124,7 @@ export function isOccurrenceCompleted(store, occurrenceDate, repeat) {
   }
   if (!store.dates?.length) {return false;}
   const window =
+    getWeeklyAnyWindow(repeat, occurrenceDate) ||
     getMonthlyRangeWindow(repeat, occurrenceDate) ||
     getYearlyRangeWindow(repeat, occurrenceDate);
   if (!window) {return false;}

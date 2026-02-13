@@ -373,4 +373,24 @@ describe("scheduler occurrences", () => {
     const upcoming = getUpcomingOccurrences(task, now, 1, 7);
     assert.strictEqual(upcoming[0].occurrenceId, "legacy-1-2026-01-05");
   });
+
+  it("skips weekly any occurrences when another selected day in the same week was completed", () => {
+    const localNow = new Date(2026, 1, 12, 8, 0, 0, 0);
+    const task = {
+      id: "weekly-any-window",
+      repeatAnchor: new Date(2026, 0, 12),
+      repeat: {
+        type: "custom",
+        unit: "week",
+        interval: 1,
+        weeklyMode: "any",
+        weeklyDays: [0, 1, 2, 3, 4, 5, 6]
+      },
+      completedOccurrences: ["2026-02-11"]
+    };
+    const upcoming = getUpcomingOccurrences(task, localNow, 2, 30);
+    assert.ok(upcoming.length > 0);
+    assert.notStrictEqual(upcoming[0].date.getDate(), 12);
+    assert.strictEqual(upcoming[0].date.getDate(), 15);
+  });
 });

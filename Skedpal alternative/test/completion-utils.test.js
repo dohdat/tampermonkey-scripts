@@ -7,6 +7,30 @@ import {
 } from "../src/core/scheduler/completion-utils.js";
 
 describe("completion utils", () => {
+  it("treats weekly any completions within the selected week window as completed", () => {
+    const repeat = {
+      type: "custom",
+      unit: "week",
+      weeklyMode: "any",
+      weeklyDays: [0, 1, 2, 3, 4, 5, 6]
+    };
+    const occurrenceDate = new Date(2026, 1, 12);
+    const store = buildCompletedOccurrenceStore(["2026-02-11"]);
+    assert.strictEqual(isOccurrenceCompleted(store, occurrenceDate, repeat), true);
+  });
+
+  it("does not complete weekly any occurrences from a different week", () => {
+    const repeat = {
+      type: "custom",
+      unit: "week",
+      weeklyMode: "any",
+      weeklyDays: [0, 1, 2, 3, 4, 5, 6]
+    };
+    const occurrenceDate = new Date(2026, 1, 12);
+    const store = buildCompletedOccurrenceStore(["2026-02-01"]);
+    assert.strictEqual(isOccurrenceCompleted(store, occurrenceDate, repeat), false);
+  });
+
   it("handles yearly range dates provided as Date objects", () => {
     const repeat = {
       type: "custom",

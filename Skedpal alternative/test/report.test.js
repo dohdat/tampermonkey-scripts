@@ -686,4 +686,67 @@ describe("report", () => {
       global.Date = OriginalDate;
     }
   });
+
+  it("includes ignored tasks when they have missed counts", () => {
+    const rows = getMissedTaskRows(
+      [
+        {
+          id: "ignored-1",
+          title: "Ignored task",
+          scheduleStatus: "ignored",
+          missedCount: 2,
+          expectedCount: 0,
+          missedLastRun: 0
+        }
+      ],
+      {}
+    );
+    assert.strictEqual(rows.length, 1);
+    assert.strictEqual(rows[0].id, "ignored-1");
+  });
+
+  it("excludes sequential-single subtasks that are not next in line", () => {
+    const rows = getMissedTaskRows(
+      [
+        { id: "parent", subtaskScheduleMode: "sequential-single" },
+        {
+          id: "child-1",
+          subtaskParentId: "parent",
+          order: 1,
+          completed: false,
+          scheduleStatus: "unscheduled",
+          missedCount: 1
+        },
+        {
+          id: "child-2",
+          subtaskParentId: "parent",
+          order: 2,
+          completed: false,
+          scheduleStatus: "unscheduled",
+          missedCount: 2
+        }
+      ],
+      {}
+    );
+    assert.strictEqual(rows.length, 1);
+    assert.strictEqual(rows[0].id, "child-1");
+  });
+
+  it("uses fallback labels for unknown section/subsection ids", () => {
+    const rows = getMissedTaskRows(
+      [
+        {
+          id: "unknown-labels",
+          title: "Task",
+          scheduleStatus: "unscheduled",
+          missedCount: 1,
+          section: "missing-section",
+          subsection: "missing-subsection"
+        }
+      ],
+      { sections: [], subsections: {} }
+    );
+    assert.strictEqual(rows[0].sectionLabel, "Untitled section");
+    assert.strictEqual(rows[0].subsectionLabel, "Untitled subsection");
+  });
 });

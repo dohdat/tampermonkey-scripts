@@ -15,6 +15,7 @@ global.crypto = {
 
 const {
   computeTaskReorderUpdates,
+  computeTaskReorderUpdatesForMultiple,
   computeSubsectionPrioritySortUpdates,
   ensureTaskIds,
   migrateSectionsAndTasks
@@ -83,6 +84,19 @@ describe("task reorder", () => {
     const result = computeTaskReorderUpdates(tasks, "missing", "s1", "", null);
     assert.deepStrictEqual(result, { updates: [], changed: false });
   });
+
+  it("appends moved block when drop target is invalid", () => {
+    const tasks = [
+      { id: "t1", title: "First", section: "s1", subsection: "", order: 1 },
+      { id: "t2", title: "Second", section: "s1", subsection: "", order: 2 },
+      { id: "t3", title: "Third", section: "s2", subsection: "", order: 1 }
+    ];
+    const result = computeTaskReorderUpdates(tasks, "t1", "s2", "", "missing");
+    const byId = new Map(result.updates.map((task) => [task.id, task]));
+    assert.strictEqual(byId.get("t2").order, 1);
+    assert.strictEqual(byId.has("t3"), false);
+    assert.strictEqual(byId.get("t1").order, 2);
+  });
 });
 
 describe("subsection priority sort", () => {
@@ -149,6 +163,15 @@ describe("subsection priority sort", () => {
     assert.strictEqual(byId.get("t3").order, 2);
     assert.strictEqual(byId.get("t2").order, 3);
   });
+
+  it("returns unchanged when there are not enough root tasks", () => {
+    const rows = computeSubsectionPrioritySortUpdates(
+      [{ id: "single", section: "s1", subsection: "sub1", order: 1, priority: 1 }],
+      "s1",
+      "sub1"
+    );
+    assert.deepStrictEqual(rows, { updates: [], changed: false });
+  });
 });
 
 describe("task defaults", () => {
@@ -178,6 +201,28 @@ describe("task defaults", () => {
     ];
     const normalized = await ensureTaskIds(tasks);
     assert.strictEqual(normalized[0].order, 1);
+  });
+
+  it("preserves valid arrays and repeat objects while normalizing order numbers", async () => {
+    const tasks = [
+      {
+        id: "keep-1",
+        title: "Keep arrays",
+        section: "s1",
+        subsection: "",
+        order: "3",
+        reminders: [{ id: "r1", days: 1 }],
+        completedOccurrences: ["2026-01-01"],
+        repeat: { type: "custom", unit: "week" },
+        scheduleStatus: "scheduled"
+      }
+    ];
+    const normalized = await ensureTaskIds(tasks);
+    assert.strictEqual(normalized[0].order, 3);
+    assert.deepStrictEqual(normalized[0].reminders, [{ id: "r1", days: 1 }]);
+    assert.deepStrictEqual(normalized[0].completedOccurrences, ["2026-01-01"]);
+    assert.deepStrictEqual(normalized[0].repeat, { type: "custom", unit: "week" });
+    assert.strictEqual(normalized[0].scheduleStatus, "scheduled");
   });
 });
 
@@ -217,5 +262,62 @@ describe("task migrations", () => {
     assert.strictEqual(result.tasks[0].subsection, "sub1");
     assert.strictEqual(result.settings.sections[0].favoriteOrder, 2);
     assert.strictEqual(result.settings.subsections.s1[0].favoriteOrder, 1);
+  });
+
+  it("creates subsection ids from subsection names referenced by tasks", async () => {
+    const tasks = [{ id: "t4", title: "Task", section: "s1", subsection: "Inbox" }];
+    const settings = {
+      sections: [{ id: "s1", name: "Work" }],
+      subsections: { s1: [] }
+    };
+    const result = await migrateSectionsAndTasks(tasks, settings);
+    assert.strictEqual(result.tasks[0].section, "s1");
+    assert.ok(result.tasks[0].subsection);
+    assert.strictEqual(result.settings.subsections.s1.length, 1);
+    assert.strictEqual(result.settings.subsections.s1[0].name, "Inbox");
+  });
+
+  it("normalizes subsection entries from mixed raw subsection formats", async () => {
+    const tasks = [{ id: "t6", title: "Task", section: "s1", subsection: "" }];
+    const settings = {
+      sections: [{ id: "s1", name: "Work" }],
+      subsections: {
+        s1: [
+          { id: "sub1", name: "Named", favoriteOrder: "bad", template: { title: "Template" } },
+          "String subsection",
+          {}
+        ]
+      }
+    };
+    const result = await migrateSectionsAndTasks(tasks, settings);
+    const list = result.settings.subsections.s1;
+    assert.ok(list.find((sub) => sub.id === "sub1"));
+    assert.ok(list.find((sub) => sub.name === "String subsection"));
+    assert.ok(list.find((sub) => sub.name === "Untitled subsection"));
+    const first = list.find((sub) => sub.id === "sub1");
+    assert.strictEqual(first.favoriteOrder, null);
+    assert.deepStrictEqual(first.template, { title: "Template" });
+  });
+});
+
+describe("multi reorder", () => {
+  it("ignores moved drop-before ids for multi-move operations", () => {
+    const tasks = [
+      { id: "t1", section: "s1", subsection: "", order: 1, subtaskParentId: null },
+      { id: "t2", section: "s1", subsection: "", order: 2, subtaskParentId: null },
+      { id: "t3", section: "s1", subsection: "", order: 3, subtaskParentId: null },
+      { id: "t4", section: "s1", subsection: "", order: 4, subtaskParentId: null }
+    ];
+    const result = computeTaskReorderUpdatesForMultiple(tasks, ["t2", "t3"], "s1", "", "t2");
+    const byId = new Map(result.updates.map((task) => [task.id, task]));
+    assert.strictEqual(byId.get("t4").order, 2);
+    assert.strictEqual(byId.get("t2").order, 3);
+    assert.strictEqual(byId.get("t3").order, 4);
+  });
+
+  it("returns unchanged when all moved ids are missing in multi-move", () => {
+    const tasks = [{ id: "t1", section: "s1", subsection: "", order: 1, subtaskParentId: null }];
+    const result = computeTaskReorderUpdatesForMultiple(tasks, ["missing"], "s1", "", null);
+    assert.deepStrictEqual(result, { updates: [], changed: false });
   });
 });

@@ -246,4 +246,49 @@ describe("title date utils", () => {
     assert.strictEqual(bothParsed.startFrom, null);
     assert.strictEqual(bothParsed.deadline, base.deadline);
   });
+
+  it("returns input values for invalid merged date values", () => {
+    const merged = resolveMergedDateRange({
+      startFrom: "bad",
+      deadline: "2026-01-01T00:00:00.000Z"
+    });
+    assert.deepStrictEqual(merged, {
+      startFrom: "bad",
+      deadline: "2026-01-01T00:00:00.000Z"
+    });
+  });
+
+  it("returns non-saving update when trimmed title becomes empty", () => {
+    const update = buildTitleUpdateFromInput({
+      task: { deadline: null, startFrom: null, repeat: null, reminders: [] },
+      inputValue: "   ",
+      originalTitle: "Old",
+      parsingActive: true,
+      literals: [],
+      maxLength: 50
+    });
+    assert.deepStrictEqual(update, { shouldSave: false, nextTitle: "Old" });
+  });
+
+  it("clears prior parsed dates when new input removes date tokens", () => {
+    const task = { deadline: "2026-01-10T00:00:00.000Z", startFrom: null, repeat: null, reminders: [] };
+    const update = buildTitleUpdateFromInput({
+      task,
+      inputValue: "Write report",
+      originalTitle: "Write report by Jan 10",
+      parsingActive: true,
+      literals: [],
+      maxLength: 120
+    });
+    assert.strictEqual(update.nextDeadline, null);
+  });
+
+  it("keeps tokenized literals untouched during parsing", () => {
+    const parsed = parseTitleDates("Review __literal_0__", {
+      literals: ["__literal_0__"],
+      referenceDate: new Date(2026, 0, 6)
+    });
+    assert.strictEqual(parsed.title, "Review __literal_0__");
+    assert.strictEqual(parsed.hasDate, false);
+  });
 });

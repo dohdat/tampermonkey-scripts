@@ -158,6 +158,10 @@ describe("task add row ui helpers", () => {
     assert.strictEqual(other.dataset.titleLiterals, undefined);
   });
 
+  it("ignores conversion events for non-HTMLElement targets", () => {
+    assert.doesNotThrow(() => handleAddTaskInputConversion({ target: {} }));
+  });
+
   it("adds literal chips to title parsing context and prevents default event", () => {
     const input = new FakeElement("input");
     input.value = "Start project by Friday";
@@ -207,6 +211,23 @@ describe("task add row ui helpers", () => {
       }),
       false
     );
+  });
+
+  it("returns false when clicking an already-selected literal chip", () => {
+    const input = new FakeElement("input");
+    input.value = "Plan for Friday";
+    input.dataset.titleLiterals = "[\"Friday\"]";
+    const row = new FakeElement("div");
+    row._query.set("[data-add-task-input]", input);
+    const chip = new FakeElement("button");
+    chip.dataset.titleLiteral = "Friday";
+    chip._closest.set("[data-add-task-row]", row);
+    const handled = handleAddTaskLiteralClick({
+      target: { closest: () => chip },
+      preventDefault: () => {},
+      stopPropagation: () => {}
+    });
+    assert.strictEqual(handled, false);
   });
 
   it("parses clipboard titles across bullet/number/CRLF styles", () => {
@@ -314,6 +335,39 @@ describe("task add row ui helpers", () => {
     assert.ok(created);
     assert.strictEqual(created.section, "sec-1");
     assert.strictEqual(created.subsection, "sub-1");
+    await Promise.all(tasks.map((task) => deleteTask(task.id)));
+  });
+
+  it("submits a child task when add-task parent id is present", async () => {
+    const row = buildAddTaskRow({ sectionId: "sec-1", subsectionId: "sub-1", parentId: "parent-1" });
+    const button = row.children[0];
+    const input = row.children[1];
+    const preview = row.children[2];
+    row._query.set("[data-add-task-button]", button);
+    row._query.set("[data-add-task-input]", input);
+    row._query.set('[data-test-skedpal="task-add-conversion-preview"]', preview);
+    input.closest = (selector) => (selector === "[data-add-task-row]" ? row : null);
+    input.dataset.addTaskSection = "sec-1";
+    input.dataset.addTaskSubsection = "sub-1";
+    input.dataset.addTaskParent = "parent-1";
+    input.value = "Child follow-up";
+    state.tasksCache = [
+      {
+        id: "parent-1",
+        section: "sec-parent",
+        subsection: "sub-parent",
+        order: 1,
+        timeMapIds: [],
+        repeat: { type: "none" }
+      }
+    ];
+
+    const result = await handleAddTaskInputSubmit(input);
+    assert.strictEqual(result, true);
+    const tasks = await getAllTasks();
+    const created = tasks.find((task) => task.title === "Child follow-up");
+    assert.ok(created);
+    assert.strictEqual(created.subtaskParentId, "parent-1");
     await Promise.all(tasks.map((task) => deleteTask(task.id)));
   });
 });

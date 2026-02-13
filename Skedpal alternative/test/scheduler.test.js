@@ -635,6 +635,49 @@ describe("scheduler", () => {
     assert.strictEqual(result.scheduled[0].start.getDay(), 2);
   });
 
+  it("does not schedule weekly any occurrences for a week already completed on another selected day", () => {
+    const now = new Date(2026, 1, 12, 8, 0, 0, 0);
+    const timeMaps = [
+      {
+        id: "tm-week-any-all",
+        days: [0, 1, 2, 3, 4, 5, 6],
+        startTime: "09:00",
+        endTime: "11:00"
+      }
+    ];
+    const tasks = [
+      {
+        id: "weekly-any-all",
+        title: "Weekly any all days",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-week-any-all"],
+        repeatAnchor: new Date(2026, 1, 9, 0, 0, 0),
+        repeat: {
+          type: "custom",
+          unit: "week",
+          interval: 1,
+          weeklyDays: [0, 1, 2, 3, 4, 5, 6],
+          weeklyMode: "any"
+        },
+        completedOccurrences: ["2026-02-11"]
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 14,
+      now
+    });
+
+    assert.ok(result.scheduled.length >= 1);
+    const first = [...result.scheduled].sort((a, b) => a.start - b.start)[0];
+    assert.ok(first);
+    assert.strictEqual(first.start.getDate(), 15);
+  });
+
   it("schedules yearly range repeats within the window", () => {
     const now = new Date(2026, 0, 1, 8, 0, 0, 0);
     const rangeStart = 5;

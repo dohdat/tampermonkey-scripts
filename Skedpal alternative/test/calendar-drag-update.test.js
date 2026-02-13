@@ -22,13 +22,15 @@ describe("calendar drag updates", () => {
           start: "2026-01-06T10:00:00.000Z",
           end: "2026-01-06T11:00:00.000Z",
           timeMapId: "tm-1",
-          occurrenceId: "occ-1"
+          occurrenceId: "occ-1",
+          pinned: false
         },
         {
           start: "2026-01-07T09:00:00.000Z",
           end: "2026-01-07T10:00:00.000Z",
           timeMapId: "tm-1",
-          occurrenceId: "occ-2"
+          occurrenceId: "occ-2",
+          pinned: false
         }
       ],
       scheduledStart: "2026-01-06T10:00:00.000Z",
@@ -48,6 +50,8 @@ describe("calendar drag updates", () => {
     assert.ok(updated);
     assert.strictEqual(updated.scheduledInstances[0].start, newStart.toISOString());
     assert.strictEqual(updated.scheduledInstances[0].end, newEnd.toISOString());
+    assert.strictEqual(updated.scheduledInstances[0].pinned, true);
+    assert.strictEqual(updated.scheduledInstances[1].pinned, false);
     assert.strictEqual(updated.scheduledStart, "2026-01-07T09:00:00.000Z");
     assert.strictEqual(updated.scheduledEnd, "2026-01-08T10:30:00.000Z");
     assert.strictEqual(updated.scheduledTimeMapId, "tm-1");
@@ -62,13 +66,15 @@ describe("calendar drag updates", () => {
           start: "2026-01-09T08:00:00.000Z",
           end: "2026-01-09T09:00:00.000Z",
           timeMapId: "tm-2",
-          occurrenceId: null
+          occurrenceId: null,
+          pinned: false
         },
         {
           start: "2026-01-09T10:00:00.000Z",
           end: "2026-01-09T10:30:00.000Z",
           timeMapId: "tm-2",
-          occurrenceId: null
+          occurrenceId: null,
+          pinned: false
         }
       ],
       scheduledStart: "2026-01-09T08:00:00.000Z",
@@ -88,6 +94,8 @@ describe("calendar drag updates", () => {
     assert.ok(updated);
     assert.strictEqual(updated.scheduledInstances[1].start, newStart.toISOString());
     assert.strictEqual(updated.scheduledInstances[1].end, newEnd.toISOString());
+    assert.strictEqual(updated.scheduledInstances[1].pinned, true);
+    assert.strictEqual(updated.scheduledInstances[0].pinned, false);
   });
 
   it("builds an external update payload from day and minutes", () => {
@@ -106,6 +114,39 @@ describe("calendar drag updates", () => {
     assert.strictEqual(payload.start.getMinutes(), 0);
     assert.strictEqual(payload.end.getHours(), 5);
     assert.strictEqual(payload.end.getMinutes(), 30);
+  });
+
+  it("pins an instance when resized (same start, new end)", () => {
+    const task = {
+      id: "task-resize",
+      scheduleStatus: "scheduled",
+      scheduledInstances: [
+        {
+          start: "2026-01-10T09:00:00.000Z",
+          end: "2026-01-10T09:30:00.000Z",
+          timeMapId: "tm-3",
+          occurrenceId: "occ-resize",
+          pinned: false
+        }
+      ],
+      scheduledStart: "2026-01-10T09:00:00.000Z",
+      scheduledEnd: "2026-01-10T09:30:00.000Z",
+      scheduledTimeMapId: "tm-3"
+    };
+    const eventMeta = {
+      taskId: "task-resize",
+      occurrenceId: "occ-resize",
+      instanceIndex: 0,
+      start: new Date("2026-01-10T09:00:00.000Z"),
+      end: new Date("2026-01-10T09:30:00.000Z")
+    };
+    const sameStart = new Date("2026-01-10T09:00:00.000Z");
+    const resizedEnd = new Date("2026-01-10T10:15:00.000Z");
+    const updated = buildUpdatedTaskForDrag(task, eventMeta, sameStart, resizedEnd);
+    assert.ok(updated);
+    assert.strictEqual(updated.scheduledInstances[0].start, sameStart.toISOString());
+    assert.strictEqual(updated.scheduledInstances[0].end, resizedEnd.toISOString());
+    assert.strictEqual(updated.scheduledInstances[0].pinned, true);
   });
 
   it("formats reschedule messages defensively", () => {

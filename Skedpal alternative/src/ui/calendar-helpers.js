@@ -137,7 +137,8 @@ export function buildUpdatedTaskForDrag(task, eventMeta, newStart, newEnd) {
   instances[targetIndex] = {
     ...instances[targetIndex],
     start: newStart.toISOString(),
-    end: newEnd.toISOString()
+    end: newEnd.toISOString(),
+    pinned: true
   };
   const { scheduledStart, scheduledEnd, scheduledTimeMapId } = buildScheduleBounds(instances);
   return {

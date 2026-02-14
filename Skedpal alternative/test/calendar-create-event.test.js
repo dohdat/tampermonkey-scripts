@@ -218,7 +218,7 @@ describe("calendar create modal", () => {
     cleanupCalendarCreateModal();
   });
 
-  it("snaps empty-slot click time to half-hour increments", async () => {
+  it("snaps empty-slot click time to the active half-hour slot", async () => {
     const { openCalendarCreateFromClick, initCalendarCreateModal, cleanupCalendarCreateModal } =
       await import("../src/ui/calendar-create-event.js");
     initCalendarCreateModal();
@@ -233,7 +233,7 @@ describe("calendar create modal", () => {
 
     const handled = openCalendarCreateFromClick({ target, clientY: 375 });
     assert.strictEqual(handled, true);
-    assert.strictEqual(domRefs.calendarCreateTime.value, "06:30");
+    assert.strictEqual(domRefs.calendarCreateTime.value, "06:00");
     cleanupCalendarCreateModal();
   });
 

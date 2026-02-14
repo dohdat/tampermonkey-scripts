@@ -13,7 +13,7 @@ import {
   domRefs
 } from "./constants.js";
 import { state } from "./state/page-state.js";
-import { getDateFromDayKey, roundMinutesToStep, clampMinutes } from "./calendar-utils.js";
+import { getDateFromDayKey, clampMinutes } from "./calendar-utils.js";
 import { showNotificationBanner } from "./notifications.js";
 import { sendExternalCreateRequest } from "./calendar-external-events.js";
 import { markExternalEventsCacheDirty, syncExternalEventsCache } from "./calendar-external.js";
@@ -357,7 +357,9 @@ export function openCalendarCreateFromClick(event) {
   if (!rect) {return false;}
   const y = clampMinutes(event.clientY - rect.top, 0, rect.height);
   const pointerMinutes = (y / rect.height) * HOURS_PER_DAY * MINUTES_PER_HOUR;
-  const rounded = roundMinutesToStep(pointerMinutes, CALENDAR_CREATE_CLICK_STEP_MINUTES);
+  const rounded =
+    Math.floor(pointerMinutes / CALENDAR_CREATE_CLICK_STEP_MINUTES) *
+    CALENDAR_CREATE_CLICK_STEP_MINUTES;
   const minutes = clampMinutes(
     rounded,
     0,

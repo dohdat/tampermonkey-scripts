@@ -84,8 +84,8 @@ body.modal-open{overflow:hidden}
 .date-picker-actions{display:flex;align-items:center;gap:var(--space-0-5)}
 @media (min-width:768px){.date-picker-body{grid-template-columns:minmax(0,1fr) minmax(0,1.1fr)}}
 .task-modal__panel--task{width:min(var(--space-45),100%);max-height:calc(100vh - var(--space-6))}
-.calendar-create-modal{justify-content:flex-end;align-items:stretch}
-.calendar-create-modal .task-modal__panel{height:100%;max-height:100%;width:min(420px,100%);border-radius:var(--size-18px) 0 0 var(--size-18px);animation:calendarCreateSlideIn .2s ease-out}
+.calendar-create-modal{justify-content:center;align-items:center;padding:var(--space-1-25)}
+.calendar-create-modal .task-modal__panel{pointer-events:auto;width:min(var(--size-520px),100%);max-height:calc(100vh - var(--space-2-5));border-radius:var(--size-18px);animation:calendarModalIn .18s ease-out}
 .task-reminder-modal{justify-content:flex-end;align-items:flex-start;background:transparent;backdrop-filter:none}
 .task-reminder-modal .task-modal__panel{width:min(360px,100%);border-radius:var(--size-18px) 0 0 var(--size-18px);animation:calendarCreateSlideIn .2s ease-out}
 @keyframes calendarCreateSlideIn{0%{opacity:0;transform:translateX(40px)}100%{opacity:1;transform:translateX(0)}}

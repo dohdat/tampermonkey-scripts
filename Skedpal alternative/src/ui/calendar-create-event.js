@@ -221,7 +221,6 @@ export async function openCalendarCreateModal(options) {
   const selectedId = resolveDefaultCalendarId(calendars);
   setCalendarOptions(calendarCreateCalendarSelect, calendars, selectedId);
   calendarCreateModal.classList.remove("hidden");
-  document.body.classList.add("modal-open");
   setTimeout(() => {
     calendarCreateTitle?.focus?.();
   }, FIFTY);
@@ -231,7 +230,6 @@ function closeCalendarCreateModal() {
   const { calendarCreateModal } = domRefs;
   if (!calendarCreateModal) {return;}
   calendarCreateModal.classList.add("hidden");
-  document.body.classList.remove("modal-open");
   clearDraftBlock();
 }
 
@@ -239,6 +237,22 @@ function handleCalendarCreateOverlayClick(event) {
   if (event.target === domRefs.calendarCreateModal) {
     closeCalendarCreateModal();
   }
+}
+
+function isCalendarCreateModalOpen() {
+  const { calendarCreateModal } = domRefs;
+  return Boolean(calendarCreateModal && !calendarCreateModal.classList.contains("hidden"));
+}
+
+function isClickInsideCreatePanel(target) {
+  if (!target || typeof target.closest !== "function") {return false;}
+  return Boolean(target.closest('[data-test-skedpal="calendar-create-panel"]'));
+}
+
+function handleCalendarCreateOutsideClick(event) {
+  if (!isCalendarCreateModalOpen()) {return;}
+  if (isClickInsideCreatePanel(event?.target)) {return;}
+  closeCalendarCreateModal();
 }
 
 function handleCalendarCreateKeydown(event) {
@@ -332,6 +346,10 @@ export function openCalendarCreateFromClick(event) {
     closeCalendarEventModal();
     return true;
   }
+  if (isCalendarCreateModalOpen()) {
+    closeCalendarCreateModal();
+    return true;
+  }
   const dayCol = event.target?.closest?.(".calendar-day-col");
   if (!dayCol || !dayCol.dataset.day) {return false;}
   const rect = dayCol.getBoundingClientRect?.();
@@ -374,6 +392,7 @@ export function initCalendarCreateModal(options = {}) {
     btn.addEventListener("click", closeCalendarCreateModal);
   });
   document.addEventListener("keydown", handleCalendarCreateKeydown);
+  document.addEventListener("click", handleCalendarCreateOutsideClick);
   calendarCreateCleanup = () => {
     calendarCreateModal.removeEventListener("click", handleCalendarCreateOverlayClick);
     calendarCreateForm.removeEventListener("submit", handleCalendarCreateSubmit);
@@ -385,6 +404,7 @@ export function initCalendarCreateModal(options = {}) {
       btn.removeEventListener("click", closeCalendarCreateModal);
     });
     document.removeEventListener("keydown", handleCalendarCreateKeydown);
+    document.removeEventListener("click", handleCalendarCreateOutsideClick);
     calendarCreateModal.dataset.modalReady = "false";
   };
 }

@@ -1,4 +1,5 @@
 import {
+  CALENDAR_CREATE_CLICK_STEP_MINUTES,
   DEFAULT_TASK_MIN_BLOCK_MIN,
   FIFTY,
   HOURS_PER_DAY,
@@ -356,11 +357,11 @@ export function openCalendarCreateFromClick(event) {
   if (!rect) {return false;}
   const y = clampMinutes(event.clientY - rect.top, 0, rect.height);
   const pointerMinutes = (y / rect.height) * HOURS_PER_DAY * MINUTES_PER_HOUR;
-  const rounded = roundMinutesToStep(pointerMinutes, MIN_DURATION_MIN);
+  const rounded = roundMinutesToStep(pointerMinutes, CALENDAR_CREATE_CLICK_STEP_MINUTES);
   const minutes = clampMinutes(
     rounded,
     0,
-    HOURS_PER_DAY * MINUTES_PER_HOUR - MIN_DURATION_MIN
+    HOURS_PER_DAY * MINUTES_PER_HOUR - CALENDAR_CREATE_CLICK_STEP_MINUTES
   );
   openCalendarCreateModal({ dayKey: dayCol.dataset.day, startMinutes: minutes });
   return true;

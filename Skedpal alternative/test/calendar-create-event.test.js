@@ -218,6 +218,25 @@ describe("calendar create modal", () => {
     cleanupCalendarCreateModal();
   });
 
+  it("snaps empty-slot click time to half-hour increments", async () => {
+    const { openCalendarCreateFromClick, initCalendarCreateModal, cleanupCalendarCreateModal } =
+      await import("../src/ui/calendar-create-event.js");
+    initCalendarCreateModal();
+    const dayCol = new FakeElement("div");
+    dayCol.setAttribute("data-day", "2026-01-09");
+    dayCol.getBoundingClientRect = () => ({ top: 0, height: 1440 });
+    domRefs.calendarGrid = new FakeElement("div");
+    domRefs.calendarGrid.appendChild(dayCol);
+    const target = {
+      closest: (selector) => (selector === ".calendar-day-col" ? dayCol : null)
+    };
+
+    const handled = openCalendarCreateFromClick({ target, clientY: 375 });
+    assert.strictEqual(handled, true);
+    assert.strictEqual(domRefs.calendarCreateTime.value, "06:30");
+    cleanupCalendarCreateModal();
+  });
+
   it("returns false when clicking outside a day column", async () => {
     const { openCalendarCreateFromClick } =
       await import("../src/ui/calendar-create-event.js");

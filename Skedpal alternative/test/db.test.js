@@ -3,8 +3,10 @@ import assert from "assert";
 import { beforeEach, describe, it } from "mocha";
 import {
   DEFAULT_SETTINGS,
+  deleteCalendarCacheEntry,
   deleteTask,
   deleteTimeMap,
+  getCalendarCacheEntry,
   getAllTasks,
   getAllTaskTemplates,
   getAllTimeMaps,
@@ -12,6 +14,7 @@ import {
   getSettings,
   restoreBackup,
   saveBackup,
+  saveCalendarCacheEntry,
   saveSettings,
   saveTask,
   saveTaskTemplate,
@@ -148,6 +151,33 @@ describe("db", () => {
     assert.strictEqual(settings.schedulingHorizonDays, 30);
     assert.strictEqual(settings.defaultTimeMapId, "tm-new");
     assert.deepStrictEqual(settings.googleCalendarIds, ["cal-1"]);
+  });
+
+  it("restoreBackup writes task templates from snapshot", async () => {
+    const snapshot = {
+      createdAt: "2026-01-08T14:00:00.000Z",
+      tasks: [],
+      timeMaps: [],
+      taskTemplates: [{ id: "tpl-1", title: "Template from backup" }],
+      settings: { ...DEFAULT_SETTINGS }
+    };
+    await restoreBackup(snapshot);
+    assert.deepStrictEqual(await getAllTaskTemplates(), snapshot.taskTemplates);
+  });
+
+  it("restoreBackup throws when snapshot is missing", async () => {
+    await assert.rejects(
+      () => restoreBackup(null),
+      (error) => error instanceof Error && error.message === "No backup available."
+    );
+  });
+
+  it("calendar cache entry round trip", async () => {
+    const entry = { key: "k1", value: { count: 3 } };
+    await saveCalendarCacheEntry(entry);
+    assert.deepStrictEqual(await getCalendarCacheEntry("k1"), entry);
+    await deleteCalendarCacheEntry("k1");
+    assert.strictEqual(await getCalendarCacheEntry("k1"), null);
   });
 
   it("trimTaskCollection removes completed and deleted tasks while preserving active parents", async () => {

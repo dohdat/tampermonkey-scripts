@@ -150,7 +150,7 @@ describe("calendar external delete feedback", () => {
 
     assert.strictEqual(nodes.message.textContent, "Deleting event...");
     assert.strictEqual(button.disabled, true);
-    assert.strictEqual(state.calendarExternalEvents.length, 1);
+    assert.strictEqual(state.calendarExternalEvents.length, 0);
 
     deleteCallback({ ok: true });
     await pendingDelete;
@@ -162,18 +162,25 @@ describe("calendar external delete feedback", () => {
   });
 
   it("shows an error banner when delete fails", async () => {
+    let deleteCallback = null;
     global.chrome.runtime.sendMessage = (_payload, callback) => {
-      callback({ ok: false, error: "Delete failed" });
+      deleteCallback = callback;
     };
 
     const { deleteExternalEvent } = await import(
       "../src/ui/calendar.js?test=calendar-delete-feedback-failure"
     );
     const button = buildDeleteButton();
+    const pendingDelete = deleteExternalEvent(button);
 
-    await deleteExternalEvent(button);
+    assert.strictEqual(state.calendarExternalEvents.length, 0);
+    assert.strictEqual(nodes.message.textContent, "Deleting event...");
+
+    deleteCallback({ ok: false, error: "Delete failed" });
+    await pendingDelete;
 
     assert.strictEqual(state.calendarExternalEvents.length, 1);
+    assert.strictEqual(state.calendarExternalEvents[0].id, "evt-1");
     assert.strictEqual(nodes.message.textContent, "Delete failed");
     assert.strictEqual(button.disabled, false);
   });

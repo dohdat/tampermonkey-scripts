@@ -183,9 +183,29 @@ function setDeleteButtonState(button, disabled) {
 }
 
 function removeExternalEvent(payload) {
-  state.calendarExternalEvents = (state.calendarExternalEvents || []).filter(
-    (event) => !(event.id === payload.eventId && event.calendarId === payload.calendarId)
-  );
+  const events = Array.isArray(state.calendarExternalEvents) ? state.calendarExternalEvents : [];
+  let removed = null;
+  const remaining = [];
+  events.forEach((event, index) => {
+    if (!removed && event.id === payload.eventId && event.calendarId === payload.calendarId) {
+      removed = { event, index };
+      return;
+    }
+    remaining.push(event);
+  });
+  state.calendarExternalEvents = remaining;
+  return removed;
+}
+
+function restoreExternalEvent(removed) {
+  if (!removed?.event) {return;}
+  const events = Array.isArray(state.calendarExternalEvents)
+    ? [...state.calendarExternalEvents]
+    : [];
+  const desiredIndex = Number.isInteger(removed.index) ? removed.index : events.length;
+  const safeIndex = Math.min(Math.max(desiredIndex, 0), events.length);
+  events.splice(safeIndex, 0, removed.event);
+  state.calendarExternalEvents = events;
 }
 
 function syncExternalEventsCacheInBackground(events) {
@@ -212,18 +232,22 @@ export async function deleteExternalEvent(deleteBtn) {
   externalDeletePending = true;
   setDeleteButtonState(deleteBtn, true);
   showNotificationBanner("Deleting event...");
+  const removed = removeExternalEvent(payload);
+  if (removed) {
+    renderCalendar();
+  }
   try {
     const response = await sendExternalDeleteRequest(getRuntime(), payload);
     if (!response?.ok) {
       throw new Error(response?.error || "Failed to delete calendar event");
     }
-    removeExternalEvent(payload);
     markExternalEventsCacheDirty();
     state.calendarExternalAllowFetch = true;
     syncExternalEventsCacheInBackground(state.calendarExternalEvents);
-    renderCalendar();
     showNotificationBanner("Event deleted.", { autoHideMs: TWO_THOUSAND_FIVE_HUNDRED });
   } catch (error) {
+    restoreExternalEvent(removed);
+    renderCalendar();
     console.warn("Failed to delete Google Calendar event.", error);
     showNotificationBanner(error?.message || "Failed to delete Google Calendar event.", {
       autoHideMs: THREE_THOUSAND_FIVE_HUNDRED

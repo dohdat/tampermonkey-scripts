@@ -9,9 +9,11 @@ import {
   END_OF_DAY_MINUTE,
   END_OF_DAY_MS,
   END_OF_DAY_SECOND,
+  THREE_THOUSAND_FIVE_HUNDRED,
   TASK_REPEAT_NONE,
   TASK_STATUS_COMPLETED,
   TASK_STATUS_UNSCHEDULED,
+  TWO_THOUSAND_FIVE_HUNDRED,
   domRefs
 } from "./constants.js";
 import { state } from "./state/page-state.js";
@@ -58,7 +60,7 @@ import {
 } from "./calendar-external-events.js";
 import { saveTask } from "../data/db.js";
 import { getTaskAndDescendants } from "./utils.js";
-import { showUndoBanner } from "./notifications.js";
+import { showNotificationBanner, showUndoBanner } from "./notifications.js";
 import {
   HOUR_HEIGHT,
   buildEmptyState,
@@ -88,11 +90,6 @@ function getExternalDeletePayload(deleteBtn) {
   const title = deleteBtn.dataset.eventTitle || "this event";
   if (!eventId || !calendarId) {return null;}
   return { eventId, calendarId, title };
-}
-
-function confirmExternalDelete(title) {
-  if (typeof window === "undefined") {return true;}
-  return window.confirm(`Delete "${title}" from Google Calendar?`);
 }
 
 function emitTasksUpdated() {
@@ -191,6 +188,12 @@ function removeExternalEvent(payload) {
   );
 }
 
+function syncExternalEventsCacheInBackground(events) {
+  void syncExternalEventsCache(events).catch((error) => {
+    console.warn("Failed to persist external calendar cache after delete.", error);
+  });
+}
+
 async function togglePinnedTaskEvent(eventMeta) {
   const task = state.tasksCache.find((candidate) => candidate.id === eventMeta.taskId);
   if (!task) {return;}
@@ -202,13 +205,13 @@ async function togglePinnedTaskEvent(eventMeta) {
   renderCalendar();
 }
 
-async function deleteExternalEvent(deleteBtn) {
+export async function deleteExternalEvent(deleteBtn) {
   if (externalDeletePending) {return;}
   const payload = getExternalDeletePayload(deleteBtn);
   if (!payload) {return;}
-  if (!confirmExternalDelete(payload.title)) {return;}
   externalDeletePending = true;
   setDeleteButtonState(deleteBtn, true);
+  showNotificationBanner("Deleting event...");
   try {
     const response = await sendExternalDeleteRequest(getRuntime(), payload);
     if (!response?.ok) {
@@ -217,10 +220,14 @@ async function deleteExternalEvent(deleteBtn) {
     removeExternalEvent(payload);
     markExternalEventsCacheDirty();
     state.calendarExternalAllowFetch = true;
-    await syncExternalEventsCache(state.calendarExternalEvents);
+    syncExternalEventsCacheInBackground(state.calendarExternalEvents);
     renderCalendar();
+    showNotificationBanner("Event deleted.", { autoHideMs: TWO_THOUSAND_FIVE_HUNDRED });
   } catch (error) {
     console.warn("Failed to delete Google Calendar event.", error);
+    showNotificationBanner(error?.message || "Failed to delete Google Calendar event.", {
+      autoHideMs: THREE_THOUSAND_FIVE_HUNDRED
+    });
   } finally {
     externalDeletePending = false;
     setDeleteButtonState(deleteBtn, false);

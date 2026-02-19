@@ -50,6 +50,7 @@ describe("calendar external events", () => {
     state.calendarExternalRange = null;
     state.calendarExternalPendingKey = "";
     state.calendarExternalLastSyncedAt = "";
+    state.calendarExternalDeletedKeys = new Set();
     state.settingsCache = {
       ...state.settingsCache,
       googleCalendarIds: [],
@@ -137,6 +138,29 @@ describe("calendar external events", () => {
     };
     const events = getExternalEventsForRange(range, viewMode);
     assert.deepStrictEqual(events.map((event) => event.id), ["evt-in"]);
+  });
+
+  it("filters locally deleted external events from range results", () => {
+    state.calendarExternalEvents = [
+      {
+        id: "evt-1",
+        calendarId: "calendar-1",
+        title: "Keep",
+        start: new Date("2026-01-07T08:00:00Z"),
+        end: new Date("2026-01-07T09:00:00Z")
+      },
+      {
+        id: "evt-2",
+        calendarId: "calendar-1",
+        title: "Deleted",
+        start: new Date("2026-01-07T10:00:00Z"),
+        end: new Date("2026-01-07T11:00:00Z")
+      }
+    ];
+    state.calendarExternalDeletedKeys = new Set(["calendar-1:evt-2"]);
+
+    const events = getExternalEventsForRange(range, viewMode);
+    assert.deepStrictEqual(events.map((event) => event.id), ["evt-1"]);
   });
 
   it("short-circuits when runtime is unavailable", async () => {

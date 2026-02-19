@@ -69,7 +69,9 @@ import {
 
 let nowIndicatorTimer = null;
 let calendarViewInitialized = false;
-let externalDeletePending = false;
+const pendingExternalDeleteKeys = new Set();
+const externalDeleteQueue = [];
+let externalDeleteQueueRunning = false;
 
 function getEventMetaFromBlock(block) {
   if (!block?.dataset) {return null;}
@@ -90,6 +92,51 @@ function getExternalDeletePayload(deleteBtn) {
   const title = deleteBtn.dataset.eventTitle || "this event";
   if (!eventId || !calendarId) {return null;}
   return { eventId, calendarId, title };
+}
+
+function getExternalDeleteKey(payload) {
+  if (!payload?.calendarId || !payload?.eventId) {return "";}
+  return `${payload.calendarId}:${payload.eventId}`;
+}
+
+function getExternalDeletedKeySet() {
+  if (state.calendarExternalDeletedKeys instanceof Set) {
+    return state.calendarExternalDeletedKeys;
+  }
+  const normalized = Array.isArray(state.calendarExternalDeletedKeys)
+    ? new Set(state.calendarExternalDeletedKeys.filter(Boolean))
+    : new Set();
+  state.calendarExternalDeletedKeys = normalized;
+  return normalized;
+}
+
+function enqueueExternalDelete(task) {
+  return new Promise((resolve, reject) => {
+    externalDeleteQueue.push({ task, resolve, reject });
+    runNextExternalDelete();
+  });
+}
+
+function runNextExternalDelete() {
+  if (externalDeleteQueueRunning) {return;}
+  const next = externalDeleteQueue.shift();
+  if (!next) {return;}
+  externalDeleteQueueRunning = true;
+  let taskResult;
+  try {
+    taskResult = next.task();
+  } catch (error) {
+    externalDeleteQueueRunning = false;
+    next.reject(error);
+    runNextExternalDelete();
+    return;
+  }
+  Promise.resolve(taskResult)
+    .then(next.resolve, next.reject)
+    .finally(() => {
+      externalDeleteQueueRunning = false;
+      runNextExternalDelete();
+    });
 }
 
 function emitTasksUpdated() {
@@ -226,36 +273,49 @@ async function togglePinnedTaskEvent(eventMeta) {
 }
 
 export async function deleteExternalEvent(deleteBtn) {
-  if (externalDeletePending) {return;}
   const payload = getExternalDeletePayload(deleteBtn);
   if (!payload) {return;}
-  externalDeletePending = true;
+  const deleteKey = getExternalDeleteKey(payload);
+  if (!deleteKey || pendingExternalDeleteKeys.has(deleteKey)) {return;}
+  pendingExternalDeleteKeys.add(deleteKey);
+  getExternalDeletedKeySet().add(deleteKey);
   setDeleteButtonState(deleteBtn, true);
   showNotificationBanner("Deleting event...");
   const removed = removeExternalEvent(payload);
   if (removed) {
     renderCalendar();
   }
-  try {
-    const response = await sendExternalDeleteRequest(getRuntime(), payload);
-    if (!response?.ok) {
-      throw new Error(response?.error || "Failed to delete calendar event");
+  await enqueueExternalDelete(async () => {
+    try {
+      const response = await sendExternalDeleteRequest(getRuntime(), payload);
+      if (!response?.ok) {
+        throw new Error(response?.error || "Failed to delete calendar event");
+      }
+      const reRemoved = removeExternalEvent(payload);
+      if (reRemoved) {
+        renderCalendar();
+      }
+      markExternalEventsCacheDirty();
+      const shouldRefreshAfterDelete =
+        pendingExternalDeleteKeys.size === 1 && externalDeleteQueue.length === 0;
+      if (shouldRefreshAfterDelete) {
+        state.calendarExternalAllowFetch = true;
+      }
+      syncExternalEventsCacheInBackground(state.calendarExternalEvents);
+      showNotificationBanner("Event deleted.", { autoHideMs: TWO_THOUSAND_FIVE_HUNDRED });
+    } catch (error) {
+      getExternalDeletedKeySet().delete(deleteKey);
+      restoreExternalEvent(removed);
+      renderCalendar();
+      console.warn("Failed to delete Google Calendar event.", error);
+      showNotificationBanner(error?.message || "Failed to delete Google Calendar event.", {
+        autoHideMs: THREE_THOUSAND_FIVE_HUNDRED
+      });
+    } finally {
+      pendingExternalDeleteKeys.delete(deleteKey);
+      setDeleteButtonState(deleteBtn, false);
     }
-    markExternalEventsCacheDirty();
-    state.calendarExternalAllowFetch = true;
-    syncExternalEventsCacheInBackground(state.calendarExternalEvents);
-    showNotificationBanner("Event deleted.", { autoHideMs: TWO_THOUSAND_FIVE_HUNDRED });
-  } catch (error) {
-    restoreExternalEvent(removed);
-    renderCalendar();
-    console.warn("Failed to delete Google Calendar event.", error);
-    showNotificationBanner(error?.message || "Failed to delete Google Calendar event.", {
-      autoHideMs: THREE_THOUSAND_FIVE_HUNDRED
-    });
-  } finally {
-    externalDeletePending = false;
-    setDeleteButtonState(deleteBtn, false);
-  }
+  });
 }
 
 function buildNowIndicator() {

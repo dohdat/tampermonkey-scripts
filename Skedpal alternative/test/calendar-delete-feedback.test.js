@@ -36,11 +36,16 @@ class FakeElement {
   }
 }
 
-function buildDeleteButton() {
+function buildDeleteButton(options = {}) {
+  const {
+    eventId = "evt-1",
+    calendarId = "cal-1",
+    eventTitle = "Focus block"
+  } = options;
   const button = new FakeElement("button");
-  button.dataset.eventId = "evt-1";
-  button.dataset.calendarId = "cal-1";
-  button.dataset.eventTitle = "Focus block";
+  button.dataset.eventId = eventId;
+  button.dataset.calendarId = calendarId;
+  button.dataset.eventTitle = eventTitle;
   return button;
 }
 
@@ -119,6 +124,7 @@ describe("calendar external delete feedback", () => {
     ];
     state.calendarExternalRangeKey = "";
     state.calendarExternalRange = null;
+    state.calendarExternalDeletedKeys = new Set();
     state.calendarExternalAllowFetch = false;
   });
 
@@ -183,5 +189,149 @@ describe("calendar external delete feedback", () => {
     assert.strictEqual(state.calendarExternalEvents[0].id, "evt-1");
     assert.strictEqual(nodes.message.textContent, "Delete failed");
     assert.strictEqual(button.disabled, false);
+  });
+
+  it("queues rapid deletes and processes both requests", async () => {
+    const deleteCallbacks = [];
+    global.chrome.runtime.sendMessage = (_payload, callback) => {
+      deleteCallbacks.push(callback);
+    };
+
+    state.calendarExternalEvents = [
+      {
+        id: "evt-1",
+        calendarId: "cal-1",
+        title: "Focus block 1",
+        start: new Date("2026-01-08T09:00:00.000Z"),
+        end: new Date("2026-01-08T09:30:00.000Z")
+      },
+      {
+        id: "evt-2",
+        calendarId: "cal-1",
+        title: "Focus block 2",
+        start: new Date("2026-01-08T10:00:00.000Z"),
+        end: new Date("2026-01-08T10:30:00.000Z")
+      }
+    ];
+
+    const { deleteExternalEvent } = await import(
+      "../src/ui/calendar.js?test=calendar-delete-feedback-queue"
+    );
+    const firstButton = buildDeleteButton({ eventId: "evt-1", eventTitle: "Focus block 1" });
+    const secondButton = buildDeleteButton({ eventId: "evt-2", eventTitle: "Focus block 2" });
+
+    const firstDelete = deleteExternalEvent(firstButton);
+    const secondDelete = deleteExternalEvent(secondButton);
+
+    assert.strictEqual(state.calendarExternalEvents.length, 0);
+    assert.strictEqual(deleteCallbacks.length, 1);
+
+    state.calendarExternalEvents = [
+      {
+        id: "evt-2",
+        calendarId: "cal-1",
+        title: "Focus block 2",
+        start: new Date("2026-01-08T10:00:00.000Z"),
+        end: new Date("2026-01-08T10:30:00.000Z")
+      }
+    ];
+
+    deleteCallbacks[0]({ ok: true });
+    await firstDelete;
+
+    assert.strictEqual(deleteCallbacks.length, 2);
+
+    deleteCallbacks[1]({ ok: true });
+    await secondDelete;
+
+    assert.strictEqual(state.calendarExternalEvents.length, 0);
+    assert.strictEqual(state.calendarExternalDeletedKeys.has("cal-1:evt-2"), true);
+    assert.strictEqual(state.calendarExternalAllowFetch, true);
+    assert.strictEqual(firstButton.disabled, false);
+    assert.strictEqual(secondButton.disabled, false);
+  });
+
+  it("keeps the third event deleted when removing three events quickly", async () => {
+    const deleteCallbacks = [];
+    global.chrome.runtime.sendMessage = (_payload, callback) => {
+      deleteCallbacks.push(callback);
+    };
+
+    state.calendarExternalEvents = [
+      {
+        id: "evt-1",
+        calendarId: "cal-1",
+        title: "Focus block 1",
+        start: new Date("2026-01-08T09:00:00.000Z"),
+        end: new Date("2026-01-08T09:30:00.000Z")
+      },
+      {
+        id: "evt-2",
+        calendarId: "cal-1",
+        title: "Focus block 2",
+        start: new Date("2026-01-08T10:00:00.000Z"),
+        end: new Date("2026-01-08T10:30:00.000Z")
+      },
+      {
+        id: "evt-3",
+        calendarId: "cal-1",
+        title: "Focus block 3",
+        start: new Date("2026-01-08T11:00:00.000Z"),
+        end: new Date("2026-01-08T11:30:00.000Z")
+      }
+    ];
+
+    const { deleteExternalEvent } = await import(
+      "../src/ui/calendar.js?test=calendar-delete-feedback-queue-three"
+    );
+    const firstButton = buildDeleteButton({ eventId: "evt-1", eventTitle: "Focus block 1" });
+    const secondButton = buildDeleteButton({ eventId: "evt-2", eventTitle: "Focus block 2" });
+    const thirdButton = buildDeleteButton({ eventId: "evt-3", eventTitle: "Focus block 3" });
+
+    const firstDelete = deleteExternalEvent(firstButton);
+    const secondDelete = deleteExternalEvent(secondButton);
+    const thirdDelete = deleteExternalEvent(thirdButton);
+
+    assert.strictEqual(state.calendarExternalEvents.length, 0);
+    assert.strictEqual(deleteCallbacks.length, 1);
+    assert.strictEqual(state.calendarExternalDeletedKeys.has("cal-1:evt-3"), true);
+
+    state.calendarExternalEvents = [
+      {
+        id: "evt-3",
+        calendarId: "cal-1",
+        title: "Focus block 3",
+        start: new Date("2026-01-08T11:00:00.000Z"),
+        end: new Date("2026-01-08T11:30:00.000Z")
+      }
+    ];
+
+    deleteCallbacks[0]({ ok: true });
+    await firstDelete;
+    assert.strictEqual(deleteCallbacks.length, 2);
+
+    state.calendarExternalEvents = [
+      {
+        id: "evt-3",
+        calendarId: "cal-1",
+        title: "Focus block 3",
+        start: new Date("2026-01-08T11:00:00.000Z"),
+        end: new Date("2026-01-08T11:30:00.000Z")
+      }
+    ];
+
+    deleteCallbacks[1]({ ok: true });
+    await secondDelete;
+    assert.strictEqual(deleteCallbacks.length, 3);
+
+    deleteCallbacks[2]({ ok: true });
+    await thirdDelete;
+
+    assert.strictEqual(state.calendarExternalEvents.length, 0);
+    assert.strictEqual(state.calendarExternalDeletedKeys.has("cal-1:evt-3"), true);
+    assert.strictEqual(state.calendarExternalAllowFetch, true);
+    assert.strictEqual(firstButton.disabled, false);
+    assert.strictEqual(secondButton.disabled, false);
+    assert.strictEqual(thirdButton.disabled, false);
   });
 });

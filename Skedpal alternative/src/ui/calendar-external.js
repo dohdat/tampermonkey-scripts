@@ -152,11 +152,8 @@ function updateExternalLastSyncedAt(updatedAt) {
 
 function setExternalStateFromCache(entry) {
   if (!entry) {return;}
-  const treatedCalendarIds = getCalendarTaskCalendarIds(state.settingsCache);
   const events = Array.isArray(entry.events) ? entry.events : [];
-  state.calendarExternalEvents = events.filter(
-    (event) => !treatedCalendarIds.has(event.calendarId)
-  );
+  state.calendarExternalEvents = filterExternalEventsForDisplay(events);
   setExternalRange(entry.range);
   state.calendarExternalRangeKey = entry.key;
   updateExternalLastSyncedAt(entry.updatedAt);
@@ -193,6 +190,23 @@ function shouldSkipFetch(key) {
 function buildEventKey(event) {
   if (!event?.id || !event?.calendarId) {return "";}
   return `${event.calendarId}:${event.id}`;
+}
+
+function getDeletedExternalEventKeys() {
+  if (state.calendarExternalDeletedKeys instanceof Set) {
+    return state.calendarExternalDeletedKeys;
+  }
+  const normalized = Array.isArray(state.calendarExternalDeletedKeys)
+    ? new Set(state.calendarExternalDeletedKeys.filter(Boolean))
+    : new Set();
+  state.calendarExternalDeletedKeys = normalized;
+  return normalized;
+}
+
+function filterLocallyDeletedExternalEvents(events) {
+  const deletedKeys = getDeletedExternalEventKeys();
+  if (!deletedKeys.size) {return events || [];}
+  return (events || []).filter((event) => !deletedKeys.has(buildEventKey(event)));
 }
 
 function mergeEventUpdates(baseEvents, updates, deletedEvents, range) {
@@ -305,7 +319,9 @@ async function syncCalendarTasksFromEvents(events) {
 
 function filterExternalEventsForDisplay(events) {
   const treatedCalendarIds = getCalendarTaskCalendarIds(state.settingsCache);
-  return (events || []).filter((event) => !treatedCalendarIds.has(event.calendarId));
+  return filterLocallyDeletedExternalEvents(events).filter(
+    (event) => !treatedCalendarIds.has(event.calendarId)
+  );
 }
 
 function prepareExternalFetchState({
@@ -354,7 +370,7 @@ export function getExternalEventsForRange(range, viewMode = "week") {
   const key = buildCacheKey(buffered, viewMode, getSelectedCalendarIds());
   const matchesKey = key && state.calendarExternalRangeKey === key;
   const overlaps = hasExternalRangeOverlap(range);
-  const events = state.calendarExternalEvents || [];
+  const events = filterExternalEventsForDisplay(state.calendarExternalEvents || []);
   if (matchesKey || overlaps) {
     return filterEventsForRange(events, range);
   }
@@ -369,6 +385,7 @@ export function invalidateExternalEventsCache() {
   state.calendarExternalRange = null;
   state.calendarExternalCacheBustedAt = "";
   state.calendarExternalLastSyncedAt = "";
+  state.calendarExternalDeletedKeys = new Set();
   memoryCache.clear();
   pendingFetches.clear();
   fetchChain = Promise.resolve();
@@ -379,7 +396,7 @@ export function invalidateExternalEventsCache() {
 }
 
 export async function syncExternalEventsCache(events) {
-  state.calendarExternalEvents = coerceEvents(events || []);
+  state.calendarExternalEvents = filterExternalEventsForDisplay(coerceEvents(events || []));
   const key = state.calendarExternalRangeKey;
   if (!key || !state.calendarExternalRange) {return true;}
   const cached = await getCacheEntry(key);
@@ -431,12 +448,13 @@ async function applyExternalEventsUpdate({
   const mergedEvents = response.isIncremental
     ? mergeEventUpdates(baseEvents, updates, deletedEvents, fetchRange)
     : updates.filter((event) => event.end > fetchRange.start && event.start < fetchRange.end);
+  const filteredEvents = filterLocallyDeletedExternalEvents(mergedEvents);
   const entry = {
     key: existingEntry?.key || buildCacheKey(fetchRange, viewMode, getSelectedCalendarIds()),
     viewMode,
     calendarIdsKey,
     range: fetchRange,
-    events: mergedEvents,
+    events: filteredEvents,
     syncTokensByCalendar: response.syncTokensByCalendar || {},
     updatedAt
   };

@@ -425,6 +425,23 @@ describe("google calendar helpers", () => {
     );
   });
 
+  it("treats deleted and missing delete responses as successful", async () => {
+    installChrome();
+    globalThis.fetch = async () => ({
+      ok: false,
+      status: 410,
+      text: async () => "gone"
+    });
+    assert.strictEqual(await deleteCalendarEvent("cal-1", "evt-1"), true);
+
+    globalThis.fetch = async () => ({
+      ok: false,
+      status: 404,
+      text: async () => "missing"
+    });
+    assert.strictEqual(await deleteCalendarEvent("cal-1", "evt-1"), true);
+  });
+
   it("updates calendar events", async () => {
     installChrome();
     let capturedUrl = "";

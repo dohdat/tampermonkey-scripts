@@ -4,6 +4,7 @@ import {
   GOOGLE_API_BASE,
   HTTP_STATUS_GONE,
   HTTP_STATUS_FORBIDDEN,
+  HTTP_STATUS_NOT_FOUND,
   HTTP_STATUS_UNAUTHORIZED,
   THREE,
   TWO_THOUSAND_FIVE_HUNDRED
@@ -315,6 +316,9 @@ export async function deleteCalendarEvent(calendarId, eventId) {
   }
   const url = `${GOOGLE_API_BASE}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`;
   const response = await fetchWithAuth(url, { method: "DELETE" });
+  if (response.status === HTTP_STATUS_GONE || response.status === HTTP_STATUS_NOT_FOUND) {
+    return true;
+  }
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`Google Calendar delete error (${response.status}): ${text}`);

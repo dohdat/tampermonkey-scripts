@@ -35,7 +35,7 @@ import { HOUR_HEIGHT, formatEventTimeRange } from "./calendar-render.js";
 
 const DRAG_STEP_MINUTES = DEFAULT_TASK_MIN_BLOCK_MIN;
 const DRAG_ACTIVATION_DELAY = EIGHTY;
-const DRAG_CANCEL_DISTANCE = EIGHT;
+const DRAG_ACTIVATION_DISTANCE = EIGHT;
 let dragState = null;
 let pendingDrag = null;
 let resizeState = null;
@@ -146,6 +146,14 @@ function clearResizeState() {
   resizeState = null;
 }
 
+function clearPendingDrag() {
+  if (!pendingDrag) {return;}
+  if (pendingDrag.timer) {
+    clearTimeout(pendingDrag.timer);
+  }
+  pendingDrag = null;
+}
+
 function beginCalendarDrag(pending) {
   if (!pending || pending !== pendingDrag) {return;}
   const { block, dayCol, eventMeta, pointerId, lastClientY } = pending;
@@ -170,7 +178,7 @@ function beginCalendarDrag(pending) {
     moved: false,
     grabOffsetMinutes
   };
-  pendingDrag = null;
+  clearPendingDrag();
   block.classList.add("calendar-event--dragging");
   dayCol.classList.add("calendar-day-col--drag-target");
   if (typeof block.setPointerCapture === "function") {
@@ -179,10 +187,7 @@ function beginCalendarDrag(pending) {
 }
 
 function beginCalendarResize(event, handle) {
-  if (pendingDrag?.timer) {
-    clearTimeout(pendingDrag.timer);
-    pendingDrag = null;
-  }
+  clearPendingDrag();
   const block = handle?.closest?.(".calendar-event");
   if (!block || event.button !== 0) {return;}
   const dayCol = block.closest?.(".calendar-day-col");
@@ -231,9 +236,7 @@ function scheduleCalendarDrag(event) {
   if (!dayCol || !dayCol.dataset.day) {return;}
   const eventMeta = getEventMetaFromBlock(target);
   if (!eventMeta) {return;}
-  if (pendingDrag?.timer) {
-    clearTimeout(pendingDrag.timer);
-  }
+  clearPendingDrag();
   pendingDrag = {
     block: target,
     dayCol,
@@ -254,9 +257,9 @@ function updatePendingDrag(event) {
   const dx = pendingDrag.lastClientX - pendingDrag.startClientX;
   const dy = pendingDrag.lastClientY - pendingDrag.startClientY;
   const distance = Math.hypot(dx, dy);
-  if (distance > DRAG_CANCEL_DISTANCE) {
-    clearTimeout(pendingDrag.timer);
-    pendingDrag = null;
+  if (distance >= DRAG_ACTIVATION_DISTANCE) {
+    beginCalendarDrag(pendingDrag);
+    updateActiveDrag(event);
   }
 }
 
@@ -270,6 +273,7 @@ function updateActiveDrag(event) {
     nextDayCol.classList.add("calendar-day-col--drag-target");
     nextDayCol.appendChild(dragState.block);
     dragState.dayCol = nextDayCol;
+    dragState.moved = true;
   }
   const rect = nextDayCol.getBoundingClientRect();
   const y = clampMinutes(event.clientY - rect.top, 0, rect.height);
@@ -326,10 +330,7 @@ function handleCalendarPointerMove(event) {
 }
 
 async function handleCalendarDragEnd() {
-  if (pendingDrag?.timer) {
-    clearTimeout(pendingDrag.timer);
-    pendingDrag = null;
-  }
+  clearPendingDrag();
   if (!dragState) {return;}
   const { eventMeta, dayCol, minutes, durationMinutes, originDayKey, originMinutes } =
     dragState;
@@ -486,6 +487,9 @@ export function ensureCalendarDragHandlers(options = {}) {
   window.addEventListener("pointerup", handleCalendarPointerEnd);
   window.addEventListener("pointercancel", handleCalendarPointerEnd);
   calendarDragCleanup = () => {
+    clearPendingDrag();
+    clearDragState();
+    clearResizeState();
     calendarGrid.removeEventListener("pointerdown", handleCalendarPointerDown);
     calendarGrid.removeEventListener("click", handleCalendarEventClick);
     window.removeEventListener("pointermove", handleCalendarPointerMove);

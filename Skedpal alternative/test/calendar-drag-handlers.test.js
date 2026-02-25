@@ -255,6 +255,82 @@ describe("calendar drag handlers", () => {
     assert.strictEqual(calendarGrid.dataset.dragReady, "false");
   });
 
+  it("activates drag on fast movement before the delay timer fires", async () => {
+    const { domRefs } = await import("../src/ui/constants.js");
+    const { state } = await import("../src/ui/state/page-state.js");
+    const calendarGrid = new FakeElement("div");
+    calendarGrid.setAttribute("data-test-skedpal", "calendar-grid");
+
+    const dayColA = new FakeElement("div");
+    dayColA.dataset.day = "2026-02-01";
+    dayColA.getBoundingClientRect = () => ({ top: 0, height: 240 });
+    dayColA.appendChild = () => {};
+
+    const dayColB = new FakeElement("div");
+    dayColB.dataset.day = "2026-02-02";
+    dayColB.getBoundingClientRect = () => ({ top: 0, height: 240 });
+    dayColB.appendChild = () => {};
+
+    const block = new FakeElement("div");
+    block.dataset.eventSource = "task";
+    block.dataset.eventTaskId = "missing-task";
+    block.dataset.eventStart = "2026-02-01T10:00:00.000Z";
+    block.dataset.eventEnd = "2026-02-01T11:00:00.000Z";
+    block.closest = (selector) => (selector === ".calendar-day-col" ? dayColA : null);
+    block.setPointerCapture = () => {};
+
+    const pointerTarget = {
+      closest: (selector) => {
+        if (selector === ".calendar-event") {return block;}
+        return null;
+      }
+    };
+
+    global.document.elementFromPoint = () => ({
+      closest: (selector) => (selector === ".calendar-day-col" ? dayColB : null)
+    });
+    domRefs.calendarGrid = calendarGrid;
+    state.tasksCache = [];
+
+    const {
+      ensureCalendarDragHandlers,
+      cleanupCalendarDragHandlers
+    } = await import("../src/ui/calendar-drag.js?ui=calendar-drag-fast-move");
+
+    let renderCount = 0;
+    let clickCount = 0;
+    ensureCalendarDragHandlers({
+      onRender: () => {
+        renderCount += 1;
+      },
+      onEventClick: () => {
+        clickCount += 1;
+      }
+    });
+
+    const pointerDown = [...calendarGrid._handlers.get("pointerdown")][0];
+    const pointerMove = [...global.window._handlers.get("pointermove")][0];
+    const pointerUp = [...global.window._handlers.get("pointerup")][0];
+    const click = [...calendarGrid._handlers.get("click")][0];
+
+    Date.now = () => 1500;
+    pointerDown({
+      target: pointerTarget,
+      button: 0,
+      pointerId: 1,
+      clientX: 10,
+      clientY: 100
+    });
+    pointerMove({ clientX: 10, clientY: 180 });
+    await pointerUp();
+    click({});
+
+    assert.ok(renderCount > 0);
+    assert.strictEqual(clickCount, 0);
+
+    cleanupCalendarDragHandlers();
+  });
+
   it("runs resize lifecycle and allows click after stale drag timestamp", async () => {
     const { domRefs } = await import("../src/ui/constants.js");
     const { state } = await import("../src/ui/state/page-state.js");

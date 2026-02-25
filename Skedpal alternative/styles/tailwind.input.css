@@ -455,7 +455,7 @@ body.modal-open{overflow:hidden}
 .calendar-now-dot{position:absolute;left:var(--size-4px);width:var(--size-8px);height:var(--size-8px);border-radius:var(--size-999px);background:var(--color-red-400);box-shadow:var(--shadow-now-dot);transform:translateY(-var(--size-4px))}
 .calendar-day-col--drag-target{box-shadow:inset 0 0 0 var(--size-1px) rgba(var(--color-lime-400-rgb), .45)}
 .calendar-event{position:absolute;left:var(--size-8px);right:var(--size-8px);padding:var(--size-6px) var(--size-8px);border-radius:var(--size-10px);background:rgba(var(--color-sky-400-rgb), .12);border:var(--size-1px) solid rgba(var(--color-sky-400-rgb), .4);color:var(--color-slate-200);box-shadow:var(--shadow-float);overflow:hidden;cursor:grab;user-select:none;touch-action:none}
-.calendar-event--dragging{cursor:grabbing;opacity:.88;z-index:var(--z-drag);box-shadow:var(--shadow-float-lg)}
+.calendar-event--dragging{cursor:grabbing;opacity:.88;z-index:var(--z-drag);box-shadow:var(--shadow-float-lg);will-change:top}
 .calendar-event--external{background:rgba(var(--color-amber-400-rgb), .14);border-color:rgba(var(--color-amber-400-rgb), .5);color:var(--color-amber-300);cursor:grab;touch-action:none}
 .calendar-event--past{opacity:.55}
 .calendar-event--external .calendar-event-time{color:currentColor}
@@ -464,7 +464,7 @@ body.modal-open{overflow:hidden}
 .calendar-event--pinnable .calendar-event-title{padding-right:var(--space-1-6)}
 .calendar-event--draft{background:rgba(var(--color-lime-400-rgb), .18);border-color:rgba(var(--color-lime-400-rgb), .6);color:var(--color-lime-200);cursor:pointer}
 .calendar-event--draft .calendar-event-time{color:var(--color-lime-200)}
-.calendar-event--resizing{cursor:ns-resize}
+.calendar-event--resizing{cursor:ns-resize;will-change:height}
 .calendar-event-resize-handle{position:absolute;left:var(--size-6px);right:var(--size-6px);bottom:var(--size-4px);height:var(--size-6px);border-radius:var(--size-999px);background:rgba(var(--color-slate-200-rgb), .22);cursor:ns-resize}
 .calendar-event-resize-handle:hover{background:rgba(var(--color-lime-400-rgb), .35)}
 .calendar-event-delete{position:absolute;top:var(--space-0-35);right:var(--space-0-35);display:inline-flex;align-items:center;justify-content:center;width:var(--size-20px);height:var(--size-20px);border-radius:var(--size-9999px);border:var(--size-1px) solid rgba(var(--color-slate-700-rgb), .7);background:rgba(var(--color-slate-900-rgb), .6);color:inherit;opacity:.7;transition:border-color var(--motion-base) ease,opacity var(--motion-base) ease}

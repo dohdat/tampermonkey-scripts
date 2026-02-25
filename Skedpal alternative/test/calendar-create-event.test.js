@@ -171,6 +171,39 @@ describe("calendar create modal", () => {
     assert.strictEqual(domRefs.calendarGrid.children[0].children.length, 1);
   });
 
+  it("prefills edit mode fields for existing external events", async () => {
+    const { openCalendarEditModal } = await import("../src/ui/calendar-create-event.js");
+    const opened = await openCalendarEditModal({
+      id: "evt-edit-1",
+      calendarId: "cal-1",
+      title: "Planning sync",
+      start: new Date(2026, 0, 8, 13, 15, 0),
+      end: new Date(2026, 0, 8, 14, 0, 0)
+    });
+    assert.strictEqual(opened, true);
+    assert.strictEqual(domRefs.calendarCreateDate.value, "2026-01-08");
+    assert.strictEqual(domRefs.calendarCreateTime.value, "13:15");
+    assert.strictEqual(domRefs.calendarCreateDuration.value, "45");
+    assert.strictEqual(domRefs.calendarCreateTitle.value, "Planning sync");
+    assert.strictEqual(domRefs.calendarCreateCalendarSelect.value, "cal-1");
+    assert.strictEqual(domRefs.calendarCreateCalendarSelect.disabled, true);
+    assert.strictEqual(domRefs.calendarCreateModal.classList.contains("hidden"), false);
+  });
+
+  it("strips UID and meeting URLs from edit mode title prefill", async () => {
+    const { openCalendarEditModal } = await import("../src/ui/calendar-create-event.js");
+    const opened = await openCalendarEditModal({
+      id: "evt-edit-2",
+      calendarId: "cal-1",
+      title:
+        "[Cisco] EA Sprint Planning - US #UID:AAkBOQAICN50ANGwQAAuAAAAAB2EAxGqZhHNm8gAqgAvxFoNAC3eQszzo15FrZcFnjy0P7YAAb0eV2oAABA%3D https://cisco.webex.com/cisco/j.php?MTID=mde24f6b273edfb56168f11e586fd4531",
+      start: new Date(2026, 0, 8, 13, 15, 0),
+      end: new Date(2026, 0, 8, 14, 0, 0)
+    });
+    assert.strictEqual(opened, true);
+    assert.strictEqual(domRefs.calendarCreateTitle.value, "[Cisco] EA Sprint Planning - US");
+  });
+
   it("prefers a primary calendar when no selection exists", async () => {
     global.chrome.runtime.sendMessage = (_message, callback) => {
       callback({
@@ -448,6 +481,70 @@ describe("calendar create modal", () => {
     };
     await domRefs.calendarCreateForm._listeners.submit(submitEvent);
     assert.strictEqual(state.calendarExternalEvents.length, 1);
+  });
+
+  it("updates existing external events in edit mode", async () => {
+    const { initCalendarCreateModal, openCalendarEditModal } =
+      await import("../src/ui/calendar-create-event.js");
+    initCalendarCreateModal();
+    const submitEvent = { preventDefault: () => {} };
+    state.calendarExternalEvents = [
+      {
+        id: "evt-edit-1",
+        calendarId: "cal-1",
+        title: "Planning sync",
+        start: new Date(2026, 0, 8, 13, 15, 0),
+        end: new Date(2026, 0, 8, 14, 0, 0)
+      }
+    ];
+
+    let updateMessage = null;
+    global.chrome.runtime.sendMessage = (message, callback) => {
+      if (message.type === "calendar-list") {
+        callback({
+          ok: true,
+          calendars: [{ id: "cal-1", summary: "Work", primary: true }]
+        });
+        return;
+      }
+      if (message.type === "calendar-update-event") {
+        updateMessage = message;
+        callback({ ok: true });
+        return;
+      }
+      callback({ ok: false, error: "Unexpected message" });
+    };
+
+    const opened = await openCalendarEditModal({
+      id: "evt-edit-1",
+      calendarId: "cal-1",
+      title: "Planning sync",
+      start: new Date(2026, 0, 8, 13, 15, 0),
+      end: new Date(2026, 0, 8, 14, 0, 0)
+    });
+    assert.strictEqual(opened, true);
+
+    domRefs.calendarCreateTitle.value = "Planning sync updated";
+    domRefs.calendarCreateDate.value = "2026-01-08";
+    domRefs.calendarCreateTime.value = "14:30";
+    domRefs.calendarCreateDuration.value = "30";
+    await domRefs.calendarCreateForm._listeners.submit(submitEvent);
+
+    assert.ok(updateMessage);
+    assert.strictEqual(updateMessage.calendarId, "cal-1");
+    assert.strictEqual(updateMessage.eventId, "evt-edit-1");
+    assert.strictEqual(updateMessage.title, "Planning sync updated");
+    assert.strictEqual(state.calendarExternalEvents[0].title, "Planning sync updated");
+    assert.strictEqual(
+      state.calendarExternalEvents[0].start.toISOString(),
+      new Date("2026-01-08T14:30:00").toISOString()
+    );
+    assert.strictEqual(
+      state.calendarExternalEvents[0].end.toISOString(),
+      new Date("2026-01-08T15:00:00").toISOString()
+    );
+    assert.strictEqual(domRefs.calendarCreateModal.classList.contains("hidden"), true);
+    assert.strictEqual(domRefs.calendarCreateCalendarSelect.disabled, false);
   });
 
   it("handles missing time inputs and response payloads without events", async () => {

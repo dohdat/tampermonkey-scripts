@@ -490,7 +490,10 @@ function handleCalendarUpdateMessage(message, sendResponse) {
   const eventId = message.eventId || "";
   const start = message.start || "";
   const end = message.end || "";
-  updateCalendarEvent(calendarId, eventId, start, end)
+  const updateOptions = Object.prototype.hasOwnProperty.call(message || {}, "title")
+    ? { title: message.title || "" }
+    : {};
+  updateCalendarEvent(calendarId, eventId, start, end, updateOptions)
     .then(() => sendResponse({ ok: true }))
     .catch((error) => sendResponse({ ok: false, error: error.message }));
   return true;

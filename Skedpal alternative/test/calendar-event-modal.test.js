@@ -601,8 +601,8 @@ describe("calendar event modal", () => {
     assert.strictEqual(refs.eyebrow.textContent, "Google Calendar");
     assert.strictEqual(refs.eyebrow.className.includes("hidden"), false);
     assert.strictEqual(refs.eyebrow.hidden, false);
-    assert.strictEqual(refs.toolbar.className.includes("hidden"), true);
-    assert.strictEqual(refs.toolbar.hidden, true);
+    assert.strictEqual(refs.toolbar.className.includes("hidden"), false);
+    assert.strictEqual(refs.toolbar.hidden, false);
     assert.ok(refs.actions[0].className.includes("hidden"));
     assert.ok(refs.actions[1].className.includes("hidden"));
     assert.ok(refs.actions[2].className.includes("hidden"));

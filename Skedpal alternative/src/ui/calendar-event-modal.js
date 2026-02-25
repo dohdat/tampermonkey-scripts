@@ -366,7 +366,7 @@ export function openExternalEventModal(event, anchorEl = null) {
   activeExternalEvent = event;
   activeExternalAnchor = anchorEl;
   setModalEyebrow(CALENDAR_EVENT_MODAL_EXTERNAL_EYEBROW);
-  setModalToolbarVisibility(false);
+  setModalToolbarVisibility(true);
   const actionButtons = getCalendarEventActionButtons(calendarEventModal);
   setActionButtonVisibility(actionButtons, {
     complete: false,
@@ -489,7 +489,19 @@ function handleCalendarEventActionClick(event) {
   handler?.();
 }
 
-function handleExternalEditAction() {
+async function handleExternalEditAction() {
+  if (activeExternalEvent) {
+    try {
+      const { openCalendarEditModal } = await import("./calendar-create-event.js");
+      const opened = await openCalendarEditModal(activeExternalEvent);
+      if (opened) {
+        closeCalendarEventModal();
+        return;
+      }
+    } catch (error) {
+      console.warn("Failed to open calendar event edit modal.", error);
+    }
+  }
   const link = resolveExternalEventLink();
   if (link && typeof window !== "undefined") {
     window.open(link, "_blank", "noopener,noreferrer");

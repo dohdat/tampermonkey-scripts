@@ -131,6 +131,28 @@ describe("calendar external drag helpers", () => {
     assert.strictEqual(captured.end, payload.end.toISOString());
   });
 
+  it("sends update titles when provided", async () => {
+    const payload = {
+      calendarId: "cal-1",
+      eventId: "evt-1",
+      title: "Edited event title",
+      start: new Date("2026-01-07T10:00:00Z"),
+      end: new Date("2026-01-07T11:00:00Z")
+    };
+    let captured = null;
+    const runtime = {
+      lastError: null,
+      sendMessage: (msg, cb) => {
+        captured = msg;
+        cb({ ok: true });
+      }
+    };
+    const response = await sendExternalUpdateRequest(runtime, payload);
+    assert.deepStrictEqual(response, { ok: true });
+    assert.strictEqual(captured.type, "calendar-update-event");
+    assert.strictEqual(captured.title, "Edited event title");
+  });
+
   it("rejects delete requests without a runtime", async () => {
     const payload = { calendarId: "cal-1", eventId: "evt-1" };
     await assert.rejects(

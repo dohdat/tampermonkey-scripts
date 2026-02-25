@@ -32,23 +32,24 @@ export async function sendExternalUpdateRequest(runtime, payload) {
   if (!runtime?.sendMessage) {
     throw new Error("Chrome runtime unavailable for calendar update.");
   }
+  const message = {
+    type: "calendar-update-event",
+    calendarId: payload.calendarId,
+    eventId: payload.eventId,
+    start: payload.start.toISOString(),
+    end: payload.end.toISOString()
+  };
+  if (Object.prototype.hasOwnProperty.call(payload || {}, "title")) {
+    message.title = payload.title || "";
+  }
   return new Promise((resolve, reject) => {
-    runtime.sendMessage(
-      {
-        type: "calendar-update-event",
-        calendarId: payload.calendarId,
-        eventId: payload.eventId,
-        start: payload.start.toISOString(),
-        end: payload.end.toISOString()
-      },
-      (resp) => {
-        if (runtime.lastError) {
-          reject(new Error(runtime.lastError.message));
-        } else {
-          resolve(resp);
-        }
+    runtime.sendMessage(message, (resp) => {
+      if (runtime.lastError) {
+        reject(new Error(runtime.lastError.message));
+      } else {
+        resolve(resp);
       }
-    );
+    });
   });
 }
 

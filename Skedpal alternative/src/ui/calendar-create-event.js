@@ -15,7 +15,10 @@ import {
 import { state } from "./state/page-state.js";
 import { getDateFromDayKey, clampMinutes } from "./calendar-utils.js";
 import { showNotificationBanner } from "./notifications.js";
-import { sendExternalCreateRequest } from "./calendar-external-events.js";
+import {
+  sendExternalCreateRequest,
+  sendExternalUpdateRequest
+} from "./calendar-external-events.js";
 import { markExternalEventsCacheDirty, syncExternalEventsCache } from "./calendar-external.js";
 import { HOUR_HEIGHT, formatEventTimeRange } from "./calendar-render.js";
 import {
@@ -25,10 +28,13 @@ import {
 
 const DEFAULT_DURATION_MIN = SIXTY;
 const MIN_DURATION_MIN = DEFAULT_TASK_MIN_BLOCK_MIN;
+const URL_PATTERN = /https?:\/\/\S+/g;
+const UID_PATTERN = /#?UID:[^\s]+/g;
 let calendarCreateCleanup = null;
 let calendarRenderHandler = null;
 let draftBlock = null;
 let draftDayKey = "";
+let editExternalEventMeta = null;
 
 function getRuntime() {
   return globalThis.chrome?.runtime || null;
@@ -39,6 +45,11 @@ function toInputDate(date) {
   const month = `${date.getMonth() + 1}`.padStart(TWO, "0");
   const day = `${date.getDate()}`.padStart(TWO, "0");
   return `${year}-${month}-${day}`;
+}
+
+function getDayKeyFromDate(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {return "";}
+  return toInputDate(date);
 }
 
 function toInputTime(minutes) {
@@ -57,6 +68,63 @@ function normalizeDuration(value) {
   const duration = Number(value);
   if (!Number.isFinite(duration)) {return DEFAULT_DURATION_MIN;}
   return Math.max(MIN_DURATION_MIN, Math.round(duration));
+}
+
+function toValidDate(value) {
+  const date = value instanceof Date ? value : new Date(value || "");
+  if (Number.isNaN(date.getTime())) {return null;}
+  return date;
+}
+
+function resolveExternalEventRange(event) {
+  const start = toValidDate(event?.start);
+  const end = toValidDate(event?.end);
+  if (!start || !end || end <= start) {return null;}
+  return { start, end };
+}
+
+function resolveExternalEventIdentity(event) {
+  const eventId = event?.id || "";
+  const calendarId = event?.calendarId || "";
+  if (!eventId || !calendarId) {return null;}
+  return { eventId, calendarId };
+}
+
+function sanitizeExternalEditTitle(value) {
+  const title = String(value || "");
+  return title.replace(UID_PATTERN, "").replace(URL_PATTERN, "").trim();
+}
+
+function resolveEditModalDefaults(event) {
+  if (!event) {return null;}
+  const range = resolveExternalEventRange(event);
+  if (!range) {return null;}
+  const identity = resolveExternalEventIdentity(event);
+  if (!identity) {return null;}
+  const { start, end } = range;
+  const dayKey = getDayKeyFromDate(start);
+  if (!dayKey) {return null;}
+  const startMinutes = start.getHours() * MINUTES_PER_HOUR + start.getMinutes();
+  const durationMinutes = normalizeDuration((end.getTime() - start.getTime()) / MS_PER_MINUTE);
+  return {
+    ...identity,
+    title: sanitizeExternalEditTitle(event.title),
+    dayKey,
+    startMinutes,
+    durationMinutes
+  };
+}
+
+function setCalendarSelectDisabled(disabled) {
+  if (!domRefs.calendarCreateCalendarSelect) {return;}
+  domRefs.calendarCreateCalendarSelect.disabled = Boolean(disabled);
+}
+
+function getActiveCalendarId() {
+  if (editExternalEventMeta?.calendarId) {
+    return editExternalEventMeta.calendarId;
+  }
+  return domRefs.calendarCreateCalendarSelect?.value || "";
 }
 
 function getCalendarGrid() {
@@ -209,6 +277,8 @@ function applyModalDefaults(options) {
 export async function openCalendarCreateModal(options) {
   const { calendarCreateModal, calendarCreateTitle, calendarCreateCalendarSelect } = domRefs;
   if (!calendarCreateModal) {return;}
+  editExternalEventMeta = null;
+  setCalendarSelectDisabled(false);
   applyModalDefaults(options);
   if (calendarCreateTitle) {
     calendarCreateTitle.value = "";
@@ -227,8 +297,50 @@ export async function openCalendarCreateModal(options) {
   }, FIFTY);
 }
 
+export async function openCalendarEditModal(event) {
+  const { calendarCreateModal, calendarCreateTitle, calendarCreateCalendarSelect } = domRefs;
+  if (!calendarCreateModal || !event) {return false;}
+  const defaults = resolveEditModalDefaults(event);
+  if (!defaults) {return false;}
+  editExternalEventMeta = {
+    eventId: defaults.eventId,
+    calendarId: defaults.calendarId
+  };
+  setCalendarSelectDisabled(true);
+  applyModalDefaults({
+    dayKey: defaults.dayKey,
+    startMinutes: defaults.startMinutes
+  });
+  if (domRefs.calendarCreateDuration) {
+    domRefs.calendarCreateDuration.value = String(defaults.durationMinutes);
+  }
+  if (calendarCreateTitle) {
+    calendarCreateTitle.value = defaults.title;
+  }
+  renderDraftBlock({
+    dayKey: defaults.dayKey,
+    startMinutes: defaults.startMinutes,
+    durationMinutes: defaults.durationMinutes
+  });
+  await loadEditCalendarOptions(calendarCreateCalendarSelect, defaults.calendarId);
+  calendarCreateModal.classList.remove("hidden");
+  setTimeout(() => {
+    calendarCreateTitle?.focus?.();
+  }, FIFTY);
+  return true;
+}
+
+async function loadEditCalendarOptions(select, calendarId) {
+  const calendars = await requestCalendarList();
+  setCalendarOptions(select, calendars, calendarId);
+  if (!select) {return;}
+  select.value = calendarId || select.value;
+}
+
 function closeCalendarCreateModal() {
   const { calendarCreateModal } = domRefs;
+  editExternalEventMeta = null;
+  setCalendarSelectDisabled(false);
   if (!calendarCreateModal) {return;}
   calendarCreateModal.classList.add("hidden");
   clearDraftBlock();
@@ -265,12 +377,11 @@ function handleCalendarCreateKeydown(event) {
 function buildCreatePayload() {
   const {
     calendarCreateTitle,
-    calendarCreateCalendarSelect,
     calendarCreateDate,
     calendarCreateTime,
     calendarCreateDuration
   } = domRefs;
-  const calendarId = calendarCreateCalendarSelect?.value || "";
+  const calendarId = getActiveCalendarId();
   if (!calendarId) {
     return { error: "Select a calendar first." };
   }
@@ -310,12 +421,38 @@ function applyCreatedEvent(created) {
   ];
 }
 
+function applyUpdatedEvent(payload) {
+  const eventId = payload?.eventId || "";
+  const calendarId = payload?.calendarId || "";
+  if (!eventId || !calendarId) {return;}
+  const current = state.calendarExternalEvents || [];
+  state.calendarExternalEvents = current.map((event) => {
+    if (event.id !== eventId || event.calendarId !== calendarId) {
+      return event;
+    }
+    return {
+      ...event,
+      title: payload.title || "",
+      start: payload.start,
+      end: payload.end
+    };
+  });
+}
+
 async function submitCreatePayload(payload) {
   const response = await sendExternalCreateRequest(getRuntime(), payload);
   if (!response?.ok || !response?.event) {
     throw new Error(response?.error || "Calendar event creation failed.");
   }
   return response.event;
+}
+
+async function submitUpdatePayload(payload) {
+  const response = await sendExternalUpdateRequest(getRuntime(), payload);
+  if (!response?.ok) {
+    throw new Error(response?.error || "Calendar event update failed.");
+  }
+  return response;
 }
 
 async function handleCalendarCreateSubmit(event) {
@@ -325,18 +462,35 @@ async function handleCalendarCreateSubmit(event) {
     showNotificationBanner(payload.error);
     return;
   }
-  showNotificationBanner("Creating event...");
+  const isEditMode = Boolean(editExternalEventMeta?.eventId && editExternalEventMeta?.calendarId);
+  showNotificationBanner(isEditMode ? "Saving event..." : "Creating event...");
   try {
-    const created = await submitCreatePayload(payload);
-    applyCreatedEvent(created);
+    if (isEditMode) {
+      await submitUpdatePayload({
+        ...payload,
+        eventId: editExternalEventMeta.eventId
+      });
+      applyUpdatedEvent({
+        ...payload,
+        eventId: editExternalEventMeta.eventId
+      });
+    } else {
+      const created = await submitCreatePayload(payload);
+      applyCreatedEvent(created);
+    }
     markExternalEventsCacheDirty();
     await syncExternalEventsCache(state.calendarExternalEvents);
     calendarRenderHandler?.();
     closeCalendarCreateModal();
-    showNotificationBanner("Event created.", { autoHideMs: TWO_THOUSAND_FIVE_HUNDRED });
+    showNotificationBanner(isEditMode ? "Event updated." : "Event created.", {
+      autoHideMs: TWO_THOUSAND_FIVE_HUNDRED
+    });
   } catch (error) {
-    console.warn("Failed to create Google Calendar event.", error);
-    showNotificationBanner(error?.message || "Failed to create Google Calendar event.", {
+    const defaultMessage = isEditMode
+      ? "Failed to update Google Calendar event."
+      : "Failed to create Google Calendar event.";
+    console.warn(defaultMessage, error);
+    showNotificationBanner(error?.message || defaultMessage, {
       autoHideMs: THREE_THOUSAND_FIVE_HUNDRED
     });
   }

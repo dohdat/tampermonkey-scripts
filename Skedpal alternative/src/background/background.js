@@ -29,7 +29,7 @@ import {
   updateCalendarEvent,
   createCalendarEvent,
   fetchCalendarList,
-  fetchFreeBusy,
+  fetchTimedBusy,
   clearCachedAuthTokens
 } from "./google-calendar.js";
 import {
@@ -380,7 +380,7 @@ async function runReschedule() {
   horizonEnd.setHours(END_OF_DAY_HOUR, END_OF_DAY_MINUTE, END_OF_DAY_SECOND, END_OF_DAY_MS);
   if (!Array.isArray(calendarIds) || calendarIds.length) {
     try {
-      busy = await fetchFreeBusy({
+      busy = await fetchTimedBusy({
         timeMin: now.toISOString(),
         timeMax: horizonEnd.toISOString(),
         calendarIds

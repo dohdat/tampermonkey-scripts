@@ -353,7 +353,10 @@ function updateNowIndicator() {
   const now = new Date();
   if (now < range.start || now >= range.end) {return;}
   const todayKey = getDayKey(now);
-  const todayCol = calendarGrid.querySelector(`[data-day="${todayKey}"]`);
+  const todayCol =
+    [...calendarGrid.querySelectorAll('[data-test-skedpal="calendar-day-col"]')].find(
+      (col) => col?.dataset?.day === todayKey
+    ) || null;
   if (!todayCol) {return;}
   const indicator = buildNowIndicator();
   positionNowIndicator(indicator, now);

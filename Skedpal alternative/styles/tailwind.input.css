@@ -443,6 +443,9 @@ body.modal-open{overflow:hidden}
 .calendar-grid-spacer{border-right:var(--size-1px) solid rgba(var(--color-slate-600-rgb), .5)}
 .calendar-day-header{padding:var(--size-10px) var(--size-8px);text-align:center;font-size:var(--font-size-xs);font-weight:var(--font-weight-semibold);color:var(--color-slate-200);border-right:var(--size-1px) solid rgba(var(--color-slate-600-rgb), .35)}
 .calendar-day-header--today{color:var(--color-lime-400)}
+.calendar-all-day-row{display:grid;grid-template-columns:var(--size-90px) repeat(7,minmax(0,1fr));border-bottom:var(--size-1px) solid rgba(var(--color-slate-600-rgb), .4);background:rgba(var(--color-slate-800-rgb), .72)}
+.calendar-all-day-label{display:flex;align-items:flex-start;justify-content:flex-end;padding:var(--size-8px);font-size:var(--font-size-xxs);font-weight:var(--font-weight-semibold);letter-spacing:var(--letter-spacing-wide);text-transform:uppercase;color:var(--color-slate-400);border-right:var(--size-1px) solid rgba(var(--color-slate-600-rgb), .35)}
+.calendar-all-day-col{min-height:var(--size-40px);padding:var(--size-6px) var(--size-8px);display:flex;flex-direction:column;gap:var(--space-0-25);border-right:var(--size-1px) solid rgba(var(--color-slate-600-rgb), .25)}
 .calendar-grid-body{display:grid;grid-template-columns:var(--size-90px) 1fr;min-height:calc(var(--calendar-hour-height) * 24)}
 .calendar-time-col{display:grid;grid-template-rows:repeat(24,var(--calendar-hour-height));background:rgba(var(--color-slate-800-rgb), .6);border-right:var(--size-1px) solid rgba(var(--color-slate-600-rgb), .5)}
 .calendar-time-label{padding:var(--size-6px) var(--size-8px);font-size:var(--font-size-xxs);color:var(--color-slate-400);border-bottom:var(--size-1px) solid rgba(var(--color-slate-600-rgb), .35)}
@@ -457,6 +460,9 @@ body.modal-open{overflow:hidden}
 .calendar-event{position:absolute;left:var(--size-8px);right:var(--size-8px);padding:var(--size-6px) var(--size-8px);border-radius:var(--size-10px);background:rgba(var(--color-sky-400-rgb), .12);border:var(--size-1px) solid rgba(var(--color-sky-400-rgb), .4);color:var(--color-slate-200);box-shadow:var(--shadow-float);overflow:hidden;cursor:grab;user-select:none;touch-action:none}
 .calendar-event--dragging{cursor:grabbing;opacity:.88;z-index:var(--z-drag);box-shadow:var(--shadow-float-lg);will-change:top}
 .calendar-event--external{background:rgba(var(--color-amber-400-rgb), .14);border-color:rgba(var(--color-amber-400-rgb), .5);color:var(--color-amber-300);cursor:grab;touch-action:none}
+.calendar-event--all-day{position:relative;left:auto;right:auto;top:auto;height:auto;min-height:var(--size-26px);cursor:pointer;touch-action:auto}
+.calendar-event--all-day.calendar-event--external{cursor:pointer;touch-action:auto}
+.calendar-event--all-day .calendar-event-time{color:var(--color-slate-300)}
 .calendar-event--past{opacity:.55}
 .calendar-event--external .calendar-event-time{color:currentColor}
 .calendar-event--external .calendar-event-title-link{color:currentColor}
@@ -546,7 +552,7 @@ body.modal-open{overflow:hidden}
 .calendar-view-btn{padding:var(--size-6px) var(--size-12px);border-radius:var(--size-10px);font-weight:var(--font-weight-semibold);color:var(--color-slate-400);transition:color var(--motion-medium) ease,background var(--motion-medium) ease}
 .calendar-view-btn:hover{color:var(--color-slate-200)}
 .calendar-view-btn--active{background:rgba(var(--color-lime-400-rgb), .2);color:var(--color-lime-200)}
-@media (max-width:768px){.calendar-grid{--calendar-toolbar-height:var(--size-90px)}.calendar-grid-header{grid-template-columns:var(--size-70px) repeat(7,minmax(0,1fr))}.calendar-grid-body{grid-template-columns:var(--size-70px) 1fr}}
+@media (max-width:768px){.calendar-grid{--calendar-toolbar-height:var(--size-90px)}.calendar-grid-header{grid-template-columns:var(--size-70px) repeat(7,minmax(0,1fr))}.calendar-all-day-row{grid-template-columns:var(--size-70px) repeat(7,minmax(0,1fr))}.calendar-grid-body{grid-template-columns:var(--size-70px) 1fr}}
 @media (min-width:768px){[data-test-skedpal="tasks-calendar-split"][data-split="true"]{grid-template-columns:minmax(0,7fr) minmax(0,3fr)}}
 
 /* Theme utility overrides */

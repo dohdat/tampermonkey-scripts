@@ -304,6 +304,46 @@ describe("calendar render", () => {
     assert.ok(events[0].dataset.eventEnd);
   });
 
+  it("renders all-day external events in the top row without timed blocks", async () => {
+    const { domRefs, renderCalendar } = testRefs;
+    state.calendarExternalEvents = [
+      {
+        id: "ext-all-day-1",
+        calendarId: "cal-all-day-1",
+        title: "Holiday",
+        start: new Date(2026, 0, 6, 0, 0, 0),
+        end: new Date(2026, 0, 7, 0, 0, 0),
+        allDay: true,
+        source: "external"
+      }
+    ];
+
+    const range = getCalendarRange(state.calendarAnchorDate, state.calendarViewMode);
+    const bufferedRange = buildBufferedRange(range);
+    state.calendarExternalRange = bufferedRange;
+    state.calendarExternalRangeKey = buildRangeKey(
+      bufferedRange,
+      state.calendarViewMode,
+      state.settingsCache.googleCalendarIds
+    );
+    await renderCalendar([]);
+
+    const allDayRows = findByTestId(domRefs.calendarGrid, "calendar-all-day-row");
+    assert.strictEqual(allDayRows.length, 1);
+    const allDayEvents = findByTestId(allDayRows[0], "calendar-event");
+    assert.strictEqual(allDayEvents.length, 1);
+    assert.ok(allDayEvents[0].className.includes("calendar-event--all-day"));
+    assert.strictEqual(allDayEvents[0].dataset.eventAllDay, "true");
+    const timeLabels = findByTestId(allDayEvents[0], "calendar-event-time");
+    assert.strictEqual(timeLabels.length, 1);
+    assert.strictEqual(timeLabels[0].textContent, "All day");
+
+    const dayCols = findByTestId(domRefs.calendarGrid, "calendar-day-col");
+    assert.strictEqual(dayCols.length, 1);
+    const timedEvents = findByTestId(dayCols[0], "calendar-event");
+    assert.strictEqual(timedEvents.length, 0);
+  });
+
   it("prefers title URLs over event links and strips UID", async () => {
     const { domRefs, renderCalendar } = testRefs;
     const start = new Date(2026, 0, 6, 12, 0, 0);

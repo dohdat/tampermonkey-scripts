@@ -1,6 +1,7 @@
 import { addCalendarDays, getDayKey } from "./calendar-utils.js";
 import { buildDayEventLayout } from "./calendar-layout.js";
 import {
+  CALENDAR_ALL_DAY_LABEL,
   EIGHT,
   FOUR,
   HOURS_PER_DAY,
@@ -140,6 +141,10 @@ export function getCalendarEventStyles(event, timeMapColorById) {
   };
 }
 
+function isAllDayExternalEvent(event) {
+  return event?.source === "external" && Boolean(event?.allDay);
+}
+
 function formatHourLabel(hour) {
   const d = new Date();
   d.setHours(hour, 0, 0, 0);
@@ -191,27 +196,36 @@ function buildCalendarTimeColumn() {
   return timeCol;
 }
 
+function applyTaskEventDataset(block, event) {
+  block.dataset.eventTaskId = event.taskId;
+  block.dataset.eventOccurrenceId = event.occurrenceId || "";
+  block.dataset.eventTimeMapId = event.timeMapId || "";
+  block.dataset.eventStart = event.start.toISOString();
+  block.dataset.eventEnd = event.end.toISOString();
+  block.dataset.eventInstanceIndex = String(event.instanceIndex);
+  block.dataset.eventPinned = event.pinned ? "true" : "false";
+}
+
+function applyExternalEventDataset(block, event) {
+  block.classList.add("calendar-event--external");
+  block.dataset.eventPinned = "false";
+  block.dataset.eventExternalId = event.id || "";
+  block.dataset.eventCalendarId = event.calendarId || "";
+  block.dataset.eventTitle = event.title || "";
+  block.dataset.eventLink = event.link || "";
+  block.dataset.eventStart = event.start.toISOString();
+  block.dataset.eventEnd = event.end.toISOString();
+}
+
 function applyEventDataset(block, item) {
   const source = item.event.source || "task";
   block.dataset.eventSource = source;
+  block.dataset.eventAllDay = item.event.allDay ? "true" : "false";
   if (source === "task") {
-    block.dataset.eventTaskId = item.event.taskId;
-    block.dataset.eventOccurrenceId = item.event.occurrenceId || "";
-    block.dataset.eventTimeMapId = item.event.timeMapId || "";
-    block.dataset.eventStart = item.event.start.toISOString();
-    block.dataset.eventEnd = item.event.end.toISOString();
-    block.dataset.eventInstanceIndex = String(item.event.instanceIndex);
-    block.dataset.eventPinned = item.event.pinned ? "true" : "false";
+    applyTaskEventDataset(block, item.event);
     return source;
   }
-  block.classList.add("calendar-event--external");
-  block.dataset.eventPinned = "false";
-  block.dataset.eventExternalId = item.event.id || "";
-  block.dataset.eventCalendarId = item.event.calendarId || "";
-  block.dataset.eventTitle = item.event.title || "";
-  block.dataset.eventLink = item.event.link || "";
-  block.dataset.eventStart = item.event.start.toISOString();
-  block.dataset.eventEnd = item.event.end.toISOString();
+  applyExternalEventDataset(block, item.event);
   return source;
 }
 
@@ -349,6 +363,87 @@ function buildCalendarEventBlock(item, timeMapColorById) {
   return block;
 }
 
+function splitEventsForCalendar(events = []) {
+  const timedEvents = [];
+  const allDayEvents = [];
+  (events || []).forEach((event) => {
+    if (isAllDayExternalEvent(event)) {
+      allDayEvents.push(event);
+      return;
+    }
+    timedEvents.push(event);
+  });
+  return { timedEvents, allDayEvents };
+}
+
+function sortAllDayEvents(events = []) {
+  return [...events].sort((a, b) => {
+    const startDelta = a.start.getTime() - b.start.getTime();
+    if (startDelta !== 0) {return startDelta;}
+    return String(a.title || "").localeCompare(String(b.title || ""));
+  });
+}
+
+function buildAllDayEventBlock(event, timeMapColorById) {
+  const item = { event };
+  const block = document.createElement("div");
+  block.className = "calendar-event calendar-event--all-day";
+  const source = applyEventDataset(block, item);
+  const styles = getCalendarEventStyles(event, timeMapColorById);
+  if (styles) {
+    block.style.backgroundColor = styles.backgroundColor;
+    block.style.borderColor = styles.borderColor;
+  }
+  if (event.end < new Date()) {
+    block.classList.add("calendar-event--past");
+  }
+  block.setAttribute("data-test-skedpal", "calendar-event");
+  const title = buildEventTitle(item);
+  if (source === "external") {
+    title.prepend(buildExternalEventIcon());
+  }
+  const time = document.createElement("div");
+  time.className = "calendar-event-time";
+  time.textContent = CALENDAR_ALL_DAY_LABEL;
+  time.setAttribute("data-test-skedpal", "calendar-event-time");
+  block.appendChild(title);
+  if (source === "external") {
+    block.appendChild(buildExternalDeleteButton(event));
+  }
+  block.appendChild(time);
+  return block;
+}
+
+function buildAllDayRow(range, allDayEvents, timeMapColorById) {
+  if (!Array.isArray(allDayEvents) || !allDayEvents.length) {return null;}
+  const row = document.createElement("div");
+  row.className = "calendar-all-day-row";
+  row.setAttribute("data-test-skedpal", "calendar-all-day-row");
+  row.style.gridTemplateColumns = `90px repeat(${range.days}, minmax(0, 1fr))`;
+  const label = document.createElement("div");
+  label.className = "calendar-all-day-label";
+  label.textContent = CALENDAR_ALL_DAY_LABEL;
+  label.setAttribute("data-test-skedpal", "calendar-all-day-label");
+  row.appendChild(label);
+  for (let i = 0; i < range.days; i += 1) {
+    const dayStart = addCalendarDays(range.start, i);
+    const dayEnd = addCalendarDays(dayStart, 1);
+    const dayKey = getDayKey(dayStart);
+    const col = document.createElement("div");
+    col.className = "calendar-all-day-col";
+    col.dataset.day = dayKey;
+    col.setAttribute("data-test-skedpal", "calendar-all-day-col");
+    const dayEvents = sortAllDayEvents(
+      allDayEvents.filter((event) => event.end > dayStart && event.start < dayEnd)
+    );
+    dayEvents.forEach((event) => {
+      col.appendChild(buildAllDayEventBlock(event, timeMapColorById));
+    });
+    row.appendChild(col);
+  }
+  return row;
+}
+
 function buildCalendarDays(range, events, timeMapColorById) {
   const daysWrap = document.createElement("div");
   daysWrap.className = "calendar-days";
@@ -382,17 +477,22 @@ export function renderCalendarGrid(range, events, timeMapColorById, calendarGrid
   if (!calendarGrid) {return;}
   calendarGrid.innerHTML = "";
   calendarGrid.style.setProperty("--calendar-hour-height", `${HOUR_HEIGHT}px`);
+  const { timedEvents, allDayEvents } = splitEventsForCalendar(events);
   const header = options.splitView ? null : buildCalendarHeader(range, options);
+  const allDayRow = buildAllDayRow(range, allDayEvents, timeMapColorById);
   const body = document.createElement("div");
   body.className = "calendar-grid-body";
   body.setAttribute("data-test-skedpal", "calendar-grid-body");
   body.style.gridTemplateColumns = "90px 1fr";
   const timeCol = buildCalendarTimeColumn();
-  const daysWrap = buildCalendarDays(range, events, timeMapColorById);
+  const daysWrap = buildCalendarDays(range, timedEvents, timeMapColorById);
   body.appendChild(timeCol);
   body.appendChild(daysWrap);
   if (header) {
     calendarGrid.appendChild(header);
+  }
+  if (allDayRow) {
+    calendarGrid.appendChild(allDayRow);
   }
   calendarGrid.appendChild(body);
 }

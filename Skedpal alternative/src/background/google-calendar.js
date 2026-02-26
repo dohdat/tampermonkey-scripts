@@ -49,6 +49,7 @@ function normalizeTimedEvent(event, calendarId) {
   const end = parseGoogleEventTime(event.end);
   if (!start || !end || end <= start) {return null;}
   const { colorId, colorHex } = resolveEventColor(event, calendarId);
+  const allDay = Boolean(event?.start?.date || event?.end?.date);
   return {
     id: event.id || "",
     calendarId,
@@ -57,6 +58,8 @@ function normalizeTimedEvent(event, calendarId) {
     title: event.summary || "Busy",
     link: event.htmlLink || "",
     extendedProperties: event.extendedProperties || null,
+    allDay,
+    isBlocking: event?.transparency !== "transparent",
     start,
     end,
     source: "external"
@@ -168,7 +171,7 @@ function appendExtendedPropertyFilters(params, filters) {
 }
 
 const DEFAULT_EVENTS_FIELDS =
-  "items(id,summary,htmlLink,start,end,updated,colorId,status,extendedProperties),nextPageToken,nextSyncToken";
+  "items(id,summary,htmlLink,start,end,updated,colorId,status,extendedProperties,transparency),nextPageToken,nextSyncToken";
 
 function buildEventsParams(timeMin, timeMax, options, pageToken) {
   const params = new URLSearchParams({
@@ -308,6 +311,35 @@ export async function fetchCalendarEvents({
     syncTokensByCalendar: nextTokens,
     isIncremental
   };
+}
+
+export function normalizeBusyBlocksFromEvents(events = []) {
+  return (events || [])
+    .map((event) => {
+      if (!event || event.allDay || event.isBlocking === false) {return null;}
+      const start = parseIsoDate(event.start);
+      const end = parseIsoDate(event.end);
+      if (!start || !end || end <= start) {return null;}
+      return {
+        calendarId: event.calendarId || "",
+        start,
+        end
+      };
+    })
+    .filter(Boolean);
+}
+
+export async function fetchTimedBusy({
+  timeMin,
+  timeMax,
+  calendarIds = null
+}) {
+  const events = await fetchCalendarEvents({
+    timeMin,
+    timeMax,
+    calendarIds
+  });
+  return normalizeBusyBlocksFromEvents(events);
 }
 
 export async function deleteCalendarEvent(calendarId, eventId) {

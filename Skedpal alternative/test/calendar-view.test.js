@@ -40,6 +40,12 @@ class FakeElement {
     return child;
   }
 
+  prepend(child) {
+    child.parentElement = this;
+    this.children.unshift(child);
+    return child;
+  }
+
   get innerHTML() {
     return this._innerHTML;
   }
@@ -293,6 +299,34 @@ describe("calendar view", () => {
     await renderCalendar([]);
     const empty = domRefs.calendarGrid.querySelector('[data-test-skedpal="calendar-empty"]');
     assert.ok(empty);
+  });
+
+  it("keeps the now indicator in timed day columns when all-day events exist", async () => {
+    state.calendarViewMode = "day";
+    state.calendarAnchorDate = new Date();
+    const dayStart = new Date(state.calendarAnchorDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+    state.calendarExternalEvents = [
+      {
+        id: "ext-all-day",
+        calendarId: "cal-1",
+        title: "All-day event",
+        start: dayStart,
+        end: dayEnd,
+        allDay: true,
+        source: "external"
+      }
+    ];
+
+    await renderCalendar([]);
+
+    const indicator = domRefs.calendarGrid.querySelector(
+      '[data-test-skedpal="calendar-now-indicator"]'
+    );
+    assert.ok(indicator);
+    assert.strictEqual(indicator.parentElement?.className, "calendar-day-col");
   });
 
   it("renders with a scheduled event and split view", async () => {

@@ -9,8 +9,10 @@ import {
   fetchCalendarEvents,
   fetchCalendarList,
   fetchFreeBusy,
+  fetchTimedBusy,
   DEFAULT_CALENDAR_IDS,
   normalizeBusyBlocks,
+  normalizeBusyBlocksFromEvents,
   normalizeGoogleEvent,
   parseAllDayDate,
   parseGoogleEventTime
@@ -93,6 +95,20 @@ describe("google calendar helpers", () => {
     assert.strictEqual(cancelled, null);
   });
 
+  it("marks all-day events when normalizing google events", () => {
+    const event = normalizeGoogleEvent(
+      {
+        id: "evt-all-day",
+        summary: "Day off",
+        start: { date: "2026-01-07" },
+        end: { date: "2026-01-08" }
+      },
+      "calendar-1"
+    );
+    assert.ok(event);
+    assert.strictEqual(event.allDay, true);
+  });
+
   it("applies default titles and color overrides for normalized events", () => {
     const calendarId = Object.keys(CALENDAR_COLOR_OVERRIDES)[0];
     const event = normalizeGoogleEvent(
@@ -127,6 +143,33 @@ describe("google calendar helpers", () => {
     ]);
     assert.strictEqual(busy.length, 1);
     assert.ok(busy[0].start instanceof Date);
+  });
+
+  it("normalizes busy blocks from timed events only", () => {
+    const busy = normalizeBusyBlocksFromEvents([
+      {
+        calendarId: "calendar-1",
+        start: "2026-01-07T10:00:00Z",
+        end: "2026-01-07T11:00:00Z",
+        allDay: false
+      },
+      {
+        calendarId: "calendar-1",
+        start: "2026-01-07T00:00:00Z",
+        end: "2026-01-08T00:00:00Z",
+        allDay: true
+      },
+      {
+        calendarId: "calendar-1",
+        start: "2026-01-07T12:00:00Z",
+        end: "2026-01-07T13:00:00Z",
+        allDay: false,
+        isBlocking: false
+      }
+    ]);
+    assert.strictEqual(busy.length, 1);
+    assert.ok(busy[0].start instanceof Date);
+    assert.ok(busy[0].end instanceof Date);
   });
 
   it("defaults to the configured calendar ids for freebusy", async () => {
@@ -598,6 +641,45 @@ describe("google calendar helpers", () => {
         ),
       /Google Calendar create error/
     );
+  });
+
+  it("fetches timed busy blocks while ignoring all-day events", async () => {
+    installChrome();
+    let capturedUrl = "";
+    globalThis.fetch = async (url) => {
+      capturedUrl = String(url || "");
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          items: [
+            {
+              id: "evt-7",
+              start: { dateTime: "2026-01-07T13:00:00Z" },
+              end: { dateTime: "2026-01-07T14:00:00Z" }
+            },
+            {
+              id: "evt-8",
+              start: { date: "2026-01-07" },
+              end: { date: "2026-01-08" }
+            },
+            {
+              id: "evt-9",
+              transparency: "transparent",
+              start: { dateTime: "2026-01-07T15:00:00Z" },
+              end: { dateTime: "2026-01-07T15:30:00Z" }
+            }
+          ]
+        })
+      };
+    };
+    const busy = await fetchTimedBusy({
+      timeMin: "2026-01-07T00:00:00Z",
+      timeMax: "2026-01-08T00:00:00Z",
+      calendarIds: ["calendar-1"]
+    });
+    assert.ok(capturedUrl.includes("/events?"));
+    assert.strictEqual(busy.length, 1);
   });
 
   it("retries freebusy requests after auth errors", async () => {

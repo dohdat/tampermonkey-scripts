@@ -31,6 +31,7 @@ export const TIME_MAP_DEFAULT_START = "09:00";
 export const TIME_MAP_DEFAULT_END = "12:00";
 export const TIME_MAP_LABEL_HOURS = [ZERO, FOUR, EIGHT, TWELVE, SIXTEEN, TWENTY, TWENTY_FOUR];
 export const DATE_PICKER_SUGGESTED_COUNT = THREE;
+export const CALENDAR_ALL_DAY_LABEL = "All day";
 export const TITLE_REMINDER_REGEX =
   /\bremind(?:er)?(?:\s+me)?\s+(?:in\s+)?(\d+(?:\.\d+)?)\s*(?:day|days|d)\b/i;
 export const TITLE_REMINDER_PREFIX_REGEX =

@@ -15,6 +15,7 @@ import {
 import { formatDate, getLocalDateKey, parseLocalDateInput } from "../utils.js";
 import { getDateParts } from "../repeat-yearly.js";
 import { state } from "../state/page-state.js";
+import { isOccurrenceWithinHorizon, resolveOccurrenceRangeStart } from "./occurrence-horizon.js";
 
 const { repeatCompleteModal, repeatCompleteList, repeatCompleteEmpty } = domRefs;
 
@@ -88,11 +89,10 @@ function resolveOccurrenceTimeLabel({
   task,
   date,
   occurrenceId,
-  horizonEnd,
   fallbackLabel,
-  showOutOfRange
+  isOutOfRange
 }) {
-  if (showOutOfRange && date > horizonEnd) {
+  if (isOutOfRange) {
     return "Out of range";
   }
   const instances = task.scheduledInstances || [];
@@ -100,6 +100,20 @@ function resolveOccurrenceTimeLabel({
   if (!matches.length) {
     const targetKey = getLocalDateKey(date);
     matches = instances.filter((instance) => getLocalDateKey(instance.start) === targetKey);
+  }
+  if (!matches.length) {
+    const rangeStart = resolveOccurrenceRangeStart(task, date);
+    if (rangeStart) {
+      const rangeStartMs = rangeStart.getTime();
+      const rangeEndMs = date.getTime();
+      matches = instances.filter((instance) => {
+        if (!instance?.start) {return false;}
+        const start = new Date(instance.start);
+        if (Number.isNaN(start.getTime())) {return false;}
+        const startMs = start.getTime();
+        return startMs >= rangeStartMs && startMs <= rangeEndMs;
+      });
+    }
   }
   if (!matches.length) {
     return fallbackLabel;
@@ -117,7 +131,6 @@ function buildOccurrenceButton({
   task,
   date,
   occurrenceId,
-  horizonEnd,
   isNext,
   isOutOfRange
 }) {
@@ -151,9 +164,8 @@ function buildOccurrenceButton({
     task,
     date,
     occurrenceId,
-    horizonEnd,
     fallbackLabel: "Unscheduled",
-    showOutOfRange: true
+    isOutOfRange
   });
   const meta = document.createElement("span");
   meta.className = "repeat-complete-meta";
@@ -174,7 +186,7 @@ function buildOccurrenceButton({
   return btn;
 }
 
-function buildCompletedOccurrenceRow({ task, date, horizonEnd }) {
+function buildCompletedOccurrenceRow({ task, date }) {
   const row = document.createElement("div");
   row.className = "repeat-complete-option";
   row.setAttribute("data-test-skedpal", "repeat-complete-completed-option");
@@ -195,9 +207,8 @@ function buildCompletedOccurrenceRow({ task, date, horizonEnd }) {
     task,
     date,
     occurrenceId: "",
-    horizonEnd,
     fallbackLabel: "Completed",
-    showOutOfRange: false
+    isOutOfRange: false
   });
   time.setAttribute("data-test-skedpal", "repeat-complete-time");
   const meta = document.createElement("span");
@@ -240,7 +251,7 @@ function buildCompletedSeparator({ label, count, isCollapsed, controlsId }) {
   return button;
 }
 
-function appendOutOfRangeSection({ task, outOfRange, horizonEnd }) {
+function appendOutOfRangeSection({ task, outOfRange }) {
   if (!outOfRange.length || !repeatCompleteList) {return;}
   const firstOut = outOfRange[0].date;
   const lastOut = outOfRange[outOfRange.length - 1].date;
@@ -261,7 +272,6 @@ function appendOutOfRangeSection({ task, outOfRange, horizonEnd }) {
       task,
       date,
       occurrenceId,
-      horizonEnd,
       isNext: false,
       isOutOfRange: true
     });
@@ -270,7 +280,7 @@ function appendOutOfRangeSection({ task, outOfRange, horizonEnd }) {
   repeatCompleteList.appendChild(outOfRangeWrap);
 }
 
-function appendCompletedSection({ task, completedEntries, horizonEnd }) {
+function appendCompletedSection({ task, completedEntries }) {
   if (!completedEntries.length || !repeatCompleteList) {return;}
   const limited = completedEntries.slice(0, REPEAT_COMPLETE_COMPLETED_LIMIT);
   const first = limited[limited.length - 1]?.date || limited[0]?.date;
@@ -288,7 +298,7 @@ function appendCompletedSection({ task, completedEntries, horizonEnd }) {
   });
   repeatCompleteList.appendChild(separator);
   limited.forEach(({ date }) => {
-    const row = buildCompletedOccurrenceRow({ task, date, horizonEnd });
+    const row = buildCompletedOccurrenceRow({ task, date });
     completedWrap.appendChild(row);
   });
   repeatCompleteList.appendChild(completedWrap);
@@ -317,7 +327,7 @@ export function openRepeatCompleteModal(task) {
     const outOfRange = [];
     occurrences.forEach(({ date, occurrenceId }) => {
       const entry = { date, occurrenceId };
-      if (date > horizonEnd) {
+      if (!isOccurrenceWithinHorizon(task, date, horizonEnd)) {
         outOfRange.push(entry);
       } else {
         inRange.push(entry);
@@ -328,16 +338,15 @@ export function openRepeatCompleteModal(task) {
         task,
         date,
         occurrenceId,
-        horizonEnd,
         isNext: index === 0,
         isOutOfRange: false
       });
       repeatCompleteList.appendChild(btn);
     });
-    appendOutOfRangeSection({ task, outOfRange, horizonEnd });
+    appendOutOfRangeSection({ task, outOfRange });
   }
   const completedEntries = buildCompletedOccurrenceEntries(task);
-  appendCompletedSection({ task, completedEntries, horizonEnd });
+  appendCompletedSection({ task, completedEntries });
   repeatCompleteModal.classList.remove("hidden");
   document.body.classList.add("modal-open");
 }

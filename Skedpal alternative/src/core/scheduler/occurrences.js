@@ -7,7 +7,7 @@ import {
   startOfWeek
 } from "./date-utils.js";
 import { normalizeTask } from "./task-utils.js";
-import { DAYS_PER_WEEK, DAYS_PER_YEAR, TEN, THREE } from "../../constants.js";
+import { DAYS_PER_WEEK, DAYS_PER_YEAR, TEN, THREE, THIRTY_ONE } from "../../constants.js";
 import {
   buildCompletedOccurrenceStore,
   isOccurrenceCompleted
@@ -147,6 +147,14 @@ function isMonthDayBeforeDate(monthIndex, day, date) {
   return day < date.getDate();
 }
 
+function isMonthDayAfter(start, end) {
+  if (!start || !end) {return false;}
+  if (start.month !== end.month) {
+    return start.month > end.month;
+  }
+  return start.day > end.day;
+}
+
 function parseDateParts(value) {
   if (!value) {return null;}
   if (typeof value === "string") {
@@ -182,13 +190,32 @@ function getMonthlyCandidate(cursor, anchor, repeat) {
   return new Date(cursor.getFullYear(), cursor.getMonth(), safeDay);
 }
 
-function isWithinWindow(candidate, { anchor, nowStart, limitDate, horizonEnd }) {
-  return (
-    candidate >= anchor &&
-    candidate >= nowStart &&
-    candidate <= limitDate &&
-    candidate <= horizonEnd
-  );
+function getMonthlyRangeStartCandidate(candidate, repeat, anchor) {
+  if (repeat.monthlyMode !== "range") {return null;}
+  const startDay = repeat.monthlyRangeStart || anchor.getDate();
+  const safeDay = clampDayInMonth(candidate.getFullYear(), candidate.getMonth(), startDay);
+  return new Date(candidate.getFullYear(), candidate.getMonth(), safeDay);
+}
+
+function getYearlyRangeStartCandidate(candidateYear, rangeStartParts, wrapsYear) {
+  if (!rangeStartParts) {return null;}
+  const startYear = wrapsYear ? candidateYear - 1 : candidateYear;
+  const safeDay = clampDayInMonth(startYear, rangeStartParts.month - 1, rangeStartParts.day);
+  return new Date(startYear, rangeStartParts.month - 1, safeDay);
+}
+
+function isValidDate(value) {
+  return Boolean(value) && typeof value.getTime === "function" && !Number.isNaN(value.getTime());
+}
+
+function isWithinWindow(candidate, { anchor, nowStart, limitDate, horizonEnd }, occurrenceStart = null) {
+  if (candidate < anchor || candidate < nowStart || candidate > limitDate) {
+    return false;
+  }
+  if (candidate <= horizonEnd) {
+    return true;
+  }
+  return isValidDate(occurrenceStart) && occurrenceStart <= horizonEnd;
 }
 
 function buildMonthlyOccurrences({
@@ -205,7 +232,8 @@ function buildMonthlyOccurrences({
   let emitted = 0;
   while (cursor <= limitDate && emitted < maxCount) {
     const candidate = getMonthlyCandidate(cursor, anchor, repeat);
-    if (isWithinWindow(candidate, { anchor, nowStart, limitDate, horizonEnd })) {
+    const occurrenceStart = getMonthlyRangeStartCandidate(candidate, repeat, anchor);
+    if (isWithinWindow(candidate, { anchor, nowStart, limitDate, horizonEnd }, occurrenceStart)) {
       occurrences.push(endOfDay(candidate));
       emitted += 1;
     }
@@ -227,6 +255,8 @@ function buildYearlyOccurrences({
   let cursor = new Date(anchor);
   let emitted = 0;
   const rangeEndParts = getYearlyRangeEndParts(repeat);
+  const rangeStartParts = parseDateParts(repeat.yearlyRangeStartDate);
+  const wrapsYear = isMonthDayAfter(rangeStartParts, rangeEndParts);
   while (cursor <= limitDate && emitted < maxCount) {
     const month = (rangeEndParts?.month || repeat.yearlyMonth || anchor.getMonth() + 1) - 1;
     const dayValue = rangeEndParts?.day || repeat.yearlyDay || anchor.getDate();
@@ -234,7 +264,8 @@ function buildYearlyOccurrences({
     const candidateYear = cursor.getFullYear() + nextYear;
     const safeDay = clampDayInMonth(candidateYear, month, dayValue);
     const candidate = new Date(candidateYear, month, safeDay);
-    if (isWithinWindow(candidate, { anchor, nowStart, limitDate, horizonEnd })) {
+    const occurrenceStart = getYearlyRangeStartCandidate(candidateYear, rangeStartParts, wrapsYear);
+    if (isWithinWindow(candidate, { anchor, nowStart, limitDate, horizonEnd }, occurrenceStart)) {
       occurrences.push(endOfDay(candidate));
       emitted += 1;
     }
@@ -263,10 +294,22 @@ function resolveRepeatAnchorDate(task, now) {
   return startOfDay(anchorSource);
 }
 
+function resolveRangeLimitExtensionDays(repeat) {
+  if (repeat?.unit === "month" && repeat.monthlyMode === "range") {
+    return THIRTY_ONE;
+  }
+  if (repeat?.unit === "year" && repeat.yearlyRangeStartDate) {
+    return DAYS_PER_YEAR;
+  }
+  return 0;
+}
+
 function resolveRepeatLimitDate(repeat, horizonEnd) {
+  const extensionDays = resolveRangeLimitExtensionDays(repeat);
+  const horizonLimit = extensionDays > 0 ? endOfDay(addDays(horizonEnd, extensionDays)) : horizonEnd;
   const limitDateRaw =
-    repeat.end?.type === "on" && repeat.end?.date ? new Date(repeat.end.date) : horizonEnd;
-  return endOfDay(limitDateRaw > horizonEnd ? horizonEnd : limitDateRaw);
+    repeat.end?.type === "on" && repeat.end?.date ? new Date(repeat.end.date) : horizonLimit;
+  return endOfDay(limitDateRaw > horizonLimit ? horizonLimit : limitDateRaw);
 }
 
 function resolveRepeatMaxCount(repeat) {

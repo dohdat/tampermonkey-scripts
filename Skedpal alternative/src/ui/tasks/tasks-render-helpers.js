@@ -3,6 +3,7 @@ import { getUpcomingOccurrences } from "../../core/scheduler.js";
 import { addDays, endOfDay } from "../../core/scheduler/date-utils.js";
 import { TASK_REPEAT_NONE, UPCOMING_OCCURRENCE_LOOKAHEAD_DAYS } from "../constants.js";
 import { getLocalDateKey } from "../utils.js";
+import { isOccurrenceWithinHorizon, resolveOccurrenceRangeStart } from "./occurrence-horizon.js";
 
 export function buildParentMap(tasks) {
   return tasks.reduce((map, task) => {
@@ -94,7 +95,7 @@ export function buildFirstOccurrenceOutOfRangeMap(tasks, settings) {
       UPCOMING_OCCURRENCE_LOOKAHEAD_DAYS
     );
     if (!occurrences.length) {return;}
-    if (occurrences[0].date > horizonEnd) {
+    if (!isOccurrenceWithinHorizon(task, occurrences[0].date, horizonEnd)) {
       outOfRangeById.set(task.id, true);
     }
   });
@@ -117,12 +118,26 @@ export function buildFirstOccurrenceUnscheduledMap(tasks, settings) {
     );
     if (!occurrences.length) {return;}
     const first = occurrences[0];
-    if (first.date > horizonEnd) {return;}
+    if (!isOccurrenceWithinHorizon(task, first.date, horizonEnd)) {return;}
     const instances = Array.isArray(task.scheduledInstances) ? task.scheduledInstances : [];
     let matches = instances.filter((instance) => instance.occurrenceId === first.occurrenceId);
     if (!matches.length) {
       const targetKey = getLocalDateKey(first.date);
       matches = instances.filter((instance) => getLocalDateKey(instance.start) === targetKey);
+    }
+    if (!matches.length) {
+      const rangeStart = resolveOccurrenceRangeStart(task, first.date);
+      if (rangeStart) {
+        const rangeStartMs = rangeStart.getTime();
+        const rangeEndMs = first.date.getTime();
+        matches = instances.filter((instance) => {
+          if (!instance?.start) {return false;}
+          const start = new Date(instance.start);
+          if (Number.isNaN(start.getTime())) {return false;}
+          const startMs = start.getTime();
+          return startMs >= rangeStartMs && startMs <= rangeEndMs;
+        });
+      }
     }
     if (!matches.length) {
       unscheduledById.set(task.id, true);

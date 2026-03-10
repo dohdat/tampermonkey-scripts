@@ -167,6 +167,48 @@ describe("repeat complete modal", () => {
     assert.strictEqual(outOfRange.length, 1);
   });
 
+  it("keeps overlapping yearly ranges in the available section", () => {
+    const OriginalDate = Date;
+    const fixedNow = new OriginalDate(2026, 2, 9, 12, 0, 0, 0);
+    global.Date = class extends OriginalDate {
+      constructor(...args) {
+        if (args.length === 0) {
+          return new OriginalDate(fixedNow.getTime());
+        }
+        return new OriginalDate(...args);
+      }
+      static now() {
+        return fixedNow.getTime();
+      }
+    };
+
+    try {
+      state.settingsCache = { ...state.settingsCache, schedulingHorizonDays: 14 };
+      const task = {
+        id: "task-year-overlap",
+        title: "Yearly overlap",
+        startFrom: new Date(2026, 2, 1, 8, 0, 0, 0),
+        repeat: {
+          type: "custom",
+          unit: "year",
+          interval: 1,
+          yearlyRangeStartDate: "2026-03-01",
+          yearlyRangeEndDate: "2026-04-15"
+        },
+        completedOccurrences: []
+      };
+
+      openRepeatCompleteModal(task);
+
+      const options = findByTestId(domRefs.repeatCompleteList, "repeat-complete-option");
+      assert.ok(options.length >= 1);
+      const timeLabels = findByTestId(domRefs.repeatCompleteList, "repeat-complete-time");
+      assert.ok(timeLabels.some((node) => node.textContent === "Unscheduled"));
+    } finally {
+      global.Date = OriginalDate;
+    }
+  });
+
   it("parses completed occurrences stored as local date keys", () => {
     const task = {
       id: "task-local",
@@ -227,6 +269,55 @@ describe("repeat complete modal", () => {
     const times = findByTestId(domRefs.repeatCompleteList, "repeat-complete-time");
     assert.ok(times.length >= 1);
     assert.notStrictEqual(times[0].textContent, "Unscheduled");
+  });
+
+  it("uses range-window time matching when occurrence ids are missing", () => {
+    const OriginalDate = Date;
+    const fixedNow = new OriginalDate(2026, 2, 9, 12, 0, 0, 0);
+    global.Date = class extends OriginalDate {
+      constructor(...args) {
+        if (args.length === 0) {
+          return new OriginalDate(fixedNow.getTime());
+        }
+        return new OriginalDate(...args);
+      }
+      static now() {
+        return fixedNow.getTime();
+      }
+    };
+
+    try {
+      const start = new Date(2026, 2, 12, 9, 0, 0, 0);
+      const end = new Date(2026, 2, 12, 10, 0, 0, 0);
+      const task = {
+        id: "task-time-fallback",
+        title: "Timed yearly range",
+        startFrom: new Date(2026, 2, 1, 8, 0, 0, 0),
+        repeat: {
+          type: "custom",
+          unit: "year",
+          interval: 1,
+          yearlyRangeStartDate: "2026-03-01",
+          yearlyRangeEndDate: "2026-04-15"
+        },
+        scheduledInstances: [
+          {
+            start: start.toISOString(),
+            end: end.toISOString(),
+            occurrenceId: null
+          }
+        ],
+        completedOccurrences: []
+      };
+
+      openRepeatCompleteModal(task);
+
+      const times = findByTestId(domRefs.repeatCompleteList, "repeat-complete-time");
+      assert.ok(times.length >= 1);
+      assert.notStrictEqual(times[0].textContent, "Unscheduled");
+    } finally {
+      global.Date = OriginalDate;
+    }
   });
 
   it("renders yearly range labels for yearly range repeats", () => {

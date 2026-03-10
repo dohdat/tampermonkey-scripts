@@ -815,6 +815,47 @@ describe("scheduler", () => {
     assert.ok(result.scheduled[0].end <= new Date("2027-01-06T23:59:59Z"));
   });
 
+  it("schedules yearly ranges whose end date is outside the horizon", () => {
+    const now = new Date(2026, 2, 9, 8, 0, 0, 0);
+    const timeMaps = [
+      {
+        id: "tm-all-days",
+        days: [0, 1, 2, 3, 4, 5, 6],
+        startTime: "09:00",
+        endTime: "11:00"
+      }
+    ];
+    const tasks = [
+      {
+        id: "yearly-overlap",
+        title: "Yearly overlap",
+        durationMin: 30,
+        minBlockMin: 30,
+        timeMapIds: ["tm-all-days"],
+        repeat: {
+          type: "custom",
+          unit: "year",
+          interval: 1,
+          yearlyRangeStartDate: "2026-03-01",
+          yearlyRangeEndDate: "2026-04-15"
+        }
+      }
+    ];
+
+    const result = scheduleTasks({
+      tasks,
+      timeMaps,
+      busy: [],
+      schedulingHorizonDays: 14,
+      now
+    });
+
+    assert.strictEqual(result.unscheduled.includes("yearly-overlap"), false);
+    assert.strictEqual(result.scheduled.length, 1);
+    assert.ok(result.scheduled[0].start >= now);
+    assert.ok(result.scheduled[0].start <= new Date(2026, 2, 23, 23, 59, 59, 999));
+  });
+
   it("marks unscheduled and ignored tasks", () => {
     const now = nextWeekday(new Date(2026, 0, 1), 1);
     const timeMaps = [

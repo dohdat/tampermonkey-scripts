@@ -137,6 +137,47 @@ describe("scheduler occurrences", () => {
     assert.strictEqual(dates[0].getDate(), 20);
   });
 
+  it("includes monthly range occurrences when the window overlaps the horizon", () => {
+    const localNow = new Date(2026, 0, 9);
+    const localHorizon = new Date(2026, 0, 23, 23, 59, 59, 999);
+    const task = {
+      id: "t7-overlap-month",
+      startFrom: new Date(2026, 0, 1),
+      repeat: {
+        type: "custom",
+        unit: "month",
+        interval: 1,
+        monthlyMode: "range",
+        monthlyRangeStart: 1,
+        monthlyRangeEnd: 30
+      }
+    };
+    const dates = buildOccurrenceDates(task, localNow, localHorizon);
+    assert.strictEqual(dates.length, 1);
+    assert.strictEqual(dates[0].getMonth(), 0);
+    assert.strictEqual(dates[0].getDate(), 30);
+  });
+
+  it("includes yearly range occurrences when the window overlaps the horizon", () => {
+    const localNow = new Date(2026, 2, 9);
+    const localHorizon = new Date(2026, 2, 23, 23, 59, 59, 999);
+    const task = {
+      id: "t8-overlap-year",
+      startFrom: new Date(2026, 2, 1),
+      repeat: {
+        type: "custom",
+        unit: "year",
+        interval: 1,
+        yearlyRangeStartDate: "2026-03-01",
+        yearlyRangeEndDate: "2026-04-15"
+      }
+    };
+    const dates = buildOccurrenceDates(task, localNow, localHorizon);
+    assert.strictEqual(dates.length, 1);
+    assert.strictEqual(dates[0].getMonth(), 3);
+    assert.strictEqual(dates[0].getDate(), 15);
+  });
+
   it("uses yearly month/day when range start is missing", () => {
     const localNow = new Date(2026, 0, 1);
     const localHorizon = new Date(2026, 11, 31, 23, 59, 59);

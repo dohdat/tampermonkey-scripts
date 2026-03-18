@@ -292,7 +292,7 @@ describe("calendar create modal", () => {
     assert.strictEqual(handled, false);
   });
 
-  it("closes the event modal instead of creating on empty slot click", async () => {
+  it("closes the event modal and opens create mode for the clicked empty slot", async () => {
     const { openCalendarCreateFromClick } =
       await import("../src/ui/calendar-create-event.js");
     domRefs.calendarEventModal.classList.remove("hidden");
@@ -307,11 +307,12 @@ describe("calendar create modal", () => {
     const handled = openCalendarCreateFromClick({ target, clientY: 360 });
     assert.strictEqual(handled, true);
     assert.strictEqual(domRefs.calendarEventModal.classList.contains("hidden"), true);
-    assert.strictEqual(domRefs.calendarCreateDate.value, "");
-    assert.strictEqual(domRefs.calendarGrid.children[0].children.length, 0);
+    assert.strictEqual(domRefs.calendarCreateDate.value, "2026-01-10");
+    assert.strictEqual(domRefs.calendarCreateTime.value, "06:00");
+    assert.strictEqual(domRefs.calendarGrid.children[0].children.length, 1);
   });
 
-  it("closes create modal instead of reopening when already open", async () => {
+  it("reopens create mode on the clicked empty slot when create modal is already open", async () => {
     const { openCalendarCreateFromClick } =
       await import("../src/ui/calendar-create-event.js");
     await openCalendarCreateModal({ dayKey: "2026-01-08", startMinutes: 540 });
@@ -328,8 +329,9 @@ describe("calendar create modal", () => {
 
     const handled = openCalendarCreateFromClick({ target, clientY: 360 });
     assert.strictEqual(handled, true);
-    assert.strictEqual(domRefs.calendarCreateModal.classList.contains("hidden"), true);
-    assert.strictEqual(domRefs.calendarGrid.children[0].children.length, 0);
+    assert.strictEqual(domRefs.calendarCreateDate.value, "2026-01-09");
+    assert.strictEqual(domRefs.calendarCreateTime.value, "06:00");
+    assert.strictEqual(domRefs.calendarGrid.children[0].children.length, 1);
   });
 
   it("wires and cleans up create modal listeners", async () => {

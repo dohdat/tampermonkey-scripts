@@ -221,7 +221,7 @@ function buildDraftBlock(dayCol, startMinutes, durationMinutes, titleText) {
 function renderDraftBlock(options) {
   const grid = getCalendarGrid();
   if (!grid) {return;}
-  const dayCol = grid.querySelector?.(`[data-day="${options.dayKey}"]`);
+  const dayCol = grid.querySelector?.(`.calendar-day-col[data-day="${options.dayKey}"]`);
   if (!dayCol) {return;}
   clearDraftBlock();
   draftDayKey = options.dayKey;
@@ -499,11 +499,9 @@ async function handleCalendarCreateSubmit(event) {
 export function openCalendarCreateFromClick(event) {
   if (isCalendarEventModalOpen()) {
     closeCalendarEventModal();
-    return true;
   }
   if (isCalendarCreateModalOpen()) {
     closeCalendarCreateModal();
-    return true;
   }
   const dayCol = event.target?.closest?.(".calendar-day-col");
   if (!dayCol || !dayCol.dataset.day) {return false;}

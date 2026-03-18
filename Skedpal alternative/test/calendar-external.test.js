@@ -5,8 +5,10 @@ import { state } from "../src/ui/state/page-state.js";
 import {
   CALENDAR_EVENTS_CACHE_PREFIX,
   CALENDAR_EXTERNAL_BUFFER_HOURS,
+  MS_PER_DAY,
   MS_PER_HOUR
 } from "../src/constants.js";
+import { GOOGLE_CALENDAR_TASK_IMPORT_LOOKBACK_DAYS } from "../src/core/constants.js";
 import { saveCalendarCacheEntry } from "../src/data/db.js";
 import {
   ensureExternalEvents,
@@ -41,6 +43,18 @@ describe("calendar external events", () => {
     end: new Date(range.end.getTime() + CALENDAR_EXTERNAL_BUFFER_HOURS * MS_PER_HOUR),
     days: range.days
   };
+  const defaultTaskBufferedRange = {
+    start: new Date(
+      bufferedRange.start.getTime() - GOOGLE_CALENDAR_TASK_IMPORT_LOOKBACK_DAYS * MS_PER_DAY
+    ),
+    end: bufferedRange.end,
+    days: range.days
+  };
+  const customTaskBufferedRange = {
+    start: new Date(bufferedRange.start.getTime() - 5 * MS_PER_DAY),
+    end: bufferedRange.end,
+    days: range.days
+  };
 
   beforeEach(async () => {
     originalWarn = console.warn;
@@ -61,7 +75,11 @@ describe("calendar external events", () => {
       removeExternalEventsCacheEntry(buildKey(bufferedRange, viewMode, ["calendar-1"])),
       removeExternalEventsCacheEntry(buildKey(bufferedRange, viewMode, ["calendar-1", "calendar-2"])),
       removeExternalEventsCacheEntry(buildKey(bufferedRange, viewMode, [])),
-      removeExternalEventsCacheEntry(buildKey(bufferedRange, viewMode, null))
+      removeExternalEventsCacheEntry(buildKey(bufferedRange, viewMode, null)),
+      removeExternalEventsCacheEntry(buildKey(defaultTaskBufferedRange, viewMode, ["calendar-1"])),
+      removeExternalEventsCacheEntry(
+        buildKey(customTaskBufferedRange, viewMode, ["calendar-1", "calendar-2", "calendar-3"])
+      )
     ]);
   });
 
@@ -207,6 +225,63 @@ describe("calendar external events", () => {
     assert.deepStrictEqual(capturedMessage.calendarIds, ["calendar-1"]);
     assert.strictEqual(minDate.toISOString(), bufferedRange.start.toISOString());
     assert.strictEqual(maxDate.toISOString(), bufferedRange.end.toISOString());
+  });
+
+  it("extends fetch lookback for calendars treated as tasks", async () => {
+    state.settingsCache = {
+      ...state.settingsCache,
+      googleCalendarIds: ["calendar-1"],
+      googleCalendarTaskSettings: {
+        "calendar-1": { treatAsTasks: true }
+      }
+    };
+    let capturedMessage = null;
+    globalThis.chrome = {
+      runtime: {
+        lastError: null,
+        sendMessage: (msg, cb) => {
+          capturedMessage = msg;
+          cb({ ok: true, events: [] });
+        }
+      }
+    };
+    const updated = await ensureExternalEvents(range, viewMode);
+    assert.strictEqual(updated, true);
+    const expectedMin = new Date(
+      bufferedRange.start.getTime() - GOOGLE_CALENDAR_TASK_IMPORT_LOOKBACK_DAYS * MS_PER_DAY
+    );
+    assert.strictEqual(new Date(capturedMessage.timeMin).toISOString(), expectedMin.toISOString());
+    assert.strictEqual(
+      new Date(capturedMessage.timeMax).toISOString(),
+      bufferedRange.end.toISOString()
+    );
+  });
+
+  it("uses the largest task lookback across selected task calendars", async () => {
+    state.settingsCache = {
+      ...state.settingsCache,
+      googleCalendarIds: ["calendar-1", "calendar-2", "calendar-3"],
+      googleCalendarTaskSettings: {
+        "calendar-1": { treatAsTasks: true, taskLookbackDays: 2 },
+        "calendar-2": { treatAsTasks: true, taskLookbackDays: 5 },
+        "calendar-3": { treatAsTasks: false, taskLookbackDays: 30 }
+      }
+    };
+    let capturedMessage = null;
+    globalThis.chrome = {
+      runtime: {
+        lastError: null,
+        sendMessage: (msg, cb) => {
+          capturedMessage = msg;
+          cb({ ok: true, events: [] });
+        }
+      }
+    };
+    const updated = await ensureExternalEvents(range, viewMode);
+    assert.strictEqual(updated, true);
+    const expectedMin = new Date(bufferedRange.start.getTime() - 5 * MS_PER_DAY);
+    assert.strictEqual(new Date(capturedMessage.timeMin).toISOString(), expectedMin.toISOString());
+    assert.deepStrictEqual(capturedMessage.calendarIds, ["calendar-1", "calendar-2", "calendar-3"]);
   });
 
   it("filters out calendars used for scheduled event sync", async () => {

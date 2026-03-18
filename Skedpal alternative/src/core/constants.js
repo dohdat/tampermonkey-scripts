@@ -23,3 +23,4 @@ export const GOOGLE_CALENDAR_EVENT_COLORS = Object.freeze([
 ]);
 
 export const GOOGLE_CALENDAR_SYNC_LOOKBACK_DAYS = 3;
+export const GOOGLE_CALENDAR_TASK_IMPORT_LOOKBACK_DAYS = 7;

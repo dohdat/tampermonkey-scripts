@@ -12,6 +12,7 @@ import {
   MS_PER_DAY,
   MS_PER_HOUR
 } from "../constants.js";
+import { GOOGLE_CALENDAR_TASK_IMPORT_LOOKBACK_DAYS } from "../core/constants.js";
 import { state } from "./state/page-state.js";
 import {
   buildCalendarTaskUpdates,
@@ -44,12 +45,29 @@ function normalizeRange(range) {
   return { start, end, days: range.days };
 }
 
-function buildBufferedRange(range) {
+function getTaskImportLookbackDays(calendarIds) {
+  const ids = Array.isArray(calendarIds) ? calendarIds : getSelectedCalendarIds();
+  const settingsMap = state.settingsCache?.googleCalendarTaskSettings;
+  if (!ids?.length || !settingsMap || typeof settingsMap !== "object") {return 0;}
+  return ids.reduce((maxDays, calendarId) => {
+    const entry = settingsMap[calendarId];
+    if (!entry?.treatAsTasks) {return maxDays;}
+    const parsed = Number(entry.taskLookbackDays);
+    const days = Number.isFinite(parsed) && parsed >= 0
+      ? parsed
+      : GOOGLE_CALENDAR_TASK_IMPORT_LOOKBACK_DAYS;
+    return Math.max(maxDays, days);
+  }, 0);
+}
+
+function buildBufferedRange(range, calendarIds = null) {
   const normalized = normalizeRange(range);
   if (!normalized) {return null;}
   const bufferMs = CALENDAR_EXTERNAL_BUFFER_HOURS * MS_PER_HOUR;
+  const lookbackDays = getTaskImportLookbackDays(calendarIds);
+  const lookbackMs = lookbackDays * MS_PER_DAY;
   return {
-    start: new Date(normalized.start.getTime() - bufferMs),
+    start: new Date(normalized.start.getTime() - bufferMs - lookbackMs),
     end: new Date(normalized.end.getTime() + bufferMs),
     days: normalized.days
   };
@@ -366,8 +384,9 @@ function resolveCachedStateUsage(cached, key) {
 
 export function getExternalEventsForRange(range, viewMode = "week") {
   if (!range?.start || !range?.end) {return [];}
-  const buffered = buildBufferedRange(range);
-  const key = buildCacheKey(buffered, viewMode, getSelectedCalendarIds());
+  const calendarIds = getSelectedCalendarIds();
+  const buffered = buildBufferedRange(range, calendarIds);
+  const key = buildCacheKey(buffered, viewMode, calendarIds);
   const matchesKey = key && state.calendarExternalRangeKey === key;
   const overlaps = hasExternalRangeOverlap(range);
   const events = filterExternalEventsForDisplay(state.calendarExternalEvents || []);
@@ -424,8 +443,9 @@ export async function primeExternalEventsOnLoad(range, viewMode = "week") {
 }
 
 export async function hydrateExternalEvents(range, viewMode = "week") {
-  const buffered = buildBufferedRange(range);
-  const key = buildCacheKey(buffered, viewMode, getSelectedCalendarIds());
+  const calendarIds = getSelectedCalendarIds();
+  const buffered = buildBufferedRange(range, calendarIds);
+  const key = buildCacheKey(buffered, viewMode, calendarIds);
   if (!key || state.calendarExternalRangeKey === key) {return false;}
   const cached = await getCacheEntry(key);
   if (!cached || !isCacheFresh(cached)) {return false;}
@@ -495,7 +515,7 @@ async function fetchExternalEvents({
   allowStateUpdate
 }) {
   const runtime = getRuntime();
-  const fetchRange = buildBufferedRange(range);
+  const fetchRange = buildBufferedRange(range, calendarIds);
   const calendarIdsKey = buildCalendarIdsKey(calendarIds);
   const key = buildCacheKey(fetchRange, viewMode, calendarIds);
   if (!runtime?.sendMessage || !fetchRange) {
@@ -535,7 +555,7 @@ async function fetchExternalEvents({
 
 async function prefetchExternalEvents(range, viewMode) {
   const calendarIds = getSelectedCalendarIds();
-  const fetchRange = buildBufferedRange(range);
+  const fetchRange = buildBufferedRange(range, calendarIds);
   if (!fetchRange) {return false;}
   const key = buildCacheKey(fetchRange, viewMode, calendarIds);
   if (shouldSkipFetch(key)) {return false;}
@@ -555,7 +575,7 @@ async function prefetchExternalEvents(range, viewMode) {
 
 export async function ensureExternalEvents(range, viewMode = "week") {
   const calendarIds = getSelectedCalendarIds();
-  const fetchRange = buildBufferedRange(range);
+  const fetchRange = buildBufferedRange(range, calendarIds);
   if (!fetchRange) {return false;}
   const key = buildCacheKey(fetchRange, viewMode, calendarIds);
   if (shouldSkipFetch(key)) {return false;}
@@ -587,7 +607,7 @@ export async function ensureExternalEvents(range, viewMode = "week") {
 
 export async function refreshExternalEvents(range, viewMode = "week", options = {}) {
   const calendarIds = getSelectedCalendarIds();
-  const fetchRange = buildBufferedRange(range);
+  const fetchRange = buildBufferedRange(range, calendarIds);
   if (!fetchRange) {return false;}
   const key = buildCacheKey(fetchRange, viewMode, calendarIds);
   if (shouldSkipFetch(key)) {return false;}

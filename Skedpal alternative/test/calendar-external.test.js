@@ -1,3 +1,4 @@
+import "fake-indexeddb/auto.js";
 import assert from "assert";
 import { describe, it, beforeEach, afterEach } from "mocha";
 
@@ -5,11 +6,13 @@ import { state } from "../src/ui/state/page-state.js";
 import {
   CALENDAR_EVENTS_CACHE_PREFIX,
   CALENDAR_EXTERNAL_BUFFER_HOURS,
+  DB_NAME,
+  DB_VERSION,
   MS_PER_DAY,
   MS_PER_HOUR
 } from "../src/constants.js";
 import { GOOGLE_CALENDAR_TASK_IMPORT_LOOKBACK_DAYS } from "../src/core/constants.js";
-import { saveCalendarCacheEntry } from "../src/data/db.js";
+import { getAllTasks, saveCalendarCacheEntry, saveTask } from "../src/data/db.js";
 import {
   ensureExternalEvents,
   getExternalEventsForRange,
@@ -20,6 +23,30 @@ import {
   removeExternalEventsCacheEntry,
   syncExternalEventsCache
 } from "../src/ui/calendar-external.js";
+
+const STORES = ["tasks", "timemaps", "settings", "backups", "task-templates", "calendar-cache"];
+
+function openRawDb() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function resetStores() {
+  await getAllTasks();
+  const db = await openRawDb();
+  const tx = db.transaction(STORES, "readwrite");
+  STORES.forEach((storeName) => {
+    tx.objectStore(storeName).clear();
+  });
+  await new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+}
 
 describe("calendar external events", () => {
   const originalChrome = globalThis.chrome;
@@ -59,12 +86,14 @@ describe("calendar external events", () => {
   beforeEach(async () => {
     originalWarn = console.warn;
     console.warn = () => {};
+    await resetStores();
     state.calendarExternalEvents = [];
     state.calendarExternalRangeKey = "";
     state.calendarExternalRange = null;
     state.calendarExternalPendingKey = "";
     state.calendarExternalLastSyncedAt = "";
     state.calendarExternalDeletedKeys = new Set();
+    state.tasksCache = [];
     state.settingsCache = {
       ...state.settingsCache,
       googleCalendarIds: [],
@@ -949,6 +978,61 @@ describe("calendar external events", () => {
     };
     await ensureExternalEvents(range, viewMode);
     assert.strictEqual(dispatched, true);
+    globalThis.window = previousWindow;
+  });
+
+  it("auto sorts newly imported calendar tasks when enabled", async () => {
+    const previousWindow = globalThis.window;
+    globalThis.window = { dispatchEvent: () => {} };
+    const existingTask = {
+      id: "existing-low",
+      title: "Existing low",
+      section: "sec-1",
+      subsection: "sub-1",
+      order: 1,
+      priority: 1
+    };
+    await saveTask(existingTask);
+    state.tasksCache = [existingTask];
+    state.settingsCache = {
+      ...state.settingsCache,
+      autoSortNewTasks: true,
+      googleCalendarIds: ["calendar-1"],
+      googleCalendarTaskSettings: {
+        "calendar-1": { treatAsTasks: true, sectionId: "sec-1", subsectionId: "sub-1" }
+      },
+      sections: [{ id: "sec-1", name: "Work" }],
+      subsections: { "sec-1": [{ id: "sub-1", name: "Ops" }] }
+    };
+    globalThis.chrome = {
+      runtime: {
+        lastError: null,
+        sendMessage: (_msg, cb) => {
+          cb({
+            ok: true,
+            events: [
+              {
+                id: "evt-task",
+                calendarId: "calendar-1",
+                title: "Imported high",
+                start: range.start.toISOString(),
+                end: range.end.toISOString()
+              }
+            ]
+          });
+        }
+      }
+    };
+
+    await ensureExternalEvents(range, viewMode);
+
+    const tasks = await getAllTasks();
+    const importedTask = tasks.find((task) => task.externalEventId === "evt-task");
+    const persistedExistingTask = tasks.find((task) => task.id === existingTask.id);
+    assert.ok(importedTask);
+    assert.ok(persistedExistingTask);
+    assert.strictEqual(importedTask.order, 1);
+    assert.strictEqual(persistedExistingTask.order, 2);
     globalThis.window = previousWindow;
   });
 

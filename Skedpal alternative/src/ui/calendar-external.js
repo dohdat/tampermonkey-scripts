@@ -18,6 +18,7 @@ import {
   buildCalendarTaskUpdates,
   getCalendarTaskCalendarIds
 } from "./calendar-task-import.js";
+import { maybeAutoSortSubsectionOnAdd } from "./tasks/task-auto-sort.js";
 import { getCalendarSyncSettings } from "./utils.js";
 
 const pendingFetches = new Set();
@@ -329,7 +330,26 @@ async function syncCalendarTasksFromEvents(events) {
     tasks: state.tasksCache
   });
   if (!tasksToSave.length) {return;}
+  const existingTaskIds = new Set((state.tasksCache || []).map((task) => task.id).filter(Boolean));
   await Promise.all(tasksToSave.map((task) => saveTask(task)));
+  const autoSortTargets = [];
+  const autoSortTargetKeys = new Set();
+  tasksToSave.forEach((task) => {
+    if (!task?.id || existingTaskIds.has(task.id)) {return;}
+    const sectionId = task.section || "";
+    const subsectionId = task.subsection || "";
+    const key = `${sectionId}::${subsectionId}`;
+    if (autoSortTargetKeys.has(key)) {return;}
+    autoSortTargetKeys.add(key);
+    autoSortTargets.push({ sectionId, subsectionId });
+  });
+  if (autoSortTargets.length) {
+    await Promise.all(
+      autoSortTargets.map(({ sectionId, subsectionId }) =>
+        maybeAutoSortSubsectionOnAdd(sectionId, subsectionId)
+      )
+    );
+  }
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("skedpal:tasks-updated"));
   }

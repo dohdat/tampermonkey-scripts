@@ -133,6 +133,28 @@ describe("repeat complete modal", () => {
     assert.strictEqual(rows.length, REPEAT_COMPLETE_COMPLETED_LIMIT);
   });
 
+  it("formats completed section ranges across different years", () => {
+    const task = {
+      id: "task-cross-year",
+      title: "Cross year completed",
+      startFrom: new Date(2026, 0, 5, 8, 0, 0, 0),
+      repeat: { type: "custom", unit: "day", interval: 1 },
+      completedOccurrences: [
+        new Date(2026, 0, 2, 23, 59, 59, 999).toISOString(),
+        new Date(2025, 11, 31, 23, 59, 59, 999).toISOString()
+      ]
+    };
+
+    openRepeatCompleteModal(task);
+
+    const separators = findByTestId(
+      domRefs.repeatCompleteList,
+      "repeat-complete-completed-separator"
+    );
+    assert.strictEqual(separators.length, 1);
+    assert.ok(separators[0].textContent.includes("2025-Jan 2026"));
+  });
+
   it("shows the empty state when no occurrences are available", () => {
     domRefs.repeatCompleteEmpty.className = "hidden";
     const task = {
@@ -341,5 +363,210 @@ describe("repeat complete modal", () => {
     const labels = findByTestId(domRefs.repeatCompleteList, "repeat-complete-label");
     assert.ok(labels.length >= 1);
     assert.ok(labels[0].textContent.includes(" - "));
+  });
+
+  it("renders yearly range labels for completed yearly range repeats", () => {
+    const task = {
+      id: "task-year-completed",
+      title: "Yearly range completed",
+      startFrom: new Date(2026, 0, 5, 8, 0, 0, 0),
+      repeat: {
+        type: "custom",
+        unit: "year",
+        interval: 1,
+        yearlyRangeStartDate: "2026-01-01",
+        yearlyRangeEndDate: "2026-01-15"
+      },
+      completedOccurrences: [new Date(2026, 0, 15, 23, 59, 59, 999).toISOString()]
+    };
+
+    openRepeatCompleteModal(task);
+
+    const labels = findByTestId(domRefs.repeatCompleteList, "repeat-complete-label");
+    assert.ok(labels.some((node) => node.textContent.includes(" - ")));
+  });
+
+  it("falls back to the default scheduling horizon when the saved value is invalid", () => {
+    const OriginalDate = Date;
+    const fixedNow = new OriginalDate(2026, 0, 10, 12, 0, 0, 0);
+    global.Date = class extends OriginalDate {
+      constructor(...args) {
+        if (args.length === 0) {
+          return new OriginalDate(fixedNow.getTime());
+        }
+        return new OriginalDate(...args);
+      }
+      static now() {
+        return fixedNow.getTime();
+      }
+    };
+
+    try {
+      state.settingsCache = { ...state.settingsCache, schedulingHorizonDays: 0 };
+      const task = {
+        id: "task-default-horizon",
+        title: "Default horizon",
+        startFrom: new Date(2026, 0, 10, 8, 0, 0, 0),
+        repeat: { type: "custom", unit: "day", interval: 1 },
+        completedOccurrences: []
+      };
+
+      openRepeatCompleteModal(task);
+
+      const outOfRange = findByTestId(
+        domRefs.repeatCompleteList,
+        "repeat-complete-out-of-range"
+      );
+      assert.strictEqual(outOfRange.length, 0);
+    } finally {
+      global.Date = OriginalDate;
+    }
+  });
+
+  it("projects available, out-of-range, and completed entries for completion-based daily repeats", () => {
+    const OriginalDate = Date;
+    const fixedNow = new OriginalDate(2026, 0, 10, 12, 0, 0, 0);
+    global.Date = class extends OriginalDate {
+      constructor(...args) {
+        if (args.length === 0) {
+          return new OriginalDate(fixedNow.getTime());
+        }
+        return new OriginalDate(...args);
+      }
+      static now() {
+        return fixedNow.getTime();
+      }
+    };
+
+    try {
+      state.settingsCache = { ...state.settingsCache, schedulingHorizonDays: 1 };
+      const task = {
+        id: "task-completion-daily",
+        title: "Completion daily",
+        repeatAnchor: new Date(2026, 0, 1, 8, 0, 0, 0),
+        repeat: {
+          type: "custom",
+          unit: "day",
+          interval: 1,
+          dayMode: "completion"
+        },
+        completedOccurrences: ["2026-01-09", "2026-01-08"]
+      };
+
+      openRepeatCompleteModal(task);
+
+      const available = findByTestId(domRefs.repeatCompleteList, "repeat-complete-option");
+      const outOfRange = findByTestId(domRefs.repeatCompleteList, "repeat-complete-out-of-range");
+      const completedSeparator = findByTestId(
+        domRefs.repeatCompleteList,
+        "repeat-complete-completed-separator"
+      );
+
+      assert.ok(available.length >= 1);
+      assert.strictEqual(outOfRange.length, 1);
+      assert.strictEqual(completedSeparator.length, 1);
+    } finally {
+      global.Date = OriginalDate;
+    }
+  });
+
+  it("uses singular separator labels and stops completion-based repeats at the max count", () => {
+    const OriginalDate = Date;
+    const fixedNow = new OriginalDate(2026, 0, 10, 12, 0, 0, 0);
+    global.Date = class extends OriginalDate {
+      constructor(...args) {
+        if (args.length === 0) {
+          return new OriginalDate(fixedNow.getTime());
+        }
+        return new OriginalDate(...args);
+      }
+      static now() {
+        return fixedNow.getTime();
+      }
+    };
+
+    try {
+      state.settingsCache = { ...state.settingsCache, schedulingHorizonDays: 1 };
+      const task = {
+        id: "task-completion-count",
+        title: "Completion count",
+        repeatAnchor: new Date(2026, 0, 1, 8, 0, 0, 0),
+        repeat: {
+          type: "custom",
+          unit: "day",
+          interval: 1,
+          dayMode: "completion",
+          end: { type: "after", count: 4 }
+        },
+        completedOccurrences: ["2026-01-09"]
+      };
+
+      openRepeatCompleteModal(task);
+
+      const outOfRangeSeparator = findByTestId(
+        domRefs.repeatCompleteList,
+        "repeat-complete-separator"
+      );
+      const completedSeparator = findByTestId(
+        domRefs.repeatCompleteList,
+        "repeat-complete-completed-separator"
+      );
+      const outOfRangeWrap = findByTestId(
+        domRefs.repeatCompleteList,
+        "repeat-complete-out-of-range"
+      );
+
+      assert.strictEqual(outOfRangeWrap.length, 1);
+      assert.ok(outOfRangeSeparator[0].textContent.includes("(1 occurrence)"));
+      assert.ok(completedSeparator[0].textContent.includes("(1 occurrence)"));
+    } finally {
+      global.Date = OriginalDate;
+    }
+  });
+
+  it("stops projecting completion-based daily repeats after the end date", () => {
+    const OriginalDate = Date;
+    const fixedNow = new OriginalDate(2026, 0, 10, 12, 0, 0, 0);
+    global.Date = class extends OriginalDate {
+      constructor(...args) {
+        if (args.length === 0) {
+          return new OriginalDate(fixedNow.getTime());
+        }
+        return new OriginalDate(...args);
+      }
+      static now() {
+        return fixedNow.getTime();
+      }
+    };
+
+    try {
+      const task = {
+        id: "task-completion-ended",
+        title: "Completion ended",
+        repeatAnchor: new Date(2026, 0, 1, 8, 0, 0, 0),
+        repeat: {
+          type: "custom",
+          unit: "day",
+          interval: 1,
+          dayMode: "completion",
+          end: { type: "on", date: "2026-01-09" }
+        },
+        completedOccurrences: ["2026-01-09", "2026-01-08"]
+      };
+
+      openRepeatCompleteModal(task);
+
+      const available = findByTestId(domRefs.repeatCompleteList, "repeat-complete-option");
+      const completedSeparator = findByTestId(
+        domRefs.repeatCompleteList,
+        "repeat-complete-completed-separator"
+      );
+
+      assert.strictEqual(available.length, 0);
+      assert.strictEqual(completedSeparator.length, 1);
+      assert.strictEqual(domRefs.repeatCompleteEmpty.className.includes("hidden"), false);
+    } finally {
+      global.Date = OriginalDate;
+    }
   });
 });

@@ -18,6 +18,7 @@ import { state } from "../state/page-state.js";
 import { isOccurrenceWithinHorizon, resolveOccurrenceRangeStart } from "./occurrence-horizon.js";
 
 const { repeatCompleteModal, repeatCompleteList, repeatCompleteEmpty } = domRefs;
+const REPEAT_COMPLETE_LOOKAHEAD_LIMIT = TEN;
 
 function formatMonthRange(start, end) {
   if (!start || !end) {return "";}
@@ -83,6 +84,97 @@ function buildCompletedOccurrenceEntries(task) {
   });
   entries.sort((a, b) => b.date.getTime() - a.date.getTime());
   return entries;
+}
+
+function isCompletionBasedDailyRepeat(task) {
+  return task?.repeat?.unit === "day" && task?.repeat?.dayMode === "completion";
+}
+
+function startOfLocalDay(date) {
+  const next = new Date(date);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function endOfLocalDay(date) {
+  const next = new Date(date);
+  next.setHours(END_OF_DAY_HOUR, END_OF_DAY_MINUTE, END_OF_DAY_SECOND, END_OF_DAY_MS);
+  return next;
+}
+
+function addLocalDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function parseRepeatCompleteAnchor(value) {
+  if (!value) {return null;}
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {return null;}
+  return startOfLocalDay(date);
+}
+
+function resolveProjectedCompletionLimitDate(task) {
+  const endDate =
+    task?.repeat?.end?.type === "on" && task?.repeat?.end?.date
+      ? new Date(task.repeat.end.date)
+      : null;
+  return endDate && !Number.isNaN(endDate.getTime()) ? endOfLocalDay(endDate) : null;
+}
+
+function resolveProjectedCompletionMaxCount(task) {
+  if (!(task?.repeat?.end?.type === "after" && task?.repeat?.end?.count)) {
+    return Number.POSITIVE_INFINITY;
+  }
+  return Math.max(0, Number(task.repeat.end.count) || 0);
+}
+
+function resolveProjectedCompletionStart(task, completedEntries, interval) {
+  const anchor =
+    parseRepeatCompleteAnchor(task?.repeatAnchor) ||
+    parseRepeatCompleteAnchor(task?.startFrom) ||
+    parseRepeatCompleteAnchor(task?.deadline) ||
+    startOfLocalDay(new Date());
+  const lastCompleted = completedEntries[0]?.date ? startOfLocalDay(completedEntries[0].date) : null;
+  return lastCompleted ? addLocalDays(lastCompleted, interval) : new Date(anchor);
+}
+
+function buildProjectedCompletionOccurrence(task, cursor, index) {
+  const occurrenceDate = endOfLocalDay(cursor);
+  if (Number.isNaN(occurrenceDate.getTime())) {return null;}
+  return {
+    date: occurrenceDate,
+    occurrenceId: `${task?.id || "repeat"}-${getLocalDateKey(occurrenceDate) || index}`
+  };
+}
+
+function shouldStopProjectedCompletion(occurrenceDate, limitDate, totalCount, maxCount) {
+  if (totalCount >= maxCount) {return true;}
+  return Boolean(limitDate && occurrenceDate > limitDate);
+}
+
+function buildProjectedCompletionOccurrences(task, completedEntries) {
+  if (!isCompletionBasedDailyRepeat(task)) {
+    return getUpcomingOccurrences(task, new Date(), REPEAT_COMPLETE_LOOKAHEAD_LIMIT, DAYS_PER_YEAR);
+  }
+  const interval = Math.max(1, Number(task?.repeat?.interval) || 1);
+  const limitDate = resolveProjectedCompletionLimitDate(task);
+  const maxCount = resolveProjectedCompletionMaxCount(task);
+  const projected = [];
+  let totalCount = completedEntries.length;
+  let cursor = resolveProjectedCompletionStart(task, completedEntries, interval);
+  while (projected.length < REPEAT_COMPLETE_LOOKAHEAD_LIMIT) {
+    const projectedOccurrence = buildProjectedCompletionOccurrence(task, cursor, projected.length);
+    if (!projectedOccurrence) {break;}
+    if (shouldStopProjectedCompletion(projectedOccurrence.date, limitDate, totalCount, maxCount)) {
+      break;
+    }
+    projected.push(projectedOccurrence);
+    totalCount += 1;
+    cursor = addLocalDays(cursor, interval);
+  }
+  return projected;
 }
 
 function resolveOccurrenceTimeLabel({
@@ -318,7 +410,8 @@ export function openRepeatCompleteModal(task) {
   const horizonEnd = new Date(now.getTime());
   horizonEnd.setDate(horizonEnd.getDate() + horizonDays);
   horizonEnd.setHours(END_OF_DAY_HOUR, END_OF_DAY_MINUTE, END_OF_DAY_SECOND, END_OF_DAY_MS);
-  const occurrences = getUpcomingOccurrences(task, now, TEN, DAYS_PER_YEAR);
+  const completedEntries = buildCompletedOccurrenceEntries(task);
+  const occurrences = buildProjectedCompletionOccurrences(task, completedEntries);
   if (!occurrences.length) {
     repeatCompleteEmpty?.classList.remove("hidden");
   } else {
@@ -345,7 +438,6 @@ export function openRepeatCompleteModal(task) {
     });
     appendOutOfRangeSection({ task, outOfRange });
   }
-  const completedEntries = buildCompletedOccurrenceEntries(task);
   appendCompletedSection({ task, completedEntries });
   repeatCompleteModal.classList.remove("hidden");
   document.body.classList.add("modal-open");

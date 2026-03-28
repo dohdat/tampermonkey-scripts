@@ -21,6 +21,7 @@ import {
 } from "./repeat-monthly.js";
 import {
   buildRepeatEndPart,
+  buildDailySummaryPart,
   buildRepeatFrequencyPart,
   buildWeeklySummaryPart,
   buildYearlySummaryPart,
@@ -38,6 +39,7 @@ const {
   taskRepeatSelect,
   taskRepeatUnit,
   taskRepeatInterval,
+  taskRepeatDayMode,
   taskRepeatWeekdays,
   taskRepeatWeeklyModeAny,
   taskRepeatWeeklyModeAll,
@@ -49,6 +51,7 @@ const {
   taskRepeatMonthlyWeekday,
   taskRepeatMonthlyRangeStart,
   taskRepeatMonthlyRangeEnd,
+  taskRepeatDaySection,
   taskRepeatWeeklySection,
   taskRepeatMonthlySection,
   taskRepeatYearlySection,
@@ -76,6 +79,7 @@ export function defaultRepeatState(startDate = getStartDate()) {
   return {
     unit: TASK_REPEAT_NONE,
     interval: 1,
+    dayMode: "anchor",
     weeklyDays: [weekday],
     weeklyMode: "any",
     monthlyMode: "day",
@@ -117,6 +121,7 @@ export function getRepeatSummary(repeat) {
   const end = repeat.end || { type: "never" };
   const parts = [
     buildRepeatFrequencyPart(unit, interval),
+    buildDailySummaryPart(repeat, unit),
     buildWeeklySummaryPart(repeat, unit, []),
     buildMonthlySummaryPart(repeat, unit),
     buildYearlySummaryPart(repeat, unit),
@@ -155,6 +160,8 @@ export function renderRepeatUI(target = repeatStore.repeatTarget) {
   normalizeMonthlyRange(repeatState, getStartDate());
   taskRepeatUnit.value = repeatState.unit === TASK_REPEAT_NONE ? "week" : repeatState.unit;
   taskRepeatInterval.value = repeatState.interval;
+  taskRepeatDaySection.classList.toggle("hidden", repeatState.unit !== "day");
+  setInputValue(taskRepeatDayMode, repeatState.dayMode || "anchor");
   taskRepeatWeeklySection.classList.toggle("hidden", repeatState.unit !== "week");
   taskRepeatMonthlySection.classList.toggle("hidden", repeatState.unit !== "month");
   taskRepeatYearlySection.classList.toggle("hidden", repeatState.unit !== "year");
@@ -210,6 +217,9 @@ function setInputValue(input, value) {
 function resolveRepeatInterval(repeat) {
   return Math.max(1, Number(repeat.interval) || 1);
 }
+function resolveDayMode(repeat, base) {
+  return repeat.dayMode === "completion" ? "completion" : base.dayMode;
+}
 function resolveYearlyMonth(repeat, base) {
   const rangeParts = getDateParts(repeat.yearlyRangeEndDate);
   if (rangeParts) {return rangeParts.month;}
@@ -235,6 +245,7 @@ export function setRepeatFromSelection(
     return;
   }
   const unit = resolveRepeatUnit(repeat);
+  const dayMode = resolveDayMode(repeat, base);
   const weeklyDays = resolveWeeklyDays(repeat, base.weeklyDays);
   const weeklyMode = resolveWeeklyMode(repeat, base.weeklyMode);
   const monthlyMode = resolveMonthlyMode(repeat);
@@ -243,6 +254,7 @@ export function setRepeatFromSelection(
     ...repeat,
     unit,
     interval: resolveRepeatInterval(repeat),
+    dayMode,
     weeklyDays,
     weeklyMode,
     monthlyMode,
@@ -343,6 +355,7 @@ export function buildRepeatFromState() {
     type: "custom",
     unit,
     interval,
+    ...(unit === "day" ? { dayMode: repeatState.dayMode || "anchor" } : {}),
     weeklyDays: repeatState.weeklyDays,
     weeklyMode: repeatState.weeklyMode,
     monthlyMode: repeatState.monthlyMode,

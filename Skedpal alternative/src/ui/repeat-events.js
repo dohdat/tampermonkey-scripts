@@ -23,6 +23,7 @@ const {
   taskRepeatSelect,
   taskRepeatUnit,
   taskRepeatInterval,
+  taskRepeatDayMode,
   taskRepeatWeekdays,
   taskRepeatWeeklyModeAny,
   taskRepeatWeeklyModeAll,
@@ -135,6 +136,11 @@ function handleRepeatIntervalInput() {
   const parsed = Math.max(1, Number(taskRepeatInterval.value) || 1);
   repeatStore.repeatState.interval = parsed;
   taskRepeatInterval.value = parsed;
+}
+
+function handleRepeatDayModeChange() {
+  repeatStore.repeatState.dayMode =
+    taskRepeatDayMode.value === "completion" ? "completion" : "anchor";
 }
 
 function handleRepeatWeekdaysClick(event) {
@@ -370,6 +376,12 @@ function registerRepeatIntervalHandlers() {
     taskRepeatInterval.addEventListener("input", handleRepeatIntervalInput);
     cleanupFns.push(() =>
       taskRepeatInterval.removeEventListener("input", handleRepeatIntervalInput)
+    );
+  }
+  if (taskRepeatDayMode) {
+    taskRepeatDayMode.addEventListener("change", handleRepeatDayModeChange);
+    cleanupFns.push(() =>
+      taskRepeatDayMode.removeEventListener("change", handleRepeatDayModeChange)
     );
   }
   return cleanupFns;

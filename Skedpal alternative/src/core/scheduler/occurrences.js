@@ -23,6 +23,40 @@ function buildNonRepeatOccurrences(task, now, horizonEnd) {
   return [];
 }
 
+function buildDailyCompletionInfo(task) {
+  const store = buildCompletedOccurrenceStore(task?.completedOccurrences);
+  let latest = null;
+  const uniqueDays = new Set();
+  store.dates.forEach((date) => {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) {return;}
+    const localKey = getLocalDateKey(date);
+    if (localKey) {
+      uniqueDays.add(localKey);
+    }
+    if (!latest || date > latest) {
+      latest = date;
+    }
+  });
+  return { latest, count: uniqueDays.size };
+}
+
+function buildCompletionBasedDailyOccurrences({ task, anchor, interval, limitDate, horizonEnd, repeat }) {
+  const { latest, count } = buildDailyCompletionInfo(task);
+  if (
+    repeat.end?.type === "after" &&
+    repeat.end.count &&
+    count >= Math.max(0, Number(repeat.end.count) || 0)
+  ) {
+    return [];
+  }
+  const baseDate = latest ? startOfDay(latest) : anchor;
+  const candidate = latest ? addDays(baseDate, interval) : anchor;
+  if (candidate > limitDate || candidate > horizonEnd) {
+    return [];
+  }
+  return [endOfDay(candidate)];
+}
+
 function buildDailyOccurrences({ anchor, interval, limitDate, maxCount, nowStart, horizonEnd }) {
   const occurrences = [];
   for (
@@ -325,7 +359,7 @@ function buildRepeatContext(task, now, horizonEnd, repeat) {
   const interval = Math.max(1, Number(repeat.interval) || 1);
   const maxCount = resolveRepeatMaxCount(repeat);
   const nowStart = startOfDay(now);
-  return { anchor, interval, limitDate, maxCount, nowStart, horizonEnd, repeat };
+  return { task, anchor, interval, limitDate, maxCount, nowStart, horizonEnd, repeat };
 }
 
 function resolveRepeatHandler(unit) {
@@ -344,6 +378,9 @@ export function buildOccurrenceDates(task, now, horizonEnd) {
     return buildNonRepeatOccurrences(task, now, horizonEnd);
   }
   const context = buildRepeatContext(task, now, horizonEnd, repeat);
+  if (repeat.unit === "day" && repeat.dayMode === "completion") {
+    return buildCompletionBasedDailyOccurrences(context);
+  }
   const handler = resolveRepeatHandler(repeat.unit);
   return handler ? handler(context) : [];
 }

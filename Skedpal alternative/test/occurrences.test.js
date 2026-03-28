@@ -347,6 +347,50 @@ describe("scheduler occurrences", () => {
     assert.strictEqual(dates.length, 1);
   });
 
+  it("returns a single outstanding occurrence for completion-based daily repeats", () => {
+    const task = {
+      id: "daily-completion-outstanding",
+      repeatAnchor: new Date("2026-01-01T00:00:00Z"),
+      repeat: { type: "custom", unit: "day", interval: 2, dayMode: "completion" }
+    };
+    const dates = buildOccurrenceDates(task, new Date("2026-01-10T00:00:00Z"), horizonEnd);
+    assert.strictEqual(dates.length, 1);
+    assert.strictEqual(dates[0].getFullYear(), 2025);
+    assert.strictEqual(dates[0].getMonth(), 11);
+    assert.strictEqual(dates[0].getDate(), 31);
+  });
+
+  it("advances completion-based daily repeats from the latest completion day", () => {
+    const task = {
+      id: "daily-completion-next",
+      repeatAnchor: new Date("2026-01-01T00:00:00Z"),
+      completedOccurrences: ["2026-01-04", "2026-01-09"],
+      repeat: { type: "custom", unit: "day", interval: 3, dayMode: "completion" }
+    };
+    const dates = buildOccurrenceDates(task, new Date("2026-01-10T00:00:00Z"), new Date("2026-01-20T23:59:59Z"));
+    assert.strictEqual(dates.length, 1);
+    assert.strictEqual(dates[0].getFullYear(), 2026);
+    assert.strictEqual(dates[0].getMonth(), 0);
+    assert.strictEqual(dates[0].getDate(), 12);
+  });
+
+  it("stops completion-based daily repeats after the completion count is reached", () => {
+    const task = {
+      id: "daily-completion-ended",
+      repeatAnchor: new Date("2026-01-01T00:00:00Z"),
+      completedOccurrences: ["2026-01-01", "2026-01-03"],
+      repeat: {
+        type: "custom",
+        unit: "day",
+        interval: 2,
+        dayMode: "completion",
+        end: { type: "after", count: 2 }
+      }
+    };
+    const dates = buildOccurrenceDates(task, new Date("2026-01-10T00:00:00Z"), new Date("2026-01-20T23:59:59Z"));
+    assert.deepStrictEqual(dates, []);
+  });
+
   it("uses yearly month/day fields when no range end is provided", () => {
     const localNow = new Date(2026, 0, 1);
     const localHorizon = new Date(2027, 11, 31, 23, 59, 59);

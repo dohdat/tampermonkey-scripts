@@ -152,4 +152,38 @@ describe("schedule helpers", () => {
     const count = getDueOccurrenceCount(task, now, 14);
     assert.strictEqual(count, 3);
   });
+
+  it("counts a single outstanding due occurrence for completion-based daily repeats", () => {
+    const now = new Date(2026, 1, 13, 12, 0, 0);
+    const task = {
+      id: "completion-daily-due",
+      repeat: { type: "custom", unit: "day", interval: 2, dayMode: "completion" },
+      repeatAnchor: new Date(2026, 1, 10, 0, 0, 0)
+    };
+    const count = getDueOccurrenceCount(task, now, 14);
+    assert.strictEqual(count, 1);
+  });
+
+  it("does not stack missed runs for completion-based daily repeats after the last completion", () => {
+    const now = new Date(2026, 1, 13, 12, 0, 0);
+    const task = {
+      id: "completion-daily-single-outstanding",
+      repeat: { type: "custom", unit: "day", interval: 1, dayMode: "completion" },
+      repeatAnchor: new Date(2026, 1, 1, 0, 0, 0),
+      completedOccurrences: ["2026-02-10"]
+    };
+    const count = getDueOccurrenceCount(task, now, 14);
+    assert.strictEqual(count, 1);
+  });
+
+  it("returns one expected occurrence for completion-based daily repeats", () => {
+    const now = new Date(2026, 1, 13, 12, 0, 0);
+    const task = {
+      id: "completion-daily-expected",
+      repeat: { type: "custom", unit: "day", interval: 3, dayMode: "completion" },
+      repeatAnchor: new Date(2026, 1, 10, 0, 0, 0)
+    };
+    const count = getExpectedOccurrenceCount(task, now, 14);
+    assert.strictEqual(count, 1);
+  });
 });

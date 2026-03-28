@@ -88,6 +88,7 @@ initRef("taskRepeatSelect", "select");
 initRef("taskRepeatCustom", "div");
 initRef("taskRepeatUnit", "select");
 initRef("taskRepeatInterval", "input");
+initRef("taskRepeatDayMode", "select");
 initRef("taskRepeatWeekdays", "div");
 initRef("taskRepeatWeeklyModeAny", "input");
 initRef("taskRepeatWeeklyModeAll", "input");
@@ -99,6 +100,7 @@ initRef("taskRepeatMonthlyNth", "select");
 initRef("taskRepeatMonthlyWeekday", "select");
 initRef("taskRepeatMonthlyRangeStart", "input");
 initRef("taskRepeatMonthlyRangeEnd", "input");
+initRef("taskRepeatDaySection", "div");
 initRef("taskRepeatWeeklySection", "div");
 initRef("taskRepeatMonthlySection", "div");
 initRef("taskRepeatYearlySection", "div");
@@ -176,6 +178,7 @@ describe("repeat utils", () => {
       "taskRepeatCustom",
       "taskRepeatUnit",
       "taskRepeatInterval",
+      "taskRepeatDayMode",
       "taskRepeatWeekdays",
       "taskRepeatWeeklyModeAny",
       "taskRepeatWeeklyModeAll",
@@ -187,6 +190,7 @@ describe("repeat utils", () => {
       "taskRepeatMonthlyWeekday",
       "taskRepeatMonthlyRangeStart",
       "taskRepeatMonthlyRangeEnd",
+      "taskRepeatDaySection",
       "taskRepeatWeeklySection",
       "taskRepeatMonthlySection",
       "taskRepeatYearlySection",
@@ -218,9 +222,14 @@ describe("repeat utils", () => {
       { value: "custom-new", label: "" }
     ]);
     selectSetup(domRefs.taskRepeatUnit, [
+      { value: "day", label: "Day" },
       { value: "week", label: "Week" },
       { value: "month", label: "Month" },
       { value: "year", label: "Year" }
+    ]);
+    selectSetup(domRefs.taskRepeatDayMode, [
+      { value: "anchor", label: "Based on the scheduled day" },
+      { value: "completion", label: "From last completed day" }
     ]);
     selectSetup(domRefs.taskRepeatMonthlyMode, [
       { value: "day", label: "" },
@@ -298,13 +307,21 @@ describe("repeat utils", () => {
       yearlyRangeStartDate: "2026-02-01",
       yearlyRangeEndDate: "2026-03-15"
     };
+    const dailyCompletion = {
+      type: "custom",
+      unit: "day",
+      interval: 2,
+      dayMode: "completion"
+    };
     const monthlySummary = getRepeatSummary(monthlyDay);
     const yearlySummary = getRepeatSummary(yearly);
     const yearlyRangeSummary = getRepeatSummary(yearlyRange);
+    const dailySummary = getRepeatSummary(dailyCompletion);
     assert.ok(monthlySummary.includes("on day 5"));
     assert.ok(yearlySummary.includes("on 12/31"));
     assert.ok(yearlySummary.includes("until"));
     assert.ok(yearlyRangeSummary.includes("between"));
+    assert.ok(dailySummary.includes("from last completed day"));
   });
 
   it("summarizes repeats with implicit defaults", () => {
@@ -341,10 +358,12 @@ describe("repeat utils", () => {
     repeatStore.repeatState = {
       unit: "day",
       interval: 3,
+      dayMode: "completion",
       end: { type: "never" }
     };
     let built = buildRepeatFromState();
     assert.strictEqual(built.rrule, "FREQ=DAILY;INTERVAL=3");
+    assert.strictEqual(built.dayMode, "completion");
 
     repeatStore.repeatState = {
       unit: "year",
@@ -379,6 +398,19 @@ describe("repeat utils", () => {
     const modeSelect = domRefs.taskRepeatMonthlyMode;
     const nthOpt = modeSelect.querySelector('option[value="nth"]');
     assert.ok(nthOpt.textContent.includes("2nd Thu"));
+  });
+
+  it("renders repeat UI for completion-based daily mode", () => {
+    repeatStore.repeatState = {
+      unit: "day",
+      interval: 2,
+      dayMode: "completion",
+      end: { type: "never", date: "", count: 1 }
+    };
+    renderRepeatUI("task");
+    assert.strictEqual(domRefs.taskRepeatDaySection.classList.contains("hidden"), false);
+    assert.strictEqual(domRefs.taskRepeatDayMode.value, "completion");
+    assert.strictEqual(domRefs.taskRepeatWeeklySection.classList.contains("hidden"), true);
   });
 
   it("keeps weekly mode counts at one per week", () => {
@@ -437,6 +469,18 @@ describe("repeat utils", () => {
     );
     assert.strictEqual(repeatStore.subsectionRepeatSelection.type, "custom");
     assert.deepStrictEqual(repeatStore.repeatState.weeklyDays, [2, 4]);
+  });
+
+  it("preserves daily completion mode when setting repeats", () => {
+    setRepeatFromSelection({
+      type: "custom",
+      unit: "day",
+      interval: 2,
+      dayMode: "completion",
+      end: { type: "never" }
+    });
+    assert.strictEqual(repeatStore.repeatState.dayMode, "completion");
+    assert.strictEqual(repeatStore.lastRepeatSelection.dayMode, "completion");
   });
 
   it("registers handlers for repeat modal actions", () => {
@@ -663,6 +707,17 @@ describe("repeat utils", () => {
     domRefs.taskRepeatInterval._handlers.input();
     assert.strictEqual(repeatStore.repeatState.interval, 1);
     assert.strictEqual(domRefs.taskRepeatInterval.value, 1);
+  });
+
+  it("updates daily mode from the repeat modal", () => {
+    registerRepeatEventHandlers();
+    domRefs.taskRepeatDayMode.value = "completion";
+    domRefs.taskRepeatDayMode._handlers.change();
+    assert.strictEqual(repeatStore.repeatState.dayMode, "completion");
+
+    domRefs.taskRepeatDayMode.value = "anchor";
+    domRefs.taskRepeatDayMode._handlers.change();
+    assert.strictEqual(repeatStore.repeatState.dayMode, "anchor");
   });
 
   it("updates monthly inputs and yearly range start", () => {

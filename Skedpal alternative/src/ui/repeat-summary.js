@@ -10,6 +10,11 @@ export function buildRepeatFrequencyPart(unit, interval) {
   return `Every ${interval} ${unit}${interval > 1 ? "s" : ""}`;
 }
 
+export function buildDailySummaryPart(repeat, unit) {
+  if (unit !== "day" || repeat?.dayMode !== "completion") {return "";}
+  return "from last completed day";
+}
+
 export function buildWeeklySummaryPart(repeat, unit, fallbackDays) {
   if (unit !== "week") {return "";}
   const weeklyDays = resolveWeeklyDays(repeat, fallbackDays);

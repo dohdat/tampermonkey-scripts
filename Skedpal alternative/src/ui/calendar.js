@@ -31,6 +31,7 @@ import {
 } from "./calendar-helpers.js";
 export { buildUpdatedTaskForDrag, formatRescheduledMessage } from "./calendar-helpers.js";
 export { buildExternalUpdatePayload } from "./calendar-drag.js";
+export { focusCalendarEvent } from "./calendar-task-focus.js";
 import {
   cleanupCalendarEventModal,
   initCalendarEventModal,
@@ -38,16 +39,13 @@ import {
   openExternalEventModal
 } from "./calendar-event-modal.js";
 import {
-  clearCalendarEventFocus,
-  focusCalendarEventBlock
-} from "./calendar-focus.js";
-import {
   ensureExternalEvents,
   getExternalEventsForRange,
   hydrateExternalEvents,
   markExternalEventsCacheDirty,
   syncExternalEventsCache
 } from "./calendar-external.js";
+import { focusCalendarEvent } from "./calendar-task-focus.js";
 import { ensureCalendarDragHandlers, cleanupCalendarDragHandlers } from "./calendar-drag.js";
 import {
   initCalendarCreateModal,
@@ -511,19 +509,6 @@ export function focusCalendarNow(options = {}) {
   return true;
 }
 
-export function focusCalendarEvent(taskId, options = {}) {
-  const { behavior = "auto" } = options;
-  if (!taskId) {return false;}
-  const calendarGrid = domRefs.calendarGrid || document.getElementById("calendar-grid");
-  if (!calendarGrid) {return false;}
-  clearCalendarEventFocus(calendarGrid);
-  const eventBlock = calendarGrid.querySelector(`[data-event-task-id="${taskId}"]`);
-  if (!eventBlock || typeof eventBlock.scrollIntoView !== "function") {return false;}
-  focusCalendarEventBlock(eventBlock, { autoClearMs: 2500, pulse: true });
-  eventBlock.scrollIntoView({ block: "center", inline: "nearest", behavior });
-  return true;
-}
-
 export async function renderCalendar(tasks = state.tasksCache) {
   const viewMode = getActiveCalendarViewMode();
   const range = getCalendarRange(state.calendarAnchorDate, viewMode);
@@ -544,6 +529,13 @@ export async function renderCalendar(tasks = state.tasksCache) {
     splitView: isCalendarSplitVisible()
   });
   updateNowIndicator();
+  if (state.calendarFocusTaskId) {
+    focusCalendarEvent(state.calendarFocusTaskId, {
+      behavior: state.calendarFocusBehavior || "auto",
+      persist: false,
+      allowWithoutScroll: true
+    });
+  }
   if (!events.length) {
     domRefs.calendarGrid?.appendChild(buildEmptyState());
   }

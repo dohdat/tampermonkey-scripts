@@ -24,6 +24,6 @@ export async function viewTaskOnCalendar(taskId) {
   const targetDate = resolveFirstScheduledDate(task);
   if (!targetDate) {return false;}
   switchView("calendar", { calendarAnchorDate: targetDate, focusCalendar: false });
-  renderCalendar(state.tasksCache);
+  await renderCalendar(state.tasksCache);
   return focusCalendarEvent(taskId, { behavior: "smooth" });
 }

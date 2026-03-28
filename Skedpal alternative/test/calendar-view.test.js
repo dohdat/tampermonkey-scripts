@@ -127,7 +127,7 @@ function matchesSelector(node, selector) {
   }
   if (selector.startsWith("[data-event-task-id=")) {
     const taskId = selector.split('"')[1];
-    return node.attributes["data-event-task-id"] === taskId;
+    return node.attributes["data-event-task-id"] === taskId || node.dataset.eventTaskId === taskId;
   }
   if (selector.startsWith("[data-day=")) {
     const day = selector.split('"')[1];
@@ -202,6 +202,9 @@ describe("calendar view", () => {
     state.calendarExternalRangeKey = "";
     state.calendarExternalRange = null;
     state.calendarExternalPendingKey = "";
+    state.calendarFocusTaskId = "";
+    state.calendarFocusBehavior = "auto";
+    state.calendarFocusClearTimer = null;
   });
 
   it("returns false when no grid is available for focus", () => {

@@ -48,6 +48,7 @@ export const state = {
   reminderBannerCount: 0,
   reminderBannerDismissedCount: 0,
   taskOrganizationSuggestions: [],
+  taskOrganizationSuggestionCache: new Map(),
   taskOrganizationRawOutput: "",
   taskOrganizationScopeLabel: "",
   taskOrganizationBusy: false

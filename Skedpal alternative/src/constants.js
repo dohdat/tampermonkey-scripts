@@ -134,7 +134,7 @@ export const REPEAT_COMPLETE_COMPLETED_ID = "repeat-complete-completed";
 export const REPEAT_COMPLETE_COMPLETED_LIMIT = FIVE;
 
 export const GROQ_BASE_URL = "https://api.groq.com/openai/v1/chat/completions";
-export const GROQ_MODEL = "openai/gpt-oss-20b";
+export const GROQ_MODEL = "openai/gpt-oss-120b";
 export const CALENDAR_EVENT_MODAL_TASK_EYEBROW = "Scheduled task";
 export const CALENDAR_EVENT_MODAL_EXTERNAL_EYEBROW = "Google Calendar";
 export const GOOGLE_CALENDAR_SKEDPAL_SOURCE = "personal-skedpal";

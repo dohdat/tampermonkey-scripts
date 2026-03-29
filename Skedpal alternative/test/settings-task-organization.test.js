@@ -218,6 +218,7 @@ describe("task organization review", () => {
       groqApiKey: "test-key"
     };
     state.taskOrganizationSuggestions = [];
+    state.taskOrganizationSuggestionCache = new Map();
     state.taskOrganizationRawOutput = "";
     state.taskOrganizationScopeLabel = "";
     state.taskOrganizationBusy = false;
@@ -693,6 +694,115 @@ describe("task organization review", () => {
     assert.strictEqual(findByTestId(panel, "task-organization-task-title-0")[0].textContent, "Clean toilet");
     assert.ok(findByTestId(panel, "task-organization-suggested-0")[0].textContent.includes("Home / Bathroom"));
     assert.ok(findByTestId(panel, "task-organization-status")[0].textContent.includes("Suggested 1 move"));
+  });
+
+  it("reuses cached review results for unchanged tasks", async () => {
+    await saveTask({
+      id: "task-home",
+      title: "Clean toilet",
+      section: "section-home",
+      subsection: "sub-cleaning"
+    });
+
+    let callCount = 0;
+    global.fetch = async () => {
+      callCount += 1;
+      return {
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  suggestions: [
+                    {
+                      taskId: "task-home",
+                      sectionName: "Home",
+                      subsectionName: "Bathroom",
+                      reason: "Bathroom chore."
+                    }
+                  ]
+                })
+              }
+            }
+          ]
+        })
+      };
+    };
+
+    const { reviewTaskOrganizationScope } =
+      await import("../src/ui/settings-task-organization.js?task-org=5-cache");
+    const firstPanel = createPanel();
+    await reviewTaskOrganizationScope({
+      sectionId: "section-home",
+      panel: firstPanel,
+      button: createButton()
+    });
+
+    const secondPanel = createPanel();
+    await reviewTaskOrganizationScope({
+      sectionId: "section-home",
+      panel: secondPanel,
+      button: createButton()
+    });
+
+    assert.strictEqual(callCount, 1);
+    assert.ok(findByTestId(secondPanel, "task-organization-status")[0].textContent.includes("Reused 1 cached result"));
+    assert.strictEqual(findByTestId(secondPanel, "task-organization-task-title-0")[0].textContent, "Clean toilet");
+  });
+
+  it("only sends tasks with updated titles after caching prior review results", async () => {
+    await saveTask({
+      id: "task-1",
+      title: "Clean toilet",
+      section: "section-home",
+      subsection: "sub-cleaning"
+    });
+    await saveTask({
+      id: "task-2",
+      title: "Wash mirror",
+      section: "section-home",
+      subsection: "sub-cleaning"
+    });
+
+    const payloads = [];
+    global.fetch = async (_url, options = {}) => {
+      const body = JSON.parse(options.body || "{}");
+      payloads.push(body?.messages?.[1]?.content || "");
+      return {
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify({ suggestions: [] }) } }]
+        })
+      };
+    };
+
+    const { reviewTaskOrganizationScope } =
+      await import("../src/ui/settings-task-organization.js?task-org=5-cache-title");
+    await reviewTaskOrganizationScope({
+      sectionId: "section-home",
+      panel: createPanel(),
+      button: createButton()
+    });
+
+    await saveTask({
+      id: "task-1",
+      title: "Deep clean toilet",
+      section: "section-home",
+      subsection: "sub-cleaning"
+    });
+
+    const updatedPanel = createPanel();
+    await reviewTaskOrganizationScope({
+      sectionId: "section-home",
+      panel: updatedPanel,
+      button: createButton()
+    });
+
+    assert.strictEqual(payloads.length, 2);
+    assert.ok(payloads[1].includes("Deep clean toilet"));
+    assert.ok(!payloads[1].includes("Wash mirror"));
+    assert.ok(findByTestId(updatedPanel, "task-organization-status")[0].textContent.includes("Reused 1 cached result"));
   });
 
   it("renders create-subsection badges when Groq suggests a new subsection", async () => {

@@ -9,6 +9,10 @@ import {
   TWO
 } from "./constants.js";
 import { formatGroqErrorStatus } from "./groq-error-status.js";
+import {
+  getTaskOrganizationCachedReview,
+  storeTaskOrganizationBatchCache
+} from "./task-organization-review-cache.js";
 import { state } from "./state/page-state.js";
 import { getSubsectionDescendantIds } from "./utils.js";
 import {
@@ -436,16 +440,24 @@ function handleInvalidBatchResponse(uiTargets, content, scopeLabel) {
   setStatus(uiTargets, `Groq responded without valid JSON for ${scopeLabel}. Showing raw output.`, "error");
 }
 
-function finalizeSuggestions(uiTargets, allSuggestions, reviewItems, scopeLabel, skippedCount = 0) {
+function buildTaskOrganizationSummarySuffix(skippedCount = 0, cacheHits = 0) {
   const skippedSuffix = skippedCount
     ? ` Skipped ${skippedCount} task${skippedCount === 1 ? "" : "s"} due to Groq JSON errors.`
     : "";
+  const cachedSuffix = cacheHits
+    ? ` Reused ${cacheHits} cached result${cacheHits === 1 ? "" : "s"}.`
+    : "";
+  return `${skippedSuffix}${cachedSuffix}`;
+}
+
+function finalizeSuggestions(uiTargets, allSuggestions, reviewItems, scopeLabel, skippedCount = 0, cacheHits = 0) {
+  const summarySuffix = buildTaskOrganizationSummarySuffix(skippedCount, cacheHits);
   storeTaskOrganizationSuggestions(allSuggestions, scopeLabel);
   if (!allSuggestions.length) {
     renderTaskOrganizationModalState();
     setStatus(
       uiTargets,
-      `Reviewed ${reviewItems.length} tasks in ${scopeLabel}. No moves suggested.${skippedSuffix}`,
+      `Reviewed ${reviewItems.length} tasks in ${scopeLabel}. No moves suggested.${summarySuffix}`,
       "info"
     );
     return;
@@ -454,18 +466,19 @@ function finalizeSuggestions(uiTargets, allSuggestions, reviewItems, scopeLabel,
   renderTaskOrganizationModalState();
   setStatus(
     uiTargets,
-    `Suggested ${allSuggestions.length} move${allSuggestions.length === 1 ? "" : "s"} across ${reviewItems.length} tasks in ${scopeLabel}.${skippedSuffix}`,
+    `Suggested ${allSuggestions.length} move${allSuggestions.length === 1 ? "" : "s"} across ${reviewItems.length} tasks in ${scopeLabel}.${summarySuffix}`,
     "info"
   );
 }
 
-async function reviewTaskOrganizationChunk(apiKey, sectionCatalog, taskBatch) {
+async function reviewTaskOrganizationChunk(apiKey, sectionCatalog, taskBatch, scope = {}) {
   let content = "";
   let hadJsonValidationError = false;
   try {
     content = await requestTaskOrganizationBatch(apiKey, sectionCatalog, taskBatch);
     const parsed = parseBatchSuggestions(content, taskBatch);
     if (parsed !== null) {
+      storeTaskOrganizationBatchCache(taskBatch, parsed, scope, sectionCatalog);
       return { suggestions: parsed, skippedCount: 0, invalidContent: "" };
     }
   } catch (error) {
@@ -485,8 +498,18 @@ async function reviewTaskOrganizationChunk(apiKey, sectionCatalog, taskBatch) {
   }
 
   const midpoint = Math.ceil(taskBatch.length / TWO);
-  const left = await reviewTaskOrganizationChunk(apiKey, sectionCatalog, taskBatch.slice(0, midpoint));
-  const right = await reviewTaskOrganizationChunk(apiKey, sectionCatalog, taskBatch.slice(midpoint));
+  const left = await reviewTaskOrganizationChunk(
+    apiKey,
+    sectionCatalog,
+    taskBatch.slice(0, midpoint),
+    scope
+  );
+  const right = await reviewTaskOrganizationChunk(
+    apiKey,
+    sectionCatalog,
+    taskBatch.slice(midpoint),
+    scope
+  );
   return {
     suggestions: [...left.suggestions, ...right.suggestions],
     skippedCount: left.skippedCount + right.skippedCount,
@@ -494,17 +517,33 @@ async function reviewTaskOrganizationChunk(apiKey, sectionCatalog, taskBatch) {
   };
 }
 
-async function reviewTaskOrganizationBatches(uiTargets, apiKey, sectionCatalog, reviewItems, scopeLabel) {
-  const batches = buildTaskOrganizationBatches(reviewItems);
-  const allSuggestions = [];
+async function reviewTaskOrganizationBatches(
+  uiTargets,
+  apiKey,
+  sectionCatalog,
+  reviewItems,
+  scopeLabel,
+  scope = {}
+) {
+  const { cachedSuggestions, uncachedItems, cacheHits } = getTaskOrganizationCachedReview(
+    reviewItems,
+    scope,
+    sectionCatalog
+  );
+  const batches = buildTaskOrganizationBatches(uncachedItems);
+  const allSuggestions = [...cachedSuggestions];
   let skippedCount = 0;
+  if (!batches.length) {
+    finalizeSuggestions(uiTargets, allSuggestions, reviewItems, scopeLabel, 0, cacheHits);
+    return;
+  }
   for (let index = 0; index < batches.length; index += 1) {
     setStatus(
       uiTargets,
       `${SETTINGS_TASK_ORGANIZATION_LOADING_LABEL} ${scopeLabel} (${index + 1}/${batches.length})`,
       "loading"
     );
-    const result = await reviewTaskOrganizationChunk(apiKey, sectionCatalog, batches[index]);
+    const result = await reviewTaskOrganizationChunk(apiKey, sectionCatalog, batches[index], scope);
     if (result.invalidContent) {
       handleInvalidBatchResponse(uiTargets, result.invalidContent, scopeLabel);
       return;
@@ -512,7 +551,7 @@ async function reviewTaskOrganizationBatches(uiTargets, apiKey, sectionCatalog, 
     allSuggestions.push(...result.suggestions);
     skippedCount += result.skippedCount;
   }
-  finalizeSuggestions(uiTargets, allSuggestions, reviewItems, scopeLabel, skippedCount);
+  finalizeSuggestions(uiTargets, allSuggestions, reviewItems, scopeLabel, skippedCount, cacheHits);
 }
 
 function resolveReviewContext(uiTargets) {
@@ -585,7 +624,8 @@ export async function reviewTaskOrganizationScope({
       reviewItemsContext.apiKey,
       reviewContext.sectionCatalog,
       reviewItemsContext.reviewItems,
-      scopeLabel
+      scopeLabel,
+      scope
     );
   } catch (error) {
     console.error("Groq task organization review failed.", error);

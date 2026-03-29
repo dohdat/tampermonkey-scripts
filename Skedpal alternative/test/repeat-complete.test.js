@@ -524,6 +524,54 @@ describe("repeat complete modal", () => {
     }
   });
 
+  it("uses scheduled blocks for the first completion-based daily occurrence even when ids do not match", () => {
+    const OriginalDate = Date;
+    const fixedNow = new OriginalDate(2026, 0, 10, 12, 0, 0, 0);
+    global.Date = class extends OriginalDate {
+      constructor(...args) {
+        if (args.length === 0) {
+          return new OriginalDate(fixedNow.getTime());
+        }
+        return new OriginalDate(...args);
+      }
+      static now() {
+        return fixedNow.getTime();
+      }
+    };
+
+    try {
+      const fallbackStart = new Date(2026, 0, 9, 9, 0, 0, 0);
+      const fallbackEnd = new Date(2026, 0, 9, 10, 0, 0, 0);
+      const task = {
+        id: "task-completion-scheduled",
+        title: "Completion scheduled",
+        repeatAnchor: new Date(2026, 0, 1, 8, 0, 0, 0),
+        repeat: {
+          type: "custom",
+          unit: "day",
+          interval: 1,
+          dayMode: "completion"
+        },
+        scheduledInstances: [
+          {
+            start: fallbackStart.toISOString(),
+            end: fallbackEnd.toISOString(),
+            occurrenceId: "mismatch-occurrence"
+          }
+        ],
+        completedOccurrences: ["2026-01-09"]
+      };
+
+      openRepeatCompleteModal(task);
+
+      const times = findByTestId(domRefs.repeatCompleteList, "repeat-complete-time");
+      assert.ok(times.length >= 1);
+      assert.notStrictEqual(times[0].textContent, "Unscheduled");
+    } finally {
+      global.Date = OriginalDate;
+    }
+  });
+
   it("stops projecting completion-based daily repeats after the end date", () => {
     const OriginalDate = Date;
     const fixedNow = new OriginalDate(2026, 0, 10, 12, 0, 0, 0);

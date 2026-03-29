@@ -15,7 +15,8 @@ import {
 import { formatDate, getLocalDateKey, parseLocalDateInput } from "../utils.js";
 import { getDateParts } from "../repeat-yearly.js";
 import { state } from "../state/page-state.js";
-import { isOccurrenceWithinHorizon, resolveOccurrenceRangeStart } from "./occurrence-horizon.js";
+import { findScheduledOccurrenceMatches } from "./occurrence-instance-matches.js";
+import { isOccurrenceWithinHorizon } from "./occurrence-horizon.js";
 
 const { repeatCompleteModal, repeatCompleteList, repeatCompleteEmpty } = domRefs;
 const REPEAT_COMPLETE_LOOKAHEAD_LIMIT = TEN;
@@ -177,36 +178,13 @@ function buildProjectedCompletionOccurrences(task, completedEntries) {
   return projected;
 }
 
-function resolveOccurrenceTimeLabel({
-  task,
-  date,
-  occurrenceId,
-  fallbackLabel,
-  isOutOfRange
-}) {
+function resolveOccurrenceTimeLabel({ task, date, occurrenceId, fallbackLabel, isOutOfRange, isNext }) {
   if (isOutOfRange) {
     return "Out of range";
   }
-  const instances = task.scheduledInstances || [];
-  let matches = instances.filter((instance) => instance.occurrenceId === occurrenceId);
-  if (!matches.length) {
-    const targetKey = getLocalDateKey(date);
-    matches = instances.filter((instance) => getLocalDateKey(instance.start) === targetKey);
-  }
-  if (!matches.length) {
-    const rangeStart = resolveOccurrenceRangeStart(task, date);
-    if (rangeStart) {
-      const rangeStartMs = rangeStart.getTime();
-      const rangeEndMs = date.getTime();
-      matches = instances.filter((instance) => {
-        if (!instance?.start) {return false;}
-        const start = new Date(instance.start);
-        if (Number.isNaN(start.getTime())) {return false;}
-        const startMs = start.getTime();
-        return startMs >= rangeStartMs && startMs <= rangeEndMs;
-      });
-    }
-  }
+  const matches = findScheduledOccurrenceMatches(task, date, occurrenceId, {
+    allowCompletionFallback: Boolean(isNext)
+  });
   if (!matches.length) {
     return fallbackLabel;
   }
@@ -257,7 +235,8 @@ function buildOccurrenceButton({
     date,
     occurrenceId,
     fallbackLabel: "Unscheduled",
-    isOutOfRange
+    isOutOfRange,
+    isNext
   });
   const meta = document.createElement("span");
   meta.className = "repeat-complete-meta";

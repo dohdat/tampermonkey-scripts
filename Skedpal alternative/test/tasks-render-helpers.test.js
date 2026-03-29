@@ -138,4 +138,34 @@ describe("tasks render helpers", () => {
     assert.strictEqual(dragHandle.dataset.subsectionDragHandle, "sub-cleaning");
     assert.strictEqual(dragHandle.attributes["data-test-skedpal"], "drag-handle");
   });
+
+  it("does not mark the first completion-based daily occurrence as unscheduled when a block exists", async () => {
+    const { buildFirstOccurrenceUnscheduledMap } =
+      await import("../src/ui/tasks/tasks-render-helpers.js?task-org-buttons=2");
+
+    const task = {
+      id: "task-completion-fallback",
+      repeatAnchor: new Date(2026, 0, 1, 8, 0, 0, 0),
+      repeat: {
+        type: "custom",
+        unit: "day",
+        interval: 1,
+        dayMode: "completion"
+      },
+      completedOccurrences: ["2026-01-09"],
+      scheduledInstances: [
+        {
+          start: new Date(2026, 0, 9, 9, 0, 0, 0).toISOString(),
+          end: new Date(2026, 0, 9, 10, 0, 0, 0).toISOString(),
+          occurrenceId: "mismatch-occurrence"
+        }
+      ]
+    };
+
+    const unscheduled = buildFirstOccurrenceUnscheduledMap([task], {
+      schedulingHorizonDays: 14
+    });
+
+    assert.strictEqual(unscheduled.has("task-completion-fallback"), false);
+  });
 });

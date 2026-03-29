@@ -322,12 +322,21 @@ function resolveSubsectionByName(sectionId, subsectionName) {
   ) || null;
 }
 
-async function ensureSuggestedSubsection(sectionId, suggestion) {
+function resolveClosestParentSubsectionId(sectionId, task) {
+  if (!sectionId || !task?.subsection || task.section !== sectionId) {return "";}
+  const subsection = (state.settingsCache.subsections?.[sectionId] || []).find(
+    (entry) => entry.id === task.subsection
+  );
+  return subsection?.parentId || "";
+}
+
+async function ensureSuggestedSubsection(sectionId, suggestion, task = null) {
   const subsectionName = suggestion?.suggestedSubsectionName || "";
   if (!subsectionName) {return "";}
   const existing = resolveSubsectionByName(sectionId, subsectionName);
   if (existing?.id) {return existing.id;}
-  const created = await handleAddSubsection(sectionId, subsectionName);
+  const parentSubsectionId = resolveClosestParentSubsectionId(sectionId, task);
+  const created = await handleAddSubsection(sectionId, subsectionName, parentSubsectionId);
   if (created?.id) {return created.id;}
   return resolveSubsectionByName(sectionId, subsectionName)?.id || "";
 }
@@ -344,7 +353,7 @@ async function applyTaskOrganizationSuggestion(suggestion) {
   }
   let subsectionId = "";
   if (suggestion?.suggestedSubsectionName) {
-    subsectionId = await ensureSuggestedSubsection(section.id, suggestion);
+    subsectionId = await ensureSuggestedSubsection(section.id, suggestion, task);
   }
   const subsectionName = subsectionId
     ? resolveSubsectionName(section.id, subsectionId, state.settingsCache)

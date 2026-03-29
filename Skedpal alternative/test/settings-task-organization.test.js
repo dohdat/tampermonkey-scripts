@@ -1362,6 +1362,60 @@ describe("task organization review", () => {
     assert.strictEqual(updatedTask.subsection, created.id);
   });
 
+  it("creates a suggested subsection under the closest existing parent in the same section", async () => {
+    await saveTask({
+      id: "task-home",
+      title: "Deep scrub shower glass",
+      section: "section-home",
+      subsection: "sub-bathroom"
+    });
+    global.fetch = async () => ({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                suggestions: [
+                  {
+                    taskId: "task-home",
+                    sectionName: "Home",
+                    subsectionName: "Shower Deep Clean",
+                    createSubsection: true,
+                    reason: "Needs a sibling bucket."
+                  }
+                ]
+              })
+            }
+          }
+        ]
+      })
+    });
+
+    const {
+      handleTaskOrganizationModalClick,
+      reviewTaskOrganizationScope
+    } = await import("../src/ui/settings-task-organization.js?task-org=15b");
+    await reviewTaskOrganizationScope({
+      sectionId: "section-home",
+      button: createButton()
+    });
+
+    const modal = document.getElementById("task-organization-modal");
+    const acceptBtn = findByTestId(modal, "task-organization-accept-0")[0];
+    await handleTaskOrganizationModalClick({ target: acceptBtn });
+
+    const created = (state.settingsCache.subsections["section-home"] || []).find(
+      (entry) => entry.name === "Shower Deep Clean"
+    );
+    const updatedTask = (await getAllTasks()).find((task) => task.id === "task-home");
+
+    assert.ok(created);
+    assert.strictEqual(created.parentId, "sub-cleaning");
+    assert.strictEqual(updatedTask.section, "section-home");
+    assert.strictEqual(updatedTask.subsection, created.id);
+  });
+
   it("rejects a suggestion from the modal without moving the task", async () => {
     await saveTask({
       id: "task-home",

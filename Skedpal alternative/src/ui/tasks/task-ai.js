@@ -1,6 +1,7 @@
 import { saveSettings } from "../../data/db.js";
 import { GROQ_BASE_URL, GROQ_MODEL, INDEX_NOT_FOUND, TWO, domRefs } from "../constants.js";
 import { formatGroqErrorStatus } from "../groq-error-status.js";
+import { requestGroqWithRateLimitFallback } from "../groq-model-fallback.js";
 import { state } from "../state/page-state.js";
 
 const {
@@ -47,7 +48,7 @@ function buildTaskListMessages(title) {
   ];
 }
 
-async function requestGroqTaskList(apiKey, title) {
+async function requestGroqTaskListForModel(apiKey, title, model = GROQ_MODEL) {
   const response = await fetch(GROQ_BASE_URL, {
     method: "POST",
     headers: {
@@ -55,7 +56,7 @@ async function requestGroqTaskList(apiKey, title) {
       Authorization: `Bearer ${apiKey}`
     },
     body: JSON.stringify({
-      model: GROQ_MODEL,
+      model,
       messages: buildTaskListMessages(title),
       temperature: 0.4,
       max_completion_tokens: 700,
@@ -80,6 +81,12 @@ async function requestGroqTaskList(apiKey, title) {
 
   const data = await response.json();
   return data?.choices?.[0]?.message?.content || "";
+}
+
+async function requestGroqTaskList(apiKey, title) {
+  return requestGroqWithRateLimitFallback(
+    (model) => requestGroqTaskListForModel(apiKey, title, model)
+  );
 }
 
 function extractJsonCandidate(text) {

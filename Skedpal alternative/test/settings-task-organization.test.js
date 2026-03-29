@@ -1385,6 +1385,71 @@ describe("task organization review", () => {
     assert.ok(status.includes("rate limit hit"));
   });
 
+  it("falls back to smaller Groq models after rate limits", async () => {
+    await saveTask({
+      id: "task-home",
+      title: "Clean toilet",
+      section: "section-home",
+      subsection: "sub-cleaning"
+    });
+
+    const requestedModels = [];
+    global.fetch = async (_url, options = {}) => {
+      const body = JSON.parse(options.body || "{}");
+      requestedModels.push(body.model);
+      if (requestedModels.length < 3) {
+        return {
+          ok: false,
+          status: 429,
+          statusText: "Too Many Requests",
+          json: async () => ({
+            error: {
+              message: "Rate limit exceeded"
+            }
+          })
+        };
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  suggestions: [
+                    {
+                      taskId: "task-home",
+                      sectionName: "Home",
+                      subsectionName: "Bathroom",
+                      reason: "Bathroom chore."
+                    }
+                  ]
+                })
+              }
+            }
+          ]
+        })
+      };
+    };
+
+    const { reviewTaskOrganizationScope } =
+      await import("../src/ui/settings-task-organization.js?task-org=11d");
+    const panel = createPanel();
+
+    await reviewTaskOrganizationScope({
+      sectionId: "section-home",
+      panel,
+      button: createButton()
+    });
+
+    assert.deepStrictEqual(requestedModels, [
+      "openai/gpt-oss-120b",
+      "openai/gpt-oss-20b",
+      "qwen/qwen3-32b"
+    ]);
+    assert.ok(findByTestId(panel, "task-organization-status")[0].textContent.includes("Suggested 1 move"));
+  });
+
   it("uses a subsection scope label and the generic selected-tasks fallback", async () => {
     await saveTask({
       id: "task-bathroom",

@@ -445,6 +445,53 @@ describe("task ai parser", () => {
     cleanup();
   });
 
+  it("falls back to smaller Groq models after rate limits", async () => {
+    state.settingsCache = { groqApiKey: "fallback-key" };
+    const taskTitleInput = elements.get("task-title");
+    taskTitleInput.value = "Plan project";
+    const requestedModels = [];
+    global.fetch = async (_url, options = {}) => {
+      const body = JSON.parse(options.body || "{}");
+      requestedModels.push(body.model);
+      if (requestedModels.length < 3) {
+        return {
+          ok: false,
+          status: 429,
+          statusText: "Too Many Requests",
+          json: async () => ({ error: { message: "Rate limit exceeded" } })
+        };
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                content: "{\"tasks\":[{\"title\":\"Plan\",\"subtasks\":[\"Research\"]}]}"
+              }
+            }
+          ]
+        })
+      };
+    };
+
+    const { initTaskListAssistant } = await import(`../src/ui/tasks/task-ai.js?ui=15`);
+    const cleanup = initTaskListAssistant();
+    const taskAiButton = elements.get("task-ai-generate");
+    const clickHandlers = [...(taskAiButton._handlers.get("click") || [])];
+    await clickHandlers[0]();
+
+    assert.deepStrictEqual(requestedModels, [
+      "openai/gpt-oss-120b",
+      "openai/gpt-oss-20b",
+      "qwen/qwen3-32b"
+    ]);
+    assert.ok(elements.get("task-ai-status").textContent.includes("Suggested task list ready."));
+    assert.deepStrictEqual(state.taskAiList, [{ title: "Plan", subtasks: ["Research"] }]);
+
+    cleanup();
+  });
+
   it("normalizes mixed task list payloads", () => {
     const input = "{\"tasks\":[{\"title\":123,\"subtasks\":[\" Keep \",42]},{\"title\":\"Ship\",\"subtasks\":\"nope\"}]}";
     const result = parseTaskListResponse(input);

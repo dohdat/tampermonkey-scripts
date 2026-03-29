@@ -1242,6 +1242,39 @@ describe("task organization review", () => {
     assert.ok(findByTestId(panel, "task-organization-status")[0].textContent.includes("Groq request failed for Home"));
   });
 
+  it("surfaces Groq rate limits in the scope status", async () => {
+    await saveTask({
+      id: "task-home",
+      title: "Clean toilet",
+      section: "section-home",
+      subsection: "sub-cleaning"
+    });
+    global.fetch = async () => ({
+      ok: false,
+      status: 429,
+      statusText: "Too Many Requests",
+      json: async () => ({
+        error: {
+          message: "Rate limit exceeded"
+        }
+      })
+    });
+
+    const { reviewTaskOrganizationScope } =
+      await import("../src/ui/settings-task-organization.js?task-org=11c");
+    const panel = createPanel();
+
+    await reviewTaskOrganizationScope({
+      sectionId: "section-home",
+      panel,
+      button: createButton()
+    });
+
+    const status = findByTestId(panel, "task-organization-status")[0].textContent;
+    assert.ok(status.includes("Groq request failed for Home"));
+    assert.ok(status.includes("rate limit hit"));
+  });
+
   it("uses a subsection scope label and the generic selected-tasks fallback", async () => {
     await saveTask({
       id: "task-bathroom",

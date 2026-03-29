@@ -8,6 +8,7 @@ import {
   SETTINGS_TASK_ORGANIZATION_MAX_COMPLETION_TOKENS,
   TWO
 } from "./constants.js";
+import { formatGroqErrorStatus } from "./groq-error-status.js";
 import { state } from "./state/page-state.js";
 import { getSubsectionDescendantIds } from "./utils.js";
 import {
@@ -591,7 +592,7 @@ export async function reviewTaskOrganizationScope({
     clearTaskOrganizationState();
     clearOutput(uiTargets);
     renderTaskOrganizationModalState();
-    setStatus(uiTargets, `Groq request failed for ${scopeLabel}. Check console for details.`, "error");
+    setStatus(uiTargets, formatGroqErrorStatus(error, scopeLabel), "error");
   } finally {
     setButtonLoading(button, false);
   }

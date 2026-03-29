@@ -1,5 +1,6 @@
 import { saveSettings } from "../../data/db.js";
 import { GROQ_BASE_URL, GROQ_MODEL, INDEX_NOT_FOUND, TWO, domRefs } from "../constants.js";
+import { formatGroqErrorStatus } from "../groq-error-status.js";
 import { state } from "../state/page-state.js";
 
 const {
@@ -71,7 +72,10 @@ async function requestGroqTaskList(apiKey, title) {
     } catch (error) {
       detail = response.statusText;
     }
-    throw new Error(`HTTP ${response.status} ${detail}`);
+    const requestError = new Error(`HTTP ${response.status} ${detail}`);
+    requestError.status = response.status;
+    requestError.detail = detail;
+    throw requestError;
   }
 
   const data = await response.json();
@@ -335,7 +339,7 @@ async function handleTaskAiButtonClick() {
   } catch (error) {
     console.error("Groq API failed.", error);
     state.taskAiList = [];
-    setStatus("Groq request failed. Check console for details.", "error");
+    setStatus(formatGroqErrorStatus(error), "error");
   } finally {
     setButtonLoading(false);
   }

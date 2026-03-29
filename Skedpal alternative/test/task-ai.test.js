@@ -423,6 +423,28 @@ describe("task ai parser", () => {
     cleanup();
   });
 
+  it("surfaces Groq rate limits in the task ai status", async () => {
+    state.settingsCache = { groqApiKey: "rate-key" };
+    const taskTitleInput = elements.get("task-title");
+    taskTitleInput.value = "Detail";
+    global.fetch = async () => ({
+      ok: false,
+      status: 429,
+      statusText: "Too Many Requests",
+      json: async () => ({ error: { message: "Rate limit exceeded" } })
+    });
+
+    const { initTaskListAssistant } = await import(`../src/ui/tasks/task-ai.js?ui=14`);
+    const cleanup = initTaskListAssistant();
+    const taskAiButton = elements.get("task-ai-generate");
+    const clickHandlers = [...(taskAiButton._handlers.get("click") || [])];
+    await clickHandlers[0]();
+    const status = elements.get("task-ai-status").textContent;
+    assert.ok(status.includes("Groq request failed"));
+    assert.ok(status.includes("rate limit hit"));
+    cleanup();
+  });
+
   it("normalizes mixed task list payloads", () => {
     const input = "{\"tasks\":[{\"title\":123,\"subtasks\":[\" Keep \",42]},{\"title\":\"Ship\",\"subtasks\":\"nope\"}]}";
     const result = parseTaskListResponse(input);

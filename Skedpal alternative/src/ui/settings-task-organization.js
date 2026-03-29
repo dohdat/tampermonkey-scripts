@@ -77,12 +77,32 @@ export function buildTaskOrganizationReviewItems(tasks = [], settings = state.se
 
 function buildSectionCatalog(settings = state.settingsCache) {
   return (settings?.sections || [])
-    .map((section) => ({
-      name: section?.name?.trim() || "",
-      subsections: (settings?.subsections?.[section.id] || [])
-        .map((subsection) => subsection?.name?.trim() || "")
-        .filter(Boolean)
-    }))
+    .map((section) => {
+      const subsectionList = settings?.subsections?.[section.id] || [];
+      const subsectionNameById = new Map(
+        subsectionList.map((subsection) => [subsection.id, subsection?.name?.trim() || ""])
+      );
+      const headerSubsections = new Set(
+        subsectionList
+          .map((subsection) => subsection?.parentId || "")
+          .filter(Boolean)
+          .map((parentId) => subsectionNameById.get(parentId) || "")
+          .filter(Boolean)
+      );
+      return {
+        name: section?.name?.trim() || "",
+        subsections: subsectionList
+          .map((subsection) => subsection?.name?.trim() || "")
+          .filter(Boolean),
+        headerSubsections: [...headerSubsections],
+        subsectionHierarchy: subsectionList
+          .map((subsection) => ({
+            name: subsection?.name?.trim() || "",
+            parentName: subsection?.parentId ? subsectionNameById.get(subsection.parentId) || "" : ""
+          }))
+          .filter((subsection) => subsection.name)
+      };
+    })
     .filter((section) => section.name);
 }
 
@@ -111,12 +131,15 @@ function buildTaskOrganizationMessages(sectionCatalog, taskBatch) {
         "Review these active tasks and suggest only the ones that look misplaced.",
         "Rules:",
         '1. Use an existing section name from the catalog. Do not create new sections.',
-        "2. Use an existing subsection name when it fits.",
-        '3. If no existing subsection fits, set "createSubsection": true and provide a new subsectionName under the chosen existing section.',
-        '4. Omit tasks that already look correctly placed.',
-        '5. Keep reasons short and specific.',
-        '6. Do not use markdown or code fences.',
-        'Return a single JSON object with this shape: {"reasoning":"optional short note","suggestions":[{"taskId":"id","sectionName":"Section","subsectionName":"Subsection or empty","createSubsection":true,"reason":"Why"}]}',
+        "2. If a section has any subsections, do not place a task directly on that section without a subsection.",
+        "3. If a subsection is listed in headerSubsections, treat it like a container title and do not place tasks directly in it.",
+        "4. Use an existing leaf subsection name when it fits.",
+        '5. If a header subsection fits but none of its existing leaf children fit, set "createSubsection": true, provide a new subsectionName, and set "parentSubsectionName" to that existing header subsection.',
+        '6. If no existing leaf subsection fits and no header subsection fits either, set "createSubsection": true and leave "parentSubsectionName" empty.',
+        '7. Omit tasks that already look correctly placed.',
+        '8. Keep reasons short and specific.',
+        '9. Do not use markdown or code fences.',
+        'Return a single JSON object with this shape: {"reasoning":"optional short note","suggestions":[{"taskId":"id","sectionName":"Section","subsectionName":"Subsection or empty","parentSubsectionName":"Existing parent subsection or empty","createSubsection":true,"reason":"Why"}]}',
         `Section catalog: ${JSON.stringify(sectionCatalog)}`,
         `Tasks: ${JSON.stringify(taskBatch)}`
       ].join("\n")
@@ -200,18 +223,36 @@ function extractJsonCandidate(text) {
 function buildSectionLookup(settings) {
   const lookup = new Map();
   const subsectionLookup = new Map();
+  const subsectionCanonicalLookup = new Map();
+  const headerSubsectionLookup = new Map();
   (settings?.sections || []).forEach((section) => {
     const name = section?.name?.trim() || "";
     if (!name) {return;}
     lookup.set(name.toLowerCase(), name);
+    const subsectionList = settings?.subsections?.[section.id] || [];
+    const canonicalSubsections = new Map();
+    subsectionList.forEach((subsection) => {
+      const subsectionName = subsection?.name?.trim() || "";
+      if (!subsectionName) {return;}
+      canonicalSubsections.set(subsectionName.toLowerCase(), subsectionName);
+    });
     const subsectionNames = new Set(
-      (settings?.subsections?.[section.id] || [])
+      subsectionList
         .map((subsection) => subsection?.name?.trim()?.toLowerCase() || "")
         .filter(Boolean)
     );
+    const headerSubsectionNames = new Set(
+      subsectionList
+        .map((subsection) => subsection?.parentId || "")
+        .filter(Boolean)
+        .map((parentId) => subsectionList.find((subsection) => subsection.id === parentId)?.name?.trim()?.toLowerCase() || "")
+        .filter(Boolean)
+    );
     subsectionLookup.set(name.toLowerCase(), subsectionNames);
+    subsectionCanonicalLookup.set(name.toLowerCase(), canonicalSubsections);
+    headerSubsectionLookup.set(name.toLowerCase(), headerSubsectionNames);
   });
-  return { lookup, subsectionLookup };
+  return { lookup, subsectionLookup, subsectionCanonicalLookup, headerSubsectionLookup };
 }
 
 function getSuggestedSectionName(entry, sectionLookup) {
@@ -224,11 +265,34 @@ function getSuggestedSubsectionName(entry) {
   return typeof entry?.subsectionName === "string" ? entry.subsectionName.trim() : "";
 }
 
+function getSuggestedParentSubsectionName(entry, sectionLookup, nextSectionName) {
+  const nextParentInput = typeof entry?.parentSubsectionName === "string"
+    ? entry.parentSubsectionName.trim()
+    : "";
+  if (!nextParentInput) {return "";}
+  const canonicalLookup = sectionLookup.subsectionCanonicalLookup.get(nextSectionName.toLowerCase());
+  return canonicalLookup?.get(nextParentInput.toLowerCase()) || "";
+}
+
 function shouldCreateSuggestedSubsection(entry, sectionLookup, nextSectionName, nextSubsectionName) {
-  if (entry?.createSubsection) {return true;}
   const existingSubsections = sectionLookup.subsectionLookup.get(nextSectionName.toLowerCase());
-  if (!nextSubsectionName || !existingSubsections) {return false;}
+  if (!nextSubsectionName) {return false;}
+  if (entry?.createSubsection) {
+    return !existingSubsections?.has(nextSubsectionName.toLowerCase());
+  }
+  if (!existingSubsections) {return false;}
   return !existingSubsections.has(nextSubsectionName.toLowerCase());
+}
+
+function sectionRequiresSubsection(sectionLookup, nextSectionName) {
+  const existingSubsections = sectionLookup.subsectionLookup.get(nextSectionName.toLowerCase());
+  return Boolean(existingSubsections?.size);
+}
+
+function subsectionIsHeader(sectionLookup, nextSectionName, nextSubsectionName) {
+  if (!nextSubsectionName) {return false;}
+  const headerSubsections = sectionLookup.headerSubsectionLookup.get(nextSectionName.toLowerCase());
+  return Boolean(headerSubsections?.has(nextSubsectionName.toLowerCase()));
 }
 
 function isPlacementUnchanged(task, nextSectionName, nextSubsectionName, createSubsection) {
@@ -247,6 +311,7 @@ function buildNormalizedSuggestion(task, taskId, nextSectionName, nextSubsection
     currentSubsectionName: task.currentSubsectionName,
     suggestedSectionName: nextSectionName,
     suggestedSubsectionName: nextSubsectionName,
+    suggestedParentSubsectionName: "",
     createSubsection,
     reason
   };
@@ -259,15 +324,22 @@ function normalizeTaskOrganizationSuggestion(entry, tasksById, sectionLookup) {
   const nextSectionName = getSuggestedSectionName(entry, sectionLookup);
   if (!nextSectionName) {return null;}
   const nextSubsectionName = getSuggestedSubsectionName(entry);
+  const nextParentSubsectionName = getSuggestedParentSubsectionName(
+    entry,
+    sectionLookup,
+    nextSectionName
+  );
   const createSubsection = shouldCreateSuggestedSubsection(
     entry,
     sectionLookup,
     nextSectionName,
     nextSubsectionName
   );
+  if (!nextSubsectionName && sectionRequiresSubsection(sectionLookup, nextSectionName)) {return null;}
+  if (subsectionIsHeader(sectionLookup, nextSectionName, nextSubsectionName)) {return null;}
   if (isPlacementUnchanged(task, nextSectionName, nextSubsectionName, createSubsection)) {return null;}
   const reason = typeof entry?.reason === "string" ? entry.reason.trim() : "";
-  return buildNormalizedSuggestion(
+  const normalized = buildNormalizedSuggestion(
     task,
     taskId,
     nextSectionName,
@@ -275,6 +347,8 @@ function normalizeTaskOrganizationSuggestion(entry, tasksById, sectionLookup) {
     createSubsection,
     reason
   );
+  normalized.suggestedParentSubsectionName = nextParentSubsectionName;
+  return normalized;
 }
 
 export function parseTaskOrganizationResponse(

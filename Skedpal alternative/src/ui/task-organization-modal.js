@@ -125,7 +125,10 @@ export function clearOutput(uiTargets) {
   });
 }
 
-function buildPlacementLabel(sectionName, subsectionName) {
+function buildPlacementLabel(sectionName, subsectionName, parentSubsectionName = "") {
+  if (sectionName && parentSubsectionName && subsectionName) {
+    return `${sectionName} / ${parentSubsectionName} / ${subsectionName}`;
+  }
   if (sectionName && subsectionName) {
     return `${sectionName} / ${subsectionName}`;
   }
@@ -204,7 +207,8 @@ function buildSuggestionItem(suggestion, index, includeActions) {
   suggested.className = "mt-1 text-xs text-lime-300";
   suggested.textContent = `Suggested: ${buildPlacementLabel(
     suggestion.suggestedSectionName,
-    suggestion.suggestedSubsectionName
+    suggestion.suggestedSubsectionName,
+    suggestion.suggestedParentSubsectionName || ""
   )}`;
   suggested.setAttribute("data-test-skedpal", `task-organization-suggested-${index}`);
 
@@ -371,10 +375,24 @@ async function ensureSuggestedSubsection(sectionId, suggestion, task = null) {
   if (!subsectionName) {return "";}
   const existing = resolveSubsectionByName(sectionId, subsectionName);
   if (existing?.id) {return existing.id;}
-  const parentSubsectionId = resolveClosestParentSubsectionId(sectionId, task);
+  const parentSubsectionId = resolveSubsectionByName(
+    sectionId,
+    suggestion?.suggestedParentSubsectionName || ""
+  )?.id || resolveClosestParentSubsectionId(sectionId, task);
   const created = await handleAddSubsection(sectionId, subsectionName, parentSubsectionId);
   if (created?.id) {return created.id;}
   return resolveSubsectionByName(sectionId, subsectionName)?.id || "";
+}
+
+function buildSuggestionPlacement(sectionId, sectionName, subsectionId) {
+  const subsection = subsectionId
+    ? (state.settingsCache.subsections?.[sectionId] || []).find((entry) => entry.id === subsectionId) || null
+    : null;
+  const subsectionName = subsection?.name || "";
+  const parentSubsectionName = subsection?.parentId
+    ? resolveSubsectionName(sectionId, subsection.parentId, state.settingsCache)
+    : "";
+  return buildPlacementLabel(sectionName, subsectionName, parentSubsectionName);
 }
 
 async function applyTaskOrganizationSuggestion(suggestion) {
@@ -391,9 +409,6 @@ async function applyTaskOrganizationSuggestion(suggestion) {
   if (suggestion?.suggestedSubsectionName) {
     subsectionId = await ensureSuggestedSubsection(section.id, suggestion, task);
   }
-  const subsectionName = subsectionId
-    ? resolveSubsectionName(section.id, subsectionId, state.settingsCache)
-    : "";
   await saveTask({
     ...task,
     section: section.id,
@@ -402,7 +417,7 @@ async function applyTaskOrganizationSuggestion(suggestion) {
   await reloadTasksForTaskOrganization();
   return {
     task,
-    placementLabel: buildPlacementLabel(section.name, subsectionName)
+    placementLabel: buildSuggestionPlacement(section.id, section.name, subsectionId)
   };
 }
 

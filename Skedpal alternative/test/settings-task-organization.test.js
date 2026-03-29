@@ -468,7 +468,7 @@ describe("task organization review", () => {
           {
             taskId: "task-1",
             sectionName: "Home",
-            subsectionName: "Cleaning",
+            subsectionName: "Bathroom",
             createSubsection: false,
             reason: "House chore."
           },
@@ -509,7 +509,8 @@ describe("task organization review", () => {
         currentSectionName: "Money",
         currentSubsectionName: "Finance",
         suggestedSectionName: "Home",
-        suggestedSubsectionName: "Cleaning",
+        suggestedSubsectionName: "Bathroom",
+        suggestedParentSubsectionName: "",
         createSubsection: false,
         reason: "House chore."
       },
@@ -520,6 +521,7 @@ describe("task organization review", () => {
         currentSubsectionName: "Finance",
         suggestedSectionName: "Home",
         suggestedSubsectionName: "Household",
+        suggestedParentSubsectionName: "",
         createSubsection: true,
         reason: "Needs a broader home bucket."
       }
@@ -550,7 +552,8 @@ describe("task organization review", () => {
           {
             taskId: "task-1",
             sectionName: "Home",
-            subsectionName: "Cleaning",
+            subsectionName: "Deep Cleaning",
+            parentSubsectionName: "Cleaning",
             createSubsection: true
           }
         ]
@@ -567,6 +570,65 @@ describe("task organization review", () => {
     );
 
     assert.strictEqual(parsed[0].createSubsection, true);
+    assert.strictEqual(parsed[0].suggestedParentSubsectionName, "Cleaning");
+  });
+
+  it("drops suggestions that point to non-leaf subsection headers", async () => {
+    const { parseTaskOrganizationResponse } =
+      await import("../src/ui/settings-task-organization.js?task-org=4f");
+    const parsed = parseTaskOrganizationResponse(
+      JSON.stringify({
+        suggestions: [
+          {
+            taskId: "task-1",
+            sectionName: "Home",
+            subsectionName: "Cleaning",
+            createSubsection: false,
+            reason: "Home cleaning bucket."
+          }
+        ]
+      }),
+      [
+        {
+          id: "task-1",
+          title: "Clean toilet",
+          currentSectionName: "Money",
+          currentSubsectionName: "Finance"
+        }
+      ],
+      state.settingsCache
+    );
+
+    assert.deepStrictEqual(parsed, []);
+  });
+
+  it("drops section-only suggestions when the target section already has subsections", async () => {
+    const { parseTaskOrganizationResponse } =
+      await import("../src/ui/settings-task-organization.js?task-org=4e");
+    const parsed = parseTaskOrganizationResponse(
+      JSON.stringify({
+        suggestions: [
+          {
+            taskId: "task-1",
+            sectionName: "Home",
+            subsectionName: "",
+            createSubsection: false,
+            reason: "Home catch-all."
+          }
+        ]
+      }),
+      [
+        {
+          id: "task-1",
+          title: "Clean toilet",
+          currentSectionName: "Money",
+          currentSubsectionName: "Finance"
+        }
+      ],
+      state.settingsCache
+    );
+
+    assert.deepStrictEqual(parsed, []);
   });
 
   it("reviews only the selected section scope and renders suggestions inline", async () => {
@@ -1329,6 +1391,7 @@ describe("task organization review", () => {
                     taskId: "task-home",
                     sectionName: "Home",
                     subsectionName: "Deep Cleaning",
+                    parentSubsectionName: "Cleaning",
                     createSubsection: true,
                     reason: "Needs its own bucket."
                   }
@@ -1358,6 +1421,7 @@ describe("task organization review", () => {
     );
     const updatedTask = (await getAllTasks()).find((task) => task.id === "task-home");
     assert.ok(created);
+    assert.strictEqual(created.parentId, "sub-cleaning");
     assert.strictEqual(updatedTask.section, "section-home");
     assert.strictEqual(updatedTask.subsection, created.id);
   });

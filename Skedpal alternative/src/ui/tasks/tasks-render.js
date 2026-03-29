@@ -5,6 +5,7 @@ import {
   editIconSvg,
   favoriteIconSvg,
   sortIconSvg,
+  sparklesIconSvg,
   zoomInIconSvg,
   subtaskIconSvg,
   removeIconSvg,
@@ -177,6 +178,7 @@ function buildSectionHeader(section, options) {
     editSectionBtn,
     favoriteSectionBtn,
     removeSectionBtn,
+    reviewSectionBtn,
     zoomSectionBtn
   } = buildSectionActionButtons({
     section,
@@ -187,6 +189,7 @@ function buildSectionHeader(section, options) {
       caretRightIconSvg,
       editIconSvg,
       favoriteIconSvg,
+      sparklesIconSvg,
       zoomInIconSvg,
       removeIconSvg,
       subtaskIconSvg
@@ -195,6 +198,7 @@ function buildSectionHeader(section, options) {
   titleActions.appendChild(collapseBtn);
   titleActions.appendChild(favoriteSectionBtn);
   titleActions.appendChild(editSectionBtn);
+  titleActions.appendChild(reviewSectionBtn);
   titleActions.appendChild(zoomSectionBtn);
   titleActions.appendChild(addSubsectionToggle);
   titleActions.appendChild(removeSectionBtn);
@@ -314,7 +318,8 @@ function buildSubsectionHeader(sub, section, isNoSection) {
     favoriteSubBtn,
     removeSubBtn,
     addChildSubBtn,
-    sortSubBtn
+    sortSubBtn,
+    reviewSubBtn
   } = buildSubsectionActionButtons({
     sub,
     sectionId: section.id,
@@ -324,6 +329,7 @@ function buildSubsectionHeader(sub, section, isNoSection) {
       editIconSvg,
       favoriteIconSvg,
       removeIconSvg,
+      sparklesIconSvg,
       subtaskIconSvg,
       sortIconSvg
     }
@@ -331,6 +337,7 @@ function buildSubsectionHeader(sub, section, isNoSection) {
   subTitle.appendChild(collapseSubBtn);
   subTitleActions.appendChild(favoriteSubBtn);
   subTitleActions.appendChild(addChildSubBtn);
+  subTitleActions.appendChild(reviewSubBtn);
   subTitleActions.appendChild(sortSubBtn);
   subTitleActions.appendChild(editSubBtn);
   subTitleActions.appendChild(removeSubBtn);

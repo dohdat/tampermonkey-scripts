@@ -37,6 +37,7 @@ import { handleAddTaskRowClick } from "./task-add-row.js";
 import { computeSingleExpandedCollapsedSet } from "./task-collapse-utils.js";
 import { openBulkEditBanner } from "./task-bulk-edit.js";
 import { closeTaskActionMenus, handleTaskMenuToggle } from "./task-list-menu.js";
+import { reviewTaskOrganizationScope } from "../settings-task-organization.js";
 export { handleTaskTitleClick, handleTaskTitleDoubleClick } from "./task-inline-edit.js";
 
 function runTaskDetailCleanup(taskId) {
@@ -136,6 +137,8 @@ function parseTaskListClick(btn) {
     removeSubsectionId: btn.dataset.removeSubsection,
     parentSectionId: btn.dataset.parentSection,
     sortSubsectionPriorityId: btn.dataset.sortSubsectionPriority,
+    reviewSectionOrganizationId: btn.dataset.reviewSectionOrganization,
+    reviewSubsectionOrganizationId: btn.dataset.reviewSubsectionOrganization,
     editId: btn.dataset.edit,
     bulkEditId: btn.dataset.bulkEdit,
     deleteId: btn.dataset.delete,
@@ -283,6 +286,25 @@ async function handleSubsectionSortAction(action) {
     action.parentSectionId || "",
     action.sortSubsectionPriorityId || ""
   );
+}
+
+async function handleTaskOrganizationReviewAction(action, btn) {
+  if (action.reviewSectionOrganizationId !== undefined) {
+    await reviewTaskOrganizationScope({
+      sectionId: action.reviewSectionOrganizationId || "",
+      button: btn
+    });
+    return true;
+  }
+  if (action.reviewSubsectionOrganizationId !== undefined) {
+    await reviewTaskOrganizationScope({
+      sectionId: action.parentSectionId || "",
+      subsectionId: action.reviewSubsectionOrganizationId || "",
+      button: btn
+    });
+    return true;
+  }
+  return false;
 }
 
 function handleCollapseActions(btn, action) {
@@ -501,6 +523,7 @@ export async function handleTaskListClick(event, options = {}) {
     () => handleCompleteAction(action),
     () => handleZoomActionWithClose(action),
     () => handleChildSubsectionActions(action, btn),
+    () => handleTaskOrganizationReviewAction(action, btn),
     () => handleSectionSubsectionActions(action),
     () => handleSubsectionSortAction(action),
     () => handleCollapseActions(btn, action),

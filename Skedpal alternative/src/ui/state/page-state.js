@@ -46,5 +46,9 @@ export const state = {
   bulkEditSelectionIds: [],
   reminderBannerActive: false,
   reminderBannerCount: 0,
-  reminderBannerDismissedCount: 0
+  reminderBannerDismissedCount: 0,
+  taskOrganizationSuggestions: [],
+  taskOrganizationRawOutput: "",
+  taskOrganizationScopeLabel: "",
+  taskOrganizationBusy: false
 };

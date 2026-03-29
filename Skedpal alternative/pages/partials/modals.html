@@ -921,6 +921,88 @@
   </div>
 </div>
 <div
+  id="task-organization-modal"
+  class="task-modal hidden"
+  data-test-skedpal="task-organization-modal"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="task-organization-modal-title"
+  aria-describedby="task-organization-modal-subtitle"
+>
+  <div
+    class="task-modal__panel task-modal__panel--task"
+    data-test-skedpal="task-organization-modal-panel"
+  >
+    <div class="task-modal__header task-modal__header--task" data-test-skedpal="task-organization-modal-header">
+      <div>
+        <p class="task-modal__eyebrow" data-test-skedpal="task-organization-modal-eyebrow">
+          Task placement review
+        </p>
+        <h3
+          class="task-modal__title"
+          id="task-organization-modal-title"
+          data-test-skedpal="task-organization-modal-title"
+        >
+          Review task placement
+        </h3>
+        <p
+          class="task-modal__subtitle"
+          id="task-organization-modal-subtitle"
+          data-test-skedpal="task-organization-modal-subtitle"
+        >
+          Accept to move a task, or reject to dismiss the suggestion.
+        </p>
+      </div>
+      <button
+        type="button"
+        class="modal-close-btn"
+        data-task-organization-modal-close
+        aria-label="Close task placement review"
+        data-test-skedpal="task-organization-modal-close"
+      >
+        <svg
+          class="modal-close-icon"
+          aria-hidden="true"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          data-test-skedpal="modal-close-icon"
+        >
+          <path
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M6 18 17.94 6M18 18 6.06 6"
+          ></path>
+        </svg>
+        <span class="sr-only" data-test-skedpal="modal-close-label">Close modal</span>
+      </button>
+    </div>
+    <div class="task-modal__form space-y-3" data-test-skedpal="task-organization-modal-form">
+      <div
+        class="rounded-xl border border-slate-800/70 bg-slate-950/60 p-3 text-xs text-slate-400"
+        id="task-organization-modal-status"
+        data-test-skedpal="task-organization-modal-status"
+      ></div>
+      <div
+        class="max-h-[60vh] overflow-y-auto space-y-2"
+        id="task-organization-modal-output"
+        data-test-skedpal="task-organization-modal-output"
+      ></div>
+      <div class="task-modal__actions" data-test-skedpal="task-organization-modal-actions">
+        <button
+          type="button"
+          class="btn muted"
+          data-task-organization-modal-close
+          data-test-skedpal="task-organization-modal-cancel"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div
   id="task-reminder-modal"
   class="task-modal task-reminder-modal hidden"
   data-test-skedpal="task-reminder-modal"

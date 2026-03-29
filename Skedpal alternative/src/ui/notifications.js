@@ -2,11 +2,14 @@ import { SIX_THOUSAND_FIVE_HUNDRED, domRefs } from "./constants.js";
 import { state } from "./state/page-state.js";
 
 function getNotificationNodes() {
+  const getById = typeof document?.getElementById === "function"
+    ? (id) => document.getElementById(id)
+    : () => null;
   return {
-    banner: document.getElementById("notification-banner") || domRefs.notificationBanner,
-    message: document.getElementById("notification-message") || domRefs.notificationMessage,
-    undoButton: document.getElementById("notification-undo") || domRefs.notificationUndoButton,
-    closeButton: document.getElementById("notification-close") || domRefs.notificationCloseButton
+    banner: getById("notification-banner") || domRefs.notificationBanner,
+    message: getById("notification-message") || domRefs.notificationMessage,
+    undoButton: getById("notification-undo") || domRefs.notificationUndoButton,
+    closeButton: getById("notification-close") || domRefs.notificationCloseButton
   };
 }
 

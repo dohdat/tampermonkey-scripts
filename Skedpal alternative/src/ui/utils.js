@@ -114,8 +114,8 @@ export function parseCalendarViewFromUrl(defaultView = "day") {
 }
 
 export function uuid() {
-  return crypto.randomUUID
-    ? crypto.randomUUID()
+  return globalThis.crypto?.randomUUID
+    ? globalThis.crypto.randomUUID()
     : Math.random().toString(THIRTY_SIX).slice(TWO);
 }
 

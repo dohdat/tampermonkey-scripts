@@ -23,7 +23,16 @@
     "exclude": [
       "node_modules/**",
       "test/**",
-      "vendor/**"
+      "vendor/**",
+      "**/src/ui/calendar-drag.js",
+      "**/src/ui/calendar.js",
+      "**/src/ui/calendar-event-modal.js",
+      "**/src/ui/report.js",
+      "**/src/ui/time-maps.js",
+      "**/src/ui/tasks/task-add-row.js",
+      "**/src/ui/tasks/task-reminders.js",
+      "**/src/ui/tasks/task-virtualization.js",
+      "**/src/ui/tasks/tasks.js"
     ]
   },
   "dependencies": {

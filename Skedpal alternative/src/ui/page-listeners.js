@@ -56,6 +56,10 @@ import { initTaskModalSections } from "./task-modal-sections.js";
 import { initTaskPriorityDropdown } from "./tasks/task-priority-dropdown.js";
 import { initTaskDeleteShortcut } from "./tasks/task-delete-shortcut.js";
 import { cleanupCalendarView } from "./calendar.js";
+import {
+  closeTaskOrganizationModal,
+  handleTaskOrganizationModalClick
+} from "./settings-task-organization.js";
 
 const {
   timeMapFormWrap,
@@ -77,7 +81,9 @@ const {
   timeMapList,
   repeatCompleteList,
   repeatCompleteCloseBtns,
-  subsectionTaskPriorityInput
+  subsectionTaskPriorityInput,
+  taskOrganizationModalCloseBtns,
+  taskOrganizationModalOutput
 } = domRefs;
 
 function handleTimeMapCancelClick() {
@@ -505,6 +511,16 @@ function registerModalHandlers() {
     repeatCompleteList.addEventListener("click", handleRepeatCompleteListClick);
     cleanupFns.push(() =>
       repeatCompleteList.removeEventListener("click", handleRepeatCompleteListClick)
+    );
+  }
+  taskOrganizationModalCloseBtns.forEach((btn) => {
+    btn.addEventListener("click", closeTaskOrganizationModal);
+    cleanupFns.push(() => btn.removeEventListener("click", closeTaskOrganizationModal));
+  });
+  if (taskOrganizationModalOutput) {
+    taskOrganizationModalOutput.addEventListener("click", handleTaskOrganizationModalClick);
+    cleanupFns.push(() =>
+      taskOrganizationModalOutput.removeEventListener("click", handleTaskOrganizationModalClick)
     );
   }
   initTaskReminderModal();

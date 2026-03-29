@@ -356,6 +356,7 @@ export function renderTimeMapOptions(
 }
 
 export function collectSelectedValues(container) {
+  if (!container?.querySelectorAll) {return [];}
   return [...container.querySelectorAll("input[type='checkbox']:checked")].map((el) => {
     const val = el.value;
     return /^\d+$/.test(val) ? Number(val) : val;

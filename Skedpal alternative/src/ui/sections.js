@@ -150,6 +150,7 @@ export function renderTaskSectionOptions(selected) {
     ? sections.find((s) => s.id === selected) || sections.find((s) => s.name === selected)
     : sections.find((s) => s.name?.toLowerCase() === "work") || null;
   const { taskSectionSelect } = domRefs;
+  if (!taskSectionSelect) {return;}
   taskSectionSelect.innerHTML = "";
   const noneOpt = document.createElement("option");
   noneOpt.value = "";
@@ -169,6 +170,7 @@ export function renderTaskSectionOptions(selected) {
 
 export function renderTaskSubsectionOptions(selected) {
   const { taskSectionSelect, taskSubsectionSelect } = domRefs;
+  if (!taskSectionSelect || !taskSubsectionSelect) {return;}
   const section = taskSectionSelect.value;
   const subsections = section ? getSubsectionsFor(section) : [];
   const subsectionsWithChildren = new Set(subsections.map((sub) => sub.parentId || "").filter(Boolean));
@@ -358,12 +360,17 @@ export async function handleRemoveSection(id) {
 
 export async function handleAddSubsection(sectionId, value, parentSubsectionId = "") {
   const name = value.trim();
-  if (!sectionId || !name) {return;}
-  if (hasInvalidSubsectionDates()) {return;}
+  if (!sectionId || !name) {return null;}
+  if (hasInvalidSubsectionDates()) {return null;}
   const subsections = { ...(state.settingsCache.subsections || {}) };
   const list = subsections[sectionId] || [];
   const parentId = parentSubsectionId || "";
-  if (isDuplicateSubsectionName(list, parentId, name)) {return;}
+  const existing = list.find(
+    (entry) =>
+      (entry.parentId || "") === parentId &&
+      (entry.name || "").toLowerCase() === name.toLowerCase()
+  );
+  if (existing) {return existing;}
   const entry = {
     id: uuid(),
     name,
@@ -376,6 +383,7 @@ export async function handleAddSubsection(sectionId, value, parentSubsectionId =
   await saveSettings(state.settingsCache);
   renderTaskSectionOptions(sectionId);
   await runLoadTasks();
+  return entry;
 }
 
 export async function handleRenameSection(sectionId) {

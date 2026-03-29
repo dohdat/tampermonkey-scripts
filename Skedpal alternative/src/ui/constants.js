@@ -32,6 +32,9 @@ export const TIME_MAP_DEFAULT_END = "12:00";
 export const TIME_MAP_LABEL_HOURS = [ZERO, FOUR, EIGHT, TWELVE, SIXTEEN, TWENTY, TWENTY_FOUR];
 export const DATE_PICKER_SUGGESTED_COUNT = THREE;
 export const CALENDAR_ALL_DAY_LABEL = "All day";
+export const SETTINGS_TASK_ORGANIZATION_BATCH_SIZE = 20;
+export const SETTINGS_TASK_ORGANIZATION_LOADING_LABEL = "Reviewing...";
+export const SETTINGS_TASK_ORGANIZATION_MAX_COMPLETION_TOKENS = 1000;
 export const TITLE_REMINDER_REGEX =
   /\bremind(?:er)?(?:\s+me)?\s+(?:in\s+)?(\d+(?:\.\d+)?)\s*(?:day|days|d)\b/i;
 export const TITLE_REMINDER_PREFIX_REGEX =
@@ -60,6 +63,7 @@ export const caretRightIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" wi
 export const eyeIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 10s3-5 8-5 8 5 8 5-3 5-8 5-8-5-8-5Z" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="10" cy="10" r="2.5"></circle></svg>`;
 export const eyeOffIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 10s3-5 8-5 8 5 8 5-3 5-8 5-8-5-8-5Z" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="10" cy="10" r="2.5"></circle><path d="M4 4l12 12" stroke-linecap="round"></path></svg>`;
 export const homeIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 9.5 10 3l7 6.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M5.5 9.5V16a1 1 0 0 0 1 1H13a1 1 0 0 0 1-1V9.5" stroke-linecap="round"></path></svg>`;
+export const sparklesIconSvg = `<svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m10 2.5 1.2 3.3L14.5 7l-3.3 1.2L10 11.5 8.8 8.2 5.5 7l3.3-1.2L10 2.5Z"></path><path d="m15.2 11.8.7 2 .1.1 2 .7-2 .7-.1.1-.7 2-.7-2-.1-.1-2-.7 2-.7.1-.1.7-2Z"></path><path d="m4.8 11.2.8 2.2.1.1 2.2.8-2.2.8-.1.1-.8 2.2-.8-2.2-.1-.1-2.2-.8 2.2-.8.1-.1.8-2.2Z"></path></svg>`;
 
 export const TASK_ZONE_CLASS = "task-drop-zone";
 export const TASK_PLACEHOLDER_CLASS = "task-drop-placeholder";
@@ -200,6 +204,14 @@ export const domRefs = {
   repeatCompleteList: document.getElementById("repeat-complete-list"),
   repeatCompleteEmpty: document.getElementById("repeat-complete-empty"),
   repeatCompleteCloseBtns: [...document.querySelectorAll("[data-repeat-complete-close]")],
+  taskOrganizationModal: document.getElementById("task-organization-modal"),
+  taskOrganizationModalTitle: document.getElementById("task-organization-modal-title"),
+  taskOrganizationModalSubtitle: document.getElementById("task-organization-modal-subtitle"),
+  taskOrganizationModalStatus: document.getElementById("task-organization-modal-status"),
+  taskOrganizationModalOutput: document.getElementById("task-organization-modal-output"),
+  taskOrganizationModalCloseBtns: [
+    ...document.querySelectorAll("[data-task-organization-modal-close]")
+  ],
   subsectionFormWrap: document.getElementById("subsection-form-wrap"),
   subsectionForm: document.getElementById("subsection-form"),
   subsectionSectionIdInput: document.getElementById("subsection-section-id"),

@@ -160,6 +160,20 @@ function buildSubsectionSortButton({ subsectionId, sectionId, themeColors, icons
   return sortSubBtn;
 }
 
+function buildSubsectionReviewButton({ subsectionId, sectionId, themeColors, icons }) {
+  const reviewSubBtn = document.createElement("button");
+  reviewSubBtn.type = "button";
+  reviewSubBtn.dataset.reviewSubsectionOrganization = subsectionId;
+  reviewSubBtn.dataset.parentSection = sectionId;
+  reviewSubBtn.className = "title-icon-btn";
+  reviewSubBtn.title = "Review subsection task placement";
+  reviewSubBtn.innerHTML = icons.sparklesIconSvg;
+  reviewSubBtn.style.borderColor = themeColors.cyan400;
+  reviewSubBtn.style.color = themeColors.cyan400;
+  reviewSubBtn.setAttribute("data-test-skedpal", "subsection-review-organization-btn");
+  return reviewSubBtn;
+}
+
 export function buildSubsectionActionButtons({
   sub,
   sectionId,
@@ -168,6 +182,12 @@ export function buildSubsectionActionButtons({
   icons
 }) {
   const sortSubBtn = buildSubsectionSortButton({
+    subsectionId: sub.id,
+    sectionId,
+    themeColors,
+    icons
+  });
+  const reviewSubBtn = buildSubsectionReviewButton({
     subsectionId: sub.id,
     sectionId,
     themeColors,
@@ -217,6 +237,7 @@ export function buildSubsectionActionButtons({
 
   return {
     sortSubBtn,
+    reviewSubBtn,
     editSubBtn,
     favoriteSubBtn,
     removeSubBtn,
@@ -236,6 +257,19 @@ export function buildDragHandleButton({ label, datasetKey, datasetValue, testId 
   dragHandle.innerHTML = dragHandleIconSvg;
   dragHandle.setAttribute("data-test-skedpal", testId);
   return dragHandle;
+}
+
+function buildSectionReviewButton({ sectionId, themeColors, icons }) {
+  const reviewSectionBtn = document.createElement("button");
+  reviewSectionBtn.type = "button";
+  reviewSectionBtn.dataset.reviewSectionOrganization = sectionId;
+  reviewSectionBtn.className = "title-icon-btn";
+  reviewSectionBtn.title = "Review section task placement";
+  reviewSectionBtn.innerHTML = icons.sparklesIconSvg;
+  reviewSectionBtn.style.borderColor = themeColors.cyan400;
+  reviewSectionBtn.style.color = themeColors.cyan400;
+  reviewSectionBtn.setAttribute("data-test-skedpal", "section-review-organization-btn");
+  return reviewSectionBtn;
 }
 
 export function buildSectionActionButtons({ section, isCollapsed, themeColors, icons }) {
@@ -271,6 +305,11 @@ export function buildSectionActionButtons({ section, isCollapsed, themeColors, i
   zoomSectionBtn.title = "Zoom into section";
   zoomSectionBtn.innerHTML = icons.zoomInIconSvg;
   zoomSectionBtn.setAttribute("data-test-skedpal", "section-zoom-btn");
+  const reviewSectionBtn = buildSectionReviewButton({
+    sectionId: section.id,
+    themeColors,
+    icons
+  });
   const favoriteSectionBtn = document.createElement("button");
   favoriteSectionBtn.type = "button";
   favoriteSectionBtn.dataset.favoriteSection = section.id;
@@ -307,6 +346,7 @@ export function buildSectionActionButtons({ section, isCollapsed, themeColors, i
     editSectionBtn,
     favoriteSectionBtn,
     removeSectionBtn,
+    reviewSectionBtn,
     zoomSectionBtn
   };
 }

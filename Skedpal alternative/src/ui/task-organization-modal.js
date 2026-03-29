@@ -132,6 +132,42 @@ function buildPlacementLabel(sectionName, subsectionName) {
   return sectionName || "No section";
 }
 
+function buildSuggestionActionButtonClass(variant) {
+  const baseClass = [
+    "inline-flex",
+    "items-center",
+    "justify-center",
+    "rounded-full",
+    "border",
+    "px-2.5",
+    "py-1",
+    "text-[11px]",
+    "font-semibold",
+    "leading-none",
+    "transition",
+    "disabled:cursor-not-allowed",
+    "disabled:opacity-50"
+  ];
+  if (variant === "accept") {
+    return [
+      ...baseClass,
+      "border-lime-400/60",
+      "bg-lime-400/10",
+      "text-lime-200",
+      "hover:border-lime-400",
+      "hover:bg-lime-400/20"
+    ].join(" ");
+  }
+  return [
+    ...baseClass,
+    "border-slate-700",
+    "bg-slate-900/60",
+    "text-slate-300",
+    "hover:border-orange-400",
+    "hover:text-orange-300"
+  ].join(" ");
+}
+
 function buildSuggestionItem(suggestion, index, includeActions) {
   const item = document.createElement("div");
   item.className = "rounded-xl border border-slate-800 bg-slate-950/60 p-3 shadow-sm";
@@ -186,12 +222,12 @@ function buildSuggestionItem(suggestion, index, includeActions) {
 
   if (includeActions) {
     const actions = document.createElement("div");
-    actions.className = "mt-3 flex flex-wrap gap-2";
+    actions.className = "mt-2 flex flex-wrap items-center justify-end gap-1.5";
     actions.setAttribute("data-test-skedpal", `task-organization-actions-${index}`);
 
     const acceptBtn = document.createElement("button");
     acceptBtn.type = "button";
-    acceptBtn.className = "btn primary";
+    acceptBtn.className = buildSuggestionActionButtonClass("accept");
     acceptBtn.textContent = "Accept";
     acceptBtn.dataset.taskOrganizationAction = "accept";
     acceptBtn.dataset.taskId = suggestion.taskId;
@@ -200,7 +236,7 @@ function buildSuggestionItem(suggestion, index, includeActions) {
 
     const rejectBtn = document.createElement("button");
     rejectBtn.type = "button";
-    rejectBtn.className = "btn muted";
+    rejectBtn.className = buildSuggestionActionButtonClass("reject");
     rejectBtn.textContent = "Reject";
     rejectBtn.dataset.taskOrganizationAction = "reject";
     rejectBtn.dataset.taskId = suggestion.taskId;

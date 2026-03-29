@@ -34,7 +34,7 @@ export const DATE_PICKER_SUGGESTED_COUNT = THREE;
 export const CALENDAR_ALL_DAY_LABEL = "All day";
 export const SETTINGS_TASK_ORGANIZATION_BATCH_SIZE = 20;
 export const SETTINGS_TASK_ORGANIZATION_LOADING_LABEL = "Reviewing...";
-export const SETTINGS_TASK_ORGANIZATION_MAX_COMPLETION_TOKENS = 1000;
+export const SETTINGS_TASK_ORGANIZATION_MAX_COMPLETION_TOKENS = 8192;
 export const TITLE_REMINDER_REGEX =
   /\bremind(?:er)?(?:\s+me)?\s+(?:in\s+)?(\d+(?:\.\d+)?)\s*(?:day|days|d)\b/i;
 export const TITLE_REMINDER_PREFIX_REGEX =

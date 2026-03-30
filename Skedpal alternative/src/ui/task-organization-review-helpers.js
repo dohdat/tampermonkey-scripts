@@ -26,7 +26,10 @@ function buildTaskOrganizationMessages(sectionCatalog, taskBatch) {
         '6. If no existing leaf subsection fits and no header subsection fits either, set "createSubsection": true and leave "parentSubsectionName" empty.',
         '7. Omit tasks that already look correctly placed.',
         '8. Keep reasons short and specific.',
-        '9. Do not use markdown or code fences.',
+        '9. If sectionCatalog.sparseLeafSubsections shows a leaf subsection with taskCount between 1 and 2, consider combining those tasks into a better existing leaf subsection (prefer siblings when possible).',
+        '10. Only suggest sparse-leaf consolidation for subsection names that appear in sparseLeafSubsections, and use the provided taskCount exactly.',
+        '11. When suggesting consolidation from sparse leaf subsections, you may mention a potential subsection rename in reason if it improves clarity.',
+        '12. Do not use markdown or code fences.',
         'Return a single JSON object with this shape: {"reasoning":"optional short note","suggestions":[{"taskId":"id","sectionName":"Section","subsectionName":"Subsection or empty","parentSubsectionName":"Existing parent subsection or empty","createSubsection":true,"reason":"Why"}]}',
         `Section catalog: ${JSON.stringify(sectionCatalog)}`,
         `Tasks: ${JSON.stringify(taskBatch)}`

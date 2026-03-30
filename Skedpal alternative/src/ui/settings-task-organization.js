@@ -2,6 +2,7 @@ import { getAllTasks, saveSettings } from "../data/db.js";
 import {
   SETTINGS_TASK_ORGANIZATION_BATCH_SIZE,
   SETTINGS_TASK_ORGANIZATION_LOADING_LABEL,
+  SETTINGS_TASK_ORGANIZATION_SPARSE_LEAF_MAX_TASKS,
   TWO
 } from "./constants.js";
 import { formatGroqErrorStatus } from "./groq-error-status.js";
@@ -81,12 +82,65 @@ export function buildTaskOrganizationReviewItems(tasks = [], settings = state.se
     }));
 }
 
-function buildSectionCatalog(settings = state.settingsCache) {
+function buildSparseLeafSubsections(
+  section,
+  subsectionList,
+  subsectionNameById,
+  scopedTasks = []
+) {
+  const sectionId = section?.id || "";
+  if (!sectionId) {return [];}
+  const taskCountBySubsection = new Map();
+
+  (scopedTasks || []).forEach((task) => {
+    if (task?.section !== sectionId) {return;}
+    const subsectionId = task?.subsection || "";
+    if (!subsectionId) {return;}
+    taskCountBySubsection.set(subsectionId, (taskCountBySubsection.get(subsectionId) || 0) + 1);
+  });
+
+  const parentIds = new Set(
+    (subsectionList || []).map((subsection) => subsection?.parentId || "").filter(Boolean)
+  );
+  const leafSubsections = (subsectionList || []).filter(
+    (subsection) => subsection?.id && !parentIds.has(subsection.id)
+  );
+
+  return leafSubsections
+    .map((subsection) => {
+      const name = subsection?.name?.trim() || "";
+      if (!name) {return null;}
+      const taskCount = taskCountBySubsection.get(subsection.id) || 0;
+      if (taskCount < 1 || taskCount > SETTINGS_TASK_ORGANIZATION_SPARSE_LEAF_MAX_TASKS) {
+        return null;
+      }
+      const parentId = subsection?.parentId || "";
+      const siblingLeafSubsections = leafSubsections
+        .filter((candidate) => candidate?.id !== subsection?.id && (candidate?.parentId || "") === parentId)
+        .map((candidate) => candidate?.name?.trim() || "")
+        .filter(Boolean);
+      return {
+        name,
+        parentName: parentId ? subsectionNameById.get(parentId) || "" : "",
+        taskCount,
+        siblingLeafSubsections
+      };
+    })
+    .filter(Boolean);
+}
+
+function buildSectionCatalog(settings = state.settingsCache, scopedTasks = []) {
   return (settings?.sections || [])
     .map((section) => {
       const subsectionList = settings?.subsections?.[section.id] || [];
       const subsectionNameById = new Map(
         subsectionList.map((subsection) => [subsection.id, subsection?.name?.trim() || ""])
+      );
+      const sparseLeafSubsections = buildSparseLeafSubsections(
+        section,
+        subsectionList,
+        subsectionNameById,
+        scopedTasks
       );
       const headerSubsections = new Set(
         subsectionList
@@ -101,6 +155,7 @@ function buildSectionCatalog(settings = state.settingsCache) {
           .map((subsection) => subsection?.name?.trim() || "")
           .filter(Boolean),
         headerSubsections: [...headerSubsections],
+        sparseLeafSubsections,
         subsectionHierarchy: subsectionList
           .map((subsection) => ({
             name: subsection?.name?.trim() || "",
@@ -310,7 +365,7 @@ function resolveReviewContext(uiTargets) {
     setStatus(uiTargets, "Add at least one section before reviewing task placement.", "error");
     return null;
   }
-  return { sectionCatalog };
+  return {};
 }
 
 async function resolveReviewItems(uiTargets, scope) {
@@ -323,7 +378,8 @@ async function resolveReviewItems(uiTargets, scope) {
     return null;
   }
   const tasks = await getAllTasks();
-  const reviewItems = buildTaskOrganizationScopeItems(tasks, scope, state.settingsCache);
+  const scopedTasks = filterTasksForScope(tasks, scope, state.settingsCache);
+  const reviewItems = buildTaskOrganizationReviewItems(scopedTasks, state.settingsCache);
   if (!reviewItems.length) {
     clearTaskOrganizationState();
     clearOutput(uiTargets);
@@ -331,7 +387,10 @@ async function resolveReviewItems(uiTargets, scope) {
     setStatus(uiTargets, `No active root tasks in ${describeScope(scope)}.`, "info");
     return null;
   }
-  return { apiKey, reviewItems };
+  const activeScopedTasksForLeafCounts = scopedTasks.filter(
+    (task) => Boolean(task?.id) && ![task.completed, isDeletedTask(task)].some(Boolean)
+  );
+  return { apiKey, reviewItems, activeScopedTasksForLeafCounts };
 }
 
 function setButtonLoading(button, isLoading) {
@@ -358,18 +417,21 @@ export async function reviewTaskOrganizationScope({
   openTaskOrganizationModal(scopeLabel);
   clearTaskOrganizationState();
   renderTaskOrganizationModalState();
-  const reviewContext = resolveReviewContext(uiTargets);
-  if (!reviewContext) {return true;}
+  if (!resolveReviewContext(uiTargets)) {return true;}
   setButtonLoading(button, true);
   setStatus(uiTargets, `${SETTINGS_TASK_ORGANIZATION_LOADING_LABEL} ${scopeLabel}`, "loading");
   clearOutput(uiTargets);
   try {
     const reviewItemsContext = await resolveReviewItems(uiTargets, scope);
     if (!reviewItemsContext) {return true;}
+    const sectionCatalog = buildSectionCatalog(
+      state.settingsCache,
+      reviewItemsContext.activeScopedTasksForLeafCounts
+    );
     await reviewTaskOrganizationBatches(
       uiTargets,
       reviewItemsContext.apiKey,
-      reviewContext.sectionCatalog,
+      sectionCatalog,
       reviewItemsContext.reviewItems,
       scopeLabel,
       scope

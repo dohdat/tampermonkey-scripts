@@ -5,6 +5,7 @@ import {
   HOURS_PER_DAY,
   MINUTES_PER_HOUR,
   SIXTEEN,
+  TWO,
   THREE,
   TWELVE,
   TWENTY,
@@ -36,6 +37,7 @@ export const SETTINGS_TASK_ORGANIZATION_BATCH_SIZE = 20;
 export const SETTINGS_TASK_ORGANIZATION_CACHE_LIMIT = 500;
 export const SETTINGS_TASK_ORGANIZATION_LOADING_LABEL = "Reviewing...";
 export const SETTINGS_TASK_ORGANIZATION_MAX_COMPLETION_TOKENS = 8192;
+export const SETTINGS_TASK_ORGANIZATION_SPARSE_LEAF_MAX_TASKS = TWO;
 export const TITLE_REMINDER_REGEX =
   /\bremind(?:er)?(?:\s+me)?\s+(?:in\s+)?(\d+(?:\.\d+)?)\s*(?:day|days|d)\b/i;
 export const TITLE_REMINDER_PREFIX_REGEX =

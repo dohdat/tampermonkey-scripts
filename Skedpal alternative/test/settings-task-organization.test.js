@@ -187,6 +187,21 @@ function createButton() {
   return button;
 }
 
+function extractSectionCatalogFromPrompt(promptText = "") {
+  const catalogPrefix = "Section catalog: ";
+  const tasksPrefix = "\nTasks: ";
+  const catalogStart = promptText.indexOf(catalogPrefix);
+  if (catalogStart < 0) {return [];}
+  const jsonStart = catalogStart + catalogPrefix.length;
+  const jsonEnd = promptText.indexOf(tasksPrefix, jsonStart);
+  if (jsonEnd < 0) {return [];}
+  try {
+    return JSON.parse(promptText.slice(jsonStart, jsonEnd));
+  } catch (_error) {
+    return [];
+  }
+}
+
 const originalDocument = global.document;
 const originalWindow = global.window;
 const originalFetch = global.fetch;
@@ -633,6 +648,104 @@ describe("task organization review", () => {
     );
 
     assert.deepStrictEqual(parsed, []);
+  });
+
+  it("includes sparse leaf subsection context in Groq review prompts", async () => {
+    await saveTask({
+      id: "task-bathroom-1",
+      title: "Scrub bathtub",
+      section: "section-home",
+      subsection: "sub-bathroom"
+    });
+    await saveTask({
+      id: "task-bathroom-2",
+      title: "Descale shower head",
+      section: "section-home",
+      subsection: "sub-bathroom"
+    });
+
+    let requestBody = null;
+    global.fetch = async (_url, options = {}) => {
+      requestBody = JSON.parse(options.body || "{}");
+      return {
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify({ suggestions: [] }) } }]
+        })
+      };
+    };
+
+    const { reviewTaskOrganizationScope } =
+      await import("../src/ui/settings-task-organization.js?task-org=4g");
+    await reviewTaskOrganizationScope({
+      sectionId: "section-home",
+      subsectionId: "sub-cleaning",
+      panel: createPanel(),
+      button: createButton()
+    });
+
+    const payloadText = requestBody?.messages?.[1]?.content || "";
+    const sectionCatalog = extractSectionCatalogFromPrompt(payloadText);
+    const homeCatalog = sectionCatalog.find((section) => section.name === "Home");
+
+    assert.ok(payloadText.includes("taskCount between 1 and 2"));
+    assert.deepStrictEqual(homeCatalog?.sparseLeafSubsections || [], [
+      {
+        name: "Bathroom",
+        parentName: "Cleaning",
+        taskCount: 2,
+        siblingLeafSubsections: []
+      }
+    ]);
+  });
+
+  it("counts active subtasks in sparse leaf subsection context", async () => {
+    await saveTask({
+      id: "task-parent",
+      title: "File W-2",
+      section: "section-home",
+      subsection: "sub-bathroom"
+    });
+    await saveTask({
+      id: "task-child-1",
+      title: "Attach 1099",
+      section: "section-home",
+      subsection: "sub-bathroom",
+      subtaskParentId: "task-parent"
+    });
+    await saveTask({
+      id: "task-child-2",
+      title: "Verify deductions",
+      section: "section-home",
+      subsection: "sub-bathroom",
+      subtaskParentId: "task-parent"
+    });
+
+    let requestBody = null;
+    global.fetch = async (_url, options = {}) => {
+      requestBody = JSON.parse(options.body || "{}");
+      return {
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify({ suggestions: [] }) } }]
+        })
+      };
+    };
+
+    const { reviewTaskOrganizationScope } =
+      await import("../src/ui/settings-task-organization.js?task-org=4h");
+    await reviewTaskOrganizationScope({
+      sectionId: "section-home",
+      subsectionId: "sub-cleaning",
+      panel: createPanel(),
+      button: createButton()
+    });
+
+    const payloadText = requestBody?.messages?.[1]?.content || "";
+    const sectionCatalog = extractSectionCatalogFromPrompt(payloadText);
+    const homeCatalog = sectionCatalog.find((section) => section.name === "Home");
+
+    assert.deepStrictEqual(homeCatalog?.sparseLeafSubsections || [], []);
   });
 
   it("reviews only the selected section scope and renders suggestions inline", async () => {

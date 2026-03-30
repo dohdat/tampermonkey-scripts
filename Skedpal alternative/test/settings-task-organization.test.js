@@ -192,6 +192,7 @@ const originalWindow = global.window;
 const originalFetch = global.fetch;
 const originalElement = global.Element;
 const originalCrypto = global.crypto;
+const originalConsoleError = console.error;
 
 installDomStubs();
 
@@ -201,6 +202,7 @@ const { state } = await import("../src/ui/state/page-state.js");
 
 describe("task organization review", () => {
   beforeEach(async () => {
+    console.error = () => {};
     installDomStubs();
     state.settingsCache = {
       ...DEFAULT_SETTINGS,
@@ -227,6 +229,7 @@ describe("task organization review", () => {
   });
 
   afterEach(() => {
+    console.error = originalConsoleError;
     global.document = originalDocument;
     global.window = originalWindow;
     global.fetch = originalFetch;

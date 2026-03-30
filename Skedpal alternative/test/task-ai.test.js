@@ -105,6 +105,7 @@ const originalDocument = global.document;
 const originalWindow = global.window;
 const originalFetch = global.fetch;
 const originalHTMLElement = global.HTMLElement;
+const originalConsoleError = console.error;
 
 function installDomStubs() {
   getOrCreateElement("task-ai-generate", "button");
@@ -152,6 +153,7 @@ const { domRefs } = await import("../src/ui/constants.js");
 
 describe("task ai parser", () => {
   beforeEach(() => {
+    console.error = () => {};
     installDomStubs();
     domRefs.taskAiButton = elements.get("task-ai-generate");
     domRefs.taskAiStatus = elements.get("task-ai-status");
@@ -164,6 +166,7 @@ describe("task ai parser", () => {
   });
 
   afterEach(() => {
+    console.error = originalConsoleError;
     global.fetch = originalFetch;
   });
 

@@ -52,6 +52,8 @@ function buildDeleteButton(options = {}) {
 const originalDocument = global.document;
 const originalWindow = global.window;
 const originalChrome = global.chrome;
+const originalConsoleError = console.error;
+const originalConsoleWarn = console.warn;
 
 describe("calendar external delete feedback", () => {
   let domRefs = null;
@@ -60,6 +62,8 @@ describe("calendar external delete feedback", () => {
   let originalRefs = null;
 
   beforeEach(async () => {
+    console.error = () => {};
+    console.warn = () => {};
     nodes = {
       banner: new FakeElement("div"),
       message: new FakeElement("span"),
@@ -129,6 +133,8 @@ describe("calendar external delete feedback", () => {
   });
 
   afterEach(() => {
+    console.error = originalConsoleError;
+    console.warn = originalConsoleWarn;
     if (domRefs && originalRefs) {
       domRefs.notificationBanner = originalRefs.notificationBanner;
       domRefs.notificationMessage = originalRefs.notificationMessage;

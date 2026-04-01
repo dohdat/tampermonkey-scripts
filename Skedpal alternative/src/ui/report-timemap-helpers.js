@@ -45,6 +45,37 @@ export function addDays(date, days) {
   return d;
 }
 
+export function captureReportTimeMapSearchFocus(reportList) {
+  if (!reportList?.querySelector || typeof document === "undefined") {return null;}
+  const searchInput = reportList.querySelector("[data-report-timemap-search='true']");
+  if (!searchInput || searchInput.tagName !== "INPUT") {return null;}
+  if (document.activeElement !== searchInput) {return null;}
+  return {
+    selectionStart: Number.isInteger(searchInput.selectionStart)
+      ? searchInput.selectionStart
+      : null,
+    selectionEnd: Number.isInteger(searchInput.selectionEnd)
+      ? searchInput.selectionEnd
+      : null
+  };
+}
+
+export function restoreReportTimeMapSearchFocus(reportList, focusState) {
+  if (!focusState || !reportList?.querySelector) {return;}
+  const searchInput = reportList.querySelector("[data-report-timemap-search='true']");
+  if (!searchInput || searchInput.tagName !== "INPUT") {return;}
+  if (typeof searchInput.focus === "function") {
+    searchInput.focus({ preventScroll: true });
+  }
+  if (
+    Number.isInteger(focusState.selectionStart) &&
+    Number.isInteger(focusState.selectionEnd) &&
+    typeof searchInput.setSelectionRange === "function"
+  ) {
+    searchInput.setSelectionRange(focusState.selectionStart, focusState.selectionEnd);
+  }
+}
+
 export function buildTimeMapRulesByDay(timeMap) {
   const rules = Array.isArray(timeMap?.rules) ? timeMap.rules : [];
   return rules.reduce((map, rule) => {
@@ -54,6 +85,24 @@ export function buildTimeMapRulesByDay(timeMap) {
     map.get(day).push(rule);
     return map;
   }, new Map());
+}
+
+export function getTimeMapCapacityMinutes(timeMap, horizonStart, horizonEnd) {
+  const rulesByDay = buildTimeMapRulesByDay(timeMap);
+  if (!rulesByDay.size) {return 0;}
+  let totalMinutes = 0;
+  for (let cursor = new Date(horizonStart); cursor <= horizonEnd; cursor = addDays(cursor, 1)) {
+    const dayRules = rulesByDay.get(cursor.getDay());
+    if (!dayRules) {continue;}
+    for (const rule of dayRules) {
+      const startMinutes = parseTimeToMinutes(rule.startTime);
+      const endMinutes = parseTimeToMinutes(rule.endTime);
+      if (endMinutes > startMinutes) {
+        totalMinutes += endMinutes - startMinutes;
+      }
+    }
+  }
+  return totalMinutes;
 }
 
 function clampRangeMs(startMs, endMs, horizonStartMs, horizonEndMs) {
@@ -225,6 +274,17 @@ export function buildAssignedTasksByTimeMap(tasks = []) {
     });
   });
   return assignedTasksByTimeMap;
+}
+
+export function buildTimeMapTaskSearchSuggestions(tasks = []) {
+  const assignedTasksByTimeMap = buildAssignedTasksByTimeMap(tasks);
+  const suggestions = [];
+  assignedTasksByTimeMap.forEach((assignedTasks) => {
+    assignedTasks.forEach((task) => {
+      suggestions.push(task?.title || "");
+    });
+  });
+  return suggestions;
 }
 
 export function buildTimeMapUsageSearchInput(value = "") {

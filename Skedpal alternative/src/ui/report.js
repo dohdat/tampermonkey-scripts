@@ -29,13 +29,15 @@ import {
   addDays,
   buildAssignedTasksByTimeMap,
   buildExternalIntervalsByTimeMap,
+  buildTimeMapTaskSearchSuggestions,
   buildTimeMapAssignedTasksBlock,
   buildTimeMapUsageSearchInput,
+  captureReportTimeMapSearchFocus,
+  getTimeMapCapacityMinutes,
+  restoreReportTimeMapSearchFocus,
   buildScheduledIntervalsByTimeMap,
-  buildTimeMapRulesByDay,
   endOfDay,
   getUniqueAvailabilityMinutes,
-  parseTimeToMinutes,
   startOfDay,
   sumIntervalsMinutes
 } from "./report-timemap-helpers.js";
@@ -244,24 +246,6 @@ function formatMissedPercentage(missedCount, expectedCount) {
   if (!expectedCount || expectedCount <= 0) {return "";}
   const ratio = Math.min(1, Math.max(0, missedCount / expectedCount));
   return ` (${Math.round(ratio * ONE_HUNDRED)}%)`;
-}
-
-function getTimeMapCapacityMinutes(timeMap, horizonStart, horizonEnd) {
-  const rulesByDay = buildTimeMapRulesByDay(timeMap);
-  if (!rulesByDay.size) {return 0;}
-  let totalMinutes = 0;
-  for (let cursor = new Date(horizonStart); cursor <= horizonEnd; cursor = addDays(cursor, 1)) {
-    const dayRules = rulesByDay.get(cursor.getDay());
-    if (!dayRules) {continue;}
-    for (const rule of dayRules) {
-      const startMinutes = parseTimeToMinutes(rule.startTime);
-      const endMinutes = parseTimeToMinutes(rule.endTime);
-      if (endMinutes > startMinutes) {
-        totalMinutes += endMinutes - startMinutes;
-      }
-    }
-  }
-  return totalMinutes;
 }
 
 export function getTimeMapUsageRows(tasks = [], timeMaps = [], settings = state.settingsCache) {
@@ -516,7 +500,12 @@ function buildTimeMapUsageCard(rows, options = {}) {
     "Scheduled minutes vs availability, including Google Calendar events in the current horizon.";
   card.appendChild(header);
   card.appendChild(subtitle);
-  card.appendChild(buildTimeMapUsageSearchInput(options.taskSearchQuery || ""));
+  card.appendChild(
+    buildTimeMapUsageSearchInput(
+      options.taskSearchQuery || "",
+      options.taskSearchSuggestions || []
+    )
+  );
   const summary = buildTimeMapUsageSummary(
     options.uniqueAvailabilityMinutes,
     options.horizonStart,
@@ -544,6 +533,7 @@ function buildTimeMapUsageCard(rows, options = {}) {
 export function renderReport(tasks = state.tasksCache) {
   const { reportList, reportBadge } = domRefs;
   if (!reportList) {return;}
+  const searchFocusState = captureReportTimeMapSearchFocus(reportList);
   const { horizonStart, horizonEnd } = buildReportHorizonRange(state.settingsCache);
   ensureExternalEvents({ start: horizonStart, end: horizonEnd }, "report").then((didFetch) => {
     if (didFetch) {
@@ -557,6 +547,7 @@ export function renderReport(tasks = state.tasksCache) {
     state.tasksTimeMapsCache,
     state.settingsCache
   );
+  const taskSearchSuggestions = buildTimeMapTaskSearchSuggestions(tasks);
   const uniqueAvailabilityMinutes = getUniqueAvailabilityMinutes(
     state.tasksTimeMapsCache,
     horizonStart,
@@ -567,9 +558,11 @@ export function renderReport(tasks = state.tasksCache) {
       uniqueAvailabilityMinutes,
       horizonStart,
       horizonEnd,
-      taskSearchQuery: state.reportTimeMapTaskSearch || ""
+      taskSearchQuery: state.reportTimeMapTaskSearch || "",
+      taskSearchSuggestions
     })
   );
+  restoreReportTimeMapSearchFocus(reportList, searchFocusState);
   const rows = getMissedTaskRows(tasks, state.settingsCache);
   const reportContext = buildReportTaskContext(
     rows,

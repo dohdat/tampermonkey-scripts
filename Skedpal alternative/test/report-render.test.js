@@ -125,6 +125,13 @@ installDomStubs(elements);
 const { renderReport } = await import("../src/ui/report.js");
 const { domRefs } = await import("../src/ui/constants.js");
 const { state } = await import("../src/ui/state/page-state.js");
+const {
+  buildAssignedTasksByTimeMap,
+  buildTimeMapAssignedTasksBlock,
+  buildTimeMapTaskSearchSuggestions,
+  captureReportTimeMapSearchFocus,
+  restoreReportTimeMapSearchFocus
+} = await import("../src/ui/report-timemap-helpers.js");
 
 describe("report render", () => {
   beforeEach(() => {
@@ -358,6 +365,91 @@ describe("report render", () => {
     assert.strictEqual(searchInput.value, "beta");
     assert.strictEqual(assignedLabels.length, 1);
     assert.strictEqual(assignedLabels[0].textContent, "Beta task");
+  });
+
+  it("renders helper empty state when assigned task list is empty", () => {
+    const block = buildTimeMapAssignedTasksBlock({ assignedTasks: [] });
+    const empty = findByTestAttr(block, "report-timemap-assigned-empty");
+    assert.ok(empty);
+    assert.strictEqual(empty.textContent, "Tasks: None assigned");
+  });
+
+  it("captures and restores search focus selection for report rerenders", () => {
+    const searchInput = {
+      tagName: "INPUT",
+      selectionStart: 1,
+      selectionEnd: 4,
+      focusCalls: 0,
+      focusedWith: null,
+      selectionRange: null,
+      focus(options) {
+        this.focusCalls += 1;
+        this.focusedWith = options;
+      },
+      setSelectionRange(start, end) {
+        this.selectionRange = [start, end];
+      }
+    };
+    const reportList = {
+      querySelector: (selector) => (
+        selector === "[data-report-timemap-search='true']" ? searchInput : null
+      )
+    };
+    const originalActiveElement = global.document.activeElement;
+    global.document.activeElement = searchInput;
+    try {
+      const focusState = captureReportTimeMapSearchFocus(reportList);
+      assert.deepStrictEqual(focusState, { selectionStart: 1, selectionEnd: 4 });
+      restoreReportTimeMapSearchFocus(reportList, focusState);
+      assert.strictEqual(searchInput.focusCalls, 1);
+      assert.deepStrictEqual(searchInput.focusedWith, { preventScroll: true });
+      assert.deepStrictEqual(searchInput.selectionRange, [1, 4]);
+    } finally {
+      global.document.activeElement = originalActiveElement;
+    }
+  });
+
+  it("builds task search suggestions from assigned tasks", () => {
+    const suggestions = buildTimeMapTaskSearchSuggestions([
+      { id: "a", title: "Alpha", timeMapIds: ["tm1"], priority: 2 },
+      { id: "b", title: "Beta", timeMapIds: ["tm2"], completed: true },
+      { id: "c", title: "Child", subtaskParentId: "a", timeMapIds: ["tm1"] },
+      { id: "d", title: "Delta", timeMapIds: ["tm1"], priority: 5 }
+    ]);
+    assert.deepStrictEqual(suggestions, ["Delta", "Alpha"]);
+  });
+
+  it("builds assigned-task map with fallback id and title", () => {
+    const assigned = buildAssignedTasksByTimeMap([
+      {
+        id: "",
+        title: "",
+        timeMapIds: ["tm-fallback"]
+      }
+    ]);
+    const tasks = assigned.get("tm-fallback") || [];
+    assert.strictEqual(tasks.length, 1);
+    assert.strictEqual(tasks[0].id, "task-0");
+    assert.strictEqual(tasks[0].title, "Untitled task");
+  });
+
+  it("clamps out-of-range priority values when rendering chips", () => {
+    const block = buildTimeMapAssignedTasksBlock({
+      assignedTaskCount: 1,
+      assignedTasks: [
+        {
+          id: "t-fallback",
+          title: "",
+          priority: 99
+        }
+      ]
+    });
+    const chip = findByTestAttr(block, "report-timemap-assigned-task");
+    const label = findByTestAttr(block, "report-timemap-assigned-task-label");
+    assert.ok(chip);
+    assert.ok((chip.style.backgroundColor || "").includes("--color-orange-500-rgb"));
+    assert.ok(label);
+    assert.strictEqual(label.textContent, "Untitled task");
   });
 
   it("collapses long assigned task lists behind a more expander", () => {

@@ -1,5 +1,5 @@
 import assert from "assert";
-import { describe, it, beforeEach } from "mocha";
+import { describe, it, beforeEach, afterEach } from "mocha";
 
 class FakeElement {
   constructor(tagName = "div") {
@@ -82,6 +82,18 @@ function findByTestAttr(root, value) {
   return null;
 }
 
+function findAllByTestAttr(root, value) {
+  if (!root) {return [];}
+  const matches = [];
+  if (root.attributes?.["data-test-skedpal"] === value) {
+    matches.push(root);
+  }
+  for (const child of root.children || []) {
+    matches.push(...findAllByTestAttr(child, value));
+  }
+  return matches;
+}
+
 function installDomStubs(elements) {
   global.document = {
     createElement: (tag) => new FakeElement(tag),
@@ -124,6 +136,11 @@ describe("report render", () => {
     domRefs.reportBadge.classList.remove("hidden");
     state.tasksTimeMapsCache = [];
     state.expandedTaskDetails = new Set();
+    state.reportTimeMapTaskSearch = "";
+  });
+
+  afterEach(() => {
+    state.reportTimeMapTaskSearch = "";
   });
 
   it("renders an empty report state and hides the badge", () => {
@@ -243,9 +260,12 @@ describe("report render", () => {
       const tasks = [
         {
           id: "t200",
+          title: "Alpha task",
+          priority: 1,
           scheduleStatus: "scheduled",
           missedCount: 0,
           expectedCount: 0,
+          timeMapIds: ["tm-over"],
           scheduledInstances: [
             {
               start: "2026-01-05T09:00:00.000Z",
@@ -253,16 +273,117 @@ describe("report render", () => {
               timeMapId: "tm-over"
             }
           ]
+        },
+        {
+          id: "t201",
+          title: "Beta task",
+          priority: 4,
+          scheduleStatus: "scheduled",
+          missedCount: 0,
+          expectedCount: 0,
+          timeMapIds: ["tm-over"],
+          scheduledInstances: []
         }
       ];
       renderReport(tasks);
       const row = findByTestAttr(domRefs.reportList, "report-timemap-row");
       const meta = findByTestAttr(domRefs.reportList, "report-timemap-meta");
+      const searchInput = findByTestAttr(domRefs.reportList, "report-timemap-search-input");
+      const assignedTitle = findByTestAttr(domRefs.reportList, "report-timemap-assigned-title");
+      const assignedTasks = findAllByTestAttr(domRefs.reportList, "report-timemap-assigned-task");
+      const assignedLabels = findAllByTestAttr(
+        domRefs.reportList,
+        "report-timemap-assigned-task-label"
+      );
       assert.ok(row);
       assert.ok(meta);
+      assert.ok(searchInput);
+      assert.ok(assignedTitle);
+      assert.strictEqual(assignedTitle.textContent, "Tasks (2):");
+      assert.strictEqual(assignedTasks.length, 2);
+      assert.strictEqual(assignedLabels[0].textContent, "Beta task");
+      assert.strictEqual(assignedLabels[1].textContent, "Alpha task");
+      assert.strictEqual(assignedTasks[0].dataset.priority, "4");
+      assert.strictEqual(assignedTasks[1].dataset.priority, "1");
+      assert.ok((assignedTasks[0].style.backgroundColor || "").includes("--color-amber-400-rgb"));
+      assert.ok((assignedTasks[1].style.backgroundColor || "").includes("--color-green-500-rgb"));
+      assert.strictEqual(assignedTasks[0].dataset.reportTimemapTask, "t201");
+      assert.strictEqual(assignedTasks[1].dataset.reportTimemapTask, "t200");
       assert.ok((meta.innerHTML || "").includes("report-timemap-over"));
     } finally {
       global.Date = OriginalDate;
     }
+  });
+
+  it("hides timemap rows that have no assigned tasks", () => {
+    state.tasksTimeMapsCache = [
+      {
+        id: "tm-empty-assignment",
+        name: "Unassigned map",
+        rules: []
+      }
+    ];
+    state.settingsCache = { ...state.settingsCache, schedulingHorizonDays: 1 };
+    renderReport([
+      {
+        id: "t300",
+        title: "No map task",
+        scheduleStatus: "scheduled",
+        missedCount: 0,
+        expectedCount: 0,
+        timeMapIds: [],
+        scheduledInstances: []
+      }
+    ]);
+    const row = findByTestAttr(domRefs.reportList, "report-timemap-row");
+    const timemapEmpty = findByTestAttr(domRefs.reportList, "report-timemap-empty");
+    assert.strictEqual(row, null);
+    assert.ok(timemapEmpty);
+    assert.strictEqual(timemapEmpty.textContent, "No TimeMaps with assigned tasks.");
+  });
+
+  it("filters assigned tasks by the timemap search query", () => {
+    state.reportTimeMapTaskSearch = "beta";
+    state.tasksTimeMapsCache = [{ id: "tm-search", name: "Search", rules: [] }];
+    renderReport([
+      { id: "ta", title: "Alpha task", priority: 1, scheduleStatus: "scheduled", timeMapIds: ["tm-search"] },
+      { id: "tb", title: "Beta task", priority: 3, scheduleStatus: "scheduled", timeMapIds: ["tm-search"] }
+    ]);
+    const searchInput = findByTestAttr(domRefs.reportList, "report-timemap-search-input");
+    const assignedLabels = findAllByTestAttr(
+      domRefs.reportList,
+      "report-timemap-assigned-task-label"
+    );
+    assert.ok(searchInput);
+    assert.strictEqual(searchInput.value, "beta");
+    assert.strictEqual(assignedLabels.length, 1);
+    assert.strictEqual(assignedLabels[0].textContent, "Beta task");
+  });
+
+  it("collapses long assigned task lists behind a more expander", () => {
+    state.tasksTimeMapsCache = [
+      {
+        id: "tm-compact",
+        name: "Compact",
+        rules: []
+      }
+    ];
+    state.settingsCache = { ...state.settingsCache, schedulingHorizonDays: 1 };
+    renderReport([
+      { id: "t1", title: "Task 1", scheduleStatus: "scheduled", timeMapIds: ["tm-compact"] },
+      { id: "t2", title: "Task 2", scheduleStatus: "scheduled", timeMapIds: ["tm-compact"] },
+      { id: "t3", title: "Task 3", scheduleStatus: "scheduled", timeMapIds: ["tm-compact"] },
+      { id: "t4", title: "Task 4", scheduleStatus: "scheduled", timeMapIds: ["tm-compact"] }
+    ]);
+    const assignedList = findByTestAttr(domRefs.reportList, "report-timemap-assigned-list");
+    const moreToggle = findByTestAttr(domRefs.reportList, "report-timemap-assigned-more-toggle");
+    assert.ok(assignedList);
+    assert.ok(moreToggle);
+    assert.strictEqual(moreToggle.textContent, "+1 more");
+    assert.strictEqual(assignedList.children.length, 4);
+    assert.strictEqual(
+      assignedList.children[3].attributes?.["data-test-skedpal"],
+      "report-timemap-assigned-more"
+    );
   });
 });

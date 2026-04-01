@@ -38,6 +38,16 @@ export const SETTINGS_TASK_ORGANIZATION_CACHE_LIMIT = 500;
 export const SETTINGS_TASK_ORGANIZATION_LOADING_LABEL = "Reviewing...";
 export const SETTINGS_TASK_ORGANIZATION_MAX_COMPLETION_TOKENS = 8192;
 export const SETTINGS_TASK_ORGANIZATION_SPARSE_LEAF_MAX_TASKS = TWO;
+export const REPORT_TIMEMAP_ASSIGNED_PREVIEW_COUNT = THREE;
+export const REPORT_TIMEMAP_TASK_SEARCH_PLACEHOLDER = "Search tasks...";
+export const REPORT_TIMEMAP_SEARCH_DEBOUNCE_MS = 180;
+export const REPORT_PRIORITY_RGB_VAR_BY_VALUE = {
+  1: "--color-green-500-rgb",
+  2: "--color-lime-400-rgb",
+  3: "--color-sky-400-rgb",
+  4: "--color-amber-400-rgb",
+  5: "--color-orange-500-rgb"
+};
 export const TITLE_REMINDER_REGEX =
   /\bremind(?:er)?(?:\s+me)?\s+(?:in\s+)?(\d+(?:\.\d+)?)\s*(?:day|days|d)\b/i;
 export const TITLE_REMINDER_PREFIX_REGEX =

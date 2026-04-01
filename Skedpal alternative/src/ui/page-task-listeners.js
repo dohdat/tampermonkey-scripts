@@ -1,4 +1,4 @@
-import { domRefs } from "./constants.js";
+import { REPORT_TIMEMAP_SEARCH_DEBOUNCE_MS, domRefs } from "./constants.js";
 import {
   handleTaskTitleConversionPreviewClick,
   updateTaskTitleConversionPreview,
@@ -31,6 +31,7 @@ import {
 import { toDateInputValue } from "./date-picker-utils.js";
 import { updateTaskDetailField } from "./tasks/task-detail-updates.js";
 import { state } from "./state/page-state.js";
+import { renderReport } from "./report.js";
 
 const {
   taskToggle,
@@ -44,6 +45,35 @@ const {
   reportDelayInput,
   rescheduleButtons
 } = domRefs;
+let reportTimeMapSearchDebounceTimer = null;
+
+function clearReportTimeMapSearchDebounceTimer() {
+  if (!reportTimeMapSearchDebounceTimer) {return;}
+  clearTimeout(reportTimeMapSearchDebounceTimer);
+  reportTimeMapSearchDebounceTimer = null;
+}
+
+function resolveReportTimeMapSearchInput() {
+  if (!reportList?.querySelector) {return null;}
+  const input = reportList.querySelector("[data-report-timemap-search='true']");
+  if (!input || input.tagName !== "INPUT") {return null;}
+  return input;
+}
+
+function restoreReportTimeMapSearchInputFocus(selectionStart, selectionEnd) {
+  const searchInput = resolveReportTimeMapSearchInput();
+  if (!searchInput) {return;}
+  if (typeof searchInput.focus === "function") {
+    searchInput.focus({ preventScroll: true });
+  }
+  if (
+    Number.isInteger(selectionStart) &&
+    Number.isInteger(selectionEnd) &&
+    typeof searchInput.setSelectionRange === "function"
+  ) {
+    searchInput.setSelectionRange(selectionStart, selectionEnd);
+  }
+}
 
 function handleTaskLinkClearClick() {
   taskLinkInput.value = "";
@@ -139,6 +169,8 @@ function handleTodayListDoubleClickEvent(event) {
 
 async function handleReportListClickEvent(event) {
   if (handleReportDelayClick(event)) {return;}
+  if (handleReportTimeMapMoreToggleClick(event)) {return;}
+  if (handleReportTimeMapTaskClick(event)) {return;}
   if (handleTaskTitleClick(event)) {return;}
   await handleTaskListClick(event, { switchView: false });
 }
@@ -174,6 +206,53 @@ function handleReportDelayClick(event) {
   reportDelayInput.dataset.reportDelayTask = taskId;
   reportDelayInput.value = toDateInputValue(anchorDate);
   reportDelayInput.click();
+  return true;
+}
+
+function handleReportTimeMapTaskClick(event) {
+  const btn = event.target.closest?.("[data-report-timemap-task]");
+  if (!btn) {return false;}
+  const taskId = btn.dataset.reportTimemapTask || "";
+  if (!taskId) {return true;}
+  const task = state.tasksCache.find((entry) => entry.id === taskId);
+  if (!task) {return true;}
+  setZoomFilter({
+    type: "task",
+    taskId,
+    sectionId: task.section || "",
+    subsectionId: task.subsection || ""
+  });
+  return true;
+}
+
+function handleReportTimeMapMoreToggleClick(event) {
+  const btn = event.target.closest?.("[data-report-timemap-more-toggle]");
+  if (!btn) {return false;}
+  const wrap = btn.closest?.('[data-test-skedpal="report-timemap-assigned-more"]');
+  const moreList = wrap?.querySelector?.('[data-test-skedpal="report-timemap-assigned-more-list"]');
+  if (!moreList) {return true;}
+  const hiddenCount = Number(btn.dataset.hiddenCount) || 0;
+  const isExpanded = btn.getAttribute("aria-expanded") === "true";
+  const nextExpanded = !isExpanded;
+  btn.setAttribute("aria-expanded", nextExpanded ? "true" : "false");
+  btn.textContent = nextExpanded ? "Show less" : `+${hiddenCount} more`;
+  moreList.classList.toggle("hidden", !nextExpanded);
+  return true;
+}
+
+function handleReportTimeMapSearchInputEvent(event) {
+  const input = event.target;
+  if (!(input instanceof HTMLInputElement)) {return false;}
+  if (input.dataset.reportTimemapSearch !== "true") {return false;}
+  state.reportTimeMapTaskSearch = input.value || "";
+  const selectionStart = Number.isInteger(input.selectionStart) ? input.selectionStart : null;
+  const selectionEnd = Number.isInteger(input.selectionEnd) ? input.selectionEnd : null;
+  clearReportTimeMapSearchDebounceTimer();
+  reportTimeMapSearchDebounceTimer = setTimeout(() => {
+    reportTimeMapSearchDebounceTimer = null;
+    renderReport(state.tasksCache);
+    restoreReportTimeMapSearchInputFocus(selectionStart, selectionEnd);
+  }, REPORT_TIMEMAP_SEARCH_DEBOUNCE_MS);
   return true;
 }
 
@@ -310,10 +389,15 @@ function setupTaskLists(cleanupFns) {
   if (reportList) {
     reportList.addEventListener("click", handleReportListClickEvent);
     reportList.addEventListener("dblclick", handleReportListDoubleClickEvent);
+    reportList.addEventListener("input", handleReportTimeMapSearchInputEvent);
     cleanupFns.push(() => reportList.removeEventListener("click", handleReportListClickEvent));
     cleanupFns.push(() =>
       reportList.removeEventListener("dblclick", handleReportListDoubleClickEvent)
     );
+    cleanupFns.push(() =>
+      reportList.removeEventListener("input", handleReportTimeMapSearchInputEvent)
+    );
+    cleanupFns.push(() => clearReportTimeMapSearchDebounceTimer());
   }
 }
 

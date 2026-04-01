@@ -27,7 +27,10 @@ import { renderTaskCard } from "./tasks/task-card.js";
 import { ensureExternalEvents } from "./calendar-external.js";
 import {
   addDays,
+  buildAssignedTasksByTimeMap,
   buildExternalIntervalsByTimeMap,
+  buildTimeMapAssignedTasksBlock,
+  buildTimeMapUsageSearchInput,
   buildScheduledIntervalsByTimeMap,
   buildTimeMapRulesByDay,
   endOfDay,
@@ -179,33 +182,13 @@ function compareMissedTaskRows(a, b) {
   return a.title.localeCompare(b.title);
 }
 
-function getTaskTitle(task) {
-  return task.title || "Untitled task";
-}
-
-function getTaskStatus(task) {
-  return task.scheduleStatus || TASK_STATUS_UNSCHEDULED;
-}
-
-function getTaskNumber(value) {
-  return Number(value) || 0;
-}
-
-function getTaskDeadline(task) {
-  return task.deadline || "";
-}
-
-function getTaskSection(task) {
-  return task.section || "";
-}
-
-function getTaskSubsection(task) {
-  return task.subsection || "";
-}
-
-function getTaskTimeMapIds(task) {
-  return Array.isArray(task.timeMapIds) ? task.timeMapIds : [];
-}
+function getTaskTitle(task) { return task.title || "Untitled task"; }
+function getTaskStatus(task) { return task.scheduleStatus || TASK_STATUS_UNSCHEDULED; }
+function getTaskNumber(value) { return Number(value) || 0; }
+function getTaskDeadline(task) { return task.deadline || ""; }
+function getTaskSection(task) { return task.section || ""; }
+function getTaskSubsection(task) { return task.subsection || ""; }
+function getTaskTimeMapIds(task) { return Array.isArray(task.timeMapIds) ? task.timeMapIds : []; }
 
 function buildTaskReportMetrics(task, now, settings) {
   const isRepeating = Boolean(task?.repeat && task.repeat.type !== TASK_REPEAT_NONE);
@@ -287,12 +270,17 @@ export function getTimeMapUsageRows(tasks = [], timeMaps = [], settings = state.
     buildScheduledIntervalsByTimeMap(tasks, horizonStart, horizonEnd);
   const externalIntervalsByTimeMap =
     buildExternalIntervalsByTimeMap(timeMaps, horizonStart, horizonEnd);
+  const taskSearch = String(state.reportTimeMapTaskSearch || "").trim().toLowerCase();
+  const assignedTasksByTimeMap = buildAssignedTasksByTimeMap(tasks);
   return (timeMaps || []).map((timeMap) => {
     const capacityMinutes = getTimeMapCapacityMinutes(timeMap, horizonStart, horizonEnd);
     const scheduledIntervals = scheduledIntervalsByTimeMap.get(timeMap.id) || [];
     const externalIntervals = externalIntervalsByTimeMap.get(timeMap.id) || [];
     const scheduledMinutes =
       sumIntervalsMinutes([...scheduledIntervals, ...externalIntervals]);
+    const assignedTasks = (assignedTasksByTimeMap.get(timeMap.id) || []).filter((task) =>
+      !taskSearch || task.title.toLowerCase().includes(taskSearch)
+    );
     const percent = capacityMinutes > 0
       ? Math.round((scheduledMinutes / capacityMinutes) * ONE_HUNDRED)
       : 0;
@@ -303,6 +291,8 @@ export function getTimeMapUsageRows(tasks = [], timeMaps = [], settings = state.
       scheduledMinutes,
       capacityMinutes,
       percent,
+      assignedTasks,
+      assignedTaskCount: assignedTasks.length,
       isOverSubscribed: capacityMinutes > 0 && scheduledMinutes > capacityMinutes
     };
   }).sort((a, b) => {
@@ -467,8 +457,6 @@ function buildTimeMapUsageRow(row) {
   }
   const fillPercent = Math.min(ONE_HUNDRED, Math.max(0, row.percent || 0));
   const fillColor = row.color || "var(--color-green-500)";
-  item.style.background =
-    `linear-gradient(90deg, ${fillColor}33 ${fillPercent}%, rgba(2, 6, 23, 0.5) ${fillPercent}%)`;
   const name = document.createElement("div");
   name.className = "relative flex items-center gap-2 text-sm font-semibold text-slate-100";
   name.setAttribute("data-test-skedpal", "report-timemap-name");
@@ -504,10 +492,16 @@ function buildTimeMapUsageRow(row) {
   meterWrap.appendChild(meterFill);
   item.appendChild(meterWrap);
   item.appendChild(meta);
+  item.appendChild(buildTimeMapAssignedTasksBlock(row));
   return item;
 }
 
 function buildTimeMapUsageCard(rows, options = {}) {
+  const visibleRows = (rows || []).filter((row) => {
+    const assignedTaskCount = Number(row?.assignedTaskCount);
+    if (Number.isFinite(assignedTaskCount)) {return assignedTaskCount > 0;}
+    return Array.isArray(row?.assignedTasks) && row.assignedTasks.length > 0;
+  });
   const card = document.createElement("div");
   card.className = "rounded-2xl border-slate-800 bg-slate-900/70 p-4 shadow";
   card.setAttribute("data-test-skedpal", "report-timemap-card");
@@ -522,26 +516,25 @@ function buildTimeMapUsageCard(rows, options = {}) {
     "Scheduled minutes vs availability, including Google Calendar events in the current horizon.";
   card.appendChild(header);
   card.appendChild(subtitle);
+  card.appendChild(buildTimeMapUsageSearchInput(options.taskSearchQuery || ""));
   const summary = buildTimeMapUsageSummary(
     options.uniqueAvailabilityMinutes,
     options.horizonStart,
     options.horizonEnd
   );
   if (summary) {card.appendChild(summary);}
-
-  if (!rows.length) {
+  if (!visibleRows.length) {
     const empty = document.createElement("div");
     empty.className = "mt-3 text-sm text-slate-400";
     empty.setAttribute("data-test-skedpal", "report-timemap-empty");
-    empty.textContent = "No TimeMaps available.";
+    empty.textContent = "No TimeMaps with assigned tasks.";
     card.appendChild(empty);
     return card;
   }
-
   const list = document.createElement("div");
   list.className = "mt-3 grid gap-2";
   list.setAttribute("data-test-skedpal", "report-timemap-list");
-  rows.forEach((row) => {
+  visibleRows.forEach((row) => {
     list.appendChild(buildTimeMapUsageRow(row));
   });
   card.appendChild(list);
@@ -573,7 +566,8 @@ export function renderReport(tasks = state.tasksCache) {
     buildTimeMapUsageCard(usageRows, {
       uniqueAvailabilityMinutes,
       horizonStart,
-      horizonEnd
+      horizonEnd,
+      taskSearchQuery: state.reportTimeMapTaskSearch || ""
     })
   );
   const rows = getMissedTaskRows(tasks, state.settingsCache);

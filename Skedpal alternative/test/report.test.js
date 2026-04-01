@@ -5,6 +5,7 @@ import {
   getTimeMapUsageRows,
   getUniqueAvailabilityMinutes
 } from "../src/ui/report.js";
+import { sumIntervalsMinutes } from "../src/ui/report-timemap-helpers.js";
 import { state } from "../src/ui/state/page-state.js";
 import {
   CALENDAR_EVENTS_CACHE_PREFIX,
@@ -391,6 +392,70 @@ describe("report", () => {
     } finally {
       global.Date = OriginalDate;
     }
+  });
+
+  it("includes assigned tasks for each timemap", () => {
+    const timeMaps = [
+      { id: "tm-a", name: "A", rules: [] },
+      { id: "tm-b", name: "B", rules: [] }
+    ];
+    const tasks = [
+      {
+        id: "task-1",
+        title: "Alpha",
+        priority: 2,
+        timeMapIds: ["tm-a", "tm-a"]
+      },
+      {
+        id: "task-2",
+        title: "Beta",
+        priority: 5,
+        timeMapIds: ["tm-a", "tm-b"]
+      },
+      {
+        id: "task-2-complete",
+        title: "Completed task",
+        timeMapIds: ["tm-a"],
+        completed: true,
+        scheduleStatus: "completed"
+      },
+      {
+        id: "task-3",
+        title: "Gamma child",
+        subtaskParentId: "task-1",
+        timeMapIds: ["tm-a"]
+      }
+    ];
+
+    const rows = getTimeMapUsageRows(tasks, timeMaps, { schedulingHorizonDays: 1 });
+    const rowA = rows.find((row) => row.id === "tm-a");
+    const rowB = rows.find((row) => row.id === "tm-b");
+
+    assert.ok(rowA);
+    assert.ok(rowB);
+    assert.strictEqual(rowA.assignedTaskCount, 2);
+    assert.deepStrictEqual(
+      rowA.assignedTasks.map((task) => task.title),
+      ["Beta", "Alpha"]
+    );
+    assert.deepStrictEqual(
+      rowA.assignedTasks.map((task) => task.priority),
+      [5, 2]
+    );
+    assert.strictEqual(rowB.assignedTaskCount, 1);
+    assert.deepStrictEqual(
+      rowB.assignedTasks.map((task) => task.title),
+      ["Beta"]
+    );
+  });
+
+  it("merges interval totals across overlapping and disjoint ranges", () => {
+    const total = sumIntervalsMinutes([
+      [0, 30 * 60 * 1000],
+      [15 * 60 * 1000, 45 * 60 * 1000],
+      [60 * 60 * 1000, 90 * 60 * 1000]
+    ]);
+    assert.strictEqual(total, 75);
   });
 
   it("adds external calendar minutes to timemap usage", () => {

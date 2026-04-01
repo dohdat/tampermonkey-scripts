@@ -12,6 +12,7 @@ import {
 } from "./task-organization-review-cache.js";
 import {
   isGroqJsonValidationError,
+  isGroqRequestTooLargeError,
   parseTaskOrganizationResponse,
   requestTaskOrganizationBatch
 } from "./task-organization-review-helpers.js";
@@ -276,6 +277,7 @@ function finalizeSuggestions(uiTargets, allSuggestions, reviewItems, scopeLabel,
 async function reviewTaskOrganizationChunk(apiKey, sectionCatalog, taskBatch, scope = {}) {
   let content = "";
   let hadJsonValidationError = false;
+  let recoverableError = null;
   try {
     content = await requestTaskOrganizationBatch(apiKey, sectionCatalog, taskBatch);
     const parsed = parseBatchSuggestions(content, taskBatch);
@@ -284,14 +286,21 @@ async function reviewTaskOrganizationChunk(apiKey, sectionCatalog, taskBatch, sc
       return { suggestions: parsed, skippedCount: 0, invalidContent: "" };
     }
   } catch (error) {
-    if (!isGroqJsonValidationError(error)) {throw error;}
-    hadJsonValidationError = true;
+    if (isGroqJsonValidationError(error)) {
+      hadJsonValidationError = true;
+      recoverableError = error;
+    } else if (isGroqRequestTooLargeError(error)) {
+      recoverableError = error;
+    } else {
+      throw error;
+    }
   }
 
   if (taskBatch.length <= 1) {
     if (hadJsonValidationError) {
       return { suggestions: [], skippedCount: taskBatch.length, invalidContent: "" };
     }
+    if (recoverableError) {throw recoverableError;}
     return {
       suggestions: [],
       skippedCount: 0,

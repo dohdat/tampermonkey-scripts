@@ -812,6 +812,127 @@ describe("task organization review", () => {
     assert.ok(findByTestId(panel, "task-organization-status")[0].textContent.includes("Suggested 1 move"));
   });
 
+  it("caps task organization completion tokens below the Groq TPM ceiling", async () => {
+    await saveTask({
+      id: "task-home",
+      title: "Clean toilet",
+      section: "section-home",
+      subsection: "sub-cleaning"
+    });
+
+    let requestBody = null;
+    global.fetch = async (_url, options = {}) => {
+      requestBody = JSON.parse(options.body || "{}");
+      return {
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify({ suggestions: [] }) } }]
+        })
+      };
+    };
+
+    const { reviewTaskOrganizationScope } =
+      await import("../src/ui/settings-task-organization.js?task-org=5-token-budget");
+    await reviewTaskOrganizationScope({
+      sectionId: "section-home",
+      subsectionId: "sub-cleaning",
+      panel: createPanel(),
+      button: createButton()
+    });
+
+    assert.ok(Number(requestBody?.max_completion_tokens) > 0);
+    assert.ok(Number(requestBody?.max_completion_tokens) < 8192);
+  });
+
+  it("splits oversized subsection review batches after Groq request-too-large errors", async () => {
+    await saveTask({
+      id: "task-over-limit-1",
+      title: "Clean toilet",
+      section: "section-home",
+      subsection: "sub-cleaning"
+    });
+    await saveTask({
+      id: "task-over-limit-2",
+      title: "Wash mirror",
+      section: "section-home",
+      subsection: "sub-cleaning"
+    });
+
+    const payloads = [];
+    global.fetch = async (_url, options = {}) => {
+      const body = JSON.parse(options.body || "{}");
+      const payloadText = body?.messages?.[1]?.content || "";
+      payloads.push(payloadText);
+      const includesBothTasks = payloadText.includes("task-over-limit-1") &&
+        payloadText.includes("task-over-limit-2");
+      if (includesBothTasks) {
+        return {
+          ok: false,
+          status: 429,
+          statusText: "Too Many Requests",
+          json: async () => ({
+            error: {
+              message:
+                "Request too large for model `openai/gpt-oss-120b` on tokens per minute: Limit 8000, Requested 9536."
+            }
+          })
+        };
+      }
+      if (payloadText.includes("task-over-limit-1")) {
+        return {
+          ok: true,
+          json: async () => ({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    suggestions: [
+                      {
+                        taskId: "task-over-limit-1",
+                        sectionName: "Home",
+                        subsectionName: "Bathroom",
+                        reason: "Bathroom chore."
+                      }
+                    ]
+                  })
+                }
+              }
+            ]
+          })
+        };
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify({ suggestions: [] }) } }]
+        })
+      };
+    };
+
+    const { reviewTaskOrganizationScope } =
+      await import("../src/ui/settings-task-organization.js?task-org=5-request-too-large-split");
+    const panel = createPanel();
+    await reviewTaskOrganizationScope({
+      sectionId: "section-home",
+      subsectionId: "sub-cleaning",
+      panel,
+      button: createButton()
+    });
+
+    const status = findByTestId(panel, "task-organization-status")[0].textContent;
+    const bothTaskPayload = payloads.filter(
+      (payloadText) => payloadText.includes("task-over-limit-1") && payloadText.includes("task-over-limit-2")
+    );
+    assert.ok(bothTaskPayload.length >= 3);
+    assert.ok(payloads.some((payloadText) => (
+      payloadText.includes("task-over-limit-1") && !payloadText.includes("task-over-limit-2")
+    )));
+    assert.ok(payloads.some((payloadText) => (
+      payloadText.includes("task-over-limit-2") && !payloadText.includes("task-over-limit-1")
+    )));
+    assert.ok(status.includes("Suggested 1 move"));
+  });
+
   it("reuses cached review results for unchanged tasks", async () => {
     await saveTask({
       id: "task-home",

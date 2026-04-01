@@ -2,7 +2,10 @@ import {
   GROQ_BASE_URL,
   GROQ_MODEL,
   HTTP_STATUS_BAD_REQUEST,
-  SETTINGS_TASK_ORGANIZATION_MAX_COMPLETION_TOKENS
+  ONE,
+  SETTINGS_TASK_ORGANIZATION_ESTIMATED_CHARS_PER_TOKEN,
+  SETTINGS_TASK_ORGANIZATION_MAX_COMPLETION_TOKENS,
+  SETTINGS_TASK_ORGANIZATION_REQUEST_TOKEN_BUDGET,
 } from "./constants.js";
 import { requestGroqWithRateLimitFallback } from "./groq-model-fallback.js";
 
@@ -39,11 +42,20 @@ function buildTaskOrganizationMessages(sectionCatalog, taskBatch) {
 }
 
 function buildTaskOrganizationRequestBody(sectionCatalog, taskBatch, model = GROQ_MODEL) {
+  const messages = buildTaskOrganizationMessages(sectionCatalog, taskBatch);
+  const estimatedPromptTokens = Math.ceil(
+    JSON.stringify(messages).length / SETTINGS_TASK_ORGANIZATION_ESTIMATED_CHARS_PER_TOKEN
+  );
+  const availableCompletionTokens = SETTINGS_TASK_ORGANIZATION_REQUEST_TOKEN_BUDGET - estimatedPromptTokens;
+  const maxCompletionTokens = Math.max(
+    ONE,
+    Math.min(SETTINGS_TASK_ORGANIZATION_MAX_COMPLETION_TOKENS, availableCompletionTokens)
+  );
   return {
     model,
-    messages: buildTaskOrganizationMessages(sectionCatalog, taskBatch),
+    messages,
     temperature: 0,
-    max_completion_tokens: SETTINGS_TASK_ORGANIZATION_MAX_COMPLETION_TOKENS,
+    max_completion_tokens: maxCompletionTokens,
     top_p: 1,
     stream: false,
     response_format: { type: "json_object" }
@@ -101,6 +113,11 @@ export function isGroqJsonValidationError(error) {
   const detail = typeof error?.detail === "string" ? error.detail.toLowerCase() : "";
   const code = typeof error?.code === "string" ? error.code.toLowerCase() : "";
   return code === "json_validate_failed" || detail.includes("failed to validate json");
+}
+
+export function isGroqRequestTooLargeError(error) {
+  const detail = typeof error?.detail === "string" ? error.detail.toLowerCase() : "";
+  return detail.includes("request too large") && detail.includes("tokens per minute");
 }
 
 function extractJsonCandidate(text) {

@@ -1,3 +1,5 @@
+import { FOURTEEN, MS_PER_DAY } from "../constants.js";
+
 export const TASK_PRIORITY_COLOR_HEX = Object.freeze({
   1: "#94a3b8",
   2: "#60a5fb",
@@ -24,3 +26,5 @@ export const GOOGLE_CALENDAR_EVENT_COLORS = Object.freeze([
 
 export const GOOGLE_CALENDAR_SYNC_LOOKBACK_DAYS = 3;
 export const GOOGLE_CALENDAR_TASK_IMPORT_LOOKBACK_DAYS = 7;
+export const BACKUP_AUTO_INTERVAL_DAYS = FOURTEEN;
+export const BACKUP_AUTO_INTERVAL_MS = BACKUP_AUTO_INTERVAL_DAYS * MS_PER_DAY;

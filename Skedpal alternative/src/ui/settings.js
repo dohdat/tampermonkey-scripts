@@ -24,6 +24,7 @@ import { loadTasks, updateScheduleSummary, renderTimeMapsAndTasks } from "./task
 import { initTaskTemplates, loadTaskTemplates } from "./task-templates.js";
 import { initTimeMapSectionToggle } from "./time-map-settings-toggle.js";
 import { buildBackupExportPayload, parseBackupImportJson } from "./backup-transfer.js";
+import { runAutomaticBackupIfDue } from "./backup-auto.js";
 import { loadCalendarListCache } from "./calendar-list-cache.js";
 import {
   initGoogleCalendarSettings,
@@ -213,6 +214,24 @@ async function refreshBackupStatus() {
     setBackupStatus("Unable to read backups.");
     if (backupRestoreBtn) {backupRestoreBtn.disabled = true;}
     return null;
+  }
+}
+
+async function runAutomaticBackupForSettings() {
+  try {
+    const latest = await getLatestBackup();
+    const result = await runAutomaticBackupIfDue({
+      latestBackup: latest,
+      createSnapshot: createBackupSnapshot,
+      saveBackup
+    });
+    if (result.ran && backupRestoreBtn) {
+      backupRestoreBtn.disabled = false;
+    }
+    return result.ran;
+  } catch (error) {
+    console.warn("Failed to run automatic backup.", error);
+    return false;
   }
 }
 
@@ -423,7 +442,13 @@ function initBackupSettings() {
     backupTrimBtn.addEventListener("click", handleBackupTrimClick);
     cleanupFns.push(() => backupTrimBtn.removeEventListener("click", handleBackupTrimClick));
   }
-  void refreshBackupStatus();
+  void (async () => {
+    await refreshBackupStatus();
+    const didAutoBackupRun = await runAutomaticBackupForSettings();
+    if (didAutoBackupRun) {
+      await refreshBackupStatus();
+    }
+  })();
   return () => {
     cleanupFns.forEach((cleanup) => cleanup());
   };

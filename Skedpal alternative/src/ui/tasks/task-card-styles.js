@@ -1,14 +1,7 @@
 import { themeColors } from "../theme.js";
 import { state } from "../state/page-state.js";
 import { isExternalCalendarTimeMapId } from "../utils.js";
-
-const PRIORITY_COLORS = {
-  1: themeColors.slate400,
-  2: themeColors.blue400,
-  3: themeColors.sky400,
-  4: themeColors.amber400,
-  5: themeColors.orange500
-};
+import { UI_PRIORITY_COLOR_HEX_BY_VALUE } from "../constants.js";
 
 function resolveTaskBackgroundMode() {
   const mode = state.settingsCache?.taskBackgroundMode || "priority";
@@ -19,7 +12,7 @@ function resolveTaskBackgroundMode() {
 }
 
 function resolvePriorityBackgroundColor(priorityValue) {
-  const color = PRIORITY_COLORS[priorityValue];
+  const color = UI_PRIORITY_COLOR_HEX_BY_VALUE[priorityValue];
   return color ? `${color}1a` : "";
 }
 

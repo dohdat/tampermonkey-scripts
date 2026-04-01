@@ -43,7 +43,7 @@ describe("task card styles", () => {
     card.setAttribute("data-test-skedpal", "task-card");
     const task = { priority: 2 };
     applyTaskBackgroundStyle(card, task, new Map());
-    assert.strictEqual(card.style.backgroundColor, `${themeColors.blue400}1a`);
+    assert.strictEqual(card.style.backgroundColor, `${themeColors.lime400}1a`);
   });
 
   it("applies the neutral background when disabled", () => {

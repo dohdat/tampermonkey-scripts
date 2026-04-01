@@ -5,6 +5,7 @@ import {
   EIGHT,
   FOUR,
   HOURS_PER_DAY,
+  UI_PRIORITY_COLOR_HEX_BY_VALUE,
   MINUTES_PER_HOUR,
   ONE_TWENTY,
   OPACITY_TWENTY_TWO,
@@ -47,14 +48,6 @@ const FALLBACK_EXTERNAL_RGB_VARS = [
   "--color-orange-400-rgb"
 ];
 
-const PRIORITY_COLORS = {
-  1: themeColors.slate400,
-  2: themeColors.blue400,
-  3: themeColors.sky400,
-  4: themeColors.amber400,
-  5: themeColors.orange500
-};
-
 function resolveTaskBackgroundMode() {
   const mode = state.settingsCache?.taskBackgroundMode || "priority";
   if (mode === "priority" || mode === "timemap" || mode === "none") {
@@ -64,7 +57,7 @@ function resolveTaskBackgroundMode() {
 }
 
 function resolvePriorityBackgroundColor(priorityValue) {
-  const color = PRIORITY_COLORS[priorityValue];
+  const color = UI_PRIORITY_COLOR_HEX_BY_VALUE[priorityValue];
   return color ? `${color}1a` : "";
 }
 

@@ -31,14 +31,14 @@ describe("calendar event styles", () => {
     });
   });
 
-  it("uses priority colors when the background mode is priority", () => {
+  it("uses shared priority colors when the background mode is priority", () => {
     const previousMode = state.settingsCache.taskBackgroundMode;
     state.settingsCache.taskBackgroundMode = "priority";
-    const styles = getCalendarEventStyles({ priority: 4 }, new Map());
+    const styles = getCalendarEventStyles({ priority: 2 }, new Map());
     state.settingsCache.taskBackgroundMode = previousMode;
     assert.deepStrictEqual(styles, {
-      backgroundColor: `${themeColors.amber400}1a`,
-      borderColor: themeColors.amber400
+      backgroundColor: `${themeColors.lime400}1a`,
+      borderColor: themeColors.lime400
     });
   });
 

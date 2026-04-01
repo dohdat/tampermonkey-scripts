@@ -12,6 +12,7 @@ import {
   TWENTY_FOUR,
   ZERO
 } from "../constants.js";
+import { themeColors } from "./theme.js";
 
 export * from "../constants.js";
 
@@ -48,6 +49,13 @@ export const REPORT_PRIORITY_RGB_VAR_BY_VALUE = {
   4: "--color-amber-400-rgb",
   5: "--color-orange-500-rgb"
 };
+export const UI_PRIORITY_COLOR_HEX_BY_VALUE = Object.freeze({
+  1: themeColors.green500,
+  2: themeColors.lime400,
+  3: themeColors.sky400,
+  4: themeColors.amber400,
+  5: themeColors.orange500
+});
 export const TITLE_REMINDER_REGEX =
   /\bremind(?:er)?(?:\s+me)?\s+(?:in\s+)?(\d+(?:\.\d+)?)\s*(?:day|days|d)\b/i;
 export const TITLE_REMINDER_PREFIX_REGEX =

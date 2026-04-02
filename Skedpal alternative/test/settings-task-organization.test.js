@@ -748,6 +748,138 @@ describe("task organization review", () => {
     assert.deepStrictEqual(homeCatalog?.sparseLeafSubsections || [], []);
   });
 
+  it("limits subsection-scope section catalog entries to the selected subtree", async () => {
+    state.settingsCache = {
+      ...state.settingsCache,
+      subsections: {
+        ...state.settingsCache.subsections,
+        "section-home": [
+          { id: "sub-home-tasks", name: "Home tasks", parentId: "" },
+          {
+            id: "sub-personal-hygiene",
+            name: "Personal Hygiene & Grooming",
+            parentId: "sub-home-tasks"
+          },
+          {
+            id: "sub-laundry",
+            name: "Laundry & Fabric Care",
+            parentId: "sub-home-tasks"
+          },
+          { id: "sub-non-recurring", name: "Non-recurring", parentId: "" },
+          { id: "sub-fixing", name: "Fixing/Cleaning", parentId: "sub-non-recurring" },
+          { id: "sub-long-term", name: "Long Term Projects", parentId: "sub-non-recurring" }
+        ]
+      }
+    };
+    await restoreBackup({ tasks: [], timeMaps: [], settings: state.settingsCache, taskTemplates: [] });
+    await saveTask({
+      id: "task-home-scope",
+      title: "Replace towels",
+      section: "section-home",
+      subsection: "sub-personal-hygiene"
+    });
+
+    let requestBody = null;
+    global.fetch = async (_url, options = {}) => {
+      requestBody = JSON.parse(options.body || "{}");
+      return {
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify({ suggestions: [] }) } }]
+        })
+      };
+    };
+
+    const { reviewTaskOrganizationScope } =
+      await import("../src/ui/settings-task-organization.js?task-org=4i");
+    await reviewTaskOrganizationScope({
+      sectionId: "section-home",
+      subsectionId: "sub-home-tasks",
+      panel: createPanel(),
+      button: createButton()
+    });
+
+    const payloadText = requestBody?.messages?.[1]?.content || "";
+    const sectionCatalog = extractSectionCatalogFromPrompt(payloadText);
+    const homeCatalog = sectionCatalog.find((section) => section.name === "Home");
+
+    assert.ok(homeCatalog);
+    assert.strictEqual(homeCatalog?.subsections.includes("Home tasks"), true);
+    assert.strictEqual(homeCatalog?.subsections.includes("Personal Hygiene & Grooming"), true);
+    assert.strictEqual(homeCatalog?.subsections.includes("Laundry & Fabric Care"), true);
+    assert.strictEqual(homeCatalog?.subsections.includes("Fixing/Cleaning"), false);
+    assert.strictEqual(homeCatalog?.subsections.includes("Long Term Projects"), false);
+  });
+
+  it("uses parent-branch subsection options when reviewing a leaf subsection scope", async () => {
+    state.settingsCache = {
+      ...state.settingsCache,
+      subsections: {
+        ...state.settingsCache.subsections,
+        "section-home": [
+          { id: "sub-home-tasks", name: "Home tasks", parentId: "" },
+          {
+            id: "sub-personal-hygiene",
+            name: "Personal Hygiene & Grooming",
+            parentId: "sub-home-tasks"
+          },
+          {
+            id: "sub-laundry",
+            name: "Laundry & Fabric Care",
+            parentId: "sub-home-tasks"
+          },
+          {
+            id: "sub-bedroom",
+            name: "Bedroom & Living Areas",
+            parentId: "sub-home-tasks"
+          },
+          { id: "sub-non-recurring", name: "Non-recurring", parentId: "" },
+          { id: "sub-fixing", name: "Fixing/Cleaning", parentId: "sub-non-recurring" },
+          { id: "sub-long-term", name: "Long Term Projects", parentId: "sub-non-recurring" }
+        ]
+      }
+    };
+    await restoreBackup({ tasks: [], timeMaps: [], settings: state.settingsCache, taskTemplates: [] });
+    await saveTask({
+      id: "task-leaf-scope",
+      title: "Organize grooming drawer",
+      section: "section-home",
+      subsection: "sub-personal-hygiene"
+    });
+
+    let requestBody = null;
+    global.fetch = async (_url, options = {}) => {
+      requestBody = JSON.parse(options.body || "{}");
+      return {
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify({ suggestions: [] }) } }]
+        })
+      };
+    };
+
+    const { reviewTaskOrganizationScope } =
+      await import("../src/ui/settings-task-organization.js?task-org=4i-leaf-parent-branch");
+    await reviewTaskOrganizationScope({
+      sectionId: "section-home",
+      subsectionId: "sub-personal-hygiene",
+      panel: createPanel(),
+      button: createButton()
+    });
+
+    const payloadText = requestBody?.messages?.[1]?.content || "";
+    const sectionCatalog = extractSectionCatalogFromPrompt(payloadText);
+    const homeCatalog = sectionCatalog.find((section) => section.name === "Home");
+
+    assert.ok(homeCatalog);
+    assert.strictEqual(homeCatalog?.subsections.includes("Home tasks"), true);
+    assert.strictEqual(homeCatalog?.subsections.includes("Personal Hygiene & Grooming"), true);
+    assert.strictEqual(homeCatalog?.subsections.includes("Laundry & Fabric Care"), true);
+    assert.strictEqual(homeCatalog?.subsections.includes("Bedroom & Living Areas"), true);
+    assert.strictEqual(homeCatalog?.subsections.includes("Fixing/Cleaning"), false);
+    assert.strictEqual(homeCatalog?.subsections.includes("Long Term Projects"), false);
+  });
+
   it("reviews only the selected section scope and renders suggestions inline", async () => {
     await saveTask({
       id: "task-home",
@@ -933,6 +1065,40 @@ describe("task organization review", () => {
     assert.ok(status.includes("Suggested 1 move"));
   });
 
+  it("reports request-too-large errors when a single-task scope cannot be split", async () => {
+    await saveTask({
+      id: "task-over-limit-single",
+      title: "Clean toilet",
+      section: "section-home",
+      subsection: "sub-cleaning"
+    });
+
+    global.fetch = async () => ({
+      ok: false,
+      status: 429,
+      statusText: "Too Many Requests",
+      json: async () => ({
+        error: {
+          message:
+            "Request too large for model `openai/gpt-oss-120b` on tokens per minute: Limit 8000, Requested 9536."
+        }
+      })
+    });
+
+    const { reviewTaskOrganizationScope } =
+      await import("../src/ui/settings-task-organization.js?task-org=5-request-too-large-single");
+    const panel = createPanel();
+    await reviewTaskOrganizationScope({
+      sectionId: "section-home",
+      subsectionId: "sub-cleaning",
+      panel,
+      button: createButton()
+    });
+
+    const status = findByTestId(panel, "task-organization-status")[0].textContent;
+    assert.ok(status.includes("rate limit hit"));
+  });
+
   it("reuses cached review results for unchanged tasks", async () => {
     await saveTask({
       id: "task-home",
@@ -986,6 +1152,50 @@ describe("task organization review", () => {
     assert.strictEqual(callCount, 1);
     assert.ok(findByTestId(secondPanel, "task-organization-status")[0].textContent.includes("Reused 1 cached result"));
     assert.strictEqual(findByTestId(secondPanel, "task-organization-task-title-0")[0].textContent, "Clean toilet");
+  });
+
+  it("uses plural cached-result wording when multiple cached reviews are reused", async () => {
+    await saveTask({
+      id: "task-home-1",
+      title: "Clean toilet",
+      section: "section-home",
+      subsection: "sub-cleaning"
+    });
+    await saveTask({
+      id: "task-home-2",
+      title: "Wash sink",
+      section: "section-home",
+      subsection: "sub-cleaning"
+    });
+
+    let callCount = 0;
+    global.fetch = async () => {
+      callCount += 1;
+      return {
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify({ suggestions: [] }) } }]
+        })
+      };
+    };
+
+    const { reviewTaskOrganizationScope } =
+      await import("../src/ui/settings-task-organization.js?task-org=5-cache-plural");
+    await reviewTaskOrganizationScope({
+      sectionId: "section-home",
+      panel: createPanel(),
+      button: createButton()
+    });
+
+    const secondPanel = createPanel();
+    await reviewTaskOrganizationScope({
+      sectionId: "section-home",
+      panel: secondPanel,
+      button: createButton()
+    });
+
+    assert.strictEqual(callCount, 1);
+    assert.ok(findByTestId(secondPanel, "task-organization-status")[0].textContent.includes("Reused 2 cached results"));
   });
 
   it("only sends tasks with updated titles after caching prior review results", async () => {
@@ -1149,6 +1359,49 @@ describe("task organization review", () => {
     });
 
     assert.strictEqual(handled, true);
+  });
+
+  it("returns false when both modal and panel UI targets are unavailable", async () => {
+    const { domRefs } = await import("../src/ui/constants.js");
+    const originalGetElementById = global.document.getElementById;
+    const originalRefs = {
+      taskOrganizationModal: domRefs.taskOrganizationModal,
+      taskOrganizationModalTitle: domRefs.taskOrganizationModalTitle,
+      taskOrganizationModalSubtitle: domRefs.taskOrganizationModalSubtitle,
+      taskOrganizationModalStatus: domRefs.taskOrganizationModalStatus,
+      taskOrganizationModalOutput: domRefs.taskOrganizationModalOutput
+    };
+    domRefs.taskOrganizationModal = null;
+    domRefs.taskOrganizationModalTitle = null;
+    domRefs.taskOrganizationModalSubtitle = null;
+    domRefs.taskOrganizationModalStatus = null;
+    domRefs.taskOrganizationModalOutput = null;
+    global.document.getElementById = (id) => {
+      if (String(id || "").startsWith("task-organization-modal")) {
+        return null;
+      }
+      return originalGetElementById(id);
+    };
+
+    const { reviewTaskOrganizationScope } =
+      await import("../src/ui/settings-task-organization.js?task-org=5b-no-ui");
+    let handled = true;
+    try {
+      handled = await reviewTaskOrganizationScope({
+        sectionId: "section-home",
+        panel: null,
+        button: createButton()
+      });
+    } finally {
+      domRefs.taskOrganizationModal = originalRefs.taskOrganizationModal;
+      domRefs.taskOrganizationModalTitle = originalRefs.taskOrganizationModalTitle;
+      domRefs.taskOrganizationModalSubtitle = originalRefs.taskOrganizationModalSubtitle;
+      domRefs.taskOrganizationModalStatus = originalRefs.taskOrganizationModalStatus;
+      domRefs.taskOrganizationModalOutput = originalRefs.taskOrganizationModalOutput;
+      global.document.getElementById = originalGetElementById;
+    }
+
+    assert.strictEqual(handled, false);
   });
 
   it("can review a scope without a trigger button element", async () => {

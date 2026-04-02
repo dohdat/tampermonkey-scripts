@@ -130,10 +130,55 @@ function buildSparseLeafSubsections(
     .filter(Boolean);
 }
 
-function buildSectionCatalog(settings = state.settingsCache, scopedTasks = []) {
+function isSubsectionScoped(scope = {}) {
+  return Boolean(scope?.sectionId) && Boolean(scope?.subsectionId);
+}
+
+function resolveSubsectionById(sectionId, subsectionId, settings = state.settingsCache) {
+  if (!sectionId || !subsectionId) {return null;}
+  return (settings?.subsections?.[sectionId] || []).find(
+    (subsection) => subsection?.id === subsectionId
+  ) || null;
+}
+
+function resolveCatalogRootSubsectionId(sectionId, subsectionId, settings = state.settingsCache) {
+  const subsection = resolveSubsectionById(sectionId, subsectionId, settings);
+  if (!subsection?.id) {return subsectionId || "";}
+  return subsection.parentId || subsection.id;
+}
+
+function filterCatalogSectionsByScope(sections = [], scope = {}) {
+  if (!isSubsectionScoped(scope)) {return sections;}
+  return (sections || []).filter((section) => section?.id === scope.sectionId);
+}
+
+function filterCatalogSubsectionsByScope(sectionId, subsectionList = [], scope = {}, settings = state.settingsCache) {
+  if (!isSubsectionScoped(scope) || sectionId !== scope.sectionId) {return subsectionList || [];}
+  const catalogRootSubsectionId = resolveCatalogRootSubsectionId(
+    sectionId,
+    scope.subsectionId,
+    settings
+  );
+  const allowedSubsectionIds = buildAllowedSubsectionIds(
+    sectionId,
+    catalogRootSubsectionId,
+    settings
+  );
+  if (!allowedSubsectionIds.size) {return subsectionList || [];}
+  return (subsectionList || []).filter((subsection) => allowedSubsectionIds.has(subsection?.id || ""));
+}
+
+function buildSectionCatalog(settings = state.settingsCache, scopedTasks = [], scope = {}) {
+  const filteredSections = filterCatalogSectionsByScope(settings?.sections || [], scope);
   return (settings?.sections || [])
+    .filter((section) => filteredSections.some((entry) => entry.id === section.id))
     .map((section) => {
-      const subsectionList = settings?.subsections?.[section.id] || [];
+      const subsectionList = filterCatalogSubsectionsByScope(
+        section.id,
+        settings?.subsections?.[section.id] || [],
+        scope,
+        settings
+      );
       const subsectionNameById = new Map(
         subsectionList.map((subsection) => [subsection.id, subsection?.name?.trim() || ""])
       );
@@ -435,7 +480,8 @@ export async function reviewTaskOrganizationScope({
     if (!reviewItemsContext) {return true;}
     const sectionCatalog = buildSectionCatalog(
       state.settingsCache,
-      reviewItemsContext.activeScopedTasksForLeafCounts
+      reviewItemsContext.activeScopedTasksForLeafCounts,
+      scope
     );
     await reviewTaskOrganizationBatches(
       uiTargets,

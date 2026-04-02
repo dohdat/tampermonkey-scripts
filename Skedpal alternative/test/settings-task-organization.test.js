@@ -2124,6 +2124,133 @@ describe("task organization review", () => {
     assert.ok(findByTestId(modal, "task-organization-modal-status")[0].textContent.includes("Moved"));
   });
 
+  it("auto sorts destination subsection priority when accepting a move suggestion", async () => {
+    await saveTask({
+      id: "task-home",
+      title: "Clean toilet",
+      section: "section-money",
+      subsection: "sub-finance",
+      priority: 3,
+      order: 1
+    });
+    await saveTask({
+      id: "task-bathroom-low",
+      title: "Low",
+      section: "section-home",
+      subsection: "sub-bathroom",
+      priority: 1,
+      order: 1
+    });
+    await saveTask({
+      id: "task-bathroom-high",
+      title: "High",
+      section: "section-home",
+      subsection: "sub-bathroom",
+      priority: 5,
+      order: 2
+    });
+
+    global.fetch = async () => ({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                suggestions: [
+                  {
+                    taskId: "task-home",
+                    sectionName: "Home",
+                    subsectionName: "Bathroom",
+                    reason: "Bathroom chore."
+                  }
+                ]
+              })
+            }
+          }
+        ]
+      })
+    });
+
+    const {
+      handleTaskOrganizationModalClick,
+      reviewTaskOrganizationScope
+    } = await import("../src/ui/settings-task-organization.js?task-org=14b");
+    await reviewTaskOrganizationScope({
+      sectionId: "section-money",
+      button: createButton()
+    });
+
+    const modal = document.getElementById("task-organization-modal");
+    const acceptBtn = findByTestId(modal, "task-organization-accept-0")[0];
+    await handleTaskOrganizationModalClick({ target: acceptBtn });
+
+    const tasks = await getAllTasks();
+    const moved = tasks.find((task) => task.id === "task-home");
+    const high = tasks.find((task) => task.id === "task-bathroom-high");
+    const low = tasks.find((task) => task.id === "task-bathroom-low");
+
+    assert.strictEqual(moved.section, "section-home");
+    assert.strictEqual(moved.subsection, "sub-bathroom");
+    assert.strictEqual(high.order, 1);
+    assert.strictEqual(moved.order, 2);
+    assert.strictEqual(low.order, 3);
+    assert.ok(findByTestId(modal, "task-organization-modal-status")[0].textContent.includes("Auto-sorted destination tasks by priority"));
+  });
+
+  it("handles accepting a suggestion when the task was deleted before apply", async () => {
+    await saveTask({
+      id: "task-home",
+      title: "Clean toilet",
+      section: "section-money",
+      subsection: "sub-finance"
+    });
+    global.fetch = async () => ({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                suggestions: [
+                  {
+                    taskId: "task-home",
+                    sectionName: "Home",
+                    subsectionName: "Bathroom",
+                    reason: "Bathroom chore."
+                  }
+                ]
+              })
+            }
+          }
+        ]
+      })
+    });
+
+    const {
+      handleTaskOrganizationModalClick,
+      reviewTaskOrganizationScope
+    } = await import("../src/ui/settings-task-organization.js?task-org=14c");
+    await reviewTaskOrganizationScope({
+      sectionId: "section-money",
+      button: createButton()
+    });
+
+    await restoreBackup({
+      tasks: [],
+      timeMaps: [],
+      settings: state.settingsCache,
+      taskTemplates: []
+    });
+
+    const modal = document.getElementById("task-organization-modal");
+    const acceptBtn = findByTestId(modal, "task-organization-accept-0")[0];
+    const handled = await handleTaskOrganizationModalClick({ target: acceptBtn });
+
+    assert.strictEqual(handled, true);
+    assert.ok(findByTestId(modal, "task-organization-modal-status")[0].textContent.includes("no longer exists"));
+  });
+
   it("creates a subsection when accepting a create-subsection suggestion", async () => {
     await saveTask({
       id: "task-home",
@@ -2277,5 +2404,17 @@ describe("task organization review", () => {
     assert.strictEqual(updatedTask.section, "section-money");
     assert.strictEqual(updatedTask.subsection, "sub-finance");
     assert.ok(findByTestId(modal, "task-organization-modal-status")[0].textContent.includes("Rejected"));
+  });
+
+  it("ignores unknown modal actions", async () => {
+    const { handleTaskOrganizationModalClick } =
+      await import("../src/ui/settings-task-organization.js?task-org=16b");
+
+    const unknownBtn = new FakeElement("button");
+    unknownBtn.setAttribute("data-task-organization-action", "noop");
+    unknownBtn.setAttribute("data-task-id", "task-home");
+
+    const handled = await handleTaskOrganizationModalClick({ target: unknownBtn });
+    assert.strictEqual(handled, false);
   });
 });

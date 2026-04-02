@@ -3,6 +3,7 @@ import { domRefs } from "./constants.js";
 import { state } from "./state/page-state.js";
 import { handleAddSubsection } from "./sections.js";
 import { loadTasks } from "./tasks/tasks-actions.js";
+import { computeSubsectionPrioritySortUpdates } from "./tasks/tasks.js";
 
 function getModalRefs() {
   return {
@@ -403,7 +404,7 @@ async function applyTaskOrganizationSuggestion(suggestion) {
   const tasks = await getAllTasks();
   const task = tasks.find((entry) => entry.id === suggestion?.taskId);
   if (!task) {
-    return { task: null, placementLabel: buildPlacementLabel(section.name, "") };
+    return { task: null, placementLabel: buildPlacementLabel(section.name, ""), autoSorted: false };
   }
   let subsectionId = "";
   if (suggestion?.suggestedSubsectionName) {
@@ -414,10 +415,24 @@ async function applyTaskOrganizationSuggestion(suggestion) {
     section: section.id,
     subsection: subsectionId
   });
+  let autoSorted = false;
+  if (subsectionId) {
+    const refreshedTasks = await getAllTasks();
+    const { updates, changed } = computeSubsectionPrioritySortUpdates(
+      refreshedTasks,
+      section.id,
+      subsectionId
+    );
+    if (changed) {
+      await Promise.all(updates.map((entry) => saveTask(entry)));
+      autoSorted = true;
+    }
+  }
   await reloadTasksForTaskOrganization();
   return {
     task,
-    placementLabel: buildSuggestionPlacement(section.id, section.name, subsectionId)
+    placementLabel: buildSuggestionPlacement(section.id, section.name, subsectionId),
+    autoSorted
   };
 }
 
@@ -454,9 +469,10 @@ async function acceptTaskOrganizationSuggestion(taskId) {
       return true;
     }
     const remaining = state.taskOrganizationSuggestions.length;
+    const autoSortSuffix = result.autoSorted ? " Auto-sorted destination tasks by priority." : "";
     setStatus(
       [buildModalUi(state.taskOrganizationScopeLabel)].filter(Boolean),
-      `Moved "${suggestion.taskTitle}" to ${result.placementLabel}. ${remaining} suggestion${remaining === 1 ? "" : "s"} remaining.`,
+      `Moved "${suggestion.taskTitle}" to ${result.placementLabel}. ${remaining} suggestion${remaining === 1 ? "" : "s"} remaining.${autoSortSuffix}`,
       "success"
     );
     return true;

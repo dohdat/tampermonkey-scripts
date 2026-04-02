@@ -2,7 +2,15 @@ import { SETTINGS_TASK_ORGANIZATION_CACHE_LIMIT } from "./constants.js";
 import { state } from "./state/page-state.js";
 
 function buildCatalogCacheKey(sectionCatalog = []) {
-  return JSON.stringify(sectionCatalog);
+  const stableCatalog = sectionCatalog.map(
+    ({ name, subsections, headerSubsections, subsectionHierarchy }) => ({
+      name,
+      subsections,
+      headerSubsections,
+      subsectionHierarchy
+    })
+  );
+  return JSON.stringify(stableCatalog);
 }
 
 function buildScopeCacheKey(scope = {}) {

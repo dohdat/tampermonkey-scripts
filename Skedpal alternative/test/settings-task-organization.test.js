@@ -1252,6 +1252,60 @@ describe("task organization review", () => {
     assert.ok(findByTestId(updatedPanel, "task-organization-status")[0].textContent.includes("Reused 1 cached result"));
   });
 
+  it("only sends moved tasks after caching prior subsection review results", async () => {
+    await saveTask({
+      id: "task-1",
+      title: "Wash my shoes & slippers & work bag",
+      section: "section-home",
+      subsection: "sub-cleaning"
+    });
+    await saveTask({
+      id: "task-2",
+      title: "Charge Philips Shaver",
+      section: "section-home",
+      subsection: "sub-bathroom"
+    });
+
+    const payloads = [];
+    global.fetch = async (_url, options = {}) => {
+      const body = JSON.parse(options.body || "{}");
+      payloads.push(body?.messages?.[1]?.content || "");
+      return {
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify({ suggestions: [] }) } }]
+        })
+      };
+    };
+
+    const { reviewTaskOrganizationScope } =
+      await import("../src/ui/settings-task-organization.js?task-org=5-cache-subsection-move");
+    await reviewTaskOrganizationScope({
+      sectionId: "section-home",
+      panel: createPanel(),
+      button: createButton()
+    });
+
+    await saveTask({
+      id: "task-1",
+      title: "Wash my shoes & slippers & work bag",
+      section: "section-home",
+      subsection: "sub-bathroom"
+    });
+
+    const updatedPanel = createPanel();
+    await reviewTaskOrganizationScope({
+      sectionId: "section-home",
+      panel: updatedPanel,
+      button: createButton()
+    });
+
+    assert.strictEqual(payloads.length, 2);
+    assert.ok(payloads[1].includes("Wash my shoes & slippers & work bag"));
+    assert.ok(!payloads[1].includes("Charge Philips Shaver"));
+    assert.ok(findByTestId(updatedPanel, "task-organization-status")[0].textContent.includes("Reused 1 cached result"));
+  });
+
   it("renders create-subsection badges when Groq suggests a new subsection", async () => {
     await saveTask({
       id: "task-home",

@@ -223,16 +223,23 @@ function getPriorityValue(value) {
 }
 
 function getOrderValue(value) {
-  return Number.isFinite(value) ? value : Number.MAX_SAFE_INTEGER;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
 }
 
 function getStartFromBucket(task, todayKey) {
   const startKey = getLocalDateKey(task?.startFrom);
   if (!startKey) {return 0;}
-  return startKey === todayKey ? 0 : 1;
+  return startKey > todayKey ? 1 : 0;
 }
 
-export function computeSubsectionPrioritySortUpdates(tasks, sectionId, subsectionId) {
+export function computeSubsectionPrioritySortUpdates(
+  tasks,
+  sectionId,
+  subsectionId,
+  options = {}
+) {
+  const deprioritizeFutureStartFrom = options.deprioritizeFutureStartFrom ?? true;
   const key = getContainerKey(sectionId, subsectionId);
   const inContainer = (tasks || []).filter(
     (task) => getContainerKey(task.section, task.subsection) === key
@@ -245,8 +252,10 @@ export function computeSubsectionPrioritySortUpdates(tasks, sectionId, subsectio
   if (roots.length <= 1) {return { updates: [], changed: false };}
   const todayKey = getLocalDateKey(new Date());
   const sortedRoots = [...roots].sort((a, b) => {
-    const startFromDiff = getStartFromBucket(a, todayKey) - getStartFromBucket(b, todayKey);
-    if (startFromDiff) {return startFromDiff;}
+    if (deprioritizeFutureStartFrom) {
+      const startFromDiff = getStartFromBucket(a, todayKey) - getStartFromBucket(b, todayKey);
+      if (startFromDiff) {return startFromDiff;}
+    }
     const priorityDiff = getPriorityValue(b.priority) - getPriorityValue(a.priority);
     if (priorityDiff) {return priorityDiff;}
     const orderDiff = getOrderValue(a.order) - getOrderValue(b.order);

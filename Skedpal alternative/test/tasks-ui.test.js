@@ -164,6 +164,62 @@ describe("subsection priority sort", () => {
     assert.strictEqual(byId.get("t2").order, 3);
   });
 
+  it("does not push past startFrom tasks to the bottom", () => {
+    const formatLocalInput = (date) =>
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+        date.getDate()
+      ).padStart(2, "0")}`;
+    const today = new Date();
+    const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+    const yesterdayIso = parseLocalDateInput(formatLocalInput(yesterday));
+    const tasks = [
+      {
+        id: "t1",
+        title: "High Past",
+        section: "s1",
+        subsection: "sub1",
+        order: 2,
+        priority: 5,
+        startFrom: yesterdayIso
+      },
+      { id: "t2", title: "Low", section: "s1", subsection: "sub1", order: 1, priority: 1 }
+    ];
+
+    const result = computeSubsectionPrioritySortUpdates(tasks, "s1", "sub1");
+    const byId = new Map(result.updates.map((task) => [task.id, task]));
+    assert.strictEqual(byId.get("t1").order, 1);
+    assert.strictEqual(byId.get("t2").order, 2);
+  });
+
+  it("supports strict priority sort when future startFrom bucketing is disabled", () => {
+    const formatLocalInput = (date) =>
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+        date.getDate()
+      ).padStart(2, "0")}`;
+    const today = new Date();
+    const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    const tomorrowIso = parseLocalDateInput(formatLocalInput(tomorrow));
+    const tasks = [
+      {
+        id: "t1",
+        title: "High Future",
+        section: "s1",
+        subsection: "sub1",
+        order: 2,
+        priority: 5,
+        startFrom: tomorrowIso
+      },
+      { id: "t2", title: "Low", section: "s1", subsection: "sub1", order: 1, priority: 1 }
+    ];
+
+    const result = computeSubsectionPrioritySortUpdates(tasks, "s1", "sub1", {
+      deprioritizeFutureStartFrom: false
+    });
+    const byId = new Map(result.updates.map((task) => [task.id, task]));
+    assert.strictEqual(byId.get("t1").order, 1);
+    assert.strictEqual(byId.get("t2").order, 2);
+  });
+
   it("returns unchanged when there are not enough root tasks", () => {
     const rows = computeSubsectionPrioritySortUpdates(
       [{ id: "single", section: "s1", subsection: "sub1", order: 1, priority: 1 }],

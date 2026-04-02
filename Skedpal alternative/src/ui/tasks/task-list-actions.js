@@ -272,8 +272,7 @@ async function sortSubsectionTasksByPriority(sectionId, subsectionId) {
   const { updates, changed } = computeSubsectionPrioritySortUpdates(
     state.tasksCache,
     sectionId,
-    subsectionId,
-    { deprioritizeFutureStartFrom: false }
+    subsectionId
   );
   if (!changed) {return false;}
   await Promise.all(updates.map((task) => saveTask(task)));

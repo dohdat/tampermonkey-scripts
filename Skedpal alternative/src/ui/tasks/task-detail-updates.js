@@ -2,6 +2,15 @@ import { saveTask } from "../../data/db.js";
 import { TASK_STATUS_UNSCHEDULED } from "../constants.js";
 import { getInheritedSubtaskFields, getTaskAndDescendants } from "../utils.js";
 import { state } from "../state/page-state.js";
+import { autoSortSubsectionOnPriorityChange } from "./task-auto-sort.js";
+
+function didTaskPriorityChange(task, updates, updatedTask) {
+  if (!updates || !Object.prototype.hasOwnProperty.call(updates, "priority")) {return false;}
+  const previousPriority = Number(task?.priority);
+  const nextPriority = Number(updatedTask?.priority);
+  if (!Number.isFinite(nextPriority)) {return false;}
+  return nextPriority !== previousPriority;
+}
 
 export async function updateTaskDetailField(task, updates) {
   if (!task) {return;}
@@ -35,6 +44,12 @@ export async function updateTaskDetailField(task, updates) {
         )
       );
     }
+  }
+  if (didTaskPriorityChange(task, updates, updatedTask)) {
+    await autoSortSubsectionOnPriorityChange(
+      updatedTask.section || "",
+      updatedTask.subsection || ""
+    );
   }
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("skedpal:tasks-updated"));

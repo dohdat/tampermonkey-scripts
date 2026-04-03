@@ -2,12 +2,7 @@ import { getAllTasks, saveTask } from "../../data/db.js";
 import { state } from "../state/page-state.js";
 import { computeSubsectionPrioritySortUpdates } from "./tasks.js";
 
-export async function maybeAutoSortSubsectionOnAdd(
-  sectionId,
-  subsectionId,
-  deps = {}
-) {
-  if (!state.settingsCache?.autoSortNewTasks) {return false;}
+async function applySubsectionPrioritySort(sectionId, subsectionId, deps = {}) {
   const getTasks = deps.getAllTasks || getAllTasks;
   const save = deps.saveTask || saveTask;
   const compute = deps.computeSubsectionPrioritySortUpdates ||
@@ -21,4 +16,21 @@ export async function maybeAutoSortSubsectionOnAdd(
   if (!changed) {return false;}
   await Promise.all(updates.map((task) => save(task)));
   return true;
+}
+
+export async function maybeAutoSortSubsectionOnAdd(
+  sectionId,
+  subsectionId,
+  deps = {}
+) {
+  if (!state.settingsCache?.autoSortNewTasks) {return false;}
+  return applySubsectionPrioritySort(sectionId, subsectionId, deps);
+}
+
+export async function autoSortSubsectionOnPriorityChange(
+  sectionId,
+  subsectionId,
+  deps = {}
+) {
+  return applySubsectionPrioritySort(sectionId, subsectionId, deps);
 }

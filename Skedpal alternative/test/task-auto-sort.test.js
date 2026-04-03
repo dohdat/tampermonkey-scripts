@@ -12,11 +12,12 @@ function installDomStubs() {
 
 describe("task auto sort", () => {
   let maybeAutoSortSubsectionOnAdd;
+  let autoSortSubsectionOnPriorityChange;
   let state;
 
   before(async () => {
     installDomStubs();
-    ({ maybeAutoSortSubsectionOnAdd } = await import("../src/ui/tasks/task-auto-sort.js"));
+    ({ maybeAutoSortSubsectionOnAdd, autoSortSubsectionOnPriorityChange } = await import("../src/ui/tasks/task-auto-sort.js"));
     ({ state } = await import("../src/ui/state/page-state.js"));
   });
 
@@ -85,5 +86,35 @@ describe("task auto sort", () => {
       computeSubsectionPrioritySortUpdates: () => ({ updates: [], changed: false })
     });
     assert.strictEqual(result, false);
+  });
+
+  it("sorts after priority changes even when add auto sort is disabled", async () => {
+    state.settingsCache = { ...state.settingsCache, autoSortNewTasks: false };
+    const saved = [];
+    const result = await autoSortSubsectionOnPriorityChange("s1", "sub1", {
+      getAllTasks: async () => [
+        { id: "task-low", priority: 1, order: 2, section: "s1", subsection: "sub1" },
+        { id: "task-high", priority: 5, order: 1, section: "s1", subsection: "sub1" }
+      ],
+      computeSubsectionPrioritySortUpdates: () => ({
+        updates: [
+          { id: "task-high", order: 1 },
+          { id: "task-low", order: 2 }
+        ],
+        changed: true
+      }),
+      saveTask: async (task) => {
+        saved.push(task);
+      }
+    });
+
+    assert.strictEqual(result, true);
+    assert.deepStrictEqual(
+      saved.map((task) => ({ id: task.id, order: task.order })),
+      [
+        { id: "task-high", order: 1 },
+        { id: "task-low", order: 2 }
+      ]
+    );
   });
 });

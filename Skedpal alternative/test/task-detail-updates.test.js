@@ -92,4 +92,34 @@ describe("task detail updates", () => {
     assert.strictEqual(savedChild.priority, 5);
     assert.strictEqual(dispatched, "skedpal:tasks-updated");
   });
+
+  it("auto sorts the task subsection when priority changes", async () => {
+    const low = {
+      id: "low",
+      title: "Low",
+      section: "s1",
+      subsection: "sub1",
+      order: 2,
+      priority: 2
+    };
+    const high = {
+      id: "high",
+      title: "High",
+      section: "s1",
+      subsection: "sub1",
+      order: 1,
+      priority: 4
+    };
+    state.tasksCache = [low, high];
+    await saveTask(low);
+    await saveTask(high);
+
+    await updateTaskDetailField(low, { priority: 5 });
+
+    const tasks = await getAllTasks();
+    const savedLow = tasks.find((task) => task.id === "low");
+    const savedHigh = tasks.find((task) => task.id === "high");
+    assert.strictEqual(savedLow.order, 1);
+    assert.strictEqual(savedHigh.order, 2);
+  });
 });

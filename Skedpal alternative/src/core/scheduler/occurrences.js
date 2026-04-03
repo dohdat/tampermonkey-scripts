@@ -7,7 +7,14 @@ import {
   startOfWeek
 } from "./date-utils.js";
 import { normalizeTask } from "./task-utils.js";
-import { DAYS_PER_WEEK, DAYS_PER_YEAR, TEN, THREE, THIRTY_ONE } from "../../constants.js";
+import {
+  DAYS_PER_WEEK,
+  DAYS_PER_YEAR,
+  MS_PER_DAY,
+  TEN,
+  THREE,
+  THIRTY_ONE
+} from "../../constants.js";
 import {
   buildCompletedOccurrenceStore,
   isOccurrenceCompleted
@@ -40,7 +47,28 @@ function buildDailyCompletionInfo(task) {
   return { latest, count: uniqueDays.size };
 }
 
-function buildCompletionBasedDailyOccurrences({ task, anchor, interval, limitDate, horizonEnd, repeat }) {
+function advanceCompletionDailyCandidate(candidate, nowStart, interval) {
+  if (candidate >= nowStart) {
+    return candidate;
+  }
+  const diffDays = Math.max(0, Math.floor((nowStart.getTime() - candidate.getTime()) / MS_PER_DAY));
+  const stepCount = Math.max(1, Math.ceil(diffDays / interval));
+  let next = addDays(candidate, stepCount * interval);
+  while (next < nowStart) {
+    next = addDays(next, interval);
+  }
+  return next;
+}
+
+function buildCompletionBasedDailyOccurrences({
+  task,
+  anchor,
+  interval,
+  limitDate,
+  horizonEnd,
+  nowStart,
+  repeat
+}) {
   const { latest, count } = buildDailyCompletionInfo(task);
   if (
     repeat.end?.type === "after" &&
@@ -50,7 +78,8 @@ function buildCompletionBasedDailyOccurrences({ task, anchor, interval, limitDat
     return [];
   }
   const baseDate = latest ? startOfDay(latest) : anchor;
-  const candidate = latest ? addDays(baseDate, interval) : anchor;
+  const initial = latest ? addDays(baseDate, interval) : baseDate;
+  const candidate = advanceCompletionDailyCandidate(initial, nowStart, interval);
   if (candidate > limitDate || candidate > horizonEnd) {
     return [];
   }

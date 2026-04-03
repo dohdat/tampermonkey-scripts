@@ -347,7 +347,7 @@ describe("scheduler occurrences", () => {
     assert.strictEqual(dates.length, 1);
   });
 
-  it("returns a single outstanding occurrence for completion-based daily repeats", () => {
+  it("auto-advances completion-based daily repeats when the prior due day was missed", () => {
     const task = {
       id: "daily-completion-outstanding",
       repeatAnchor: new Date("2026-01-01T00:00:00Z"),
@@ -355,9 +355,9 @@ describe("scheduler occurrences", () => {
     };
     const dates = buildOccurrenceDates(task, new Date("2026-01-10T00:00:00Z"), horizonEnd);
     assert.strictEqual(dates.length, 1);
-    assert.strictEqual(dates[0].getFullYear(), 2025);
-    assert.strictEqual(dates[0].getMonth(), 11);
-    assert.strictEqual(dates[0].getDate(), 31);
+    assert.strictEqual(dates[0].getFullYear(), 2026);
+    assert.strictEqual(dates[0].getMonth(), 0);
+    assert.strictEqual(dates[0].getDate(), 10);
   });
 
   it("advances completion-based daily repeats from the latest completion day", () => {

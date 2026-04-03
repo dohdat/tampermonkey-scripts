@@ -9,6 +9,10 @@ import {
 import { DEFAULT_SCHEDULING_HORIZON_DAYS } from "../data/db.js";
 import { FIFTY, THREE, TASK_REPEAT_NONE } from "../constants.js";
 
+function isCompletionBasedDailyRepeat(task) {
+  return task?.repeat?.unit === "day" && task?.repeat?.dayMode === "completion";
+}
+
 export function getExpectedOccurrenceCount(task, now, horizonDays) {
   if (!task?.repeat || task.repeat.type === TASK_REPEAT_NONE) {return 0;}
   const safeHorizonDays = Number(horizonDays);
@@ -85,7 +89,9 @@ export function getDueOccurrenceCount(task, now, horizonDays) {
       ? safeHorizonDays
       : DEFAULT_SCHEDULING_HORIZON_DAYS;
   const windowEnd = now instanceof Date ? now : new Date();
-  const effectiveStart = resolveEffectiveStart(task, windowEnd, effectiveHorizonDays);
+  const effectiveStart = isCompletionBasedDailyRepeat(task)
+    ? startOfDay(windowEnd)
+    : resolveEffectiveStart(task, windowEnd, effectiveHorizonDays);
   const normalized = normalizeTask(task, effectiveStart, windowEnd);
   const occurrences = buildOccurrenceDates(normalized, effectiveStart, windowEnd);
   if (!occurrences.length) {return 0;}

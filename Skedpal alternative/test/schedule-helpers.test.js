@@ -153,7 +153,7 @@ describe("schedule helpers", () => {
     assert.strictEqual(count, 3);
   });
 
-  it("counts a single outstanding due occurrence for completion-based daily repeats", () => {
+  it("auto-reschedules completion-based daily repeats after a missed day", () => {
     const now = new Date(2026, 1, 13, 12, 0, 0);
     const task = {
       id: "completion-daily-due",
@@ -161,7 +161,7 @@ describe("schedule helpers", () => {
       repeatAnchor: new Date(2026, 1, 10, 0, 0, 0)
     };
     const count = getDueOccurrenceCount(task, now, 14);
-    assert.strictEqual(count, 1);
+    assert.strictEqual(count, 0);
   });
 
   it("does not stack missed runs for completion-based daily repeats after the last completion", () => {
@@ -173,7 +173,7 @@ describe("schedule helpers", () => {
       completedOccurrences: ["2026-02-10"]
     };
     const count = getDueOccurrenceCount(task, now, 14);
-    assert.strictEqual(count, 1);
+    assert.strictEqual(count, 0);
   });
 
   it("returns one expected occurrence for completion-based daily repeats", () => {

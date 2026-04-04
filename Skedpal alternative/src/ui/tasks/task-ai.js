@@ -96,15 +96,37 @@ function parseTaskTitleGrammarFromJson(candidate) {
   }
 }
 
+function stripTaskTitleGrammarLinePrefixes(line) {
+  return String(line || "")
+    .trim()
+    .replace(/^[-*]\s+/, "")
+    .replace(/^\d+[.)]\s+/, "")
+    .replace(
+      /^(?:here(?:'s| is)\s+)?(?:the\s+)?(?:corrected|rewritten|fixed)\s+(?:task\s+)?title(?:\s+is)?\s*[:-]\s*/i,
+      ""
+    )
+    .replace(/^(title|corrected(?: title)?|rewritten(?: title)?|fixed(?: title)?|result):\s*/i, "")
+    .replace(/^["'`]+|["'`]+$/g, "")
+    .trim();
+}
+
+function shouldDropTaskTitleGrammarFirstLine(lines) {
+  if (!Array.isArray(lines) || lines.length < TWO) {return false;}
+  const firstLine = lines[0];
+  if (!firstLine) {return false;}
+  if (firstLine.endsWith(":")) {return true;}
+  return /^(?:sure|certainly|of course|okay|ok|here(?:'s| is)\b)/i.test(firstLine);
+}
+
 function parseTaskTitleGrammarFromText(candidate) {
-  const firstLine = candidate
+  const lines = candidate
     .split(/\r?\n/)
-    .map((line) => line.trim())
-    .find((line) => line && !line.startsWith("- ") && !line.startsWith("* "));
-  const cleanedLine = (firstLine || candidate)
-    .replace(/^(title|corrected(?: title)?|rewritten(?: title)?):\s*/i, "")
-    .replace(/^["'`]+|["'`]+$/g, "");
-  return normalizeTaskTitleText(cleanedLine);
+    .map(stripTaskTitleGrammarLinePrefixes)
+    .filter(Boolean);
+  if (!lines.length) {return "";}
+  const linesToJoin = shouldDropTaskTitleGrammarFirstLine(lines) ? lines.slice(1) : lines;
+  const joined = linesToJoin.join(" ");
+  return normalizeTaskTitleText(joined);
 }
 
 function parseTaskTitleGrammarResponse(text, fallbackTitle = "") {
@@ -113,6 +135,7 @@ function parseTaskTitleGrammarResponse(text, fallbackTitle = "") {
   if (!candidate) {return normalizedFallback;}
   const fromJson = parseTaskTitleGrammarFromJson(candidate);
   if (fromJson) {return fromJson;}
+  if (candidate.startsWith("{")) {return normalizedFallback;}
   const fromText = parseTaskTitleGrammarFromText(candidate);
   return fromText || normalizedFallback;
 }

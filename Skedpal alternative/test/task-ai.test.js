@@ -211,6 +211,46 @@ describe("task ai parser", () => {
     assert.strictEqual(result, "Write report Monday");
   });
 
+  it("keeps multiline grammar responses intact instead of truncating to the first line", async () => {
+    const result = await fixTaskTitleGrammar("write report monday now", {
+      apiKey: "test-key",
+      requestFn: async () => "Write report Monday\nnow with key points."
+    });
+    assert.strictEqual(result, "Write report Monday now with key points.");
+  });
+
+  it("drops wrapper lines before returning corrected grammar text", async () => {
+    const result = await fixTaskTitleGrammar("fix this grammar", {
+      apiKey: "test-key",
+      requestFn: async () => "Sure, here's a corrected title:\nFix this grammar."
+    });
+    assert.strictEqual(result, "Fix this grammar.");
+  });
+
+  it("drops conversational first lines for grammar responses", async () => {
+    const result = await fixTaskTitleGrammar("write better title", {
+      apiKey: "test-key",
+      requestFn: async () => "Sure this works\nWrite a better title."
+    });
+    assert.strictEqual(result, "Write a better title.");
+  });
+
+  it("strips list markers from grammar responses", async () => {
+    const result = await fixTaskTitleGrammar("fix this grammar", {
+      apiKey: "test-key",
+      requestFn: async () => "- Fix this grammar."
+    });
+    assert.strictEqual(result, "Fix this grammar.");
+  });
+
+  it("falls back when grammar response starts with malformed JSON", async () => {
+    const result = await fixTaskTitleGrammar("Original Title", {
+      apiKey: "test-key",
+      requestFn: async () => "{ title: \"Missing quotes\" "
+    });
+    assert.strictEqual(result, "Original Title");
+  });
+
   it("falls back to the original title when no key is provided", async () => {
     state.settingsCache = { groqApiKey: "" };
     global.window.prompt = () => "";

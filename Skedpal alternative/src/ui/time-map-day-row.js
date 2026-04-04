@@ -1,5 +1,34 @@
-import { dayOptions } from "./constants.js";
+import { dayOptions, duplicateIconSvg, removeIconSvg } from "./constants.js";
 import { createTimeline } from "./time-map-timeline.js";
+
+function createCompactActionButton({
+  actionName,
+  label,
+  iconSvg,
+  hoverClassName
+}) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = `title-icon-btn border-slate-700 bg-slate-900/70 text-slate-300 ${hoverClassName}`;
+  button.title = label;
+  button.setAttribute("aria-label", label);
+  button.setAttribute("data-test-skedpal", `timemap-day-${actionName}`);
+  button.setAttribute(`data-day-${actionName}`, "true");
+
+  const icon = document.createElement("span");
+  icon.className = "pointer-events-none";
+  icon.setAttribute("data-test-skedpal", `timemap-day-${actionName}-icon`);
+  icon.innerHTML = iconSvg;
+
+  const srOnlyLabel = document.createElement("span");
+  srOnlyLabel.className = "sr-only";
+  srOnlyLabel.textContent = label;
+  srOnlyLabel.setAttribute("data-test-skedpal", `timemap-day-${actionName}-label`);
+
+  button.appendChild(icon);
+  button.appendChild(srOnlyLabel);
+  return button;
+}
 
 function createDayHeader(day) {
   const header = document.createElement("div");
@@ -10,22 +39,20 @@ function createDayHeader(day) {
   label.textContent = dayOptions.find((opt) => opt.value === Number(day))?.label || String(day);
   label.setAttribute("data-test-skedpal", "timemap-day-label");
   const actionGroup = document.createElement("div");
-  actionGroup.className = "flex items-center gap-2";
+  actionGroup.className = "flex items-center gap-1.5";
   actionGroup.setAttribute("data-test-skedpal", "timemap-day-actions");
-  const duplicateDayBtn = document.createElement("button");
-  duplicateDayBtn.type = "button";
-  duplicateDayBtn.className =
-    "rounded-lg border-slate-700 px-2 py-1 text-xs font-semibold text-slate-300 hover:border-lime-400 hover:text-lime-200";
-  duplicateDayBtn.textContent = "Duplicate to all";
-  duplicateDayBtn.setAttribute("data-test-skedpal", "timemap-day-duplicate");
-  duplicateDayBtn.setAttribute("data-day-duplicate", "true");
-  const removeDayBtn = document.createElement("button");
-  removeDayBtn.type = "button";
-  removeDayBtn.className =
-    "rounded-lg border-slate-700 px-2 py-1 text-xs font-semibold text-slate-300 hover:border-orange-400 hover:text-orange-300";
-  removeDayBtn.textContent = "Remove";
-  removeDayBtn.setAttribute("data-test-skedpal", "timemap-day-remove");
-  removeDayBtn.setAttribute("data-day-remove", "true");
+  const duplicateDayBtn = createCompactActionButton({
+    actionName: "duplicate",
+    label: "Duplicate time ranges to all days",
+    iconSvg: duplicateIconSvg,
+    hoverClassName: "hover:border-lime-400 hover:text-lime-200"
+  });
+  const removeDayBtn = createCompactActionButton({
+    actionName: "remove",
+    label: "Remove day",
+    iconSvg: removeIconSvg,
+    hoverClassName: "hover:border-orange-400 hover:text-orange-300"
+  });
   actionGroup.appendChild(duplicateDayBtn);
   actionGroup.appendChild(removeDayBtn);
   header.appendChild(label);

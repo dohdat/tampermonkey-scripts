@@ -64,7 +64,7 @@ import {
 const {
   timeMapFormWrap,
   timeMapToggle,
-  timeMapCancel,
+  timeMapModalCloseButtons,
   taskFormWrap,
   taskModalCloseButtons,
   sectionAddBtn,
@@ -362,10 +362,10 @@ function registerTimeMapHandlers() {
     timeMapReset.addEventListener("click", resetTimeMapForm);
     cleanupFns.push(() => timeMapReset.removeEventListener("click", resetTimeMapForm));
   }
-  if (timeMapCancel) {
-    timeMapCancel.addEventListener("click", handleTimeMapCancelClick);
-    cleanupFns.push(() => timeMapCancel.removeEventListener("click", handleTimeMapCancelClick));
-  }
+  timeMapModalCloseButtons.forEach((btn) => {
+    btn.addEventListener("click", handleTimeMapCancelClick);
+    cleanupFns.push(() => btn.removeEventListener("click", handleTimeMapCancelClick));
+  });
   if (timeMapToggle) {
     timeMapToggle.addEventListener("click", handleTimeMapToggleClick);
     cleanupFns.push(() => timeMapToggle.removeEventListener("click", handleTimeMapToggleClick));

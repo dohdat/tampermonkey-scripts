@@ -27,8 +27,10 @@ import {
   syncTimeMapTimelineHeader
 } from "./time-map-timeline.js";
 import { createTimeMapDayRow } from "./time-map-day-row.js";
+import { initTimeMapModalInteractions, showTimeMapModal, hideTimeMapModal } from "./time-map-modal.js";
 const getTimeMapList = () => domRefs.timeMapList;
 const getTimeMapDayRows = () => domRefs.timeMapDayRows;
+const getTimeMapModal = () => domRefs.timeMapModal;
 const getTimeMapFormWrap = () => domRefs.timeMapFormWrap;
 const getTimeMapToggle = () => domRefs.timeMapToggle;
 const getTaskTimeMapOptions = () => domRefs.taskTimeMapOptions;
@@ -70,14 +72,11 @@ function handleTimeMapDayAddClick() {
   if (!timeMapDaySelect) {return;}
   addTimeMapDay(timeMapDaySelect.value);
 }
-
 function duplicateTimeMapDayRangesAcrossAllDays(dayRow) {
   if (!dayRow) {return;}
   const timeMapDayRows = getTimeMapDayRows();
   if (!timeMapDayRows) {return;}
-  const sourceRules = collectTimeMapRules({
-    querySelectorAll: () => [dayRow]
-  });
+  const sourceRules = collectTimeMapRules({ querySelectorAll: () => [dayRow] });
   if (!sourceRules.length) {return;}
   const duplicatedRules = dayOptions.flatMap((day) =>
     sourceRules.map((rule) => ({
@@ -130,7 +129,6 @@ export function renderDayRows(container, rules = []) {
   });
   syncTimeMapDaySelectOptions(getTimeMapDaySelect(), getTimeMapDayRows());
 }
-
 export function renderTimeMaps(timeMaps) {
   const timeMapList = getTimeMapList();
   if (!timeMapList) {return;}
@@ -203,7 +201,6 @@ export function getTimeMapUsageCounts(tasks) {
   });
   return usageCounts;
 }
-
 export async function loadTimeMaps() {
   const [timeMapsRaw, tasks] = await Promise.all([getAllTimeMaps(), getAllTasks()]);
   const timeMaps = timeMapsRaw.map(normalizeTimeMap);
@@ -438,6 +435,11 @@ function setupTimeMapDayRowsInteractions(timeMapDayRows, cleanupFns) {
   cleanupFns.push(setupTimeMapTimelineInteractions(timeMapDayRows));
 }
 
+function dismissTimeMapForm() {
+  resetTimeMapForm();
+  closeTimeMapForm();
+}
+
 function ensureTimeMapColorInitialized(timeMapColorInput) {
   if (!timeMapColorInput) {return;}
   const current = timeMapColorInput.value || "";
@@ -471,6 +473,7 @@ export function initTimeMapFormInteractions() {
   const timeMapDayRows = getTimeMapDayRows();
   registerClickListener(timeMapDayAdd, handleTimeMapDayAddClick, cleanupFns);
   setupTimeMapDayRowsInteractions(timeMapDayRows, cleanupFns);
+  cleanupFns.push(initTimeMapModalInteractions({ getModal: getTimeMapModal, onDismiss: dismissTimeMapForm }));
   ensureTimeMapColorInitialized(getTimeMapColorInput());
   ensureDefaultTimeMapDayRows(timeMapDayRows);
   syncTimeMapTimelineHeader();
@@ -480,26 +483,24 @@ export function initTimeMapFormInteractions() {
 }
 
 export function openTimeMapForm() {
+  const timeMapModal = getTimeMapModal();
   const timeMapFormWrap = getTimeMapFormWrap();
   const timeMapToggle = getTimeMapToggle();
   ensureDefaultTimeMapDayRows(getTimeMapDayRows());
   ensureTimeMapSectionExpanded();
-  if (timeMapFormWrap) {
-    timeMapFormWrap.classList.remove("hidden");
-  }
+  showTimeMapModal(timeMapModal, timeMapFormWrap);
   if (timeMapToggle) {
-    timeMapToggle.textContent = "Hide TimeMap form";
+    timeMapToggle.textContent = "New TimeMap";
   }
 }
 
 export function closeTimeMapForm() {
+  const timeMapModal = getTimeMapModal();
   const timeMapFormWrap = getTimeMapFormWrap();
   const timeMapToggle = getTimeMapToggle();
-  if (timeMapFormWrap) {
-    timeMapFormWrap.classList.add("hidden");
-  }
+  hideTimeMapModal(timeMapModal, timeMapFormWrap);
   if (timeMapToggle) {
-    timeMapToggle.textContent = "Show TimeMap form";
+    timeMapToggle.textContent = "New TimeMap";
   }
 }
 

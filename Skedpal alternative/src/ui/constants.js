@@ -116,6 +116,8 @@ export const domRefs = {
   timeMapDayAdd: document.getElementById("timemap-day-add"),
   timeMapSectionToggleBtn: document.getElementById("timemap-section-toggle"),
   timeMapSectionContent: document.getElementById("timemap-section-content"),
+  timeMapModal: document.getElementById("timemap-modal"),
+  timeMapModalCloseButtons: [...document.querySelectorAll("[data-timemap-modal-close]")],
   timeMapFormWrap: document.getElementById("timemap-form-wrap"),
   timeMapToggle: document.getElementById("timemap-toggle"),
   timeMapCancel: document.getElementById("timemap-cancel"),

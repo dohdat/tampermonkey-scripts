@@ -169,17 +169,28 @@ elements.set("timemap-color-swatch", new FakeElement("div"));
 elements.set("timemap-day-rows", new FakeElement("div"));
 elements.set("timemap-section-content", new FakeElement("div"));
 elements.set("timemap-section-toggle", new FakeElement("button"));
+elements.set("timemap-modal", new FakeElement("div"));
 elements.set("timemap-list", new FakeElement("div"));
 elements.set("timemap-form-wrap", new FakeElement("div"));
 elements.set("timemap-toggle", new FakeElement("button"));
 elements.set("task-timemap-options", new FakeElement("div"));
 
 function installDomStubs() {
+  const docHandlers = {};
   global.document = {
     createElement: (tag) => new FakeElement(tag),
     createTextNode: (text) => ({ nodeType: 3, textContent: text }),
     querySelectorAll: () => [],
-    getElementById: (id) => elements.get(id) || null
+    getElementById: (id) => elements.get(id) || null,
+    addEventListener: (type, handler) => {
+      docHandlers[type] = handler;
+    },
+    removeEventListener: (type, handler) => {
+      if (docHandlers[type] === handler) {
+        delete docHandlers[type];
+      }
+    },
+    body: new FakeElement("body")
   };
   global.alert = () => {};
   global.crypto = {
@@ -195,6 +206,7 @@ domRefs.timeMapColorSwatch = elements.get("timemap-color-swatch");
 domRefs.timeMapDayRows = elements.get("timemap-day-rows");
 domRefs.timeMapSectionContent = elements.get("timemap-section-content");
 domRefs.timeMapSectionToggleBtn = elements.get("timemap-section-toggle");
+domRefs.timeMapModal = elements.get("timemap-modal");
 domRefs.timeMapList = elements.get("timemap-list");
 domRefs.timeMapFormWrap = elements.get("timemap-form-wrap");
 domRefs.timeMapToggle = elements.get("timemap-toggle");
@@ -228,6 +240,7 @@ describe("time maps", () => {
     domRefs.timeMapDayRows = elements.get("timemap-day-rows");
     domRefs.timeMapSectionContent = elements.get("timemap-section-content");
     domRefs.timeMapSectionToggleBtn = elements.get("timemap-section-toggle");
+    domRefs.timeMapModal = elements.get("timemap-modal");
     domRefs.timeMapList = elements.get("timemap-list");
     domRefs.timeMapFormWrap = elements.get("timemap-form-wrap");
     domRefs.timeMapToggle = elements.get("timemap-toggle");
@@ -561,23 +574,31 @@ describe("time maps", () => {
   });
 
   it("opens, closes, and resets the time map form", () => {
+    const modal = elements.get("timemap-modal");
     const formWrap = elements.get("timemap-form-wrap");
     const toggle = elements.get("timemap-toggle");
     const dayRows = elements.get("timemap-day-rows");
     const sectionContent = elements.get("timemap-section-content");
     const sectionToggle = elements.get("timemap-section-toggle");
+    modal.classList.add("hidden");
     formWrap.classList.add("hidden");
     sectionContent.classList.add("hidden");
     sectionToggle.textContent = "Expand";
     openTimeMapForm();
+    assert.strictEqual(modal.classList.contains("hidden"), false);
+    assert.strictEqual(modal.attributes["aria-hidden"], "false");
     assert.strictEqual(formWrap.classList.contains("hidden"), false);
     assert.strictEqual(sectionContent.classList.contains("hidden"), false);
     assert.strictEqual(sectionToggle.textContent, "Collapse");
     assert.strictEqual(sectionToggle.attributes["aria-expanded"], "true");
-    assert.strictEqual(toggle.textContent, "Hide TimeMap form");
+    assert.strictEqual(toggle.textContent, "New TimeMap");
+    assert.strictEqual(document.body.classList.contains("modal-open"), true);
     closeTimeMapForm();
+    assert.strictEqual(modal.classList.contains("hidden"), true);
+    assert.strictEqual(modal.attributes["aria-hidden"], "true");
     assert.strictEqual(formWrap.classList.contains("hidden"), true);
-    assert.strictEqual(toggle.textContent, "Show TimeMap form");
+    assert.strictEqual(toggle.textContent, "New TimeMap");
+    assert.strictEqual(document.body.classList.contains("modal-open"), false);
 
     elements.get("timemap-id").value = "tm-1";
     elements.get("timemap-name").value = "Work";

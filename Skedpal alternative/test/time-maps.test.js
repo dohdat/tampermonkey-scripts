@@ -167,6 +167,8 @@ elements.set("timemap-name", new FakeElement("input"));
 elements.set("timemap-color", new FakeElement("input"));
 elements.set("timemap-color-swatch", new FakeElement("div"));
 elements.set("timemap-day-rows", new FakeElement("div"));
+elements.set("timemap-section-content", new FakeElement("div"));
+elements.set("timemap-section-toggle", new FakeElement("button"));
 elements.set("timemap-list", new FakeElement("div"));
 elements.set("timemap-form-wrap", new FakeElement("div"));
 elements.set("timemap-toggle", new FakeElement("button"));
@@ -191,6 +193,8 @@ const { state } = await import("../src/ui/state/page-state.js");
 domRefs.timeMapColorInput = elements.get("timemap-color");
 domRefs.timeMapColorSwatch = elements.get("timemap-color-swatch");
 domRefs.timeMapDayRows = elements.get("timemap-day-rows");
+domRefs.timeMapSectionContent = elements.get("timemap-section-content");
+domRefs.timeMapSectionToggleBtn = elements.get("timemap-section-toggle");
 domRefs.timeMapList = elements.get("timemap-list");
 domRefs.timeMapFormWrap = elements.get("timemap-form-wrap");
 domRefs.timeMapToggle = elements.get("timemap-toggle");
@@ -209,7 +213,8 @@ const {
   openTimeMapForm,
   closeTimeMapForm,
   resetTimeMapForm,
-  getTimeMapUsageCounts
+  getTimeMapUsageCounts,
+  duplicateCurrentTimeMapRangesAcrossAllDays
 } = timeMaps;
 
 describe("time maps", () => {
@@ -221,6 +226,8 @@ describe("time maps", () => {
     domRefs.timeMapColorInput = elements.get("timemap-color");
     domRefs.timeMapColorSwatch = elements.get("timemap-color-swatch");
     domRefs.timeMapDayRows = elements.get("timemap-day-rows");
+    domRefs.timeMapSectionContent = elements.get("timemap-section-content");
+    domRefs.timeMapSectionToggleBtn = elements.get("timemap-section-toggle");
     domRefs.timeMapList = elements.get("timemap-list");
     domRefs.timeMapFormWrap = elements.get("timemap-form-wrap");
     domRefs.timeMapToggle = elements.get("timemap-toggle");
@@ -556,9 +563,17 @@ describe("time maps", () => {
   it("opens, closes, and resets the time map form", () => {
     const formWrap = elements.get("timemap-form-wrap");
     const toggle = elements.get("timemap-toggle");
+    const dayRows = elements.get("timemap-day-rows");
+    const sectionContent = elements.get("timemap-section-content");
+    const sectionToggle = elements.get("timemap-section-toggle");
     formWrap.classList.add("hidden");
+    sectionContent.classList.add("hidden");
+    sectionToggle.textContent = "Expand";
     openTimeMapForm();
     assert.strictEqual(formWrap.classList.contains("hidden"), false);
+    assert.strictEqual(sectionContent.classList.contains("hidden"), false);
+    assert.strictEqual(sectionToggle.textContent, "Collapse");
+    assert.strictEqual(sectionToggle.attributes["aria-expanded"], "true");
     assert.strictEqual(toggle.textContent, "Hide TimeMap form");
     closeTimeMapForm();
     assert.strictEqual(formWrap.classList.contains("hidden"), true);
@@ -569,6 +584,24 @@ describe("time maps", () => {
     resetTimeMapForm();
     assert.strictEqual(elements.get("timemap-id").value, "");
     assert.strictEqual(elements.get("timemap-name").value, "");
+    assert.strictEqual(dayRows.children.length, dayOptions.length);
+  });
+
+  it("duplicates the current time range to all days", () => {
+    const dayRows = elements.get("timemap-day-rows");
+    renderDayRows(dayRows, [{ day: 1, startTime: "08:00", endTime: "10:30" }]);
+    duplicateCurrentTimeMapRangesAcrossAllDays();
+    assert.strictEqual(dayRows.children.length, dayOptions.length);
+    const rules = collectTimeMapRules({
+      querySelectorAll: () => dayRows.children
+    });
+    assert.strictEqual(rules.length, dayOptions.length);
+    const uniqueDays = new Set(rules.map((rule) => rule.day));
+    assert.strictEqual(uniqueDays.size, dayOptions.length);
+    rules.forEach((rule) => {
+      assert.strictEqual(rule.startTime, "08:00");
+      assert.strictEqual(rule.endTime, "10:30");
+    });
   });
 
   it("wires day list interactions and cleans up listeners", () => {
@@ -597,6 +630,11 @@ describe("time maps", () => {
     addBlockBtn.closestResult = { "[data-day-row]": dayRow, "[data-block-add]": addBlockBtn };
     const removeDayBtn = new FakeElement("button");
     removeDayBtn.closestResult = { "[data-day-remove]": removeDayBtn, "[data-day-row]": dayRow };
+    const duplicateDayBtn = new FakeElement("button");
+    duplicateDayBtn.closestResult = {
+      "[data-day-duplicate]": duplicateDayBtn,
+      "[data-day-row]": dayRow
+    };
     const block = new FakeElement("div");
     block.dataset.block = "1";
     const removeBlockBtn = new FakeElement("button");
@@ -607,6 +645,7 @@ describe("time maps", () => {
     dayRows._handlers.click({ target: {} });
     dayRows._handlers.click({ target: addBlockBtn });
     dayRows._handlers.click({ target: removeBlockBtn });
+    dayRows._handlers.click({ target: duplicateDayBtn });
     dayRows._handlers.click({ target: removeDayBtn });
     cleanup();
   });

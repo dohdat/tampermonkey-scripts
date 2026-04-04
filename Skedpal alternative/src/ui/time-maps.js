@@ -13,13 +13,20 @@ import { themeColors } from "./theme.js";
 import { pickTimeMapColor } from "./time-map-colors.js";
 import { appendExternalCalendarOptions } from "./time-map-external-options.js";
 import {
+  buildDefaultTimeMapRules,
+  getDuplicatedRulesForAllDays,
+  getTimeMapDayRowsList,
+  sortTimeMapDayRows,
+  syncTimeMapDaySelectOptions
+} from "./time-map-day-utils.js";
+import {
   createTimeBlock,
-  createTimeline,
   minutesToTimeString,
   normalizeTimeRange,
   setupTimeMapTimelineInteractions,
   syncTimeMapTimelineHeader
 } from "./time-map-timeline.js";
+import { createTimeMapDayRow } from "./time-map-day-row.js";
 const getTimeMapList = () => domRefs.timeMapList;
 const getTimeMapDayRows = () => domRefs.timeMapDayRows;
 const getTimeMapFormWrap = () => domRefs.timeMapFormWrap;
@@ -29,6 +36,9 @@ const getTimeMapColorInput = () => domRefs.timeMapColorInput;
 const getTimeMapColorSwatch = () => domRefs.timeMapColorSwatch;
 const getTimeMapDaySelect = () => domRefs.timeMapDaySelect;
 const getTimeMapDayAdd = () => domRefs.timeMapDayAdd;
+const getTimeMapSectionContent = () => domRefs.timeMapSectionContent;
+const getTimeMapSectionToggleBtn = () => domRefs.timeMapSectionToggleBtn;
+
 function syncTimeMapColorSwatch(color) {
   const swatch = getTimeMapColorSwatch();
   if (!swatch) {return;}
@@ -39,7 +49,7 @@ function handleRemoveDayClick(trigger) {
   const row = trigger?.closest?.("[data-day-row]");
   if (!row) {return;}
   row.remove();
-  syncTimeMapDaySelect();
+  syncTimeMapDaySelectOptions(getTimeMapDaySelect(), getTimeMapDayRows());
 }
 function handleRemoveBlockClick(trigger) {
   const blockRow = trigger?.closest?.("[data-block]");
@@ -60,94 +70,23 @@ function handleTimeMapDayAddClick() {
   if (!timeMapDaySelect) {return;}
   addTimeMapDay(timeMapDaySelect.value);
 }
-function createDayHeader(day) {
-  const header = document.createElement("div");
-  header.className = "flex items-center justify-between gap-2";
-  header.setAttribute("data-test-skedpal", "timemap-day-header");
-  const label = document.createElement("span");
-  label.className = "text-sm font-semibold text-slate-100";
-  label.textContent = dayOptions.find((opt) => opt.value === Number(day))?.label || String(day);
-  label.setAttribute("data-test-skedpal", "timemap-day-label");
-  const removeDayBtn = document.createElement("button");
-  removeDayBtn.type = "button";
-  removeDayBtn.className =
-    "rounded-lg border-slate-700 px-2 py-1 text-xs font-semibold text-slate-300 hover:border-orange-400 hover:text-orange-300";
-  removeDayBtn.textContent = "Remove";
-  removeDayBtn.setAttribute("data-test-skedpal", "timemap-day-remove");
-  removeDayBtn.setAttribute("data-day-remove", "true");
-  header.appendChild(label);
-  header.appendChild(removeDayBtn);
-  return header;
-}
 
-function createAddBlockButton(day) {
-  const addBlockBtn = document.createElement("button");
-  addBlockBtn.type = "button";
-  addBlockBtn.textContent = "Add time range";
-  addBlockBtn.className =
-    "mt-2 w-fit rounded-lg border-slate-700 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-lime-400";
-  addBlockBtn.setAttribute("data-test-skedpal", "timemap-block-add");
-  addBlockBtn.dataset.day = String(day);
-  addBlockBtn.setAttribute("data-block-add", "true");
-  return addBlockBtn;
-}
-
-function createDayRow(day, blocks = []) {
-  const row = document.createElement("div");
-  row.dataset.dayRow = String(day);
-  row.className = "rounded-xl border-slate-700 bg-slate-900/60 p-3";
-  row.setAttribute("data-test-skedpal", "timemap-day-row");
-  const header = createDayHeader(day);
-  const timeline = createTimeline(day, blocks);
-  const addBlockBtn = createAddBlockButton(day);
-  row.appendChild(header);
-  row.appendChild(timeline);
-  row.appendChild(addBlockBtn);
-  return row;
-}
-function sortDayRows(container) {
-  const rows = [...container.children].filter((row) => row.dataset?.dayRow !== undefined);
-  rows.sort((a, b) => Number(a.dataset.dayRow) - Number(b.dataset.dayRow));
-  if (typeof container.removeChild === "function") {
-    rows.forEach((row) => container.appendChild(row));
-    return;
-  }
-  container.children = [];
-  rows.forEach((row) => container.appendChild(row));
-}
-function syncTimeMapDaySelect() {
-  const select = getTimeMapDaySelect();
-  const rows = getTimeMapDayRows();
-  if (!select || !rows) {return;}
-  const used = new Set(
-    [...rows.children]
-      .map((row) => Number(row.dataset?.dayRow))
-      .filter((day) => Number.isFinite(day))
-  );
-  const currentValue = select.value;
-  select.innerHTML = "";
-  dayOptions.forEach((day) => {
-    if (used.has(day.value)) {return;}
-    const option = document.createElement("option");
-    option.value = String(day.value);
-    option.textContent = day.label;
-    select.appendChild(option);
+function duplicateTimeMapDayRangesAcrossAllDays(dayRow) {
+  if (!dayRow) {return;}
+  const timeMapDayRows = getTimeMapDayRows();
+  if (!timeMapDayRows) {return;}
+  const sourceRules = collectTimeMapRules({
+    querySelectorAll: () => [dayRow]
   });
-  if (select.options.length === 0) {
-    const option = document.createElement("option");
-    option.value = "";
-    option.textContent = "All days added";
-    option.disabled = true;
-    select.appendChild(option);
-    select.value = "";
-    return;
-  }
-  const stillAvailable = [...select.options].some((option) => option.value === currentValue);
-  if (stillAvailable) {
-    select.value = currentValue;
-    return;
-  }
-  select.selectedIndex = 0;
+  if (!sourceRules.length) {return;}
+  const duplicatedRules = dayOptions.flatMap((day) =>
+    sourceRules.map((rule) => ({
+      day: day.value,
+      startTime: rule.startTime,
+      endTime: rule.endTime
+    }))
+  );
+  renderDayRows(timeMapDayRows, duplicatedRules);
 }
 function handleTimeMapDayRowsClick(event) {
   const target =
@@ -155,6 +94,12 @@ function handleTimeMapDayRowsClick(event) {
       ? event.target
       : null;
   if (!target) {return;}
+  const duplicateDayBtn = target.closest?.("[data-day-duplicate]");
+  if (duplicateDayBtn) {
+    const dayRow = duplicateDayBtn.closest?.("[data-day-row]");
+    duplicateTimeMapDayRangesAcrossAllDays(dayRow);
+    return;
+  }
   const removeDayBtn = target.closest?.("[data-day-remove]");
   if (removeDayBtn) {
     handleRemoveDayClick(removeDayBtn);
@@ -181,9 +126,9 @@ export function renderDayRows(container, rules = []) {
   });
   const sortedDays = [...rulesMap.keys()].sort((a, b) => a - b);
   sortedDays.forEach((day) => {
-    container.appendChild(createDayRow(day, rulesMap.get(day)));
+    container.appendChild(createTimeMapDayRow(day, rulesMap.get(day)));
   });
-  syncTimeMapDaySelect();
+  syncTimeMapDaySelectOptions(getTimeMapDaySelect(), getTimeMapDayRows());
 }
 
 export function renderTimeMaps(timeMaps) {
@@ -426,9 +371,22 @@ export function addTimeMapDay(day) {
     (row) => String(row.dataset?.dayRow) === String(parsedDay)
   );
   if (exists) {return;}
-  timeMapDayRows.appendChild(createDayRow(parsedDay, []));
-  sortDayRows(timeMapDayRows);
-  syncTimeMapDaySelect();
+  timeMapDayRows.appendChild(createTimeMapDayRow(parsedDay, []));
+  sortTimeMapDayRows(timeMapDayRows);
+  syncTimeMapDaySelectOptions(getTimeMapDaySelect(), getTimeMapDayRows());
+}
+
+export function duplicateCurrentTimeMapRangesAcrossAllDays() {
+  const timeMapDayRows = getTimeMapDayRows();
+  if (!timeMapDayRows) {return;}
+  const activeElement = typeof document !== "undefined" ? document.activeElement : null;
+  const duplicatedRules = getDuplicatedRulesForAllDays(
+    timeMapDayRows,
+    activeElement,
+    collectTimeMapRules
+  );
+  if (!duplicatedRules.length) {return;}
+  renderDayRows(timeMapDayRows, duplicatedRules);
 }
 
 export async function handleTimeMapSubmit(event) {
@@ -463,32 +421,58 @@ export function resetTimeMapForm() {
     syncTimeMapColorSwatch(nextColor);
   }
   if (timeMapDayRows) {
-    renderDayRows(timeMapDayRows, []);
+    renderDayRows(timeMapDayRows, buildDefaultTimeMapRules());
   }
+}
+
+function registerClickListener(target, handler, cleanupFns) {
+  if (!target) {return;}
+  target.addEventListener("click", handler);
+  cleanupFns.push(() => target.removeEventListener("click", handler));
+}
+
+function setupTimeMapDayRowsInteractions(timeMapDayRows, cleanupFns) {
+  if (!timeMapDayRows) {return;}
+  timeMapDayRows.addEventListener("click", handleTimeMapDayRowsClick);
+  cleanupFns.push(() => timeMapDayRows.removeEventListener("click", handleTimeMapDayRowsClick));
+  cleanupFns.push(setupTimeMapTimelineInteractions(timeMapDayRows));
+}
+
+function ensureTimeMapColorInitialized(timeMapColorInput) {
+  if (!timeMapColorInput) {return;}
+  const current = timeMapColorInput.value || "";
+  if (!current || current.toLowerCase() === "#000000") {
+    const nextColor = pickTimeMapColor(state.tasksTimeMapsCache || [], uuid());
+    timeMapColorInput.value = nextColor;
+  }
+  syncTimeMapColorSwatch(timeMapColorInput.value);
+}
+
+function ensureDefaultTimeMapDayRows(timeMapDayRows) {
+  if (!timeMapDayRows) {return;}
+  if (getTimeMapDayRowsList(timeMapDayRows).length !== 0) {return;}
+  renderDayRows(timeMapDayRows, buildDefaultTimeMapRules());
+}
+
+function ensureTimeMapSectionExpanded() {
+  const timeMapSectionContent = getTimeMapSectionContent();
+  const timeMapSectionToggleBtn = getTimeMapSectionToggleBtn();
+  if (!timeMapSectionContent) {return;}
+  timeMapSectionContent.classList.remove("hidden");
+  if (!timeMapSectionToggleBtn) {return;}
+  timeMapSectionToggleBtn.textContent = "Collapse";
+  timeMapSectionToggleBtn.setAttribute("aria-expanded", "true");
+  timeMapSectionToggleBtn.dataset.collapsed = "false";
 }
 
 export function initTimeMapFormInteractions() {
   const cleanupFns = [];
   const timeMapDayAdd = getTimeMapDayAdd();
   const timeMapDayRows = getTimeMapDayRows();
-  if (timeMapDayAdd) {
-    timeMapDayAdd.addEventListener("click", handleTimeMapDayAddClick);
-    cleanupFns.push(() => timeMapDayAdd.removeEventListener("click", handleTimeMapDayAddClick));
-  }
-  if (timeMapDayRows) {
-    timeMapDayRows.addEventListener("click", handleTimeMapDayRowsClick);
-    cleanupFns.push(() => timeMapDayRows.removeEventListener("click", handleTimeMapDayRowsClick));
-    cleanupFns.push(setupTimeMapTimelineInteractions(timeMapDayRows));
-  }
-  const timeMapColorInput = getTimeMapColorInput();
-  if (timeMapColorInput) {
-    const current = timeMapColorInput.value || "";
-    if (!current || current.toLowerCase() === "#000000") {
-      const nextColor = pickTimeMapColor(state.tasksTimeMapsCache || [], uuid());
-      timeMapColorInput.value = nextColor;
-    }
-    syncTimeMapColorSwatch(timeMapColorInput.value);
-  }
+  registerClickListener(timeMapDayAdd, handleTimeMapDayAddClick, cleanupFns);
+  setupTimeMapDayRowsInteractions(timeMapDayRows, cleanupFns);
+  ensureTimeMapColorInitialized(getTimeMapColorInput());
+  ensureDefaultTimeMapDayRows(timeMapDayRows);
   syncTimeMapTimelineHeader();
   return () => {
     cleanupFns.forEach((cleanup) => cleanup?.());
@@ -498,6 +482,8 @@ export function initTimeMapFormInteractions() {
 export function openTimeMapForm() {
   const timeMapFormWrap = getTimeMapFormWrap();
   const timeMapToggle = getTimeMapToggle();
+  ensureDefaultTimeMapDayRows(getTimeMapDayRows());
+  ensureTimeMapSectionExpanded();
   if (timeMapFormWrap) {
     timeMapFormWrap.classList.remove("hidden");
   }

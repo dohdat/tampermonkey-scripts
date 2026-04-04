@@ -165,6 +165,7 @@ const elements = new Map();
 elements.set("timemap-id", new FakeElement("input"));
 elements.set("timemap-name", new FakeElement("input"));
 elements.set("timemap-color", new FakeElement("input"));
+elements.set("timemap-color-auto-assign", new FakeElement("button"));
 elements.set("timemap-color-swatch", new FakeElement("div"));
 elements.set("timemap-day-rows", new FakeElement("div"));
 elements.set("timemap-section-content", new FakeElement("div"));
@@ -202,6 +203,7 @@ installDomStubs();
 const { domRefs, dayOptions } = await import("../src/ui/constants.js");
 const { state } = await import("../src/ui/state/page-state.js");
 domRefs.timeMapColorInput = elements.get("timemap-color");
+domRefs.timeMapColorAutoAssignBtn = elements.get("timemap-color-auto-assign");
 domRefs.timeMapColorSwatch = elements.get("timemap-color-swatch");
 domRefs.timeMapDayRows = elements.get("timemap-day-rows");
 domRefs.timeMapSectionContent = elements.get("timemap-section-content");
@@ -236,6 +238,7 @@ describe("time maps", () => {
   beforeEach(() => {
     installDomStubs();
     domRefs.timeMapColorInput = elements.get("timemap-color");
+    domRefs.timeMapColorAutoAssignBtn = elements.get("timemap-color-auto-assign");
     domRefs.timeMapColorSwatch = elements.get("timemap-color-swatch");
     domRefs.timeMapDayRows = elements.get("timemap-day-rows");
     domRefs.timeMapSectionContent = elements.get("timemap-section-content");
@@ -633,8 +636,10 @@ describe("time maps", () => {
     };
 
     const dayAdd = new FakeElement("button");
+    const colorAutoAssign = elements.get("timemap-color-auto-assign");
     const dayRows = new FakeElement("div");
     domRefs.timeMapDayAdd = dayAdd;
+    domRefs.timeMapColorAutoAssignBtn = colorAutoAssign;
     domRefs.timeMapDayRows = dayRows;
     domRefs.timeMapDaySelect = new FakeElement("select");
     domRefs.timeMapColorInput.value = "";
@@ -668,6 +673,29 @@ describe("time maps", () => {
     dayRows._handlers.click({ target: removeBlockBtn });
     dayRows._handlers.click({ target: duplicateDayBtn });
     dayRows._handlers.click({ target: removeDayBtn });
+    colorAutoAssign._handlers.click();
+    cleanup();
+  });
+
+  it("auto-assigns an unused color when the color button is clicked", () => {
+    global.Element = FakeElement;
+    global.window = {
+      addEventListener: () => {},
+      removeEventListener: () => {}
+    };
+    const dayRows = new FakeElement("div");
+    const dayAdd = new FakeElement("button");
+    const colorAutoAssign = elements.get("timemap-color-auto-assign");
+    domRefs.timeMapDayRows = dayRows;
+    domRefs.timeMapDayAdd = dayAdd;
+    domRefs.timeMapColorAutoAssignBtn = colorAutoAssign;
+    domRefs.timeMapColorInput = elements.get("timemap-color");
+    elements.get("timemap-color").value = "#123456";
+    state.tasksTimeMapsCache = [{ id: "tm-1", color: "#22c55e" }];
+
+    const cleanup = initTimeMapFormInteractions();
+    colorAutoAssign._handlers.click();
+    assert.notStrictEqual(elements.get("timemap-color").value.toLowerCase(), "#123456");
     cleanup();
   });
 

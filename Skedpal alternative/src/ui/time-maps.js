@@ -1,31 +1,12 @@
-import {
-  getAllTasks,
-  getAllTimeMaps,
-  saveSettings,
-  saveTask,
-  saveTimeMap,
-  deleteTimeMap
-} from "../data/db.js";
+import { getAllTasks, getAllTimeMaps, saveSettings, saveTask, saveTimeMap, deleteTimeMap } from "../data/db.js";
 import { dayOptions, domRefs, TIME_MAP_DEFAULT_END, TIME_MAP_DEFAULT_START } from "./constants.js";
 import { isExternalCalendarTimeMapId, normalizeTimeMap, resolveTimeMapIdsAfterDelete, uuid } from "./utils.js";
 import { state } from "./state/page-state.js";
 import { themeColors } from "./theme.js";
 import { pickTimeMapColor } from "./time-map-colors.js";
 import { appendExternalCalendarOptions } from "./time-map-external-options.js";
-import {
-  buildDefaultTimeMapRules,
-  getDuplicatedRulesForAllDays,
-  getTimeMapDayRowsList,
-  sortTimeMapDayRows,
-  syncTimeMapDaySelectOptions
-} from "./time-map-day-utils.js";
-import {
-  createTimeBlock,
-  minutesToTimeString,
-  normalizeTimeRange,
-  setupTimeMapTimelineInteractions,
-  syncTimeMapTimelineHeader
-} from "./time-map-timeline.js";
+import { buildDefaultTimeMapRules, getDuplicatedRulesForAllDays, getTimeMapDayRowsList, sortTimeMapDayRows, syncTimeMapDaySelectOptions } from "./time-map-day-utils.js";
+import { createTimeBlock, minutesToTimeString, normalizeTimeRange, setupTimeMapTimelineInteractions, syncTimeMapTimelineHeader } from "./time-map-timeline.js";
 import { createTimeMapDayRow } from "./time-map-day-row.js";
 import { initTimeMapModalInteractions, showTimeMapModal, hideTimeMapModal } from "./time-map-modal.js";
 const getTimeMapList = () => domRefs.timeMapList;
@@ -36,6 +17,7 @@ const getTimeMapToggle = () => domRefs.timeMapToggle;
 const getTaskTimeMapOptions = () => domRefs.taskTimeMapOptions;
 const getTimeMapColorInput = () => domRefs.timeMapColorInput;
 const getTimeMapColorSwatch = () => domRefs.timeMapColorSwatch;
+const getTimeMapColorAutoAssignBtn = () => domRefs.timeMapColorAutoAssignBtn;
 const getTimeMapDaySelect = () => domRefs.timeMapDaySelect;
 const getTimeMapDayAdd = () => domRefs.timeMapDayAdd;
 const getTimeMapSectionContent = () => domRefs.timeMapSectionContent;
@@ -46,6 +28,18 @@ function syncTimeMapColorSwatch(color) {
   if (!swatch) {return;}
   swatch.style.backgroundColor = color || themeColors.green500;
   swatch.style.borderColor = color || themeColors.slate500;
+}
+function assignAutoUnusedTimeMapColor(seed = uuid()) {
+  const timeMapColorInput = getTimeMapColorInput();
+  if (!timeMapColorInput) {return;}
+  const current = (timeMapColorInput.value || "").trim();
+  const pool = current ? [...(state.tasksTimeMapsCache || []), { color: current }] : (state.tasksTimeMapsCache || []);
+  const nextColor = pickTimeMapColor(pool, seed);
+  timeMapColorInput.value = nextColor;
+  syncTimeMapColorSwatch(nextColor);
+}
+function handleTimeMapColorAutoAssignClick() {
+  assignAutoUnusedTimeMapColor();
 }
 function handleRemoveDayClick(trigger) {
   const row = trigger?.closest?.("[data-day-row]");
@@ -413,9 +407,7 @@ export function resetTimeMapForm() {
   const timeMapColorInput = getTimeMapColorInput();
   const timeMapDayRows = getTimeMapDayRows();
   if (timeMapColorInput) {
-    const nextColor = pickTimeMapColor(state.tasksTimeMapsCache || [], uuid());
-    timeMapColorInput.value = nextColor;
-    syncTimeMapColorSwatch(nextColor);
+    assignAutoUnusedTimeMapColor();
   }
   if (timeMapDayRows) {
     renderDayRows(timeMapDayRows, buildDefaultTimeMapRules());
@@ -444,8 +436,8 @@ function ensureTimeMapColorInitialized(timeMapColorInput) {
   if (!timeMapColorInput) {return;}
   const current = timeMapColorInput.value || "";
   if (!current || current.toLowerCase() === "#000000") {
-    const nextColor = pickTimeMapColor(state.tasksTimeMapsCache || [], uuid());
-    timeMapColorInput.value = nextColor;
+    assignAutoUnusedTimeMapColor();
+    return;
   }
   syncTimeMapColorSwatch(timeMapColorInput.value);
 }
@@ -470,8 +462,10 @@ function ensureTimeMapSectionExpanded() {
 export function initTimeMapFormInteractions() {
   const cleanupFns = [];
   const timeMapDayAdd = getTimeMapDayAdd();
+  const timeMapColorAutoAssignBtn = getTimeMapColorAutoAssignBtn();
   const timeMapDayRows = getTimeMapDayRows();
   registerClickListener(timeMapDayAdd, handleTimeMapDayAddClick, cleanupFns);
+  registerClickListener(timeMapColorAutoAssignBtn, handleTimeMapColorAutoAssignClick, cleanupFns);
   setupTimeMapDayRowsInteractions(timeMapDayRows, cleanupFns);
   cleanupFns.push(initTimeMapModalInteractions({ getModal: getTimeMapModal, onDismiss: dismissTimeMapForm }));
   ensureTimeMapColorInitialized(getTimeMapColorInput());

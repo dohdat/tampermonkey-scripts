@@ -262,6 +262,7 @@ export const domRefs = {
   sectionFormToggle: document.getElementById("section-form-toggle"),
   timeMapColorInput: document.getElementById("timemap-color"),
   timeMapColorSwatch: document.getElementById("timemap-color-swatch"),
+  timeMapColorAutoAssignBtn: document.getElementById("timemap-color-auto-assign"),
   scheduleStatus: document.getElementById("schedule-status"),
   rescheduleButtons: [...document.querySelectorAll("[data-reschedule-btn]")],
   scheduleSummary: document.getElementById("scheduled-summary"),

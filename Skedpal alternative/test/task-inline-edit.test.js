@@ -241,9 +241,7 @@ describe("inline edit parsing guard", () => {
       stopPropagation: () => { stopped = true; }
     });
 
-    const input = titleEl.children.find?.(
-      (child) => child.attributes?.["data-test-skedpal"] === "task-title-inline-input"
-    );
+    const input = findByTestAttr(titleEl, "task-title-inline-input");
     assert.strictEqual(prevented, true);
     assert.strictEqual(stopped, true);
     assert.ok(input);
@@ -276,9 +274,7 @@ describe("inline edit parsing guard", () => {
       stopPropagation: () => {}
     });
 
-    const input = titleEl.children.find?.(
-      (child) => child.attributes?.["data-test-skedpal"] === "task-title-inline-input"
-    );
+    const input = findByTestAttr(titleEl, "task-title-inline-input");
     assert.ok(input);
     input.dispatchEvent({ type: "keydown", key: "Escape", preventDefault: () => {} });
     const restoredAnchor = findByTestAttr(titleEl, "task-title-link");
@@ -317,6 +313,331 @@ describe("inline edit parsing guard", () => {
     assert.ok(input);
   });
 
+  it("shows grammar icon during inline title edit", async () => {
+    const { handleTaskTitleDoubleClick } = await import(
+      "../src/ui/tasks/task-inline-edit.js"
+    );
+    const { state } = await import("../src/ui/state/page-state.js");
+    const task = { id: "t-grammar-icon", title: "fix this grammar" };
+    state.tasksCache = [task];
+
+    const card = document.createElement("div");
+    card.dataset.taskId = task.id;
+    const row = document.createElement("div");
+    row.classList.add("task-title-row");
+    const titleEl = document.createElement("div");
+    titleEl.setAttribute("data-test-skedpal", "task-title");
+    const span = document.createElement("span");
+    titleEl.appendChild(span);
+    row.appendChild(titleEl);
+    card.appendChild(row);
+
+    handleTaskTitleDoubleClick({
+      target: span,
+      clientX: 0,
+      preventDefault: () => {},
+      stopPropagation: () => {}
+    });
+
+    const grammarBtn = findByTestAttr(titleEl, "task-title-inline-grammar-btn");
+    assert.ok(grammarBtn);
+  });
+
+  it("applies grammar fix from the inline grammar icon", async () => {
+    const { handleTaskTitleDoubleClick } = await import(
+      "../src/ui/tasks/task-inline-edit.js"
+    );
+    const { state } = await import("../src/ui/state/page-state.js");
+    const task = { id: "t-grammar-apply", title: "fix grammar quickly" };
+    state.tasksCache = [task];
+    state.settingsCache = { ...(state.settingsCache || {}), groqApiKey: "test-key" };
+    const previousFetch = global.fetch;
+    global.fetch = async () => ({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: "Fix grammar quickly." } }]
+      })
+    });
+
+    try {
+      const card = document.createElement("div");
+      card.dataset.taskId = task.id;
+      const row = document.createElement("div");
+      row.classList.add("task-title-row");
+      const titleEl = document.createElement("div");
+      titleEl.setAttribute("data-test-skedpal", "task-title");
+      const span = document.createElement("span");
+      titleEl.appendChild(span);
+      row.appendChild(titleEl);
+      card.appendChild(row);
+
+      handleTaskTitleDoubleClick({
+        target: span,
+        clientX: 0,
+        preventDefault: () => {},
+        stopPropagation: () => {}
+      });
+
+      const input = findByTestAttr(titleEl, "task-title-inline-input");
+      const grammarBtn = findByTestAttr(titleEl, "task-title-inline-grammar-btn");
+      assert.ok(input);
+      assert.ok(grammarBtn);
+
+      let pointerPrevented = false;
+      grammarBtn.dispatchEvent({
+        type: "pointerdown",
+        preventDefault: () => { pointerPrevented = true; }
+      });
+      assert.strictEqual(pointerPrevented, true);
+
+      await grammarBtn.listeners.click({
+        type: "click",
+        preventDefault: () => {}
+      });
+      assert.strictEqual(input.value, "Fix grammar quickly.");
+    } finally {
+      global.fetch = previousFetch;
+    }
+  });
+
+  it("shows and resets grammar success feedback after inline grammar fix", async () => {
+    const { handleTaskTitleDoubleClick } = await import(
+      "../src/ui/tasks/task-inline-edit.js"
+    );
+    const { state } = await import("../src/ui/state/page-state.js");
+    const task = { id: "t-grammar-success-feedback", title: "fix grammar quickly" };
+    state.tasksCache = [task];
+    state.settingsCache = { ...(state.settingsCache || {}), groqApiKey: "test-key" };
+
+    const previousFetch = global.fetch;
+    const previousSetTimeout = global.setTimeout;
+    const previousClearTimeout = global.clearTimeout;
+    const scheduled = [];
+    const cleared = [];
+    global.fetch = async () => ({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: "Fix grammar quickly." } }]
+      })
+    });
+    global.setTimeout = (handler) => {
+      scheduled.push(handler);
+      return scheduled.length;
+    };
+    global.clearTimeout = (id) => {
+      cleared.push(id);
+    };
+
+    try {
+      const card = document.createElement("div");
+      card.dataset.taskId = task.id;
+      const row = document.createElement("div");
+      row.classList.add("task-title-row");
+      const titleEl = document.createElement("div");
+      titleEl.setAttribute("data-test-skedpal", "task-title");
+      row.appendChild(titleEl);
+      card.appendChild(row);
+
+      handleTaskTitleDoubleClick({
+        target: titleEl,
+        clientX: 0,
+        preventDefault: () => {},
+        stopPropagation: () => {}
+      });
+
+      const grammarBtn = findByTestAttr(titleEl, "task-title-inline-grammar-btn");
+      assert.ok(grammarBtn);
+      await grammarBtn.listeners.click({
+        type: "click",
+        preventDefault: () => {}
+      });
+
+      assert.strictEqual(grammarBtn.dataset.success, "true");
+      assert.strictEqual(grammarBtn.attributes["aria-label"], "Grammar fixed");
+      assert.strictEqual(grammarBtn.classList.contains("text-lime-300"), true);
+      assert.strictEqual(scheduled.length, 1);
+
+      await grammarBtn.listeners.click({
+        type: "click",
+        preventDefault: () => {}
+      });
+      assert.strictEqual(cleared.length > 0, true);
+
+      scheduled[scheduled.length - 1]?.();
+      assert.strictEqual(grammarBtn.dataset.success, "false");
+      assert.strictEqual(grammarBtn.attributes["aria-label"], "Fix grammar");
+      assert.strictEqual(grammarBtn.classList.contains("text-lime-300"), false);
+    } finally {
+      global.fetch = previousFetch;
+      global.setTimeout = previousSetTimeout;
+      global.clearTimeout = previousClearTimeout;
+    }
+  });
+
+  it("keeps inline edit stable when grammar request fails", async () => {
+    const { handleTaskTitleDoubleClick } = await import(
+      "../src/ui/tasks/task-inline-edit.js"
+    );
+    const { state } = await import("../src/ui/state/page-state.js");
+    const task = { id: "t-grammar-error", title: "fix grammar" };
+    state.tasksCache = [task];
+    state.settingsCache = { ...(state.settingsCache || {}), groqApiKey: "test-key" };
+    const previousFetch = global.fetch;
+    const previousConsoleError = console.error;
+    console.error = () => {};
+    global.fetch = async () => ({
+      ok: false,
+      status: 500,
+      statusText: "Server Error",
+      json: async () => ({ error: { message: "failed" } })
+    });
+
+    try {
+      const card = document.createElement("div");
+      card.dataset.taskId = task.id;
+      const row = document.createElement("div");
+      row.classList.add("task-title-row");
+      const titleEl = document.createElement("div");
+      titleEl.setAttribute("data-test-skedpal", "task-title");
+      row.appendChild(titleEl);
+      card.appendChild(row);
+
+      handleTaskTitleDoubleClick({
+        target: titleEl,
+        clientX: 0,
+        preventDefault: () => {},
+        stopPropagation: () => {}
+      });
+
+      const grammarBtn = findByTestAttr(titleEl, "task-title-inline-grammar-btn");
+      assert.ok(grammarBtn);
+      await grammarBtn.listeners.click({
+        type: "click",
+        preventDefault: () => {}
+      });
+      assert.strictEqual(grammarBtn.dataset.loading, "false");
+    } finally {
+      global.fetch = previousFetch;
+      console.error = previousConsoleError;
+    }
+  });
+
+  it("keeps title unchanged when grammar response is empty", async () => {
+    const { handleTaskTitleDoubleClick } = await import(
+      "../src/ui/tasks/task-inline-edit.js"
+    );
+    const { state } = await import("../src/ui/state/page-state.js");
+    const task = { id: "t-grammar-empty-response", title: "Original Title" };
+    state.tasksCache = [task];
+    state.settingsCache = { ...(state.settingsCache || {}), groqApiKey: "test-key" };
+    const previousFetch = global.fetch;
+    global.fetch = async () => ({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: "   " } }]
+      })
+    });
+
+    try {
+      const card = document.createElement("div");
+      card.dataset.taskId = task.id;
+      const titleEl = document.createElement("div");
+      titleEl.setAttribute("data-test-skedpal", "task-title");
+      card.appendChild(titleEl);
+
+      handleTaskTitleDoubleClick({
+        target: titleEl,
+        clientX: 0,
+        preventDefault: () => {},
+        stopPropagation: () => {}
+      });
+
+      const input = findByTestAttr(titleEl, "task-title-inline-input");
+      const grammarBtn = findByTestAttr(titleEl, "task-title-inline-grammar-btn");
+      assert.ok(input);
+      assert.ok(grammarBtn);
+      await grammarBtn.listeners.click({
+        type: "click",
+        preventDefault: () => {}
+      });
+      assert.strictEqual(input.value, task.title);
+    } finally {
+      global.fetch = previousFetch;
+    }
+  });
+
+  it("keeps focus when grammar icon is clicked with an empty title", async () => {
+    const { handleTaskTitleDoubleClick } = await import(
+      "../src/ui/tasks/task-inline-edit.js"
+    );
+    const { state } = await import("../src/ui/state/page-state.js");
+    const task = { id: "t-grammar-empty", title: "Original title" };
+    state.tasksCache = [task];
+
+    const card = document.createElement("div");
+    card.dataset.taskId = task.id;
+    const row = document.createElement("div");
+    row.classList.add("task-title-row");
+    const titleEl = document.createElement("div");
+    titleEl.setAttribute("data-test-skedpal", "task-title");
+    row.appendChild(titleEl);
+    card.appendChild(row);
+
+    handleTaskTitleDoubleClick({
+      target: titleEl,
+      clientX: 0,
+      preventDefault: () => {},
+      stopPropagation: () => {}
+    });
+
+    const input = findByTestAttr(titleEl, "task-title-inline-input");
+    const grammarBtn = findByTestAttr(titleEl, "task-title-inline-grammar-btn");
+    assert.ok(input);
+    assert.ok(grammarBtn);
+    input.value = "   ";
+    await grammarBtn.listeners.click({
+      type: "click",
+      preventDefault: () => {}
+    });
+    assert.strictEqual(input.value, "   ");
+  });
+
+  it("handles inline grammar click when input value is empty", async () => {
+    const { handleTaskTitleDoubleClick } = await import(
+      "../src/ui/tasks/task-inline-edit.js"
+    );
+    const { state } = await import("../src/ui/state/page-state.js");
+    const task = { id: "t-grammar-empty-string", title: "Original title" };
+    state.tasksCache = [task];
+
+    const card = document.createElement("div");
+    card.dataset.taskId = task.id;
+    const row = document.createElement("div");
+    row.classList.add("task-title-row");
+    const titleEl = document.createElement("div");
+    titleEl.setAttribute("data-test-skedpal", "task-title");
+    row.appendChild(titleEl);
+    card.appendChild(row);
+
+    handleTaskTitleDoubleClick({
+      target: titleEl,
+      clientX: 0,
+      preventDefault: () => {},
+      stopPropagation: () => {}
+    });
+
+    const input = findByTestAttr(titleEl, "task-title-inline-input");
+    const grammarBtn = findByTestAttr(titleEl, "task-title-inline-grammar-btn");
+    assert.ok(input);
+    assert.ok(grammarBtn);
+    input.value = "";
+    await grammarBtn.listeners.click({
+      type: "click",
+      preventDefault: () => {}
+    });
+    assert.strictEqual(input.value, "");
+  });
+
   it("restores plain title text on cancel", async () => {
     const { handleTaskTitleDoubleClick } = await import(
       "../src/ui/tasks/task-inline-edit.js"
@@ -347,6 +668,92 @@ describe("inline edit parsing guard", () => {
     assert.ok(input);
     input.dispatchEvent({ type: "keydown", key: "Escape", preventDefault: () => {} });
     assert.strictEqual(titleEl.textContent, task.title);
+  });
+
+  it("commits inline edit on blur when title is unchanged", async () => {
+    const { handleTaskTitleDoubleClick } = await import(
+      "../src/ui/tasks/task-inline-edit.js"
+    );
+    const { state } = await import("../src/ui/state/page-state.js");
+    const task = { id: "t-blur", title: "Blur title" };
+    state.tasksCache = [task];
+
+    const card = document.createElement("div");
+    card.dataset.taskId = task.id;
+    const row = document.createElement("div");
+    row.classList.add("task-title-row");
+    const titleEl = document.createElement("div");
+    titleEl.setAttribute("data-test-skedpal", "task-title");
+    row.appendChild(titleEl);
+    card.appendChild(row);
+
+    handleTaskTitleDoubleClick({
+      target: titleEl,
+      clientX: 0,
+      preventDefault: () => {},
+      stopPropagation: () => {}
+    });
+
+    const input = findByTestAttr(titleEl, "task-title-inline-input");
+    assert.ok(input);
+    input.dispatchEvent({ type: "blur" });
+    assert.strictEqual(titleEl.textContent, task.title);
+  });
+
+  it("saves changed inline titles through inline edit handlers", async () => {
+    const { handleTaskTitleDoubleClick } = await import(
+      "../src/ui/tasks/task-inline-edit.js"
+    );
+    const { state } = await import("../src/ui/state/page-state.js");
+    const task = {
+      id: "t-save-inline",
+      title: "Old title",
+      deadline: null,
+      startFrom: null,
+      repeat: { type: "none" },
+      reminders: []
+    };
+    state.tasksCache = [task];
+    const savedTasks = [];
+    let loadCalled = 0;
+    state.inlineTitleEditHandlers = {
+      saveTask: async (nextTask) => {
+        savedTasks.push(nextTask);
+      },
+      loadTasks: async () => {
+        loadCalled += 1;
+      },
+      updateParentTaskDescendants: async () => {}
+    };
+
+    try {
+      const card = document.createElement("div");
+      card.dataset.taskId = task.id;
+      const row = document.createElement("div");
+      row.classList.add("task-title-row");
+      const titleEl = document.createElement("div");
+      titleEl.setAttribute("data-test-skedpal", "task-title");
+      row.appendChild(titleEl);
+      card.appendChild(row);
+
+      handleTaskTitleDoubleClick({
+        target: titleEl,
+        clientX: 0,
+        preventDefault: () => {},
+        stopPropagation: () => {}
+      });
+
+      const input = findByTestAttr(titleEl, "task-title-inline-input");
+      assert.ok(input);
+      input.value = "New title";
+      input.dispatchEvent({ type: "keydown", key: "Enter", preventDefault: () => {} });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      assert.strictEqual(savedTasks.length, 1);
+      assert.strictEqual(savedTasks[0].title, "New title");
+      assert.strictEqual(loadCalled, 1);
+    } finally {
+      state.inlineTitleEditHandlers = null;
+    }
   });
 
   it("ignores double click outside title", async () => {
@@ -475,6 +882,28 @@ describe("inline edit parsing guard", () => {
     assert.ok(preview);
     input.dispatchEvent({ type: "input" });
     assert.ok(preview.innerHTML.includes("task-title-conversion-highlight"));
+    let prevented = false;
+    preview.dispatchEvent({
+      type: "pointerdown",
+      preventDefault: () => { prevented = true; }
+    });
+    assert.strictEqual(prevented, true);
+    let literalPrevented = false;
+    let literalStopped = false;
+    preview.dispatchEvent({
+      type: "click",
+      target: {
+        closest: (selector) => (
+          selector === "[data-title-literal]"
+            ? { dataset: { titleLiteral: "tomorrow" } }
+            : null
+        )
+      },
+      preventDefault: () => { literalPrevented = true; },
+      stopPropagation: () => { literalStopped = true; }
+    });
+    assert.strictEqual(literalPrevented, true);
+    assert.strictEqual(literalStopped, true);
   });
 
   it("commits inline edit with Enter when no changes", async () => {
@@ -767,6 +1196,55 @@ describe("inline edit parsing guard", () => {
     });
     input.dispatchEvent({ type: "pointerdown", target: input, clientX: 1 });
     assert.strictEqual(input._selection.start, 0);
+    global.document.createElement = originalCreateElement;
+  });
+
+  it("moves caret to the end when clicking after the input text", async () => {
+    const { handleTaskTitleDoubleClick } = await import(
+      "../src/ui/tasks/task-inline-edit.js"
+    );
+    const { state } = await import("../src/ui/state/page-state.js");
+    const originalCreateElement = global.document.createElement;
+    global.document.createElement = (tag) => {
+      if (tag === "canvas") {
+        return {
+          getContext: () => ({
+            measureText: () => ({ width: 8 })
+          })
+        };
+      }
+      return originalCreateElement(tag);
+    };
+    const task = { id: "t-caret-end", title: "Hello" };
+    state.tasksCache = [task];
+
+    const card = document.createElement("div");
+    card.dataset.taskId = task.id;
+    const titleEl = document.createElement("div");
+    titleEl.setAttribute("data-test-skedpal", "task-title");
+    card.appendChild(titleEl);
+
+    handleTaskTitleDoubleClick({
+      target: titleEl,
+      clientX: 0,
+      preventDefault: () => {},
+      stopPropagation: () => {}
+    });
+
+    const input = findByTestAttr(titleEl, "task-title-inline-input");
+    assert.ok(input);
+    input.getBoundingClientRect = () => ({ left: 0, width: 100 });
+    global.window.getComputedStyle = () => ({
+      paddingLeft: "0",
+      font: "12px sans-serif",
+      fontStyle: "normal",
+      fontVariant: "normal",
+      fontWeight: "400",
+      fontSize: "12px",
+      fontFamily: "sans-serif"
+    });
+    input.dispatchEvent({ type: "pointerdown", target: input, clientX: 200 });
+    assert.strictEqual(input._selection.start, input.value.length);
     global.document.createElement = originalCreateElement;
   });
 

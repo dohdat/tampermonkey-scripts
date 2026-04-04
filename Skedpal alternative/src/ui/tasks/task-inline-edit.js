@@ -1,5 +1,11 @@
 import { saveTask } from "../../data/db.js";
-import { INDEX_NOT_FOUND, TASK_TITLE_MAX_LENGTH } from "../constants.js";
+import {
+  GRAMMAR_FIX_SUCCESS_FEEDBACK_MS,
+  INDEX_NOT_FOUND,
+  TASK_TITLE_MAX_LENGTH,
+  grammarSuccessIconSvg,
+  sparklesIconSvg
+} from "../constants.js";
 import {
   buildTitleConversionHighlightsHtml,
   buildTitleUpdateFromInput,
@@ -8,6 +14,11 @@ import {
   serializeTitleLiteralList
 } from "../title-date-utils.js";
 import { state } from "../state/page-state.js";
+import { fixTaskTitleGrammar } from "./task-ai.js";
+
+const inlineTitleGrammarSuccessTimers = new WeakMap();
+const INLINE_GRAMMAR_DEFAULT_LABEL = "Fix grammar";
+const INLINE_GRAMMAR_SUCCESS_LABEL = "Grammar fixed";
 
 export async function applyInlineTitleUpdate(task, update, options = {}) {
   const {
@@ -211,11 +222,14 @@ function createInlineTitleConversionPreview(titleEl, input) {
   preview.addEventListener("pointerdown", handleInlineTitlePreviewPointerDown);
   updateInlineTitleConversionPreview(input, preview);
 
-  return () => {
-    input.removeEventListener("input", handleInlineTitleInput);
-    preview.removeEventListener("click", handleInlineTitleLiteralClick);
-    preview.removeEventListener("pointerdown", handleInlineTitlePreviewPointerDown);
-    preview.remove();
+  return {
+    preview,
+    cleanup: () => {
+      input.removeEventListener("input", handleInlineTitleInput);
+      preview.removeEventListener("click", handleInlineTitleLiteralClick);
+      preview.removeEventListener("pointerdown", handleInlineTitlePreviewPointerDown);
+      preview.remove();
+    }
   };
 }
 
@@ -248,26 +262,194 @@ function clearInlineTitleParsingState(input) {
   delete input.dataset.titleParsingActive;
 }
 
-function startInlineTitleEdit(titleEl, task, options = {}) {
-  if (!titleEl || !task) {return;}
-  cleanupInlineTitleEdit();
-  const originalTitle = task.title || "";
-  applyInlineTitleEditingStyles(titleEl);
+function createInlineTitleEditingNodes(titleEl, taskId, originalTitle) {
   const input = document.createElement("input");
   input.type = "text";
   input.value = originalTitle;
   input.className =
     "w-full rounded-md border border-slate-700 bg-slate-900/70 px-2 py-1 text-sm text-slate-100 focus:border-lime-400 focus:outline-none";
   input.maxLength = TASK_TITLE_MAX_LENGTH;
-  ensureInlineTitleParsingState(input, false);
   input.setAttribute("data-test-skedpal", "task-title-inline-input");
-  titleEl.dataset.inlineEditing = "true";
-  titleEl.dataset.inlineEditingTaskId = task.id;
-  titleEl.textContent = "";
-  titleEl.appendChild(input);
-  const cleanupPreview = createInlineTitleConversionPreview(titleEl, input);
+  ensureInlineTitleParsingState(input, false);
 
+  const grammarBtn = buildInlineTitleGrammarButton();
+  const editRow = document.createElement("div");
+  editRow.className = "flex items-center gap-1";
+  editRow.setAttribute("data-test-skedpal", "task-title-inline-edit-row");
+  editRow.appendChild(input);
+  editRow.appendChild(grammarBtn);
+
+  titleEl.dataset.inlineEditing = "true";
+  titleEl.dataset.inlineEditingTaskId = taskId;
+  titleEl.textContent = "";
+  titleEl.appendChild(editRow);
+
+  const inlinePreview = createInlineTitleConversionPreview(titleEl, input);
+  return {
+    input,
+    grammarBtn,
+    preview: inlinePreview.preview,
+    cleanupPreview: inlinePreview.cleanup
+  };
+}
+
+function buildInlineTitleGrammarButton() {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "title-icon-btn shrink-0";
+  button.title = INLINE_GRAMMAR_DEFAULT_LABEL;
+  button.setAttribute("aria-label", INLINE_GRAMMAR_DEFAULT_LABEL);
+  button.setAttribute("data-test-skedpal", "task-title-inline-grammar-btn");
+  button.innerHTML = sparklesIconSvg;
+  button.dataset.success = "false";
+  return button;
+}
+
+function clearInlineTitleGrammarSuccessFeedback(button) {
+  if (!button) {return;}
+  const timerId = inlineTitleGrammarSuccessTimers.get(button);
+  if (timerId) {
+    clearTimeout(timerId);
+    inlineTitleGrammarSuccessTimers.delete(button);
+  }
+  button.dataset.success = "false";
+  button.classList.remove("text-lime-300", "border-lime-400");
+  button.innerHTML = sparklesIconSvg;
+  button.title = INLINE_GRAMMAR_DEFAULT_LABEL;
+  button.setAttribute("aria-label", INLINE_GRAMMAR_DEFAULT_LABEL);
+}
+
+function showInlineTitleGrammarSuccessFeedback(button) {
+  if (!button) {return;}
+  clearInlineTitleGrammarSuccessFeedback(button);
+  button.dataset.success = "true";
+  button.classList.add("text-lime-300", "border-lime-400");
+  button.innerHTML = grammarSuccessIconSvg;
+  button.title = INLINE_GRAMMAR_SUCCESS_LABEL;
+  button.setAttribute("aria-label", INLINE_GRAMMAR_SUCCESS_LABEL);
+  const timerId = setTimeout(() => {
+    inlineTitleGrammarSuccessTimers.delete(button);
+    clearInlineTitleGrammarSuccessFeedback(button);
+  }, GRAMMAR_FIX_SUCCESS_FEEDBACK_MS);
+  inlineTitleGrammarSuccessTimers.set(button, timerId);
+}
+
+function setInlineTitleGrammarButtonLoading(button, isLoading) {
+  if (!button) {return;}
+  if (isLoading) {
+    clearInlineTitleGrammarSuccessFeedback(button);
+  }
+  button.disabled = isLoading;
+  button.dataset.loading = isLoading ? "true" : "false";
+  button.setAttribute("aria-busy", isLoading ? "true" : "false");
+}
+
+function applyInlineGrammarFixToInput(input, preview, fixedTitle) {
+  const nextTitle = String(fixedTitle || "").trim().slice(0, TASK_TITLE_MAX_LENGTH);
+  if (!nextTitle) {return false;}
+  input.value = nextTitle;
+  ensureInlineTitleParsingState(input, true);
+  updateInlineTitleConversionPreview(input, preview);
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+  return true;
+}
+
+async function runInlineTitleGrammarRequest({
+  sourceTitle,
+  input,
+  preview,
+  grammarBtn
+}) {
+  setInlineTitleGrammarButtonLoading(grammarBtn, true);
+  try {
+    const fixedTitle = await fixTaskTitleGrammar(sourceTitle);
+    const didApply = applyInlineGrammarFixToInput(input, preview, fixedTitle);
+    if (didApply) {
+      showInlineTitleGrammarSuccessFeedback(grammarBtn);
+    }
+  } catch (error) {
+    console.error("Failed to fix inline task title grammar.", error);
+  } finally {
+    setInlineTitleGrammarButtonLoading(grammarBtn, false);
+  }
+}
+
+async function applyInlineTitleEditResult({
+  shouldSave,
+  titleEl,
+  task,
+  originalTitle,
+  input
+}) {
+  setInlineTitleRowEditing(titleEl, false);
+  if (!shouldSave) {
+    clearInlineTitleParsingState(input);
+    restoreInlineTitle(titleEl, task, originalTitle);
+    return;
+  }
+  const update = resolveInlineTitleUpdate(task, input, originalTitle);
+  clearInlineTitleParsingState(input);
+  if (!update.shouldSave) {
+    restoreInlineTitle(titleEl, task, originalTitle);
+    return;
+  }
+  /* c8 ignore next 10 */
+  const inlineEditHandlers = state.inlineTitleEditHandlers || await import("./tasks-actions.js");
+  const {
+    loadTasks,
+    updateParentTaskDescendants,
+    saveTask: saveTaskOverride
+  } = inlineEditHandlers;
+  await applyInlineTitleUpdate(task, update, {
+    saveTaskFn: saveTaskOverride,
+    loadTasksFn: loadTasks,
+    updateDescendantsFn: updateParentTaskDescendants
+  });
+}
+
+function createInlineTitleGrammarClickHandler({
+  input,
+  preview,
+  grammarBtn
+}) {
+  return async function handleInlineTitleGrammarClick(event) {
+    event.preventDefault();
+    const sourceTitle = input.value || "";
+    if (!sourceTitle.trim()) {
+      input.focus();
+      return;
+    }
+    await runInlineTitleGrammarRequest({
+      sourceTitle,
+      input,
+      preview,
+      grammarBtn
+    });
+  };
+}
+
+function handleInlineTitleGrammarPointerDown(event) {
+  event.preventDefault();
+}
+
+function startInlineTitleEdit(titleEl, task, options = {}) {
+  if (!titleEl || !task) {return;}
+  cleanupInlineTitleEdit();
+  const originalTitle = task.title || "";
+  applyInlineTitleEditingStyles(titleEl);
+  const { input, grammarBtn, preview, cleanupPreview } = createInlineTitleEditingNodes(
+    titleEl,
+    task.id,
+    originalTitle
+  );
   let isDone = false;
+
+  const handleInlineTitleGrammarClick = createInlineTitleGrammarClickHandler({
+    input,
+    preview,
+    grammarBtn
+  });
 
   async function finishInlineEdit(shouldSave) {
     if (isDone) {return;}
@@ -275,24 +457,17 @@ function startInlineTitleEdit(titleEl, task, options = {}) {
     input.removeEventListener("keydown", handleInlineTitleKeydown);
     input.removeEventListener("blur", handleInlineTitleBlur);
     input.removeEventListener("pointerdown", handleInlineTitlePointerDown);
+    grammarBtn.removeEventListener("pointerdown", handleInlineTitleGrammarPointerDown);
+    grammarBtn.removeEventListener("click", handleInlineTitleGrammarClick);
+    clearInlineTitleGrammarSuccessFeedback(grammarBtn);
     cleanupInlineTitleEdit();
     cleanupPreview();
-    setInlineTitleRowEditing(titleEl, false);
-    if (!shouldSave) {
-      clearInlineTitleParsingState(input);
-      restoreInlineTitle(titleEl, task, originalTitle);
-      return;
-    }
-    const update = resolveInlineTitleUpdate(task, input, originalTitle);
-    clearInlineTitleParsingState(input);
-    if (!update.shouldSave) {
-      restoreInlineTitle(titleEl, task, originalTitle);
-      return;
-    }
-    const { loadTasks, updateParentTaskDescendants } = await import("./tasks-actions.js");
-    await applyInlineTitleUpdate(task, update, {
-      loadTasksFn: loadTasks,
-      updateDescendantsFn: updateParentTaskDescendants
+    await applyInlineTitleEditResult({
+      shouldSave,
+      titleEl,
+      task,
+      originalTitle,
+      input
     });
   }
 
@@ -318,6 +493,8 @@ function startInlineTitleEdit(titleEl, task, options = {}) {
   input.addEventListener("keydown", handleInlineTitleKeydown);
   input.addEventListener("blur", handleInlineTitleBlur);
   input.addEventListener("pointerdown", handleInlineTitlePointerDown);
+  grammarBtn.addEventListener("pointerdown", handleInlineTitleGrammarPointerDown);
+  grammarBtn.addEventListener("click", handleInlineTitleGrammarClick);
 
   state.taskTitleEditCleanup = () => {
     if (!isDone) {

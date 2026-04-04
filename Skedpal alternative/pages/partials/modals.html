@@ -52,9 +52,18 @@
       <div class="task-modal__body" data-test-skedpal="task-modal-body">
         <div class="task-modal__section task-modal__section--title" data-test-skedpal="task-modal-section-title">
           <label class="field task-form-grid__full" data-test-skedpal="task-title-field">
-            <span class="field-label">
-              Title
-              <span class="field-label__required" data-test-skedpal="task-title-required">*</span>
+            <span class="field-label flex items-center gap-1" data-test-skedpal="task-title-label-row">
+              <span>
+                Title
+                <span class="field-label__required" data-test-skedpal="task-title-required">*</span>
+              </span>
+              <button
+                type="button"
+                class="title-icon-btn ml-auto"
+                title="Fix grammar"
+                aria-label="Fix grammar"
+                data-test-skedpal="task-title-grammar-btn"
+              ></button>
             </span>
             <div class="field-input-wrap" data-test-skedpal="task-title-input-wrap">
               <input

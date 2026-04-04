@@ -1,4 +1,11 @@
-import { REPORT_TIMEMAP_SEARCH_DEBOUNCE_MS, domRefs } from "./constants.js";
+import {
+  GRAMMAR_FIX_SUCCESS_FEEDBACK_MS,
+  REPORT_TIMEMAP_SEARCH_DEBOUNCE_MS,
+  TASK_TITLE_MAX_LENGTH,
+  domRefs,
+  grammarSuccessIconSvg,
+  sparklesIconSvg
+} from "./constants.js";
 import {
   handleTaskTitleConversionPreviewClick,
   updateTaskTitleConversionPreview,
@@ -15,7 +22,7 @@ import {
   handleAddTaskLiteralClick
 } from "./tasks/task-add-row.js";
 import { initTaskTemplateSelect } from "./tasks/task-template-select.js";
-import { initTaskListAssistant } from "./tasks/task-ai.js";
+import { fixTaskTitleGrammar, initTaskListAssistant } from "./tasks/task-ai.js";
 import {
   handleTaskSubmit,
   handleReschedule,
@@ -43,9 +50,13 @@ const {
   todayList,
   reportList,
   reportDelayInput,
+  taskTitleGrammarBtn,
   rescheduleButtons
 } = domRefs;
 let reportTimeMapSearchDebounceTimer = null;
+const taskTitleGrammarSuccessTimers = new WeakMap();
+const TASK_TITLE_GRAMMAR_DEFAULT_LABEL = "Fix grammar";
+const TASK_TITLE_GRAMMAR_SUCCESS_LABEL = "Grammar fixed";
 
 function clearReportTimeMapSearchDebounceTimer() {
   if (!reportTimeMapSearchDebounceTimer) {return;}
@@ -327,6 +338,71 @@ function setupTaskDuration(cleanupFns) {
   );
 }
 
+function setTaskTitleGrammarButtonLoading(button, isLoading) {
+  if (!button) {return;}
+  if (isLoading) {
+    clearTaskTitleGrammarSuccessFeedback(button);
+  }
+  button.disabled = isLoading;
+  button.dataset.loading = isLoading ? "true" : "false";
+  button.setAttribute("aria-busy", isLoading ? "true" : "false");
+}
+
+function clearTaskTitleGrammarSuccessFeedback(button) {
+  if (!button) {return;}
+  const timerId = taskTitleGrammarSuccessTimers.get(button);
+  if (timerId) {
+    clearTimeout(timerId);
+    taskTitleGrammarSuccessTimers.delete(button);
+  }
+  button.dataset.success = "false";
+  button.classList.remove("text-lime-300", "border-lime-400");
+  button.innerHTML = sparklesIconSvg;
+  button.title = TASK_TITLE_GRAMMAR_DEFAULT_LABEL;
+  button.setAttribute("aria-label", TASK_TITLE_GRAMMAR_DEFAULT_LABEL);
+}
+
+function showTaskTitleGrammarSuccessFeedback(button) {
+  if (!button) {return;}
+  clearTaskTitleGrammarSuccessFeedback(button);
+  button.dataset.success = "true";
+  button.classList.add("text-lime-300", "border-lime-400");
+  button.innerHTML = grammarSuccessIconSvg;
+  button.title = TASK_TITLE_GRAMMAR_SUCCESS_LABEL;
+  button.setAttribute("aria-label", TASK_TITLE_GRAMMAR_SUCCESS_LABEL);
+  const timerId = setTimeout(() => {
+    taskTitleGrammarSuccessTimers.delete(button);
+    clearTaskTitleGrammarSuccessFeedback(button);
+  }, GRAMMAR_FIX_SUCCESS_FEEDBACK_MS);
+  taskTitleGrammarSuccessTimers.set(button, timerId);
+}
+
+async function handleTaskTitleGrammarButtonClick(event) {
+  const button = event.currentTarget;
+  if (!button || button.tagName !== "BUTTON" || !domRefs.taskTitleInput) {return;}
+  event.preventDefault();
+  const sourceTitle = domRefs.taskTitleInput.value || "";
+  if (!sourceTitle.trim()) {
+    domRefs.taskTitleInput.focus();
+    return;
+  }
+  setTaskTitleGrammarButtonLoading(button, true);
+  try {
+    const fixedTitle = await fixTaskTitleGrammar(sourceTitle);
+    const nextTitle = String(fixedTitle || "").trim();
+    if (!nextTitle) {return;}
+    domRefs.taskTitleInput.value = nextTitle.slice(0, TASK_TITLE_MAX_LENGTH);
+    updateTaskTitleHelper();
+    updateTaskTitleConversionPreview();
+    showTaskTitleGrammarSuccessFeedback(button);
+  } catch (error) {
+    console.error("Failed to fix task title grammar.", error);
+  } finally {
+    setTaskTitleGrammarButtonLoading(button, false);
+    domRefs.taskTitleInput?.focus();
+  }
+}
+
 function setupTaskTitle(cleanupFns) {
   if (!domRefs.taskTitleInput) {return;}
   const handleTitleInput = () => {
@@ -348,6 +424,14 @@ function setupTaskTitle(cleanupFns) {
         handleTaskTitleConversionPreviewClick
       )
     );
+  }
+  if (taskTitleGrammarBtn) {
+    clearTaskTitleGrammarSuccessFeedback(taskTitleGrammarBtn);
+    taskTitleGrammarBtn.addEventListener("click", handleTaskTitleGrammarButtonClick);
+    cleanupFns.push(() =>
+      taskTitleGrammarBtn.removeEventListener("click", handleTaskTitleGrammarButtonClick)
+    );
+    cleanupFns.push(() => clearTaskTitleGrammarSuccessFeedback(taskTitleGrammarBtn));
   }
 }
 

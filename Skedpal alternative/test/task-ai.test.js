@@ -147,7 +147,7 @@ function installDomStubs() {
 installDomStubs();
 
 const taskAiModule = await import("../src/ui/tasks/task-ai.js");
-const { parseTaskListResponse } = taskAiModule;
+const { parseTaskListResponse, fixTaskTitleGrammar } = taskAiModule;
 const { state } = await import("../src/ui/state/page-state.js");
 const { domRefs } = await import("../src/ui/constants.js");
 
@@ -201,6 +201,21 @@ describe("task ai parser", () => {
       { title: "Collect receipts", subtasks: ["Get bill"] },
       { title: "Submit", subtasks: [] }
     ]);
+  });
+
+  it("fixes grammar for task titles from JSON responses", async () => {
+    const result = await fixTaskTitleGrammar("write report monday", {
+      apiKey: "test-key",
+      requestFn: async () => "{\"title\":\"Write report Monday\"}"
+    });
+    assert.strictEqual(result, "Write report Monday");
+  });
+
+  it("falls back to the original title when no key is provided", async () => {
+    state.settingsCache = { groqApiKey: "" };
+    global.window.prompt = () => "";
+    const result = await fixTaskTitleGrammar("fix grammar pls");
+    assert.strictEqual(result, "fix grammar pls");
   });
 
   it("builds lists, removes items, and cleans up listeners", async () => {

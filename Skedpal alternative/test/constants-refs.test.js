@@ -18,6 +18,7 @@ describe("constants dom refs", () => {
     const { domRefs } = await import("../src/ui/constants.js?qs=1");
     assert.ok(Array.isArray(domRefs.views));
     assert.ok(domRefs.taskLinkClearBtn);
+    assert.ok(domRefs.taskTitleGrammarBtn);
     assert.ok(domRefs.calendarSplitToggleSlot);
   });
 });

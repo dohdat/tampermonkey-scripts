@@ -1,5 +1,15 @@
 import { saveSettings } from "../../data/db.js";
-import { GROQ_BASE_URL, GROQ_MODEL, INDEX_NOT_FOUND, TWO, domRefs } from "../constants.js";
+import {
+  GROQ_BASE_URL,
+  GROQ_MODEL,
+  GROQ_TASK_LIST_MAX_COMPLETION_TOKENS,
+  GROQ_TASK_LIST_TEMPERATURE,
+  GROQ_TASK_TITLE_GRAMMAR_MAX_COMPLETION_TOKENS,
+  GROQ_TASK_TITLE_GRAMMAR_TEMPERATURE,
+  INDEX_NOT_FOUND,
+  TWO,
+  domRefs
+} from "../constants.js";
 import { formatGroqErrorStatus } from "../groq-error-status.js";
 import { requestGroqWithRateLimitFallback } from "../groq-model-fallback.js";
 import { state } from "../state/page-state.js";
@@ -48,7 +58,72 @@ function buildTaskListMessages(title) {
   ];
 }
 
-async function requestGroqTaskListForModel(apiKey, title, model = GROQ_MODEL) {
+function buildTaskTitleGrammarMessages(title) {
+  return [
+    {
+      role: "system",
+      content:
+        "You rewrite task titles for grammar only. Keep original meaning. Return plain text only."
+    },
+    {
+      role: "user",
+      content:
+        `Fix grammar and punctuation for this task title without changing its intent. ` +
+        `Keep it concise and avoid adding context: "${title}"`
+    }
+  ];
+}
+
+function normalizeTaskTitleText(value) {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function extractTaskTitleGrammarCandidate(text) {
+  if (!text) {return "";}
+  const raw = String(text).trim();
+  if (!raw) {return "";}
+  const fencedMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  return (fencedMatch ? fencedMatch[1] : raw).trim();
+}
+
+function parseTaskTitleGrammarFromJson(candidate) {
+  if (!candidate.startsWith("{")) {return "";}
+  try {
+    const parsed = JSON.parse(candidate);
+    return normalizeTaskTitleText(parsed?.title || parsed?.taskTitle || parsed?.result || "");
+  } catch (error) {
+    return "";
+  }
+}
+
+function parseTaskTitleGrammarFromText(candidate) {
+  const firstLine = candidate
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => line && !line.startsWith("- ") && !line.startsWith("* "));
+  const cleanedLine = (firstLine || candidate)
+    .replace(/^(title|corrected(?: title)?|rewritten(?: title)?):\s*/i, "")
+    .replace(/^["'`]+|["'`]+$/g, "");
+  return normalizeTaskTitleText(cleanedLine);
+}
+
+function parseTaskTitleGrammarResponse(text, fallbackTitle = "") {
+  const normalizedFallback = normalizeTaskTitleText(fallbackTitle);
+  const candidate = extractTaskTitleGrammarCandidate(text);
+  if (!candidate) {return normalizedFallback;}
+  const fromJson = parseTaskTitleGrammarFromJson(candidate);
+  if (fromJson) {return fromJson;}
+  const fromText = parseTaskTitleGrammarFromText(candidate);
+  return fromText || normalizedFallback;
+}
+
+async function requestGroqChatCompletionForModel({
+  apiKey,
+  messages,
+  model = GROQ_MODEL,
+  temperature = GROQ_TASK_LIST_TEMPERATURE,
+  maxCompletionTokens = GROQ_TASK_LIST_MAX_COMPLETION_TOKENS
+}) {
   const response = await fetch(GROQ_BASE_URL, {
     method: "POST",
     headers: {
@@ -57,9 +132,9 @@ async function requestGroqTaskListForModel(apiKey, title, model = GROQ_MODEL) {
     },
     body: JSON.stringify({
       model,
-      messages: buildTaskListMessages(title),
-      temperature: 0.4,
-      max_completion_tokens: 700,
+      messages,
+      temperature,
+      max_completion_tokens: maxCompletionTokens,
       top_p: 1,
       stream: false
     })
@@ -83,10 +158,49 @@ async function requestGroqTaskListForModel(apiKey, title, model = GROQ_MODEL) {
   return data?.choices?.[0]?.message?.content || "";
 }
 
+async function requestGroqTaskListForModel(apiKey, title, model = GROQ_MODEL) {
+  return requestGroqChatCompletionForModel({
+    apiKey,
+    model,
+    messages: buildTaskListMessages(title),
+    temperature: GROQ_TASK_LIST_TEMPERATURE,
+    maxCompletionTokens: GROQ_TASK_LIST_MAX_COMPLETION_TOKENS
+  });
+}
+
 async function requestGroqTaskList(apiKey, title) {
   return requestGroqWithRateLimitFallback(
     (model) => requestGroqTaskListForModel(apiKey, title, model)
   );
+}
+
+async function requestGroqTaskTitleGrammarForModel(apiKey, title, model = GROQ_MODEL) {
+  return requestGroqChatCompletionForModel({
+    apiKey,
+    model,
+    messages: buildTaskTitleGrammarMessages(title),
+    temperature: GROQ_TASK_TITLE_GRAMMAR_TEMPERATURE,
+    maxCompletionTokens: GROQ_TASK_TITLE_GRAMMAR_MAX_COMPLETION_TOKENS
+  });
+}
+
+async function requestGroqTaskTitleGrammar(apiKey, title) {
+  return requestGroqWithRateLimitFallback(
+    (model) => requestGroqTaskTitleGrammarForModel(apiKey, title, model)
+  );
+}
+
+export async function fixTaskTitleGrammar(title, options = {}) {
+  const fallbackTitle = normalizeTaskTitleText(title);
+  if (!fallbackTitle) {return "";}
+  const providedApiKey = typeof options.apiKey === "string" ? options.apiKey.trim() : "";
+  const apiKey = providedApiKey || await ensureGroqApiKey();
+  if (!apiKey) {return fallbackTitle;}
+  const requestFn = typeof options.requestFn === "function"
+    ? options.requestFn
+    : (nextTitle) => requestGroqTaskTitleGrammar(apiKey, nextTitle);
+  const content = await requestFn(fallbackTitle);
+  return parseTaskTitleGrammarResponse(content, fallbackTitle);
 }
 
 function extractJsonCandidate(text) {

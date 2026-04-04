@@ -135,6 +135,10 @@ export const REPEAT_COMPLETE_COMPLETED_LIMIT = FIVE;
 
 export const GROQ_BASE_URL = "https://api.groq.com/openai/v1/chat/completions";
 export const GROQ_MODEL = "openai/gpt-oss-120b";
+export const GROQ_TASK_LIST_TEMPERATURE = 0.4;
+export const GROQ_TASK_LIST_MAX_COMPLETION_TOKENS = 700;
+export const GROQ_TASK_TITLE_GRAMMAR_TEMPERATURE = 0.2;
+export const GROQ_TASK_TITLE_GRAMMAR_MAX_COMPLETION_TOKENS = 120;
 export const GROQ_RATE_LIMIT_FALLBACK_MODELS = Object.freeze([
   "openai/gpt-oss-20b",
   "qwen/qwen3-32b"

@@ -1,5 +1,8 @@
 import {
   ADD_TASK_BUTTON_TEST_ID,
+  ADD_TASK_GRAMMAR_BUTTON_TEST_ID,
+  ADD_TASK_GRAMMAR_DEFAULT_LABEL,
+  ADD_TASK_GRAMMAR_WRAP_TEST_ID,
   ADD_TASK_INPUT_TEST_ID,
   ADD_TASK_ROW_TEST_ID,
   DEFAULT_TASK_DURATION_MIN,
@@ -9,12 +12,20 @@ import {
   SUBTASK_SCHEDULE_PARALLEL,
   TASK_STATUS_UNSCHEDULED,
   TASK_TITLE_MAX_LENGTH,
-  plusIconSvg
+  plusIconSvg,
+  sparklesIconSvg
 } from "../constants.js";
 import { saveTask } from "../../data/db.js";
 import { state } from "../state/page-state.js";
 import { getSubsectionTemplate } from "../sections.js";
 import { maybeAutoSortSubsectionOnAdd } from "./task-auto-sort.js";
+import { fixTaskTitleGrammar } from "./task-ai.js";
+import {
+  applyAddTaskGrammarReplacement,
+  resolveAddTaskGrammarSelectionContext,
+  resolveAddTaskInputFromEventTarget,
+  syncAddTaskGrammarButtonState
+} from "./task-add-row-grammar.js";
 import {
   buildInheritedSubtaskUpdate,
   getNextOrder,
@@ -33,21 +44,36 @@ import {
   serializeTitleLiteralList
 } from "../title-date-utils.js";
 import { mergeReminderEntries } from "./task-reminders-helpers.js";
-
 const CLIPBOARD_LINE_REGEX = /\r?\n/;
 const CLIPBOARD_BULLET_REGEX = /^(?:[-*]|\d+[).])\s+/;
-
 function getRowParts(row) {
-  if (!row) {return { button: null, input: null };}
+  if (!row) {
+    return { button: null, input: null, grammarWrap: null, grammarButton: null };
+  }
   return {
     button: row.querySelector?.("[data-add-task-button]") || null,
-    input: row.querySelector?.("[data-add-task-input]") || null
+    input: row.querySelector?.("[data-add-task-input]") || null,
+    grammarWrap: row.querySelector?.("[data-add-task-grammar-wrap]") || null,
+    grammarButton: row.querySelector?.("[data-add-task-grammar-button]") || null
   };
 }
-
+function setAddTaskGrammarButtonLoading(button, isLoading) {
+  if (!button) {return;}
+  button.disabled = isLoading;
+  button.dataset.loading = isLoading ? "true" : "false";
+  button.setAttribute("aria-busy", isLoading ? "true" : "false");
+}
+function updateAddTaskGrammarButtonVisibility(input) {
+  if (!input) {return;}
+  const row = input.closest?.("[data-add-task-row]");
+  if (!row) {return;}
+  const { grammarButton } = getRowParts(row);
+  if (!grammarButton) {return;}
+  syncAddTaskGrammarButtonState({ input, row, grammarButton });
+}
 function collapseAddTaskRow(row, options = {}) {
   const { clear = true } = options;
-  const { button, input } = getRowParts(row);
+  const { button, input, grammarWrap, grammarButton } = getRowParts(row);
   const preview = row?.querySelector?.('[data-test-skedpal="task-add-conversion-preview"]');
   row?.removeAttribute("data-add-task-active");
   if (input) {
@@ -61,9 +87,13 @@ function collapseAddTaskRow(row, options = {}) {
     preview.textContent = "";
     preview.classList.add("opacity-0", "pointer-events-none");
   }
+  if (grammarWrap) {
+    grammarWrap.classList.add("hidden");
+  }
+  setAddTaskGrammarButtonLoading(grammarButton, false);
+  syncAddTaskGrammarButtonState({ input, row, grammarButton });
   button?.classList.remove("hidden");
 }
-
 function collapseOtherAddTaskRows(activeRow) {
   const rows = document.querySelectorAll?.("[data-add-task-row]") || [];
   rows.forEach((row) => {
@@ -72,39 +102,37 @@ function collapseOtherAddTaskRows(activeRow) {
     collapseAddTaskRow(row);
   });
 }
-
 function activateAddTaskRow(row) {
   if (!row) {return;}
-  const { button, input } = getRowParts(row);
+  const { button, input, grammarWrap, grammarButton } = getRowParts(row);
   if (!input || !button) {return;}
   if (row.dataset.addTaskActive === "true") {return;}
   collapseOtherAddTaskRows(row);
   row.dataset.addTaskActive = "true";
   button.classList.add("hidden");
   input.classList.remove("hidden");
+  grammarWrap?.classList.remove("hidden");
+  setAddTaskGrammarButtonLoading(grammarButton, false);
   input.focus();
+  updateAddTaskGrammarButtonVisibility(input);
 }
-
 export function handleAddTaskRowClick(button) {
   const row = button?.closest?.("[data-add-task-row]");
   if (!row) {return false;}
   activateAddTaskRow(row);
   return true;
 }
-
 export function collapseAddTaskRowForInput(input) {
   if (!input) {return;}
   const row = input.closest?.("[data-add-task-row]");
   if (!row) {return;}
   collapseAddTaskRow(row);
 }
-
 function resolveTemplateForLocation(sectionId, subsectionId, templateOverride) {
   if (templateOverride) {return templateOverride;}
   if (!sectionId || !subsectionId) {return null;}
   return getSubsectionTemplate(sectionId, subsectionId);
 }
-
 function resolveTimeMapIds(template, settings) {
   if (Array.isArray(template?.timeMapIds) && template.timeMapIds.length) {
     return [...template.timeMapIds];
@@ -112,12 +140,10 @@ function resolveTimeMapIds(template, settings) {
   const defaultId = settings?.defaultTimeMapId;
   return defaultId ? [defaultId] : [];
 }
-
 function resolveNumber(value, fallback) {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
-
 function resolveQuickAddContext(sectionId, subsectionId, parentTask, template) {
   const inheritedSection = parentTask?.section || sectionId;
   const inheritedSubsection = parentTask?.subsection || subsectionId;
@@ -128,36 +154,29 @@ function resolveQuickAddContext(sectionId, subsectionId, parentTask, template) {
   );
   return { inheritedSection, inheritedSubsection, resolvedTemplate };
 }
-
 function resolveQuickAddOrder(parentTask, sectionId, subsectionId, tasks) {
   if (parentTask) {
     return getNextSubtaskOrder(parentTask, sectionId, subsectionId, tasks);
   }
   return getNextOrder(sectionId, subsectionId, tasks);
 }
-
 function resolveTemplateRepeat(template) {
   return template?.repeat ? { ...template.repeat } : { ...DEFAULT_TASK_REPEAT };
 }
-
 function resolveTemplateScheduleMode(template) {
   return normalizeSubtaskScheduleMode(
     template?.subtaskScheduleMode || SUBTASK_SCHEDULE_PARALLEL
   );
 }
-
 function resolveTemplateDeadline(template) {
   return parseLocalDateInput(template?.deadline || "");
 }
-
 function resolveTemplateStartFrom(template) {
   return parseLocalDateInput(template?.startFrom || "");
 }
-
 function resolveTemplateLink(template) {
   return template?.link || "";
 }
-
 function resolveQuickAddDefaults(resolvedTemplate, settings) {
   return {
     durationMin: resolveNumber(
@@ -177,17 +196,14 @@ function resolveQuickAddDefaults(resolvedTemplate, settings) {
     link: resolveTemplateLink(resolvedTemplate)
   };
 }
-
 function normalizeOptionalString(value) {
   return value || "";
 }
-
 function normalizeClipboardTaskTitle(value) {
   const trimmed = (value || "").trim();
   if (!trimmed) {return "";}
   return trimmed.replace(CLIPBOARD_BULLET_REGEX, "").trim();
 }
-
 function readTitleLiterals(input, value) {
   if (!input) {return [];}
   const stored = parseTitleLiteralList(input.dataset.titleLiterals);
@@ -199,7 +215,6 @@ function readTitleLiterals(input, value) {
   }
   return pruned;
 }
-
 function addTitleLiteral(input, value, literal) {
   if (!input || !literal) {return false;}
   const existing = readTitleLiterals(input, value);
@@ -208,7 +223,6 @@ function addTitleLiteral(input, value, literal) {
   input.dataset.titleLiterals = serializeTitleLiteralList(next);
   return true;
 }
-
 function updateAddTaskConversionPreview(input) {
   if (!input) {return;}
   const row = input.closest?.("[data-add-task-row]");
@@ -225,7 +239,6 @@ function updateAddTaskConversionPreview(input) {
   preview.innerHTML = result.html;
   preview.classList.remove("opacity-0", "pointer-events-none");
 }
-
 export function parseClipboardTaskTitles(text) {
   if (!text) {return [];}
   return text
@@ -233,7 +246,6 @@ export function parseClipboardTaskTitles(text) {
     .map(normalizeClipboardTaskTitle)
     .filter(Boolean);
 }
-
 function resolveQuickAddDateRange(parsedStartFrom, parsedDeadline, defaults) {
   const startFrom = parsedStartFrom ?? defaults.startFrom;
   const deadline = parsedDeadline ?? defaults.deadline;
@@ -244,7 +256,6 @@ function resolveQuickAddDateRange(parsedStartFrom, parsedDeadline, defaults) {
     deadlineSource: parsedDeadline ? "parsed" : "existing"
   });
 }
-
 function buildQuickAddBasePayload({
   id,
   title,
@@ -288,7 +299,6 @@ function buildQuickAddBasePayload({
     })
   };
 }
-
 function finalizeQuickAddPayload(basePayload, parentTask) {
   if (!parentTask) {return basePayload;}
   const inherited = buildInheritedSubtaskUpdate(basePayload, parentTask) || basePayload;
@@ -302,7 +312,6 @@ function finalizeQuickAddPayload(basePayload, parentTask) {
     })
   };
 }
-
 function buildQuickAddPayload({
   id,
   title,
@@ -341,7 +350,6 @@ function buildQuickAddPayload({
   });
   return finalizeQuickAddPayload(basePayload, parentTask);
 }
-
 export function buildQuickAddTaskPayload({
   title,
   sectionId = "",
@@ -384,7 +392,6 @@ export function buildQuickAddTaskPayload({
     settings
   });
 }
-
 export function buildQuickAddTaskPayloadsFromTitles({
   titles = [],
   sectionId = "",
@@ -411,7 +418,6 @@ export function buildQuickAddTaskPayloadsFromTitles({
   });
   return payloads;
 }
-
 export async function handleAddTaskInputSubmit(input) {
   if (!input) {return false;}
   const rawTitle = input.value || "";
@@ -440,14 +446,18 @@ export async function handleAddTaskInputSubmit(input) {
   window.dispatchEvent(new Event("skedpal:tasks-updated"));
   return true;
 }
-
 export function handleAddTaskInputConversion(event) {
   const input = event.target;
   if (!(input instanceof HTMLElement)) {return;}
   if (!input.matches("[data-add-task-input]")) {return;}
   updateAddTaskConversionPreview(input);
+  updateAddTaskGrammarButtonVisibility(input);
 }
-
+export function handleAddTaskInputSelection(event) {
+  const input = resolveAddTaskInputFromEventTarget(event.target);
+  if (!input) {return;}
+  updateAddTaskGrammarButtonVisibility(input);
+}
 export function handleAddTaskLiteralClick(event) {
   const target = event.target;
   const chip = target?.closest?.("[data-title-literal]");
@@ -464,7 +474,46 @@ export function handleAddTaskLiteralClick(event) {
   event.stopPropagation();
   return true;
 }
-
+export async function handleAddTaskGrammarClick(event, options = {}) {
+  const target = event.target;
+  const grammarButton = target?.closest?.("[data-add-task-grammar-button]");
+  if (!grammarButton) {return false;}
+  const row = grammarButton.closest?.("[data-add-task-row]");
+  const input = row?.querySelector?.("[data-add-task-input]");
+  if (!input) {return true;}
+  event.preventDefault();
+  event.stopPropagation();
+  const selectionContext = resolveAddTaskGrammarSelectionContext(input);
+  if (!selectionContext.sourceTitle.trim()) {
+    input.focus();
+    syncAddTaskGrammarButtonState({ input, row, grammarButton });
+    return true;
+  }
+  const fixGrammarFn = typeof options.fixGrammarFn === "function"
+    ? options.fixGrammarFn
+    : fixTaskTitleGrammar;
+  setAddTaskGrammarButtonLoading(grammarButton, true);
+  try {
+    const fixedTitle = await fixGrammarFn(selectionContext.sourceTitle);
+    const nextTitleSegment = String(fixedTitle || "").trim();
+    if (!nextTitleSegment) {return true;}
+    applyAddTaskGrammarReplacement({
+      input,
+      context: selectionContext,
+      nextTitleSegment,
+      maxTitleLength: TASK_TITLE_MAX_LENGTH
+    });
+    updateAddTaskConversionPreview(input);
+    syncAddTaskGrammarButtonState({ input, row, grammarButton });
+  } catch (error) {
+    console.error("Failed to fix add task title grammar.", error);
+  } finally {
+    setAddTaskGrammarButtonLoading(grammarButton, false);
+    input.focus();
+    syncAddTaskGrammarButtonState({ input, row, grammarButton });
+  }
+  return true;
+}
 export function buildAddTaskRow({
   sectionId = "",
   subsectionId = "",
@@ -477,7 +526,6 @@ export function buildAddTaskRow({
   row.dataset.sectionId = sectionId;
   row.dataset.subsectionId = subsectionId;
   row.setAttribute("data-test-skedpal", ADD_TASK_ROW_TEST_ID);
-
   const button = document.createElement("button");
   button.type = "button";
   button.dataset.addTaskSection = sectionId;
@@ -496,7 +544,6 @@ export function buildAddTaskRow({
   label.setAttribute("data-test-skedpal", "task-add-label");
   button.appendChild(iconWrap);
   button.appendChild(label);
-
   const input = document.createElement("input");
   input.type = "text";
   input.maxLength = TASK_TITLE_MAX_LENGTH;
@@ -506,11 +553,24 @@ export function buildAddTaskRow({
   input.dataset.addTaskSubsection = subsectionId;
   input.dataset.addTaskParent = parentId;
   input.className =
-    "hidden w-full rounded-lg border-slate-800 bg-slate-950/80 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none";
+    "hidden w-full rounded-lg border-slate-800 bg-slate-950/80 px-3 py-2 pr-10 text-xs text-slate-100 placeholder:text-slate-500 focus:border-lime-400 focus:outline-none";
   input.setAttribute("data-test-skedpal", ADD_TASK_INPUT_TEST_ID);
-
+  const grammarWrap = document.createElement("div");
+  grammarWrap.dataset.addTaskGrammarWrap = "true";
+  grammarWrap.className = "hidden relative w-full";
+  grammarWrap.setAttribute("data-test-skedpal", ADD_TASK_GRAMMAR_WRAP_TEST_ID);
+  const grammarButton = document.createElement("button");
+  grammarButton.type = "button";
+  grammarButton.dataset.addTaskGrammarButton = "true";
+  grammarButton.className = "title-icon-btn absolute right-2 top-1/2 -translate-y-1/2 hidden";
+  grammarButton.title = ADD_TASK_GRAMMAR_DEFAULT_LABEL;
+  grammarButton.setAttribute("aria-label", ADD_TASK_GRAMMAR_DEFAULT_LABEL);
+  grammarButton.innerHTML = sparklesIconSvg;
+  grammarButton.setAttribute("data-test-skedpal", ADD_TASK_GRAMMAR_BUTTON_TEST_ID);
+  grammarWrap.appendChild(input);
+  grammarWrap.appendChild(grammarButton);
   row.appendChild(button);
-  row.appendChild(input);
+  row.appendChild(grammarWrap);
   const preview = document.createElement("div");
   preview.className =
     "mt-1 w-full min-w-0 break-words text-left text-[10px] leading-tight text-slate-400 opacity-0 pointer-events-none pl-3";

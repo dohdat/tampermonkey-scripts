@@ -18,7 +18,9 @@ import {
   handleTaskTitleDoubleClick
 } from "./tasks/task-list-actions.js";
 import {
+  handleAddTaskGrammarClick,
   handleAddTaskInputConversion,
+  handleAddTaskInputSelection,
   handleAddTaskLiteralClick
 } from "./tasks/task-add-row.js";
 import { initTaskTemplateSelect } from "./tasks/task-template-select.js";
@@ -159,6 +161,7 @@ function handleTaskDetailsChange(event) {
 
 async function handleTaskListClickEvent(event) {
   if (handleTaskTitleClick(event)) {return;}
+  if (await handleAddTaskGrammarClick(event)) {return;}
   if (handleAddTaskLiteralClick(event)) {return;}
   await handleTaskListClick(event);
 }
@@ -454,12 +457,20 @@ function setupTaskLists(cleanupFns) {
     taskList.addEventListener("click", handleTaskListClickEvent);
     taskList.addEventListener("dblclick", handleTaskListDoubleClickEvent);
     taskList.addEventListener("input", handleAddTaskInputConversion);
+    taskList.addEventListener("select", handleAddTaskInputSelection);
+    taskList.addEventListener("keyup", handleAddTaskInputSelection);
+    taskList.addEventListener("mouseup", handleAddTaskInputSelection);
+    taskList.addEventListener("focusout", handleAddTaskInputSelection);
     taskList.addEventListener("change", handleTaskDetailsChange);
     cleanupFns.push(() => taskList.removeEventListener("click", handleTaskListClickEvent));
     cleanupFns.push(() =>
       taskList.removeEventListener("dblclick", handleTaskListDoubleClickEvent)
     );
     cleanupFns.push(() => taskList.removeEventListener("input", handleAddTaskInputConversion));
+    cleanupFns.push(() => taskList.removeEventListener("select", handleAddTaskInputSelection));
+    cleanupFns.push(() => taskList.removeEventListener("keyup", handleAddTaskInputSelection));
+    cleanupFns.push(() => taskList.removeEventListener("mouseup", handleAddTaskInputSelection));
+    cleanupFns.push(() => taskList.removeEventListener("focusout", handleAddTaskInputSelection));
     cleanupFns.push(() => taskList.removeEventListener("change", handleTaskDetailsChange));
   }
   if (todayList) {
